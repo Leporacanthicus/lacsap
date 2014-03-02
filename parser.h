@@ -1,0 +1,57 @@
+#ifndef PARSER_H
+#define PARSER_H
+
+#include "variables.h"
+#include "expr.h"
+#include <string>
+
+class Parser
+{
+public:
+    Parser(Lexer &l);
+    ExprAST *Parse();
+
+    int GetErrors() { return errCnt; } 
+
+private:
+    const Token& CurrentToken() const;
+    const Token& NextToken(const char *file, int line);
+    const Token& PeekToken(const char *file, int line);
+
+    ExprAST* ParseExpression();
+    ExprAST* ParseIdentifierExpr();
+    ExprAST* ParseRealExpr();
+    ExprAST* ParseIntegerExpr();
+    ExprAST* ParseStringExpr();
+    ExprAST* ParseParenExpr();
+    ExprAST* ParsePrimary();
+    ExprAST* ParseStatement();
+    ExprAST* ParseReturnExpr();
+    ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
+    ExprAST* ParseIfExpr();
+    ExprAST* ParseForExpr();
+    ExprAST* ParseWrite();
+    ExprAST* ParseRead();
+    ExprAST* ParseUnaryOp();
+    ExprAST* ParseStmtOrBlock();
+    VarDeclAST* ParseVarDecls();
+    BlockAST* ParseBlock();
+    FunctionAST* ParseDefinition(bool isFunction);
+    PrototypeAST* ParsePrototype(bool isFunction);
+
+    bool Expect(Token::TokenType type, bool eatIt, const char *file, int line);
+
+    ExprAST* Error(const std::string& msg, const char *file = NULL, int line = 0);
+    PrototypeAST* ErrorP(const std::string& msg);
+    FunctionAST* ErrorF(const std::string& msg);
+
+private:
+    Lexer& lexer;
+    Token curToken;
+    Token nextToken;
+    bool nextTokenValid;
+    std::string moduleName;
+    int errCnt;
+};
+
+#endif

@@ -31,7 +31,6 @@ void __write_str(const char *v, int width)
     }
 }
 
-
 void __read_int(int *v)
 {
     scanf("%d", v);

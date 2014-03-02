@@ -254,8 +254,6 @@ private:
 };
 
 /* Useful global functions */
-void DumpModule(llvm::Module *module);
-llvm::Module* CodeGen(ExprAST* ast);
-void OptimizerInit();
+llvm::Value* MakeIntegerConstant(int val);
 
 #endif

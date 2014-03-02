@@ -152,6 +152,23 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
     }
 }
 
+ExprAST* Parser::ParseUnaryOp()
+{
+    assert(CurrentToken().GetType() == Token::Minus && 
+	   "Expected only minus at this time as a unary operator");
+
+    Token oper = CurrentToken();
+
+    NextToken();
+    
+    ExprAST* rhs = ParsePrimary();
+    if (!rhs)
+    {
+	return 0;
+    }
+    return new UnaryExprAST(oper, rhs);
+}
+
 ExprAST* Parser::ParseExpression()
 {
     ExprAST *lhs = ParsePrimary();
@@ -694,6 +711,9 @@ ExprAST* Parser::ParsePrimary()
     case Token::Read:
     case Token::Readln:
 	return ParseRead();
+
+    case Token::Minus:
+	return ParseUnaryOp();
 
     default:
 	assert(0 && "Unexpected token");

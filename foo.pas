@@ -74,6 +74,6 @@ begin
    writeln('fact2(13) = ', fact2(13));
    writeln;
    writeln(foo(2, 3):1);
-   writeln('abs(-4)=', abs(-4));
+   writeln('abs(-3.7)=', abs(-3.7));
    readln;
 end.

@@ -47,7 +47,7 @@ static llvm::Value* MakeConstant(int val, const char *type, int bits)
     return llvm::ConstantInt::get(Types::GetType(type), llvm::APInt(bits, val));
 }
 
-static llvm::Value* MakeIntegerConstant(int val)
+llvm::Value* MakeIntegerConstant(int val)
 {
     return MakeConstant(val, "integer", 32);
 }
@@ -214,6 +214,40 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
 }
 
+void UnaryExprAST::DoDump(std::ostream& out) const
+{ 
+    out << "Unary: " << oper.ToString();
+    rhs->Dump(out);
+}
+
+llvm::Value* UnaryExprAST::CodeGen()
+{
+    llvm::Value* r = rhs->CodeGen();
+    llvm::Type::TypeID rty = r->getType()->getTypeID();
+    if (rty == llvm::Type::IntegerTyID)
+    {
+	switch(oper.GetType())
+	{
+	case Token::Minus:
+	    return builder.CreateNeg(r, "minus");
+	default:
+	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	}
+    }
+    else if (rty == llvm::Type::DoubleTyID)
+    {
+	switch(oper.GetType())
+	{
+	case Token::Minus:
+	    return builder.CreateFNeg(r, "minus");
+	default:
+	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	}
+    }
+    return ErrorV(std::string("Unknown type: ") + oper.ToString());
+}
+
+
 void CallExprAST::DoDump(std::ostream& out) const
 { 
     out << "call: " << callee << "(";
@@ -229,7 +263,7 @@ llvm::Value* CallExprAST::CodeGen()
     TRACE();
     if (Builtin::IsBuiltin(callee))
     {
-	return Builtin::CodeGen(callee, args);
+	return Builtin::CodeGen(builder, callee, args);
     }
     llvm::Function* calleF = theModule->getFunction(callee);
     if (!calleF)
@@ -272,6 +306,7 @@ llvm::Value* BlockAST::CodeGen()
     for(ExprAST *e = content; e; e = e->Next())
     {
 	v = e->CodeGen();
+	assert(v && "Expect codegen to work!");
     }
     return v;
 }
@@ -670,7 +705,7 @@ llvm::Value* WriteAST::CodeGen()
 	llvm::Value* v = arg.expr->CodeGen();
 	if (!v)
 	{
-	    return 0;
+	    return ErrorV("Argument codegen failed");
 	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
@@ -694,6 +729,7 @@ llvm::Value* WriteAST::CodeGen()
 	else
 	{
 	    w = arg.width->CodeGen();
+	    assert(w && "Expect width expression to generate code ok");
 	}
 
 	if (!w->getType()->isIntegerTy())

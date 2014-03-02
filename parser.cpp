@@ -195,9 +195,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
-	Token temp = CurrentToken();
 	if ((def->Type() != "function" && def->Type() != "procedure") || 
-	    temp.GetType() == Token::Assign)
+	    CurrentToken().GetType() == Token::Assign)
 	{
 	    return new VariableExprAST(idName);
 	}

@@ -138,6 +138,15 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Type::TypeID rty = r->getType()->getTypeID();
     llvm::Type::TypeID lty = l->getType()->getTypeID();
 
+    /* Convert right hand side to double if left is double, and right is integer */
+    if (rty == llvm::Type::IntegerTyID  &&
+	lty == llvm::Type::DoubleTyID)
+    {
+	r = builder.CreateSIToFP(r, Types::GetType("real"), "tofp");
+	r->dump();
+	rty = r->getType()->getTypeID();
+    }	
+
     if (rty != lty)
     {
 	std::cout << "Different types..." << std::endl;
@@ -476,8 +485,16 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
     }
+    llvm::Type::TypeID lty = dest->getType()->getContainedType(0)->getTypeID();
+    llvm::Type::TypeID rty = v->getType()->getTypeID();
 
-    assert(v->getType()->getTypeID() == dest->getType()->getContainedType(0)->getTypeID() && 
+    if (rty == llvm::Type::IntegerTyID  &&
+	lty == llvm::Type::DoubleTyID)
+    {
+	v = builder.CreateSIToFP(v, Types::GetType("real"), "tofp");
+	rty = v->getType()->getTypeID();
+    }	
+    assert(rty == lty && 
 	   "Types must be the same in assignment (for now)");
     
     builder.CreateStore(v, dest);

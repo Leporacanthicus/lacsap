@@ -63,6 +63,13 @@ begin
 end; { fact2 }
 
 
+function testIntToFloat(x :  integer) : real;
+var r :  real;
+begin
+   r := x;
+   testIntToFloat := r;
+end; { testIntToFloat }
+   
 procedure testRoundTrunc(r : real);
 begin
    writeln('trunc(', r:1:3, ')=', trunc(r));
@@ -83,7 +90,6 @@ begin
    writeln(3.14);
    writeln('a=', a);
    writeln('Factorial of ', 12:1, ' is:', fact(12));
-
    writeln('fact2(13) = ', fact2(13));
    writeln;
    writeln(foo(2, 3):1);
@@ -91,5 +97,6 @@ begin
    testRoundTrunc(2.61);
    testRoundTrunc(6.2);
    testProcWithNoArgs;
+   writeln('testIntToFloat(12)=', testIntToFloat(12));
    readln;
 end.

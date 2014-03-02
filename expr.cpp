@@ -29,7 +29,7 @@ static int errCnt;
 #define TRACE()
 #endif
 
-static llvm::Value *ErrorV(const std::string& msg)
+llvm::Value *ErrorV(const std::string& msg)
 {
     std::cerr << msg << std::endl;
     errCnt++;
@@ -286,7 +286,10 @@ llvm::Value* CallExprAST::CodeGen()
 	
 	argsV.push_back(v);
     }
-    return builder.CreateCall(calleF, argsV, "calltmp");
+    if (calleF->getReturnType()->getTypeID() == llvm::Type::VoidTyID) 
+	return builder.CreateCall(calleF, argsV, "");
+    else
+	return builder.CreateCall(calleF, argsV, "calltmp");
 }
 
 void BlockAST::DoDump(std::ostream& out) const

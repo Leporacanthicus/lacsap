@@ -255,5 +255,6 @@ private:
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
+llvm::Value *ErrorV(const std::string& msg);
 
 #endif

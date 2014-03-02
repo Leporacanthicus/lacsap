@@ -21,7 +21,6 @@ llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>&
 	llvm::Value* res = builder.CreateSelect(cmp, a, neg, "abs");
 	return res;
     }
-
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
 	llvm::Value* neg = builder.CreateFNeg(a, "neg");
@@ -30,21 +29,74 @@ llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>&
 	llvm::Value* res = builder.CreateSelect(cmp, a, neg, "abs");
 	return res;
     }
-    assert(0 && "Huh? Expected integer type for now");
+    return ErrorV("Expected type of real or integer for 'abs'");
 }
-
 
 llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    (void) args;
-    (void) builder;
-    return 0;
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	llvm::Value* res = builder.CreateAnd(a, MakeIntegerConstant(1));
+	return res;
+    }
+    return ErrorV("Expected type of integer for 'odd'");
+}
+
+llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
+    {
+	llvm::Value* res = builder.CreateFPToSI(a, Types::GetType("integer"));
+	return res;
+    }
+    return ErrorV("Expected type of real for 'trunc'");
+}
+
+llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
+    {
+	llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
+	llvm::Value* cmp = builder.CreateFCmpOGE(a, zero, "abscond");
+	llvm::Value* phalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.5));
+	llvm::Value* mhalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(-0.5));
+	
+	llvm::Value* half  = builder.CreateSelect(cmp, phalf, mhalf, "half");
+	llvm::Value* sum = builder.CreateFAdd(a, half, "aplushalf");
+	llvm::Value* res = builder.CreateFPToSI(sum, Types::GetType("integer"));
+	return res;
+    }
+    return ErrorV("Expected type of real for 'round'");
+}
+
+llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to abs");
+
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	llvm::Value* res = builder.CreateMul(a, a, "sqr");
+	return res;
+    }
+    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
+    {
+	llvm::Value* res = builder.CreateFMul(a, a, "sqr");
+	return res;
+    }
+    return ErrorV("Expected type of real or integer for 'sqr'");
 }
 
 const static BuiltinFunction bifs[] =
 {
-    { "abs", AbsCodeGen },
-    { "odd", OddCodeGen }
+    { "abs",    AbsCodeGen   },
+    { "odd",    OddCodeGen   },
+    { "trunc",  TruncCodeGen },
+    { "round",  RoundCodeGen },
+    { "sqr",    SqrCodeGen   },
 };
 
 static const BuiltinFunction* find(const std::string& name)

@@ -131,7 +131,7 @@ const TokenEntry tokenTable[] =
     { Token::Downto,        -2, "downto" },
     { Token::Do,            -2, "do" },
     { Token::Function,      -2, "function" },
-    { Token::Procedure,     -2, "function" },
+    { Token::Procedure,     -2, "procedure" },
     { Token::If,            -2, "if" },
     { Token::Then,          -2, "then" },
     { Token::Else,          -2, "else" },

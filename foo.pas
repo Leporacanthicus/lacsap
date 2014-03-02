@@ -63,6 +63,17 @@ begin
 end; { fact2 }
 
 
+procedure testRoundTrunc(r : real);
+begin
+   writeln('trunc(', r:1:3, ')=', trunc(r));
+   writeln('trunc(', -r:1:3, ')=', trunc(-r));
+   writeln('round(', r:1:3, ')=', round(r));
+   writeln('round(', -r:1:3, ')=', round(-r));
+end; { testRoundTrunc }
+   
+			
+
+
 begin
    a := 12;
    writeln('Hello, world!');
@@ -75,5 +86,7 @@ begin
    writeln;
    writeln(foo(2, 3):1);
    writeln('abs(-3.7)=', abs(-3.7));
+   testRoundTrunc(2.61);
+   testRoundTrunc(6.2);
    readln;
 end.

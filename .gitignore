@@ -1,0 +1,9 @@
+*.o
+*.bc
+*.s
+*~
+a.out
+.depends
+lacsap
+\#*
+.\#*

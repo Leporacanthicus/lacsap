@@ -1,6 +1,7 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include <cassert>
 #include <string>
 #include <fstream>
 
@@ -78,8 +79,11 @@ public:
     static TokenType KeyWordToToken(const std::string& str);
 
     TokenType GetType() const { return type; }
-    void SetType(TokenType t) { type = t; }
-    std::string GetIdentName() const { return strVal; }
+    std::string GetIdentName() const 
+    { 
+	assert(type == Token::Identifier || type == Token::TypeName);
+	return strVal; 
+    }
     int GetIntVal() const { return intVal; }
     double GetRealVal() const { return realVal; }
     std::string GetStrVal() const { return strVal; }

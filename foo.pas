@@ -71,8 +71,10 @@ begin
    writeln('round(', -r:1:3, ')=', round(-r));
 end; { testRoundTrunc }
    
-			
-
+procedure testProcWithNoArgs;
+begin
+   writeln('In procedure with no args');
+end;
 
 begin
    a := 12;
@@ -88,5 +90,6 @@ begin
    writeln('abs(-3.7)=', abs(-3.7));
    testRoundTrunc(2.61);
    testRoundTrunc(6.2);
+   testProcWithNoArgs;
    readln;
 end.

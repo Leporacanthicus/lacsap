@@ -2,15 +2,16 @@
 #include "parser.h"
 #include "variables.h"
 #include "expr.h"
+#include "namedobject.h"
+#include "stack.h"
+#include "builtin.h"
 #include <iostream>
 #include <cassert>
-
 
 Parser::Parser(Lexer &l) 
     : 	lexer(l), nextTokenValid(false), errCnt(0)
 {
 }
-
 
 ExprAST* Parser::Error(const std::string& msg, const char *file, int line)
 {
@@ -77,8 +78,7 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char *file, int lin
 {
     if (CurrentToken().GetType() != type)
     {
-	Token t;
-	t.SetType(type);
+	Token t(type, Location("", 0, 0));
 	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() + 
 	      "'.", file, line);
 	return false;
@@ -93,7 +93,6 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char *file, int lin
 #define NextToken() NextToken(__FILE__, __LINE__)
 #define PeekToken() PeekToken(__FILE__, __LINE__)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
-
 
 ExprAST* Parser::ParseIntegerExpr()
 {
@@ -186,28 +185,47 @@ ExprAST* Parser::ParseIdentifierExpr()
     // We may either have a function-call, or a regular variable. 
     // A '(' means function call, so deal with the simpler regular variable first.
     // TODO: Check if function / procedure, as are called without parens in Pascal.
-    if (CurrentToken().GetType() != Token::LeftParen)
+    /* TODO: Should we add builtin's to names at global level? */
+    if (!Builtin::IsBuiltin(idName))
     {
-	return new VariableExprAST(idName);
+	const NamedObject* def = nameStack.Find(idName);
+	if (!def)
+	{
+	    return ErrorF(std::string("Undefined name '") + idName + "'");
+	}
+	// If type is not function, not procedure, or the next thing is an assignment
+	// then we want a "variable" with this name. 
+	Token temp = CurrentToken();
+	if ((def->Type() != "function" && def->Type() != "procedure") || 
+	    temp.GetType() == Token::Assign)
+	{
+	    return new VariableExprAST(idName);
+	}
     }
     // Get past the '(' and fetch the next one. 
-    NextToken();
     std::vector<ExprAST *> args;
-    while (CurrentToken().GetType() != Token::RightParen)
+    if (CurrentToken().GetType() == Token::LeftParen)
     {
-	ExprAST* arg = ParseExpression();
-	if (!arg) return 0;
-	args.push_back(arg);
-	if (CurrentToken().GetType() == Token::Comma)
-	{
-	    NextToken();
-	}
-	else if (!Expect(Token::RightParen, false))
+	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
 	}
+	while (CurrentToken().GetType() != Token::RightParen)
+	{
+	    ExprAST* arg = ParseExpression();
+	    if (!arg) return 0;
+	    args.push_back(arg);
+	    if (CurrentToken().GetType() == Token::Comma)
+	    {
+		NextToken();
+	    }
+	    else if (!Expect(Token::RightParen, false))
+	    {
+		return 0;
+	    }
+	}
+	NextToken();
     }
-    NextToken();
     return new CallExprAST(idName, args);
 }
 
@@ -258,6 +276,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	    {
 		VarDef v(n, type);
 		varList.push_back(v);
+		nameStack.Add(n, new NamedObject(n, type));
 	    }
 	    NextToken();
 	    if (!Expect(Token::Semicolon, true))
@@ -274,6 +293,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	    }
 	}
     } while(CurrentToken().GetType() == Token::Identifier);
+    
     return new VarDeclAST(varList);
 }
 
@@ -288,57 +308,67 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
     assert(CurrentToken().GetType() == Token::Procedure ||
 	   CurrentToken().GetType() == Token::Function && 
 	   "Expected function or procedure token");
-
     NextToken();
+    std::string funcName = CurrentToken().GetIdentName();
     // Get function name.
     if (!Expect(Token::Identifier, false))
     {
 	return 0;
     }
-    std::string funcName = CurrentToken().GetIdentName();
     NextToken();
     std::vector<VarDef> args;
     if (CurrentToken().GetType() == Token::LeftParen)
     {
+	std::vector<std::string> names;
+	NextToken();
 	while(CurrentToken().GetType() != Token::RightParen)
 	{
-	    NextToken();
 	    if (!Expect(Token::Identifier, false))
 	    {
 		return 0;
 	    }
 	    
 	    std::string arg = CurrentToken().GetIdentName();
-	    
-	    // TODO: Support comma here...
 	    NextToken();
-	    if (!Expect(Token::Colon, false))
+
+	    names.push_back(arg);
+	    if (CurrentToken().GetType() == Token::Colon)
 	    {
-		return 0;
+		NextToken();
+		if (!Expect(Token::TypeName, false))
+		{
+		    return 0;
+		}
+	    
+		std::string typeName = CurrentToken().GetIdentName();
+		NextToken();
+		for(auto n : names)
+		{
+		    VarDef v(n, typeName);
+		    args.push_back(v);
+		}
+		names.clear();
+		if (CurrentToken().GetType() != Token::RightParen)
+		{
+		    if (!Expect(Token::Semicolon, true))
+		    {
+			return 0;
+		    }
+		}
 	    }
-	    
-	    std::string varName = CurrentToken().GetIdentName();
-	    NextToken();
-	    if (!Expect(Token::TypeName, false))
+	    else
 	    {
-		return 0;
-	    }
-	    
-	    std::string typeName = CurrentToken().GetIdentName();
-	    
-	    args.push_back(VarDef(arg, typeName));
-	    NextToken();
-	    if (CurrentToken().GetType() != Token::RightParen && CurrentToken().GetType() != Token::Semicolon)
-	    {
-		return ErrorP(std::string("Expected ')' or ',' - found: ") + CurrentToken().ToString());
+		if (!Expect(Token::Comma, true))
+		{
+		    return 0;
+		}
 	    }
 	}
-
 	// Eat ')' at end of argument list.
 	NextToken();
     }
 
-    // If we have a function, execpt ": type".
+    // If we have a function, expect ": type".
     if (isFunction)
     {
 	if (!Expect(Token::Colon, true))
@@ -413,13 +443,30 @@ BlockAST* Parser::ParseBlock()
     return new BlockAST(astHead);
 }
 
-FunctionAST* Parser::ParseDefinition(bool isFunction)
+FunctionAST* Parser::ParseDefinition()
 {
+    bool isFunction = CurrentToken().GetType() == Token::Function;
     PrototypeAST *proto = ParsePrototype(isFunction);
     if (!proto) 
     {
 	return 0;
     }
+    std::string name = proto->Name();
+    if (!nameStack.Add(name, new NamedObject(name, isFunction?"function":"procedure")))
+    {
+	return ErrorF(std::string("Name '") + name + "' already exists...");
+    }
+    nameStack.Dump(std::cerr);
+    
+    NameWrapper wrapper(nameStack);
+    for(auto v : proto->Args())
+    {
+	if (!nameStack.Add(v.Name(), new NamedObject(v.Name(), v.Type())))
+	{
+	    return ErrorF(std::string("Duplicate name ") + v.Name()); 
+	}
+    }
+
     VarDeclAST* varDecls = 0;
     ExprAST* body = 0;
     do
@@ -754,11 +801,8 @@ ExprAST* Parser::Parse()
 	    break;
 
 	case Token::Function:
-	    curAst = ParseDefinition(true);
-	    break;
-	    
 	case Token::Procedure:
-	    curAst = ParseDefinition(false);
+	    curAst = ParseDefinition();
 	    break;
 
 	case Token::Var:

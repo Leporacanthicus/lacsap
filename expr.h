@@ -156,6 +156,7 @@ public:
     void CreateArgumentAlloca(llvm::Function* fn);
     std::string ResultType() const { return resultType; }
     std::string Name() const { return name; }
+    const std::vector<VarDef>& Args() { return args; }
 
 private:
     std::string name;

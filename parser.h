@@ -2,7 +2,10 @@
 #define PARSER_H
 
 #include "variables.h"
+#include "namedobject.h"
+#include "stack.h"
 #include "expr.h"
+
 #include <string>
 
 class Parser
@@ -36,7 +39,7 @@ private:
     ExprAST* ParseStmtOrBlock();
     VarDeclAST* ParseVarDecls();
     BlockAST* ParseBlock();
-    FunctionAST* ParseDefinition(bool isFunction);
+    FunctionAST* ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
     bool Expect(Token::TokenType type, bool eatIt, const char *file, int line);
@@ -46,12 +49,15 @@ private:
     FunctionAST* ErrorF(const std::string& msg);
 
 private:
+    typedef Stack<NamedObject*> NameStack;
+    typedef StackWrapper<NamedObject*> NameWrapper;
     Lexer& lexer;
     Token curToken;
     Token nextToken;
     bool nextTokenValid;
     std::string moduleName;
     int errCnt;
+    NameStack nameStack;
 };
 
 #endif

@@ -466,6 +466,7 @@ llvm::Value* AssignExprAST::CodeGen()
     VariableExprAST* lhsv = dynamic_cast<VariableExprAST*>(lhs);
     if (!lhsv)
     {
+	lhs->Dump(std::cerr);
 	return ErrorV("Left hand side of assignment must be a variable");
     }
     

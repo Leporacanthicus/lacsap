@@ -42,19 +42,24 @@ static llvm::Function *ErrorF(const std::string& msg)
     return 0;
 }
 
-static llvm::Value* MakeConstant(int val, const char *type, int bits)
+llvm::Value* MakeConstant(int val, llvm::Type* ty)
 {
-    return llvm::ConstantInt::get(Types::GetType(type), llvm::APInt(bits, val));
+    return llvm::ConstantInt::get(ty, val);
 }
 
 llvm::Value* MakeIntegerConstant(int val)
 {
-    return MakeConstant(val, "integer", 32);
+    return MakeConstant(val, Types::GetType("integer"));
 }
 
 static llvm::Value* MakeBooleanConstant(int val)
 {
-    return MakeConstant(val, "boolean", 1);
+    return MakeConstant(val, Types::GetType("boolean"));
+}
+
+static llvm::Value* MakeCharConstant(int val)
+{
+    return MakeConstant(val, Types::GetType("char"));
 }
 
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
@@ -98,6 +103,19 @@ llvm::Value* IntegerExprAST::CodeGen()
     llvm::Value *v = MakeIntegerConstant(val);
     return v;
 }
+
+void CharExprAST::DoDump(std::ostream& out) const
+{ 
+    out << "Char: '" << val << "'";
+}
+
+llvm::Value* CharExprAST::CodeGen()
+{
+    TRACE();
+    llvm::Value *v = MakeCharConstant(val);
+    return v;
+}
+
 
 void VariableExprAST::DoDump(std::ostream& out) const
 { 
@@ -670,7 +688,13 @@ static llvm::Function *CreateWriteFunc(llvm::Type* ty)
     llvm::Type* resTy = Types::GetType("void");
     if (ty)
     {
-	if (ty->isIntegerTy())
+	if (ty == Types::GetType("char"))
+	{
+	    argTypes.push_back(ty);
+	    argTypes.push_back(Types::GetType("integer"));
+	    suffix = "char";
+	}
+	else if (ty->isIntegerTy())
 	{
 	    // Make args of two integers. 
 	    argTypes.push_back(ty);
@@ -735,7 +759,7 @@ llvm::Value* WriteAST::CodeGen()
 	llvm::Value* w;
 	if (!arg.width)
 	{
-	    if (ty->isIntegerTy())
+	    if (ty == Types::GetType("integer"))
 	    {
 		w = MakeIntegerConstant(13);
 	    }

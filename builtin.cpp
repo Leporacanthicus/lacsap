@@ -14,6 +14,7 @@ static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     assert(args.size() == 1 && "Expect 1 argument to abs");
 
     llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
 	llvm::Value* neg = builder.CreateNeg(a, "neg");
@@ -37,8 +38,8 @@ static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	llvm::Value* res = builder.CreateAnd(a, MakeIntegerConstant(1));
-	return res;
+	llvm::Value* tmp = builder.CreateAnd(a, MakeIntegerConstant(1));
+	return builder.CreateBitCast(tmp, Types::GetType("boolean"));
     }
     return ErrorV("Expected type of integer for 'odd'");
 }
@@ -47,6 +48,7 @@ static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
 {
     assert(args.size() == 1 && "Expect 1 argument to trunc");
     llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
 	llvm::Value* res = builder.CreateFPToSI(a, Types::GetType("integer"));
@@ -59,6 +61,7 @@ static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
 {
     assert(args.size() == 1 && "Expect 1 argument to round");
     llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
 	llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
@@ -79,6 +82,7 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     assert(args.size() == 1 && "Expect 1 argument to sqr");
 
     llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
 	llvm::Value* res = builder.CreateMul(a, a, "sqr");
@@ -100,10 +104,6 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
 
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
-    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
-    {
-	a = builder.CreateSIToFP(a, Types::GetType("real"), "sqrttofp");
-    }
     std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = Types::GetType("real");
     argTypes.push_back(ty);
@@ -163,8 +163,58 @@ static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return CallBuiltinFunc(builder, "exp", args);
 }
 
+static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to sqr");
+
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	return builder.CreateBitCast(a, Types::GetType("char"), "chr");
+    }
+    return ErrorV("Expected integer type for chr function");
+}
+
+static llvm::Value* OrdCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to sqr");
+
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    if (a->getType() == Types::GetType("char"))
+    {
+	return builder.CreateBitCast(a, Types::GetType("integer"), "ord");
+    }
+    return ErrorV("Expected integer type for chr function");
+}
+
+static llvm::Value* SuccCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to sqr");
+
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	return builder.CreateAdd(a, MakeConstant(1, a->getType()), "succ");
+    }
+    return ErrorV("Expected integer type for chr function");
+}
 
 
+static llvm::Value* PredCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to sqr");
+
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	return builder.CreateSub(a, MakeConstant(1, a->getType()), "pred");
+    }
+    return ErrorV("Expected integer type for chr function");
+}
 
 
 const static BuiltinFunction bifs[] =
@@ -179,7 +229,11 @@ const static BuiltinFunction bifs[] =
     { "cos",    CosCodeGen    },
     { "arctan", ArctanCodeGen },
     { "ln",     LnCodeGen     },
-    { "exp",    ExpCodeGen   },
+    { "exp",    ExpCodeGen    },
+    { "chr",    ChrCodeGen    },
+    { "ord",    OrdCodeGen    },
+    { "succ",   SuccCodeGen   },
+    { "pred",   PredCodeGen   },
 };
 
 static const BuiltinFunction* find(const std::string& name)

@@ -162,17 +162,22 @@ Token Lexer::GetToken()
 
     if (ch == '\'')
     {
+	int len = 0;
 	// TODO: Deal with quoted quotes... 
 	std::string str;
 	ch = NextChar();
 	while (ch != '\'')
 	{
+	    len++;
 	    str += ch;
 	    ch = NextChar();
 	}
 	NextChar();
-	Token t(Token::String, w, str); 
-	return t;
+	if (len == 1)
+	{
+	    return Token(Token::Char, w, str[0]);
+	}
+	return Token(Token::String, w, str); 
     }
 
     // Identifiers start with alpha characters.

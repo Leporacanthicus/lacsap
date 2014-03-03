@@ -60,6 +60,17 @@ private:
     int val;
 };
 
+class CharExprAST : public ExprAST
+{
+public:
+    CharExprAST(char v) 
+	: val(v) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    char val;
+};
+
 class StringExprAST : public ExprAST
 {
 public:
@@ -256,6 +267,7 @@ private:
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
+llvm::Value* MakeConstant(int val, llvm::Type* ty);
 llvm::Value *ErrorV(const std::string& msg);
 
 #endif

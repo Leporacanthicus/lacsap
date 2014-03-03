@@ -19,6 +19,18 @@ void __write_real(double v, int width, int precision)
     }
 }
 
+void __write_char(char v, int width)
+{
+    if (width > 0)
+    {
+	printf("%*c", width, v);
+    }
+    else
+    {
+	printf("%c", v);
+    }
+}    
+
 void __write_str(const char *v, int width)
 {
     if (width > 0)

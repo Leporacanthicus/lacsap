@@ -101,6 +101,13 @@ ExprAST* Parser::ParseIntegerExpr()
     return result;
 }
 
+ExprAST* Parser::ParseCharExpr()
+{
+    ExprAST *result = new CharExprAST(CurrentToken().GetIntVal());
+    NextToken();
+    return result;
+}
+
 ExprAST* Parser::ParseRealExpr()
 {
     ExprAST *result = new RealExprAST(CurrentToken().GetRealVal());
@@ -734,6 +741,9 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::Integer:
 	return ParseIntegerExpr();
+
+    case Token::Char:
+	return ParseCharExpr();
 
     case Token::String:
 	return ParseStringExpr();

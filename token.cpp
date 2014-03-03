@@ -38,7 +38,7 @@ Token::Token(TokenType t, const Location& w, const std::string& str): type(t), w
 
 Token::Token(TokenType t, const Location& w, int v) : type(t), where(w), intVal(v)
 {
-    assert(t == Token::Integer);
+    assert(t == Token::Integer || t == Token::Char);
 }
 
 
@@ -106,6 +106,7 @@ const TokenEntry tokenTable[] =
     { Token::Integer,       -1, "integer:" },
     { Token::Real,          -1, "real" },
     { Token::Boolean,       -1, "boolean" },
+    { Token::Char,          -1, "char" },
     { Token::String,        -1, "string" },
     { Token::Char,          -1, "char" },
     { Token::LeftParen,     -1, "(" },

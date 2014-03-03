@@ -25,6 +25,7 @@ private:
     ExprAST* ParseIdentifierExpr();
     ExprAST* ParseRealExpr();
     ExprAST* ParseIntegerExpr();
+    ExprAST* ParseCharExpr();
     ExprAST* ParseStringExpr();
     ExprAST* ParseParenExpr();
     ExprAST* ParsePrimary();

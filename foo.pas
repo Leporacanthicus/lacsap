@@ -81,7 +81,28 @@ end; { testRoundTrunc }
 procedure testProcWithNoArgs;
 begin
    writeln('In procedure with no args');
+end; { testProcWithNoArgs }
+
+procedure testChar;
+var
+   ch : char;
+   i  : integer;
+   
+begin
+   ch := 'a';
+   for i := 1 to 10 do
+   begin
+      write(ch);
+      ch := succ(ch);
+   end;
+   for i := 1 to 10 do
+   begin
+      write(ch);
+      ch := pred(ch);
+   end;
+   writeln;
 end;
+   
 
 begin
    a := 12;
@@ -103,5 +124,7 @@ begin
    writeln('sqr(4.2)=', sqr(4.2):8:3);
    writeln('sqrt(16)=', sqrt(16):8:3);
    writeln('sqrt(169.0)=', sqrt(169.0):8:3);
+
+   testChar;
    readln;
 end.

@@ -98,5 +98,10 @@ begin
    testRoundTrunc(6.2);
    testProcWithNoArgs;
    writeln('testIntToFloat(12)=', testIntToFloat(12));
+
+   writeln('sqr(16)=', sqr(16));
+   writeln('sqr(4.2)=', sqr(4.2):8:3);
+   writeln('sqrt(16)=', sqrt(16):8:3);
+   writeln('sqrt(169.0)=', sqrt(169.0):8:3);
    readln;
 end.

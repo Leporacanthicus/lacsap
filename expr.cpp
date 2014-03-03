@@ -152,6 +152,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	std::cout << "Different types..." << std::endl;
 	l->dump();
 	r->dump();
+	assert(0 && "Different types...");
     }
 
     if (rty == llvm::Type::IntegerTyID)

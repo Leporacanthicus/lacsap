@@ -9,7 +9,7 @@ struct BuiltinFunction
     CodeGenFunc CodeGen;
 };
 
-llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to abs");
 
@@ -32,7 +32,7 @@ llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>&
     return ErrorV("Expected type of real or integer for 'abs'");
 }
 
-llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
@@ -43,8 +43,9 @@ llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>&
     return ErrorV("Expected type of integer for 'odd'");
 }
 
-llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to trunc");
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
@@ -54,13 +55,14 @@ llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*
     return ErrorV("Expected type of real for 'trunc'");
 }
 
-llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to round");
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
 	llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
-	llvm::Value* cmp = builder.CreateFCmpOGE(a, zero, "abscond");
+	llvm::Value* cmp = builder.CreateFCmpOGE(a, zero, "rndcond");
 	llvm::Value* phalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.5));
 	llvm::Value* mhalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(-0.5));
 	
@@ -72,9 +74,9 @@ llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*
     return ErrorV("Expected type of real for 'round'");
 }
 
-llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 argument to abs");
+    assert(args.size() == 1 && "Expect 1 argument to sqr");
 
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
@@ -90,13 +92,94 @@ llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>&
     return ErrorV("Expected type of real or integer for 'sqr'");
 }
 
+
+static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
+				    const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to sqrt");
+
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	a = builder.CreateSIToFP(a, Types::GetType("real"), "sqrttofp");
+    }
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* ty = Types::GetType("real");
+    argTypes.push_back(ty);
+    std::string name = "llvm." + func + ".f64";
+    llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
+    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
+					       name, theModule);
+    if (f->getName() != name)
+    {
+	f->eraseFromParent();
+	f = theModule->getFunction(name);
+    }
+
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	a = builder.CreateSIToFP(a, Types::GetType("real"), "sqrttofp");
+    }
+    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
+    {
+	std::vector<llvm::Value*> argsV;
+	argsV.push_back(a);
+	return builder.CreateCall(f, argsV, "calltmp");
+    }
+    return ErrorV("Expected type of real or integer for 'sqr'");
+}
+
+static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallBuiltinFunc(builder, "sqrt", args);
+}
+
+static llvm::Value* SinCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallBuiltinFunc(builder, "sin", args);
+}
+
+static llvm::Value* CosCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallBuiltinFunc(builder, "cos", args);
+}
+
+static llvm::Value* ArctanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    (void)builder;
+    (void)args;
+//    return CallBuiltinFunc(builder, "arctan", args);
+    assert(0 && "arctan not supported right now");
+}
+
+static llvm::Value* LnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallBuiltinFunc(builder, "log", args);
+}
+
+static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallBuiltinFunc(builder, "exp", args);
+}
+
+
+
+
+
 const static BuiltinFunction bifs[] =
 {
-    { "abs",    AbsCodeGen   },
-    { "odd",    OddCodeGen   },
-    { "trunc",  TruncCodeGen },
-    { "round",  RoundCodeGen },
-    { "sqr",    SqrCodeGen   },
+    { "abs",    AbsCodeGen    },
+    { "odd",    OddCodeGen    },
+    { "trunc",  TruncCodeGen  },
+    { "round",  RoundCodeGen  },
+    { "sqr",    SqrCodeGen    },
+    { "sqrt",   SqrtCodeGen   },
+    { "sin",    SinCodeGen    },
+    { "cos",    CosCodeGen    },
+    { "arctan", ArctanCodeGen },
+    { "ln",     LnCodeGen     },
+    { "exp",    ExpCodeGen   },
 };
 
 static const BuiltinFunction* find(const std::string& name)

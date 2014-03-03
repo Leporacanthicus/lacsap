@@ -126,13 +126,24 @@ llvm::Value* VariableExprAST::CodeGen()
 { 
     // Look this variable up in the function.
     TRACE();
+    llvm::Value* v = Address();
+    if (!v)
+    {
+	return 0;
+    }
+    return builder.CreateLoad(v, name.c_str()); 
+}
+
+llvm::Value* VariableExprAST::Address()
+{
     llvm::Value* v = variables.Find(name);
     if (!v)
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
     }
-    return builder.CreateLoad(v, name.c_str()); 
+    return v;
 }
+    
 
 void BinaryExprAST::DoDump(std::ostream& out) const
 { 
@@ -499,7 +510,7 @@ llvm::Value* AssignExprAST::CodeGen()
     }
     
     llvm::Value* v = rhs->CodeGen();
-    llvm::Value* dest = variables.Find(lhsv->Name());
+    llvm::Value* dest = lhsv->Address();
     if (!dest)
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
@@ -889,7 +900,13 @@ llvm::Value* ReadAST::CodeGen()
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
-	llvm::Value* v = arg->CodeGen();
+	VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(arg);
+	if (!vexpr)
+	{
+	    return ErrorV("Argument for read/readln should be a variable");
+	}
+	
+	llvm::Value* v = vexpr->Address();
 	if (!v)
 	{
 	    return 0;

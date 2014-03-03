@@ -90,6 +90,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     const std::string& Name() const { return name; }
+    llvm::Value* Address();
 private:
     std::string name;
 };

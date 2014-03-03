@@ -1,7 +1,7 @@
 program main
 
 var a : integer;
-
+    b : real;
 {this is a comment}
 
 (* Another comment containing { and  *)
@@ -126,5 +126,10 @@ begin
    writeln('sqrt(169.0)=', sqrt(169.0):8:3);
 
    testChar;
-   readln;
+   write('Enter a number:');
+   readln(a);
+   writeln('a=', a:2);
+   write('Enter a floating point number:');
+   readln(b);
+   writeln('a=', b:2:5);
 end.

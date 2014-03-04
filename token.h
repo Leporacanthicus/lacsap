@@ -55,6 +55,8 @@ public:
 	Then,
 	Else,
 	While,
+	Repeat,
+	Until,
 	Function,
 	Procedure,
 	Begin,

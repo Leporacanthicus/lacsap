@@ -241,6 +241,18 @@ private:
     ExprAST* body;
 };
 
+class RepeatExprAST: public ExprAST
+{
+public:
+    RepeatExprAST(ExprAST* c, ExprAST* b)
+	: cond(c), body(b) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    ExprAST* cond;
+    ExprAST* body;
+};
+
 class WriteAST: public ExprAST
 {
 public:

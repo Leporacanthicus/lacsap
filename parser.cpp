@@ -633,6 +633,36 @@ ExprAST* Parser::ParseWhile()
     return new WhileExprAST(cond, body);
 }
 
+ExprAST* Parser::ParseRepeat()
+{
+    NextToken();
+    ExprAST *bhead = 0;
+    ExprAST *btail = 0;
+    while(CurrentToken().GetType() != Token::Until)
+    {
+	ExprAST *stmt = ParseStatement();
+	if (!bhead)
+	{
+	    bhead = btail = stmt;
+	}
+	else
+	{
+	    btail = btail->SetNext(stmt);
+	}
+	if(CurrentToken().GetType() == Token::Semicolon)
+	{
+	    NextToken();
+	}
+    }
+    if (!Expect(Token::Until, true))
+    {
+	return 0;
+    }
+    ExprAST* cond = ParseExpression();
+    BlockAST* body = new BlockAST(bhead);
+    return new RepeatExprAST(cond, body);
+}
+
 ExprAST* Parser::ParseWrite()
 {
     bool isWriteln = CurrentToken().GetType() == Token::Writeln;
@@ -654,7 +684,6 @@ ExprAST* Parser::ParseWrite()
     }
     else
     {
-	
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
@@ -706,7 +735,6 @@ ExprAST* Parser::ParseWrite()
     }
     return new WriteAST(args, isWriteln);
 }
-
 
 ExprAST* Parser::ParseRead()
 {
@@ -790,6 +818,9 @@ ExprAST* Parser::ParsePrimary()
     case Token::While:
 	return ParseWhile();
 
+    case Token::Repeat:
+	return ParseRepeat();
+
     case Token::Write:
     case Token::Writeln:
 	return ParseWrite();
@@ -802,6 +833,7 @@ ExprAST* Parser::ParsePrimary()
 	return ParseUnaryOp();
 
     default:
+	CurrentToken().Dump(std::cerr);
 	assert(0 && "Unexpected token");
 	return 0;
     }

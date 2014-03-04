@@ -141,6 +141,16 @@ begin
       writeln('x=', x:1);
       x := x-1;
    end;
+end; { whileTest }
+
+procedure repeatTest;
+var y : integer;
+begin
+   y := 0;
+   repeat
+      writeln('y=', y:1);
+      y := y + 1;
+   until y > 10;
 end;
 
 begin
@@ -165,6 +175,7 @@ begin
    writeln('sqrt(169.0)=', sqrt(169.0):8:3);
 
    whileTest;
+   repeatTest;
 
    testUpdateVars;
    testChar;

@@ -35,6 +35,7 @@ private:
     ExprAST* ParseIfExpr();
     ExprAST* ParseForExpr();
     ExprAST* ParseWhile();
+    ExprAST* ParseRepeat();
     ExprAST* ParseWrite();
     ExprAST* ParseRead();
     ExprAST* ParseUnaryOp();

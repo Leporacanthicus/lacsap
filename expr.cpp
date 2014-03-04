@@ -714,7 +714,7 @@ llvm::Value* WhileExprAST::CodeGen()
     builder.CreateBr(preBodyBB);
     builder.SetInsertPoint(preBodyBB);
     
-    llvm::Value *condv = cond->CodeGen();
+    llvm::Value* condv = cond->CodeGen();
 
     llvm::Value* endCond = builder.CreateICmpEQ(condv, MakeBooleanConstant(0), "whilecond");
     builder.CreateCondBr(endCond, afterBB, bodyBB); 
@@ -725,6 +725,39 @@ llvm::Value* WhileExprAST::CodeGen()
 	return 0;
     }
     builder.CreateBr(preBodyBB);
+    builder.SetInsertPoint(afterBB);
+    
+    return afterBB;
+}
+
+void RepeatExprAST::DoDump(std::ostream& out) const
+{
+    out << "Repeat: ";
+    body->Dump(out);
+    out << " until: ";
+    cond->Dump(out);
+}
+
+llvm::Value* RepeatExprAST::CodeGen()
+{
+    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+
+    /* We will need a "body" and an "after" basic block  */
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body", 
+							 theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", 
+							 theFunction);
+
+    builder.CreateBr(bodyBB);
+    builder.SetInsertPoint(bodyBB);
+    if (!body->CodeGen())
+    {
+	return 0;
+    }
+    llvm::Value* condv = cond->CodeGen();
+    llvm::Value* endCond = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "untilcond");
+    builder.CreateCondBr(endCond, afterBB, bodyBB); 
+
     builder.SetInsertPoint(afterBB);
     
     return afterBB;

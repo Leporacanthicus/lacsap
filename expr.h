@@ -130,32 +130,6 @@ private:
     ExprAST* lhs, *rhs;
 };
 
-
-
-class CallExprAST : public ExprAST
-{
-public:
-    CallExprAST(const std::string& c, std::vector<ExprAST*> a)
-	: callee(c), args(a) {}
-    virtual void DoDump(std::ostream& out) const;
-    virtual llvm::Value* CodeGen();
-private:
-    std::string callee;
-    std::vector<ExprAST*> args;
-};
-
-
-class BlockAST: public ExprAST
-{
-public:
-    BlockAST(ExprAST* blockContent) : 
-	content(blockContent) {}
-    virtual void DoDump(std::ostream& out) const;
-    virtual llvm::Value* CodeGen();
-private:
-    ExprAST* content;
-};
-
 class PrototypeAST : public ExprAST
 {
 public:
@@ -168,7 +142,7 @@ public:
     void CreateArgumentAlloca(llvm::Function* fn);
     std::string ResultType() const { return resultType; }
     std::string Name() const { return name; }
-    const std::vector<VarDef>& Args() { return args; }
+    const std::vector<VarDef>& Args() const { return args; }
 
 private:
     std::string name;
@@ -196,10 +170,36 @@ public:
 	: proto(prot), varDecls(v), body(b) { assert(body && "Function should have body"); }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
+    const PrototypeAST* Proto() const { return proto; }
 private:
     PrototypeAST *proto;
     VarDeclAST   *varDecls;
     ExprAST      *body;
+};
+
+class CallExprAST : public ExprAST
+{
+public:
+    CallExprAST(const std::string& c, std::vector<ExprAST*> a, const PrototypeAST* p)
+	: proto(p), callee(c), args(a) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    const PrototypeAST* proto;
+    std::string callee;
+    std::vector<ExprAST*> args;
+};
+
+
+class BlockAST: public ExprAST
+{
+public:
+    BlockAST(ExprAST* blockContent) : 
+	content(blockContent) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    ExprAST* content;
 };
 
 class IfExprAST: public ExprAST

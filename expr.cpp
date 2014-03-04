@@ -304,6 +304,9 @@ llvm::Value* CallExprAST::CodeGen()
     {
 	return Builtin::CodeGen(builder, callee, args);
     }
+    
+    assert(proto && "Function prototype should be set in this case!");
+
     llvm::Function* calleF = theModule->getFunction(callee);
     if (!calleF)
     {
@@ -315,15 +318,32 @@ llvm::Value* CallExprAST::CodeGen()
     }
 
     std::vector<llvm::Value*> argsV;
+    const std::vector<VarDef>& vdef = proto->Args();
+    std::vector<VarDef>::const_iterator viter = vdef.begin();
+    assert(vdef.size() == args.size());
     for(auto i : args)
     {
-	llvm::Value* v = i->CodeGen();
+	llvm::Value* v;
+	if (viter->IsRef())
+	{
+	    VariableExprAST* vi = dynamic_cast<VariableExprAST*>(i);
+	    if (!vi)
+	    {
+		return ErrorV("Args declared with 'var' must be a variable!");
+	    }
+	    v = vi->Address();
+	}
+	else
+	{
+	    v = i->CodeGen();
+	}
 	if (!v)
 	{
 	    return ErrorV("Invalid argument for " + callee + " (" + i->ToString() + ")");
 	}
 	
 	argsV.push_back(v);
+	viter++;
     }
     if (calleF->getReturnType()->getTypeID() == llvm::Type::VoidTyID) 
 	return builder.CreateCall(calleF, argsV, "");
@@ -375,6 +395,10 @@ llvm::Function* PrototypeAST::CodeGen()
 	{
 	    return ErrorF(std::string("Invalid type for argument") + i.Name() + "...");
 	}
+	if (i.IsRef())
+	{
+	    ty = llvm::PointerType::getUnqual(ty);
+	}
 	argTypes.push_back(ty);
     }
     llvm::Type* resTy = Types::GetType(resultType);
@@ -408,8 +432,16 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	idx < args.size();
 	idx++, ai++)
     {
-	llvm::AllocaInst* a=CreateAlloca(fn, args[idx]);
-	builder.CreateStore(ai, a);
+	llvm::Value* a;
+	if (args[idx].IsRef())
+	{
+	    a = ai; 
+	}
+	else
+	{
+	    a=CreateAlloca(fn, args[idx]);
+	    builder.CreateStore(ai, a);
+	}
 	if (!variables.Add(args[idx].Name(), a))
 	{
 	    ErrorF(std::string("Duplicate variable name ") + args[idx].Name());

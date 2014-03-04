@@ -2,6 +2,7 @@ program main
 
 var a : integer;
     b : real;
+   
 {this is a comment}
 
 (* Another comment containing { and  *)
@@ -101,8 +102,35 @@ begin
       ch := pred(ch);
    end;
    writeln;
+end; { testChar }
+
+procedure readTest;
+var
+   x : integer;
+   y :  real;
+
+begin
+   write('Enter a number:');
+   readln(x);
+   writeln('x=', x:2);
+   write('Enter a floating point number:');
+   readln(y);
+   writeln('y=', y:2:8);
+end; { readTest }
+
+
+procedure updateVars(var x : integer; var y: real);
+begin
+   x := 42;
+   y := 17.243;
+end; { updateVars }
+
+procedure testUpdateVars;
+var x : integer; y : real;
+begin
+   updateVars(x, y);
+   writeln('x=',x:1,' y=',y:8:3);
 end;
-   
 
 begin
    a := 12;
@@ -125,6 +153,7 @@ begin
    writeln('sqrt(16)=', sqrt(16):8:3);
    writeln('sqrt(169.0)=', sqrt(169.0):8:3);
 
+   testUpdateVars;
    testChar;
    write('Enter a number:');
    readln(a);
@@ -132,4 +161,7 @@ begin
    write('Enter a floating point number:');
    readln(b);
    writeln('a=', b:2:5);
+   readTest;
+
+   
 end.

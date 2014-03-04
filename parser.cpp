@@ -189,13 +189,10 @@ ExprAST* Parser::ParseIdentifierExpr()
 {
     std::string idName = CurrentToken().GetIdentName();
     NextToken();
-    // We may either have a function-call, or a regular variable. 
-    // A '(' means function call, so deal with the simpler regular variable first.
-    // TODO: Check if function / procedure, as are called without parens in Pascal.
     /* TODO: Should we add builtin's to names at global level? */
+    const NamedObject* def = nameStack.Find(idName);
     if (!Builtin::IsBuiltin(idName))
     {
-	const NamedObject* def = nameStack.Find(idName);
 	if (!def)
 	{
 	    return ErrorF(std::string("Undefined name '") + idName + "'");
@@ -232,7 +229,13 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
 	NextToken();
     }
-    return new CallExprAST(idName, args);
+    const PrototypeAST* proto = 0;
+    if (def)
+    {
+	proto = def->Proto();
+    }
+    assert((!def || proto) && "Expected prototype...");
+    return new CallExprAST(idName, args, proto);
 }
 
 ExprAST* Parser::ParseParenExpr()
@@ -329,6 +332,12 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	NextToken();
 	while(CurrentToken().GetType() != Token::RightParen)
 	{
+	    bool isRef = false;
+	    if (CurrentToken().GetType() == Token::Var)
+	    {
+		isRef = true;
+		NextToken();
+	    }
 	    if (!Expect(Token::Identifier, false))
 	    {
 		return 0;
@@ -350,7 +359,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 		NextToken();
 		for(auto n : names)
 		{
-		    VarDef v(n, typeName);
+		    VarDef v(n, typeName, isRef);
 		    args.push_back(v);
 		}
 		names.clear();
@@ -458,7 +467,8 @@ FunctionAST* Parser::ParseDefinition()
 	return 0;
     }
     std::string name = proto->Name();
-    if (!nameStack.Add(name, new NamedObject(name, isFunction?"function":"procedure")))
+    NamedObject* nmObj = new NamedObject(name, isFunction?"function":"procedure", proto);
+    if (!nameStack.Add(name, nmObj))
     {
 	return ErrorF(std::string("Name '") + name + "' already exists...");
     }
@@ -488,6 +498,7 @@ FunctionAST* Parser::ParseDefinition()
 	    break;
 	    
 	case Token::Begin:
+	{
 	    if (body)
 	    {
 		return ErrorF("Multiple body declarations for function?");
@@ -501,7 +512,10 @@ FunctionAST* Parser::ParseDefinition()
 	    {
 		return 0;
 	    }
-	    return new FunctionAST(proto, varDecls, body);
+
+	    FunctionAST *fn = new FunctionAST(proto, varDecls, body);
+	    return fn;
+	}
 
 	default:
 	    assert(0 && "Unexpected token");

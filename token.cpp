@@ -22,11 +22,14 @@ Token::Token() : type(Token::Unknown), where("", 0, 0) {}
 
 Token::Token(TokenType t, const Location& w): type(t), where(w)
 {
-    assert(t != Token::Identifier && 
-	   t != Token::TypeName && 
-	   t != Token::String &&
-	   t != Token::Integer && 
-	   t != Token::Real);
+    if (where.to_string() != ":0:0")
+    {
+	assert(t != Token::Identifier && 
+	       t != Token::TypeName && 
+	       t != Token::String &&
+	       t != Token::Integer && 
+	       t != Token::Real);
+    }
 }
 
 Token::Token(TokenType t, const Location& w, const std::string& str): type(t), where(w), strVal(str)

@@ -190,7 +190,6 @@ private:
     std::vector<ExprAST*> args;
 };
 
-
 class BlockAST: public ExprAST
 {
 public:
@@ -230,6 +229,17 @@ private:
     ExprAST* body;
 };
 
+class WhileExprAST: public ExprAST
+{
+public:
+    WhileExprAST(ExprAST* c, ExprAST* b)
+	: cond(c), body(b) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    ExprAST* cond;
+    ExprAST* body;
+};
 
 class WriteAST: public ExprAST
 {

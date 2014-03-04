@@ -139,6 +139,7 @@ const TokenEntry tokenTable[] =
     { Token::If,            -2, "if" },
     { Token::Then,          -2, "then" },
     { Token::Else,          -2, "else" },
+    { Token::While,         -2, "while", },
     { Token::Begin,         -2, "begin" },
     { Token::End,           -2, "end" },
     { Token::Program,       -2, "program" },

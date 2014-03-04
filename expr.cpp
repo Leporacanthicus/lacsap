@@ -286,7 +286,6 @@ llvm::Value* UnaryExprAST::CodeGen()
     return ErrorV(std::string("Unknown type: ") + oper.ToString());
 }
 
-
 void CallExprAST::DoDump(std::ostream& out) const
 { 
     out << "call: " << callee << "(";
@@ -660,7 +659,7 @@ llvm::Value* ForExprAST::CodeGen()
     builder.CreateBr(loopBB);
     builder.SetInsertPoint(loopBB);
 
-    if (body->CodeGen() == 0)
+    if (!body->CodeGen())
     {
 	return 0;
     }
@@ -688,7 +687,47 @@ llvm::Value* ForExprAST::CodeGen()
     
     builder.SetInsertPoint(afterBB);
 
-    return MakeIntegerConstant(0);
+    return afterBB;
+}
+
+void WhileExprAST::DoDump(std::ostream& out) const
+{
+    out << "While: ";
+    cond->Dump(out);
+    out << " Do: ";
+    body->Dump(out);
+}
+
+llvm::Value* WhileExprAST::CodeGen()
+{
+    TRACE();
+    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+
+    /* We will need a "prebody" before the loop, a "body" and an "after" basic block  */
+    llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "prebody", 
+							   theFunction);
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body", 
+							 theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", 
+							 theFunction);
+
+    builder.CreateBr(preBodyBB);
+    builder.SetInsertPoint(preBodyBB);
+    
+    llvm::Value *condv = cond->CodeGen();
+
+    llvm::Value* endCond = builder.CreateICmpEQ(condv, MakeBooleanConstant(0), "whilecond");
+    builder.CreateCondBr(endCond, afterBB, bodyBB); 
+
+    builder.SetInsertPoint(bodyBB);
+    if (!body->CodeGen())
+    {
+	return 0;
+    }
+    builder.CreateBr(preBodyBB);
+    builder.SetInsertPoint(afterBB);
+    
+    return afterBB;
 }
 
 void WriteAST::DoDump(std::ostream& out) const

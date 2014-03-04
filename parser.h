@@ -34,6 +34,7 @@ private:
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseIfExpr();
     ExprAST* ParseForExpr();
+    ExprAST* ParseWhile();
     ExprAST* ParseWrite();
     ExprAST* ParseRead();
     ExprAST* ParseUnaryOp();

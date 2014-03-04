@@ -54,6 +54,7 @@ public:
 	If,
 	Then,
 	Else,
+	While,
 	Function,
 	Procedure,
 	Begin,

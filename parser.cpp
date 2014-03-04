@@ -573,7 +573,6 @@ ExprAST* Parser::ParseIfExpr()
     return new IfExprAST(cond, then, elseExpr);
 }
 
-
 ExprAST* Parser::ParseForExpr()
 {
     if (!Expect(Token::For, true))
@@ -618,6 +617,20 @@ ExprAST* Parser::ParseForExpr()
 	return 0;
     }
     return new ForExprAST(varName, start, end, down, body);
+}
+
+ExprAST* Parser::ParseWhile()
+{
+    NextToken();
+
+    ExprAST *cond = ParseExpression();
+    if (!cond || !Expect(Token::Do, true))
+    {
+	return 0;
+    }
+    ExprAST *body = ParseStmtOrBlock();
+
+    return new WhileExprAST(cond, body);
 }
 
 ExprAST* Parser::ParseWrite()
@@ -773,6 +786,9 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::For:
 	return ParseForExpr();
+
+    case Token::While:
+	return ParseWhile();
 
     case Token::Write:
     case Token::Writeln:

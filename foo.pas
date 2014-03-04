@@ -130,6 +130,17 @@ var x : integer; y : real;
 begin
    updateVars(x, y);
    writeln('x=',x:1,' y=',y:8:3);
+end; { testUpdateVars }
+
+procedure whileTest;
+var x :  integer;
+begin
+   x := 10;
+   while x > 0 do
+   begin
+      writeln('x=', x:1);
+      x := x-1;
+   end;
 end;
 
 begin
@@ -152,6 +163,8 @@ begin
    writeln('sqr(4.2)=', sqr(4.2):8:3);
    writeln('sqrt(16)=', sqrt(16):8:3);
    writeln('sqrt(169.0)=', sqrt(169.0):8:3);
+
+   whileTest;
 
    testUpdateVars;
    testChar;

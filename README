@@ -5,9 +5,8 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 Among things NOT yet supported are:
 Type declarations (pretty important)
 Record (pretty important)
-VAR arguments to functions (critical)
 File/Text variable types
-Conversion from "integer to real". 
+Pointers and dynamic memory allocation (and release thereof).
 Proper testing.
 The driver properly linking the runtime.
 Lots of other small and large things that I can't think of right now.

@@ -363,7 +363,7 @@ void BlockAST::DoDump(std::ostream& out) const
 llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v = NULL;
+    llvm::Value *v = 0;
     for(ExprAST *e = content; e; e = e->Next())
     {
 	v = e->CodeGen();

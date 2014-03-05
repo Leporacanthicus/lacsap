@@ -36,7 +36,7 @@ public:
     {
 	reason = r;
     }
-    const char *what() const  noexcept { return (std::string("Lexer Exception") + reason).c_str(); }
+    const char* what() const  noexcept { return (std::string("Lexer Exception") + reason).c_str(); }
 
 private:
     std::string reason;

@@ -12,14 +12,14 @@ class Parser
 {
 public:
     Parser(Lexer &l);
-    ExprAST *Parse();
+    ExprAST* Parse();
 
     int GetErrors() { return errCnt; } 
 
 private:
     const Token& CurrentToken() const;
-    const Token& NextToken(const char *file, int line);
-    const Token& PeekToken(const char *file, int line);
+    const Token& NextToken(const char* file, int line);
+    const Token& PeekToken(const char* file, int line);
 
     ExprAST* ParseExpression();
     ExprAST* ParseIdentifierExpr();
@@ -45,9 +45,9 @@ private:
     FunctionAST* ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
-    bool Expect(Token::TokenType type, bool eatIt, const char *file, int line);
+    bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 
-    ExprAST* Error(const std::string& msg, const char *file = NULL, int line = 0);
+    ExprAST* Error(const std::string& msg, const char* file = 0, int line = 0);
     PrototypeAST* ErrorP(const std::string& msg);
     FunctionAST* ErrorF(const std::string& msg);
 

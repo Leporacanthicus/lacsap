@@ -15,20 +15,20 @@
 
 
 static std::string ErrStr;
-llvm::FunctionPassManager* fpm = NULL;
-static llvm::ExecutionEngine *theExecutionEngine;
-llvm::Module *theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+llvm::FunctionPassManager* fpm;
+static llvm::ExecutionEngine* theExecutionEngine;
+llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 
-void DumpModule(llvm::Module *module)
+void DumpModule(llvm::Module* module)
 {
     module->dump();
 }
 
-llvm::Module* CodeGen(ExprAST *ast)
+llvm::Module* CodeGen(ExprAST* ast)
 {
     for(auto a = ast; a; a = a->Next())
     {
-	llvm::Value *v = a->CodeGen(); 
+	llvm::Value* v = a->CodeGen(); 
 	if (!v)
 	{
 	    std::cerr << "Sorry, something went wrong here..." << std::endl;
@@ -83,7 +83,7 @@ static void Compile(const std::string& filename)
 {
     try
     {
-	ExprAST *ast;
+	ExprAST* ast;
 	Lexer l(filename);
 	Parser p(l);
 	OptimizerInit();
@@ -95,7 +95,7 @@ static void Compile(const std::string& filename)
 	    std::cout << "Errors in parsing: " << e << ". Exiting..." << std::endl;
 	    return;
 	}
-	llvm::Module *module = CodeGen(ast);
+	llvm::Module* module = CodeGen(ast);
 	DumpModule(module);
 	CreateBinary(module,   replace_ext(filename, ".pas", ".o"));
 
@@ -113,7 +113,7 @@ static void Compile(const std::string& filename)
     }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     for(int i = 1; i < argc; i++)
     {

@@ -31,7 +31,7 @@ void __write_char(char v, int width)
     }
 }    
 
-void __write_str(const char *v, int width)
+void __write_str(const char* v, int width)
 {
     if (width > 0)
     {
@@ -43,12 +43,12 @@ void __write_str(const char *v, int width)
     }
 }
 
-void __read_int(int *v)
+void __read_int(int* v)
 {
     scanf("%d", v);
 }
 
-void __read_real(double *v)
+void __read_real(double* v)
 {
     scanf("%lf", v);
 }

@@ -91,9 +91,9 @@ public:
     double GetRealVal() const { return realVal; }
     std::string GetStrVal() const { return strVal; }
     // For debug purposes.
-    void Dump(std::ostream& out, const char *file = NULL, int line = 0) const;
+    void Dump(std::ostream& out, const char* file = 0, int line = 0) const;
     std::string ToString() const;
-    const char *TypeStr() const;
+    const char* TypeStr() const;
 
     void SetWhere(const std::string& file, int line, int col);
     std::string Where();

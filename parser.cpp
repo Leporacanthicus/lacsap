@@ -13,7 +13,7 @@ Parser::Parser(Lexer &l)
 {
 }
 
-ExprAST* Parser::Error(const std::string& msg, const char *file, int line)
+ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
 {
     if (file)
     {
@@ -41,7 +41,7 @@ const Token& Parser::CurrentToken() const
     return curToken;
 }
 
-const Token& Parser::NextToken(const char *file, int line)
+const Token& Parser::NextToken(const char* file, int line)
 {
     (void)file;
     (void)line;
@@ -58,7 +58,7 @@ const Token& Parser::NextToken(const char *file, int line)
     return curToken;
 }
 
-const Token& Parser::PeekToken(const char *file, int line) 
+const Token& Parser::PeekToken(const char* file, int line) 
 {
     if (nextTokenValid)
     {
@@ -74,7 +74,7 @@ const Token& Parser::PeekToken(const char *file, int line)
     return nextToken;
 }
 
-bool Parser::Expect(Token::TokenType type, bool eatIt, const char *file, int line)
+bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int line)
 {
     if (CurrentToken().GetType() != type)
     {
@@ -96,28 +96,28 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char *file, int lin
 
 ExprAST* Parser::ParseIntegerExpr()
 {
-    ExprAST *result = new IntegerExprAST(CurrentToken().GetIntVal());
+    ExprAST* result = new IntegerExprAST(CurrentToken().GetIntVal());
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseCharExpr()
 {
-    ExprAST *result = new CharExprAST(CurrentToken().GetIntVal());
+    ExprAST* result = new CharExprAST(CurrentToken().GetIntVal());
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseRealExpr()
 {
-    ExprAST *result = new RealExprAST(CurrentToken().GetRealVal());
+    ExprAST* result = new RealExprAST(CurrentToken().GetRealVal());
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseStringExpr()
 {
-    ExprAST *result = new StringExprAST(CurrentToken().GetStrVal());
+    ExprAST* result = new StringExprAST(CurrentToken().GetStrVal());
     NextToken();
     return result;
 }
@@ -177,7 +177,7 @@ ExprAST* Parser::ParseUnaryOp()
 
 ExprAST* Parser::ParseExpression()
 {
-    ExprAST *lhs = ParsePrimary();
+    ExprAST* lhs = ParsePrimary();
     if (!lhs)
     {
 	return 0;
@@ -206,7 +206,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
     }
     // Get past the '(' and fetch the next one. 
-    std::vector<ExprAST *> args;
+    std::vector<ExprAST* > args;
     if (CurrentToken().GetType() == Token::LeftParen)
     {
 	if (!Expect(Token::LeftParen, true))
@@ -241,7 +241,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 ExprAST* Parser::ParseParenExpr()
 {
     NextToken();
-    ExprAST *V = ParseExpression();
+    ExprAST* V = ParseExpression();
     if (!V) 
     {
 	return 0;
@@ -412,11 +412,11 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 
 ExprAST* Parser::ParseStatement()
 {
-    ExprAST *expr = ParsePrimary();
+    ExprAST* expr = ParsePrimary();
     if(CurrentToken().GetType() == Token::Assign)
     {
 	NextToken();
-	ExprAST *rhs = ParseExpression();
+	ExprAST* rhs = ParseExpression();
 	expr = new AssignExprAST(expr, rhs);
     }
     return expr;
@@ -429,12 +429,12 @@ BlockAST* Parser::ParseBlock()
 	return 0;
     }
     
-    ExprAST *astHead = NULL;
-    ExprAST *astTail = NULL;
+    ExprAST* astHead = 0;
+    ExprAST* astTail = 0;
     // Build ast of the content of the block.
     while(CurrentToken().GetType() != Token::End)
     {
-	ExprAST *ast = ParseStatement();
+	ExprAST* ast = ParseStatement();
 	if (ast)
 	{
 	    if (!astHead)
@@ -461,7 +461,7 @@ BlockAST* Parser::ParseBlock()
 FunctionAST* Parser::ParseDefinition()
 {
     bool isFunction = CurrentToken().GetType() == Token::Function;
-    PrototypeAST *proto = ParsePrototype(isFunction);
+    PrototypeAST* proto = ParsePrototype(isFunction);
     if (!proto) 
     {
 	return 0;
@@ -513,7 +513,7 @@ FunctionAST* Parser::ParseDefinition()
 		return 0;
 	    }
 
-	    FunctionAST *fn = new FunctionAST(proto, varDecls, body);
+	    FunctionAST* fn = new FunctionAST(proto, varDecls, body);
 	    return fn;
 	}
 
@@ -611,7 +611,7 @@ ExprAST* Parser::ParseForExpr()
     {
 	return 0;
     }
-    ExprAST *body = ParseStmtOrBlock();
+    ExprAST* body = ParseStmtOrBlock();
     if (!body)
     {
 	return 0;
@@ -623,12 +623,12 @@ ExprAST* Parser::ParseWhile()
 {
     NextToken();
 
-    ExprAST *cond = ParseExpression();
+    ExprAST* cond = ParseExpression();
     if (!cond || !Expect(Token::Do, true))
     {
 	return 0;
     }
-    ExprAST *body = ParseStmtOrBlock();
+    ExprAST* body = ParseStmtOrBlock();
 
     return new WhileExprAST(cond, body);
 }
@@ -636,11 +636,11 @@ ExprAST* Parser::ParseWhile()
 ExprAST* Parser::ParseRepeat()
 {
     NextToken();
-    ExprAST *bhead = 0;
-    ExprAST *btail = 0;
+    ExprAST* bhead = 0;
+    ExprAST* btail = 0;
     while(CurrentToken().GetType() != Token::Until)
     {
-	ExprAST *stmt = ParseStatement();
+	ExprAST* stmt = ParseStatement();
 	if (!bhead)
 	{
 	    bhead = btail = stmt;
@@ -841,8 +841,8 @@ ExprAST* Parser::ParsePrimary()
 
 ExprAST* Parser::Parse()
 {
-    ExprAST *astHead = NULL;
-    ExprAST *astTail = NULL;
+    ExprAST* astHead = 0;
+    ExprAST* astTail = 0;
     NextToken();
     if (!Expect(Token::Program, true))
     {
@@ -856,7 +856,7 @@ ExprAST* Parser::Parse()
     NextToken();
     for(;;)
     {
-	ExprAST *curAst = NULL;
+	ExprAST* curAst = 0;
 	switch(CurrentToken().GetType())
 	{
 	case Token::EndOfFile:
@@ -883,8 +883,10 @@ ExprAST* Parser::Parse()
 	case Token::Begin:
 	{
 	    curAst = ParseBlock();
-	    PrototypeAST *proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
-	    FunctionAST *fun = new FunctionAST(proto, 0, curAst);
+	    /* Parse the "main" of the program - we call that
+	     * "__PascalMain" so we can call it from C-code.*/
+	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
+	    FunctionAST* fun = new FunctionAST(proto, 0, curAst);
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))
 	    {

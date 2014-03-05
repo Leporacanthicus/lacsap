@@ -58,7 +58,7 @@ std::string Token::ToString() const
     return ss.str();
 }
 
-void Token::Dump(std::ostream& out, const char *file, int line) const
+void Token::Dump(std::ostream& out, const char* file, int line) const
 {
     if (file)
     {
@@ -98,7 +98,7 @@ struct TokenEntry
 {
     Token::TokenType type;
     int              precedence;
-    const char *     str;
+    const char*      str;
 };
 
 const TokenEntry tokenTable[] =
@@ -163,7 +163,7 @@ static const TokenEntry* FindToken(Token::TokenType type)
 	}
     }
     assert(0 && "Expect to find token!");
-    return NULL;
+    return 0;
 }
 
 static const TokenEntry* FindToken(const std::string& kw)
@@ -177,10 +177,10 @@ static const TokenEntry* FindToken(const std::string& kw)
 	    return &tokenTable[i];
 	}
     }
-    return NULL;
+    return 0;
 }
 
-const char *Token::TypeStr() const
+const char* Token::TypeStr() const
 {
     const TokenEntry* t  = FindToken(type);
     return t->str;

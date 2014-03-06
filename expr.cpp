@@ -49,17 +49,17 @@ llvm::Value* MakeConstant(int val, llvm::Type* ty)
 
 llvm::Value* MakeIntegerConstant(int val)
 {
-    return MakeConstant(val, Types::GetType("integer"));
+    return MakeConstant(val, Types::GetType(Types::Integer));
 }
 
 static llvm::Value* MakeBooleanConstant(int val)
 {
-    return MakeConstant(val, Types::GetType("boolean"));
+    return MakeConstant(val, Types::GetType(Types::Boolean));
 }
 
 static llvm::Value* MakeCharConstant(int val)
 {
-    return MakeConstant(val, Types::GetType("char"));
+    return MakeConstant(val, Types::GetType(Types::Char));
 }
 
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
@@ -171,7 +171,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     if (rty == llvm::Type::IntegerTyID  &&
 	lty == llvm::Type::DoubleTyID)
     {
-	r = builder.CreateSIToFP(r, Types::GetType("real"), "tofp");
+	r = builder.CreateSIToFP(r, Types::GetType(Types::Real), "tofp");
 	r->dump();
 	rty = r->getType()->getTypeID();
     }	
@@ -446,7 +446,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    ErrorF(std::string("Duplicate variable name ") + args[idx].Name());
 	}
     }
-    if (resultType != "void")
+    if (resultType->GetType() != Types::Void)
     {
 	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, resultType));
 	variables.Add(name, a);
@@ -492,7 +492,7 @@ llvm::Function* FunctionAST::CodeGen()
 	return 0;
     }
 
-    if (proto->ResultType() == "void")
+    if (proto->ResultType()->GetType() == Types::Void)
     {
 	builder.CreateRetVoid();
     }
@@ -552,11 +552,11 @@ llvm::Value* AssignExprAST::CodeGen()
     if (rty == llvm::Type::IntegerTyID  &&
 	lty == llvm::Type::DoubleTyID)
     {
-	v = builder.CreateSIToFP(v, Types::GetType("real"), "tofp");
+	v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
 	rty = v->getType()->getTypeID();
     }	
     assert(rty == lty && 
-	   "Types must be the same in assignment (for now)");
+	   "Types must be the same in assignment.");
     
     builder.CreateStore(v, dest);
     
@@ -800,13 +800,13 @@ static llvm::Function *CreateWriteFunc(llvm::Type* ty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
-    llvm::Type* resTy = Types::GetType("void");
+    llvm::Type* resTy = Types::GetType(Types::Void);
     if (ty)
     {
-	if (ty == Types::GetType("char"))
+	if (ty == Types::GetType(Types::Char))
 	{
 	    argTypes.push_back(ty);
-	    argTypes.push_back(Types::GetType("integer"));
+	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "char";
 	}
 	else if (ty->isIntegerTy())
@@ -820,19 +820,19 @@ static llvm::Function *CreateWriteFunc(llvm::Type* ty)
 	{
 	    // Args: double, int, int
 	    argTypes.push_back(ty);
-	    llvm::Type* t = Types::GetType("integer"); 
+	    llvm::Type* t = Types::GetType(Types::Integer); 
 	    argTypes.push_back(t);
 	    argTypes.push_back(t);
 	    suffix = "real";
 	}
 	else if (ty->isPointerTy())
 	{
-	    if (ty->getContainedType(0) != Types::GetType("char"))
+	    if (ty->getContainedType(0) != Types::GetType(Types::Char))
 	    {
 		return ErrorF("Invalid type argument for write");
 	    }
 	    argTypes.push_back(ty);
-	    llvm::Type* t = Types::GetType("integer"); 
+	    llvm::Type* t = Types::GetType(Types::Integer); 
 	    argTypes.push_back(t);
 	    suffix = "str";
 	}
@@ -874,7 +874,7 @@ llvm::Value* WriteAST::CodeGen()
 	llvm::Value* w;
 	if (!arg.width)
 	{
-	    if (ty == Types::GetType("integer"))
+	    if (ty == Types::GetType(Types::Integer))
 	    {
 		w = MakeIntegerConstant(13);
 	    }
@@ -952,7 +952,7 @@ static llvm::Function *CreateReadFunc(llvm::Type* ty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
-    llvm::Type* resTy = Types::GetType("void");
+    llvm::Type* resTy = Types::GetType(Types::Void);
     if (ty)
     {
 	if (!ty->isPointerTy())
@@ -972,7 +972,7 @@ static llvm::Function *CreateReadFunc(llvm::Type* ty)
 	    argTypes.push_back(ty);
 	    suffix = "real";
 	}
-	else if (innerTy == Types::GetType("char"))
+	else if (innerTy == Types::GetType(Types::Char))
 	{
 	    argTypes.push_back(ty);
 	    suffix = "chr";

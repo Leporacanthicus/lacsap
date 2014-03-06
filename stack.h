@@ -4,6 +4,7 @@
 #include <deque>
 #include <map>
 #include <string>
+#include <iostream>
 
 template <typename T>
 class Stack

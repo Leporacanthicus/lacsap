@@ -39,7 +39,7 @@ static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
 	llvm::Value* tmp = builder.CreateAnd(a, MakeIntegerConstant(1));
-	return builder.CreateBitCast(tmp, Types::GetType("boolean"));
+	return builder.CreateBitCast(tmp, Types::GetType(Types::Boolean));
     }
     return ErrorV("Expected type of integer for 'odd'");
 }
@@ -51,7 +51,7 @@ static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
     assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
-	llvm::Value* res = builder.CreateFPToSI(a, Types::GetType("integer"));
+	llvm::Value* res = builder.CreateFPToSI(a, Types::GetType(Types::Integer));
 	return res;
     }
     return ErrorV("Expected type of real for 'trunc'");
@@ -71,7 +71,7 @@ static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
 	
 	llvm::Value* half  = builder.CreateSelect(cmp, phalf, mhalf, "half");
 	llvm::Value* sum = builder.CreateFAdd(a, half, "aplushalf");
-	llvm::Value* res = builder.CreateFPToSI(sum, Types::GetType("integer"));
+	llvm::Value* res = builder.CreateFPToSI(sum, Types::GetType(Types::Integer));
 	return res;
     }
     return ErrorV("Expected type of real for 'round'");
@@ -105,7 +105,7 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
     std::vector<llvm::Type*> argTypes;
-    llvm::Type* ty = Types::GetType("real");
+    llvm::Type* ty = Types::GetType(Types::Real);
     argTypes.push_back(ty);
     std::string name = "llvm." + func + ".f64";
     llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
@@ -119,7 +119,7 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
 
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	a = builder.CreateSIToFP(a, Types::GetType("real"), "sqrttofp");
+	a = builder.CreateSIToFP(a, Types::GetType(Types::Real), "sqrttofp");
     }
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
@@ -171,7 +171,7 @@ static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	return builder.CreateBitCast(a, Types::GetType("char"), "chr");
+	return builder.CreateBitCast(a, Types::GetType(Types::Char), "chr");
     }
     return ErrorV("Expected integer type for chr function");
 }
@@ -182,9 +182,9 @@ static llvm::Value* OrdCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
-    if (a->getType() == Types::GetType("char"))
+    if (a->getType() == Types::GetType(Types::Char))
     {
-	return builder.CreateBitCast(a, Types::GetType("integer"), "ord");
+	return builder.CreateBitCast(a, Types::GetType(Types::Integer), "ord");
     }
     return ErrorV("Expected integer type for chr function");
 }

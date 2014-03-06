@@ -1,6 +1,7 @@
 #include "types.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <sstream>
 
 bool Types::IsTypeName(const std::string& name)
 {
@@ -12,38 +13,58 @@ bool Types::IsTypeName(const std::string& name)
     return false;
 }
 
-
-llvm::Type* Types::GetType(const std::string& name)
+llvm::Type* Types::GetType(Types::SimpleTypes type)
 {
-    if (name == "integer")
+    switch(type)
     {
+    case Types::Integer:
 	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
-    }
 
-    if (name == "real")
-    {
+    case Types::Real:
 	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
-    }
 
-    if (name == "char")
-    {
+    case Types::Char:
 	return llvm::Type::getInt8Ty(llvm::getGlobalContext());
-    }
 
-    if (name == "void")
-    {
-	return llvm::Type::getVoidTy(llvm::getGlobalContext());
-    }
-
-    if (name == "boolean")
-    {
+    case Types::Boolean:
 	return llvm::Type::getInt1Ty(llvm::getGlobalContext());
-    }
 
-    assert(0 && "Type not yet supported");
+
+    case Types::Void:
+	return llvm::Type::getVoidTy(llvm::getGlobalContext());
+	
+    default:
+	break;
+    }
     return 0;
 }
 
+llvm::Type* Types::GetType(const Types::TypeDecl* type)
+{
+    /* Need to support pointer, array and record here */
+    return GetType(type->GetType());
+}
+
+Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
+{
+    Types::TypeDecl *ty = types.Find(nm);
+    return ty;
+}
+
+std::string Types::TypeDecl::to_string() const
+{
+    std::stringstream ss; 
+    ss << "Type: " << (int)base << std::endl;
+    return ss.str();
+}
+
+
+
 Types::Types()
 {
+    types.NewLevel();
+    types.Add("integer", new TypeDecl(Integer));
+    types.Add("real", new TypeDecl(Real));
+    types.Add("char", new TypeDecl(Char));
+    types.Add("boolean", new TypeDecl(Boolean));
 }

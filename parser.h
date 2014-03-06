@@ -45,11 +45,15 @@ private:
     FunctionAST* ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
+    Types::TypeDecl* ParseSimpleType();
+    Types::TypeDecl* ParseType();
+
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 
     ExprAST* Error(const std::string& msg, const char* file = 0, int line = 0);
     PrototypeAST* ErrorP(const std::string& msg);
     FunctionAST* ErrorF(const std::string& msg);
+    Types::TypeDecl* ErrorT(const std::string& msg);
 
 private:
     typedef Stack<NamedObject*> NameStack;
@@ -61,6 +65,7 @@ private:
     std::string moduleName;
     int errCnt;
     NameStack nameStack;
+    Types types;
 };
 
 #endif

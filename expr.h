@@ -133,21 +133,27 @@ private:
 class PrototypeAST : public ExprAST
 {
 public:
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar) : 
-	name(nm), args(ar) { resultType="void"; }
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, const std::string &ty) 
-	: name(nm), args(ar), resultType(ty) {}
+    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar) 
+	: name(nm), args(ar) 
+    { 
+	resultType = new Types::TypeDecl(Types::Void); 
+    }
+    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, Types::TypeDecl* ty) 
+	: name(nm), args(ar), resultType(ty) 
+    {
+	assert(ty && "Type must not be null!");
+    }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
     void CreateArgumentAlloca(llvm::Function* fn);
-    std::string ResultType() const { return resultType; }
+    Types::TypeDecl* ResultType() const { return resultType; }
     std::string Name() const { return name; }
     const std::vector<VarDef>& Args() const { return args; }
 
 private:
     std::string name;
     std::vector<VarDef> args;
-    std::string resultType;
+    Types::TypeDecl* resultType;
 };
 
 class VarDeclAST: public ExprAST

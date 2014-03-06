@@ -8,19 +8,21 @@
 class VarDef
 {
 public:
-    VarDef(const std::string &nm, const std::string &ty, bool ref = false) 
-	: name(nm), type(ty), isRef(ref) {}
+    VarDef(const std::string &nm, Types::TypeDecl* ty, bool ref = false) 
+	: name(nm), type(ty), isRef(ref) 
+    {
+    }
 
-    const std::string Type() const { return type; }
+    Types::TypeDecl* Type() const { return type; }
     const std::string Name() const { return name; }
     bool IsRef() const { return isRef; }
     void Dump(std::ostream& out)
     {
-	out << "name: " << name << " type:" << type; 
+	out << "name: " << name << " type:" << type->to_string(); 
     }
 private:
     std::string  name;
-    std::string  type;
+    Types::TypeDecl *type;
     bool         isRef;   /* "var" arguments are "references" */
 };
 

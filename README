@@ -5,6 +5,8 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 Among things NOT yet supported are:
 Type declarations (pretty important)
 Record (pretty important)
+Range variables
+Enumerations
 File/Text variable types
 Pointers and dynamic memory allocation (and release thereof).
 Proper testing.

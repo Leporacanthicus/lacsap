@@ -36,6 +36,12 @@ FunctionAST* Parser::ErrorF(const std::string& msg)
     return 0;
 }
 
+Types::TypeDecl* Parser::ErrorT(const std::string& msg)
+{
+    Error(msg);
+    return 0;
+}
+
 const Token& Parser::CurrentToken() const
 {
     return curToken;
@@ -93,6 +99,22 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
 #define NextToken() NextToken(__FILE__, __LINE__)
 #define PeekToken() PeekToken(__FILE__, __LINE__)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
+
+Types::TypeDecl* Parser::ParseSimpleType()
+{
+    if (CurrentToken().GetType() != Token::TypeName)
+    {
+	return ErrorT("Expected simple type");
+    }
+    Types::TypeDecl* ty = types.GetTypeDecl(CurrentToken().GetIdentName());
+    NextToken();
+    return ty;
+}
+
+Types::TypeDecl* Parser::ParseType()
+{
+    return ParseSimpleType();
+}
 
 ExprAST* Parser::ParseIntegerExpr()
 {
@@ -199,7 +221,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
-	if ((def->Type() != "function" && def->Type() != "procedure") || 
+	if ((def->Type()->GetType() != Types::Function && 
+	     def->Type()->GetType() != Types::Procedure) || 
 	    CurrentToken().GetType() == Token::Assign)
 	{
 	    return new VariableExprAST(idName);
@@ -254,7 +277,6 @@ ExprAST* Parser::ParseParenExpr()
     return V;
 }
 
-
 VarDeclAST* Parser::ParseVarDecls()
 {
     if (!Expect(Token::Var, true))
@@ -276,18 +298,13 @@ VarDeclAST* Parser::ParseVarDecls()
 	if (CurrentToken().GetType() == Token::Colon)
 	{
 	    NextToken(); 
-	    if (!Expect(Token::TypeName, false))
-	    {
-		return 0;
-	    }
-	    std::string type = CurrentToken().GetIdentName();
+	    Types::TypeDecl* type = ParseType();
 	    for(auto n : names)
 	    {
 		VarDef v(n, type);
 		varList.push_back(v);
 		nameStack.Add(n, new NamedObject(n, type));
 	    }
-	    NextToken();
 	    if (!Expect(Token::Semicolon, true))
 	    {
 		return 0;
@@ -305,7 +322,6 @@ VarDeclAST* Parser::ParseVarDecls()
     
     return new VarDeclAST(varList);
 }
-
 
 // if isFunction:
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
@@ -350,16 +366,10 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	    if (CurrentToken().GetType() == Token::Colon)
 	    {
 		NextToken();
-		if (!Expect(Token::TypeName, false))
-		{
-		    return 0;
-		}
-	    
-		std::string typeName = CurrentToken().GetIdentName();
-		NextToken();
+		Types::TypeDecl* type = ParseSimpleType();
 		for(auto n : names)
 		{
-		    VarDef v(n, typeName, isRef);
+		    VarDef v(n, type, isRef);
 		    args.push_back(v);
 		}
 		names.clear();
@@ -390,12 +400,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	{
 	    return 0;
 	}
-	if (!Expect(Token::TypeName, false))
-	{
-	    return 0;
-	}
-	std::string resultType = CurrentToken().GetIdentName();
-	NextToken();
+	Types::TypeDecl* resultType = ParseSimpleType();
 	if (!Expect(Token::Semicolon, true))
 	{
 	    return 0;
@@ -467,7 +472,8 @@ FunctionAST* Parser::ParseDefinition()
 	return 0;
     }
     std::string name = proto->Name();
-    NamedObject* nmObj = new NamedObject(name, isFunction?"function":"procedure", proto);
+    Types::TypeDecl* ty = new Types::TypeDecl(isFunction?Types::Function:Types::Procedure);
+    NamedObject* nmObj = new NamedObject(name, ty, proto);
     if (!nameStack.Add(name, nmObj))
     {
 	return ErrorF(std::string("Name '") + name + "' already exists...");

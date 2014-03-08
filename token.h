@@ -75,6 +75,8 @@ public:
 	Of,
 	Record,
 	Builtin,
+	Type,
+	Forward,
 	EndOfFile  = -1, 
 	Unknown    = -1000,
     };

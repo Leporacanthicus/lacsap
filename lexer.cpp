@@ -99,6 +99,14 @@ Token Lexer::GetToken()
     case '-':
 	tt = Token::Minus;
 	break;
+
+    case '*':
+	tt = Token::Multiply;
+	break;
+
+    case '/':
+	tt = Token::Divide;
+	break;
 	
     case ',':
 	tt = Token::Comma;
@@ -115,10 +123,6 @@ Token Lexer::GetToken()
 	    NextChar();
 	    tt = Token::DotDot;
 	}
-	break;
-
-    case '*':
-	tt = Token::Multiply;
 	break;
 
     case '<':

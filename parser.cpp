@@ -156,6 +156,22 @@ Types::Range* Parser::ParseRange()
     }
 }
 
+
+// Deal with type name = ... defintions
+void Parser::ParseTypeDef()
+{
+    NextToken();
+    if (!Expect(Token::Identifier, false))
+    {
+	return;
+    }
+    std::string nm = CurrentToken().GetIdentName();
+    if (!Expect(Token::Equal, false))
+    {
+	return;
+    }
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetType();
@@ -457,11 +473,10 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
     NextToken();
     std::string funcName = CurrentToken().GetIdentName();
     // Get function name.
-    if (!Expect(Token::Identifier, false))
+    if (!Expect(Token::Identifier, true))
     {
 	return 0;
     }
-    NextToken();
     std::vector<VarDef> args;
     if (CurrentToken().GetType() == Token::LeftParen)
     {
@@ -595,11 +610,22 @@ FunctionAST* Parser::ParseDefinition()
     std::string name = proto->Name();
     Types::TypeDecl* ty = new Types::TypeDecl(isFunction?Types::Function:Types::Procedure);
     NamedObject* nmObj = new NamedObject(name, ty, proto);
-    if (!nameStack.Add(name, nmObj))
+
+    const NamedObject* def = nameStack.Find(name);
+    if (!(def && def->Proto() && def->Proto()->IsForward()))
     {
-	return ErrorF(std::string("Name '") + name + "' already exists...");
+	if (!nameStack.Add(name, nmObj))
+	{
+	    return ErrorF(std::string("Name '") + name + "' already exists...");
+	}
+
+	if (CurrentToken().GetType() == Token::Forward)
+	{
+	    NextToken();
+	    proto->SetIsForward(true);
+	    return new FunctionAST(proto, 0, 0);
+	}
     }
-    nameStack.Dump(std::cerr);
     
     NameWrapper wrapper(nameStack);
     for(auto v : proto->Args())
@@ -1006,12 +1032,17 @@ ExprAST* Parser::Parse()
 	case Token::Var:
 	    curAst = ParseVarDecls();
 	    break;
+
+	case Token::Type:
+	    ParseTypeDef();   
+	    // Generates no AST, so need to "continue" here
+	    continue;
 	    
 	case Token::Begin:
 	{
 	    curAst = ParseBlock();
-	    /* Parse the "main" of the program - we call that
-	     * "__PascalMain" so we can call it from C-code.*/
+	    // Parse the "main" of the program - we call that
+	    // "__PascalMain" so we can call it from C-code.
 	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
 	    FunctionAST* fun = new FunctionAST(proto, 0, curAst);
 	    curAst = fun;

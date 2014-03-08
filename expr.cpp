@@ -518,6 +518,10 @@ llvm::Function* FunctionAST::CodeGen()
     {
 	return 0;
     }
+    if (proto->IsForward())
+    {
+	return theFunction;
+    }
 
     TRACE();
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);

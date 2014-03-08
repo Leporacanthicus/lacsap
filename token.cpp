@@ -127,6 +127,8 @@ const TokenEntry tokenTable[] =
     { Token::Of,            -2, "of" },
     { Token::Packed,        -2, "packed" },
     { Token::Record,        -2, "record" },
+    { Token::Type,          -2, "type" },
+    { Token::Forward,       -2, "forward" },
     { Token::Plus,          10, "+" },
     { Token::Minus,         10, "-" },
     { Token::Multiply,      40, "*" },

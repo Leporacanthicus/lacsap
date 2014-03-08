@@ -160,12 +160,12 @@ class PrototypeAST : public ExprAST
 {
 public:
     PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar) 
-	: name(nm), args(ar) 
+	: name(nm), args(ar), isForward(false)
     { 
 	resultType = new Types::TypeDecl(Types::Void); 
     }
     PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, Types::TypeDecl* ty) 
-	: name(nm), args(ar), resultType(ty) 
+	: name(nm), args(ar), resultType(ty), isForward(false)
     {
 	assert(ty && "Type must not be null!");
     }
@@ -175,11 +175,13 @@ public:
     Types::TypeDecl* ResultType() const { return resultType; }
     std::string Name() const { return name; }
     const std::vector<VarDef>& Args() const { return args; }
-
+    bool IsForward() { return isForward; }
+    void SetIsForward(bool v) { isForward = v; }
 private:
-    std::string name;
+    std::string         name;
     std::vector<VarDef> args;
-    Types::TypeDecl* resultType;
+    Types::TypeDecl*    resultType;
+    bool                isForward;
 };
 
 class VarDeclAST: public ExprAST
@@ -195,11 +197,14 @@ private:
     llvm::Function* func;
 };
 
-class FunctionAST : public ExprAST
+class FunctionAST: public ExprAST
 {
 public:
     FunctionAST(PrototypeAST *prot, VarDeclAST* v, ExprAST* b) 
-	: proto(prot), varDecls(v), body(b) { assert(body && "Function should have body"); }
+	: proto(prot), varDecls(v), body(b)
+    { 
+	assert((proto->IsForward() || body) && "Function should have body"); 
+    }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
     const PrototypeAST* Proto() const { return proto; }

@@ -9,7 +9,7 @@
 class NamedObject
 {
 public:
-    NamedObject(const std::string& nm, Types::TypeDecl* ty, const PrototypeAST* p = 0) 
+    NamedObject(const std::string& nm, Types::TypeDecl* ty, PrototypeAST* p = 0) 
 	: name(nm), type(ty), proto(p) 
     {
 	if (ty->GetType() == Types::Function || ty->GetType() == Types::Procedure)
@@ -19,12 +19,12 @@ public:
     }
     Types::TypeDecl* Type() const { return type; }
     const std::string& Name() const { return name; }
-    const PrototypeAST* Proto() const { return proto; }
+    PrototypeAST* Proto() const { return proto; }
     void dump() { std::cerr << "Name: " << name << " Type:" << type << std::endl; }
 private:
     std::string         name;
     Types::TypeDecl*    type;
-    const PrototypeAST* proto;
+    PrototypeAST* proto;
 };
 
 #endif

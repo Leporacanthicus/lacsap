@@ -98,10 +98,6 @@ static void Compile(const std::string& filename)
 	llvm::Module* module = CodeGen(ast);
 	DumpModule(module);
 	CreateBinary(module,   replace_ext(filename, ".pas", ".o"));
-
-	std::ofstream outfile(replace_ext(filename, ".pas", ".bc"));
-	llvm::raw_os_ostream ro(outfile);
-	llvm::WriteBitcodeToFile(module, ro);
     }
     catch(std::exception e)
     {

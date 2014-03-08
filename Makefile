@@ -1,6 +1,6 @@
 all: lacsap .depends runtime.o
 
-OBJECTS = lexer.o token.o expr.o parser.o types.o variables.o builtin.o binary.o lacsap.o 
+OBJECTS = lexer.o token.o expr.o parser.o types.o builtin.o binary.o lacsap.o 
 
 CXX = clang++
 LD = clang++

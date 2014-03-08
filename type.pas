@@ -7,6 +7,8 @@ var
    ll :  letter;
    
 begin
-   ll = 'B';
+   ll := 'B';
    writeln('LL=', ll);
+   for ll := 'K' to 'X' do
+      writeln('LL=', ll);
 end.

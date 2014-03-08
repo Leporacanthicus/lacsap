@@ -19,6 +19,7 @@ public:
 	Procedure,
 	Record,
         Set,
+	SubRange,
 	Void,
     };
 
@@ -71,15 +72,34 @@ public:
 	std::vector<Range*> ranges;
     };
 
+    class RangeDecl : public TypeDecl
+    {
+    public:
+	RangeDecl(Range *r, SimpleTypes base)
+	    : TypeDecl(SubRange), range(r), baseType(base)
+	{
+	    assert(r && "Range should be specified");
+	}
+    public:
+	virtual bool isIntegral() const { return true; }
+	virtual SimpleTypes GetType() const { return baseType; }
+    private:
+	Range* range;
+	SimpleTypes baseType;
+    };
+
     typedef Stack<TypeDecl*> TypeStack;
     typedef StackWrapper<TypeDecl*> TypeWrapper;
 
-    TypeStack& GetTypeStack() { return types; }
+    TypeStack& GetTypes() { return types; }
 
-    static bool IsTypeName(const std::string& name);
     static llvm::Type* GetType(const TypeDecl* type);
     static llvm::Type* GetType(SimpleTypes type);
-    TypeDecl* GetTypeDecl(const std::string& name);
+    
+
+    bool IsTypeName(const std::string& name);
+    void Add(const std::string& nm, TypeDecl* ty) { types.Add(nm, ty); }
+   TypeDecl* GetTypeDecl(const std::string& name);
     
     Types();
 

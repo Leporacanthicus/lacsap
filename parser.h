@@ -11,7 +11,7 @@
 class Parser
 {
 public:
-    Parser(Lexer &l);
+    Parser(Lexer &l, Types& ty);
     ExprAST* Parse();
 
     int GetErrors() { return errCnt; } 
@@ -69,7 +69,7 @@ private:
     std::string moduleName;
     int errCnt;
     NameStack nameStack;
-    Types types;
+    Types& types;
 };
 
 #endif

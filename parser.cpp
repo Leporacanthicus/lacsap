@@ -8,8 +8,8 @@
 #include <iostream>
 #include <cassert>
 
-Parser::Parser(Lexer &l) 
-    : 	lexer(l), nextTokenValid(false), errCnt(0)
+Parser::Parser(Lexer &l, Types& ty) 
+    : 	lexer(l), nextTokenValid(false), errCnt(0), types(ty)
 {
 }
 
@@ -122,7 +122,7 @@ Types::Range* Parser::ParseRange()
 {
     Token::TokenType tt = CurrentToken().GetType();
     
-    if (tt == Token::Integer)
+    if (tt == Token::Integer || tt == Token::Char)
     {
 	int start = CurrentToken().GetIntVal();
 	NextToken();
@@ -130,7 +130,7 @@ Types::Range* Parser::ParseRange()
 	{
 	    return 0;
 	}
-	if (!Expect(Token::Integer, false))
+	if (!Expect(tt, false))
 	{
 	    return 0;
 	}
@@ -166,20 +166,29 @@ void Parser::ParseTypeDef()
 	return;
     }
     std::string nm = CurrentToken().GetIdentName();
-    if (!Expect(Token::Equal, false))
+    NextToken();
+    if (!Expect(Token::Equal, true))
     {
 	return;
     }
+    Types::TypeDecl* ty = ParseType();
+    if (!ty)
+    {
+	return;
+    }
+    types.Add(nm, ty);
 }
 
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetType();
-    if (tt == Token::TypeName)
+
+    switch(tt)
     {
+    case Token::TypeName:
 	return ParseSimpleType();
-    }
-    if (tt == Token::Array)
+	    
+    case Token::Array:
     {
 	NextToken();
 	if (!Expect(Token::LeftSquare, true))
@@ -211,10 +220,16 @@ Types::TypeDecl* Parser::ParseType()
 	    return 0;
 	}
 	return new Types::ArrayDecl(ty, rv);
-    } 
-    else 
+    }
+
+    case Token::Integer:
+    case Token::Char:
     {
-	return ErrorT("Can't understand type...");
+	Types::Range* r = ParseRange();
+	return new Types::RangeDecl(r, (tt == Token::Char)?Types::Char:Types::Integer);
+    }
+    default:
+	return ErrorT("Can't understand type");
     }
 }
 

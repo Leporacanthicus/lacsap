@@ -29,7 +29,7 @@ static llvm::tool_output_file *GetOutputStream(const std::string& filename)
 }
 
 
-void CreateBinary(llvm::Module *module, const std::string& filename)
+static void CreateObject(llvm::Module *module, const std::string& objname)
 {
     llvm::InitializeAllTargets();
     llvm::InitializeAllTargetMCs();
@@ -64,7 +64,7 @@ void CreateBinary(llvm::Module *module, const std::string& filename)
     PM.add(TLI);
     tm->setAsmVerbosityDefault(true);
 
-    llvm::OwningPtr<llvm::tool_output_file> Out(GetOutputStream(filename));
+    llvm::OwningPtr<llvm::tool_output_file> Out(GetOutputStream(objname));
     if (!Out) 
     {
 	std::cerr << "Could not open file ... " << std::endl;
@@ -72,17 +72,25 @@ void CreateBinary(llvm::Module *module, const std::string& filename)
     }
 
     llvm::formatted_raw_ostream FOS(Out->os());
-//    const llvm::PassRegistry *PR = llvm::PassRegistry::getPassRegistry();
 
     llvm::AnalysisID StartAfterID = 0;
     llvm::AnalysisID StopAfterID = 0;
     if (tm->addPassesToEmitFile(PM, FOS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false,
                                    StartAfterID, StopAfterID)) 
     {
-	std::cerr << filename << ": target does not support generation of this"
+	std::cerr << objname << ": target does not support generation of this"
 	       << " file type!\n";
 	return;
     }
     PM.run(*module);
     Out->keep();
+}
+
+
+void CreateBinary(llvm::Module *module, const std::string& objname, const std::string& exename)
+{
+    CreateObject(module, objname);
+    std::string cmd = std::string("clang ") + objname + " runtime.o -o " + exename; 
+    std::cerr << "Executing final link command: " << cmd << std::endl;
+    system(cmd.c_str());
 }

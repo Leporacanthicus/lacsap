@@ -5,12 +5,7 @@
 
 bool Types::IsTypeName(const std::string& name)
 {
-    if (name == "integer" ||
-	name == "real" ||
-	name == "boolean" ||
-	name == "char")
-	return true;
-    return false;
+    return !!types.Find(name);
 }
 
 llvm::Type* Types::GetType(Types::SimpleTypes type)

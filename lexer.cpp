@@ -212,7 +212,7 @@ Token Lexer::GetToken()
 	{
 	    return Token(tt, w);
 	}
-	if (Types::IsTypeName(str))
+	if (types.IsTypeName(str))
 	{
 	    tt = Token::TypeName;
 	}
@@ -255,8 +255,8 @@ Token Lexer::GetToken()
 }
 
 
-Lexer::Lexer(const std::string& sourceFile):
-    fName(sourceFile), lineNo(1),column(0), curValid(0)
+Lexer::Lexer(const std::string& sourceFile, Types& ty):
+    fName(sourceFile), lineNo(1),column(0), curValid(0), types(ty)
 {
     inFile.open(fName);
     if (!inFile.good())

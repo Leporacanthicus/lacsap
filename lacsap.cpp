@@ -84,8 +84,9 @@ static void Compile(const std::string& filename)
     try
     {
 	ExprAST* ast;
-	Lexer l(filename);
-	Parser p(l);
+	Types types;
+	Lexer l(filename, types);
+	Parser p(l, types);
 	OptimizerInit();
 
 	ast = p.Parse();
@@ -97,7 +98,7 @@ static void Compile(const std::string& filename)
 	}
 	llvm::Module* module = CodeGen(ast);
 	DumpModule(module);
-	CreateBinary(module,   replace_ext(filename, ".pas", ".o"));
+	CreateBinary(module,   replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
     }
     catch(std::exception e)
     {

@@ -2,6 +2,7 @@
 #define LEXER_H
 
 #include "token.h"
+#include "types.h"
 #include <string>
 #include <fstream>
 #include <exception>
@@ -9,7 +10,7 @@
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile);
+    Lexer(const std::string& sourceFile, Types& ty);
     Token GetToken();
 
 private:
@@ -27,6 +28,7 @@ private:
     int curChar;
     int nextChar;
     int curValid;
+    Types& types;
 };
 
 class LexerException : public std::exception

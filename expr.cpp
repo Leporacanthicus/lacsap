@@ -697,7 +697,7 @@ llvm::Value* ForExprAST::CodeGen()
 {
     TRACE();
 
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::Value* var = variables.Find(varName);
 
     llvm::Value* startV = start->CodeGen();
@@ -716,7 +716,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    llvm::Value* stepVal = MakeIntegerConstant((stepDown)?-1:1);
+    llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
     llvm::Value* curVar = builder.CreateLoad(var, varName.c_str());
     llvm::Value* nextVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 

@@ -42,6 +42,12 @@ Types::TypeDecl* Parser::ErrorT(const std::string& msg)
     return 0;
 }
 
+Types::Range* Parser::ErrorR(const std::string& msg)
+{
+    Error(msg);
+    return 0;
+}
+
 const Token& Parser::CurrentToken() const
 {
     return curToken;
@@ -111,9 +117,89 @@ Types::TypeDecl* Parser::ParseSimpleType()
     return ty;
 }
 
+
+Types::Range* Parser::ParseRange()
+{
+    Token::TokenType tt = CurrentToken().GetType();
+    
+    if (tt == Token::Integer)
+    {
+	int start = CurrentToken().GetIntVal();
+	NextToken();
+        if (!Expect(Token::DotDot, true))
+	{
+	    return 0;
+	}
+	if (!Expect(Token::Integer, false))
+	{
+	    return 0;
+	}
+	int end = CurrentToken().GetIntVal();
+	NextToken();
+
+	return new Types::Range(start, end);
+    }
+#if 0
+    else if (tt == Token::TypeName)
+    {
+	TypeDecl* ty = Types::GetTypeDecl(); 
+	if (!ty->IsInteger())
+	{
+	    return ErrorR("Type used for array index must be of integer type");
+	}
+	return ty->GetRange();
+    }
+#endif
+    else
+    {
+	return ErrorR("Invalid range specification");
+    }
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
-    return ParseSimpleType();
+    Token::TokenType tt = CurrentToken().GetType();
+    if (tt == Token::TypeName)
+    {
+	return ParseSimpleType();
+    }
+    if (tt == Token::Array)
+    {
+	NextToken();
+	if (!Expect(Token::LeftSquare, true))
+	{
+	    return 0;
+	}
+	std::vector<Types::Range*> rv;
+	while(CurrentToken().GetType() != Token::RightSquare)
+	{
+	    Types::Range* r = ParseRange();
+	    if (!r) 
+	    {
+		return 0;
+	    }
+	    rv.push_back(r);
+	    if (CurrentToken().GetType() == Token::Comma)
+	    {
+		NextToken();
+	    }
+	}
+	if (!Expect(Token::RightSquare, true) || 
+	    !Expect(Token::Of, true))
+	{
+	    return 0;
+	}
+	Types::TypeDecl* ty = ParseType();
+	if (!ty)
+	{
+	    return 0;
+	}
+	return new Types::ArrayDecl(ty, rv);
+    } 
+    else 
+    {
+	return ErrorT("Can't understand type...");
+    }
 }
 
 ExprAST* Parser::ParseIntegerExpr()
@@ -217,7 +303,38 @@ ExprAST* Parser::ParseIdentifierExpr()
     {
 	if (!def)
 	{
-	    return ErrorF(std::string("Undefined name '") + idName + "'");
+	    return Error(std::string("Undefined name '") + idName + "'");
+	}
+	// Left Square = array access.
+	if (CurrentToken().GetType() == Token::LeftSquare)
+	{
+	    assert(def->Type()->GetType() == Types::Array && "Expected array type here");
+	    const Types::ArrayDecl* adecl = dynamic_cast<const Types::ArrayDecl*>(def->Type()); 
+	    NextToken();
+	    std::vector<ExprAST*> indices;
+	    while(CurrentToken().GetType() != Token::RightSquare)
+	    {
+		ExprAST* index = ParseExpression();
+		if (!index)
+		{
+		    return Error("Expected index expression");
+		}
+		indices.push_back(index);
+		if (CurrentToken().GetType() != Token::RightSquare)
+		{
+		    if (!Expect(Token::Comma, true))
+		    {
+			return 0;
+		    }
+		}
+	    }
+	    assert(indices.size() ==  adecl->Ranges().size() && 
+		   "Expected same number of indices as declared subscripts");
+	    if (!Expect(Token::RightSquare, true))
+	    {
+		return 0;
+	    }
+	    return new ArrayExprAST(idName, indices, adecl->Ranges());
 	}
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
@@ -299,6 +416,10 @@ VarDeclAST* Parser::ParseVarDecls()
 	{
 	    NextToken(); 
 	    Types::TypeDecl* type = ParseType();
+	    if (!type)
+	    {
+		return 0;
+	    }
 	    for(auto n : names)
 	    {
 		VarDef v(n, type);

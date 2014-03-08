@@ -45,6 +45,8 @@ private:
     FunctionAST* ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
+    Types::Range* ParseRange();
+
     Types::TypeDecl* ParseSimpleType();
     Types::TypeDecl* ParseType();
 
@@ -54,6 +56,7 @@ private:
     PrototypeAST* ErrorP(const std::string& msg);
     FunctionAST* ErrorF(const std::string& msg);
     Types::TypeDecl* ErrorT(const std::string& msg);
+    Types::Range* ErrorR(const std::string& msg);
 
 private:
     typedef Stack<NamedObject*> NameStack;

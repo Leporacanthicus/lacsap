@@ -110,6 +110,11 @@ Token Lexer::GetToken()
 
     case '.':
 	tt = Token::Period;
+	if (PeekChar() == '.')
+	{
+	    NextChar();
+	    tt = Token::DotDot;
+	}
 	break;
 
     case '*':
@@ -152,6 +157,14 @@ Token Lexer::GetToken()
 	    NextChar();
 	    tt = Token::Assign;
 	}
+	break;
+
+    case '[':
+	tt = Token::LeftSquare;
+	break;
+
+    case ']':
+	tt = Token::RightSquare;
 	break;
     }
     if (tt != Token::Unused)
@@ -216,7 +229,7 @@ Token Lexer::GetToken()
 	{
 	    num += static_cast<char>(ch);
 	}
-	if (ch == '.' || (ch == 'E' || ch == 'e'))
+	if ((ch == '.' && PeekChar() != '.') ||  ch == 'E' || ch == 'e')
 	{
 	    bool wasDot = (ch == '.');
 	    num += ch;

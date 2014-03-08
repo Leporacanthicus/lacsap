@@ -3,6 +3,7 @@
 
 #include "token.h"
 #include "variables.h"
+#include "types.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>
 #include <llvm/PassManager.h>
@@ -90,9 +91,34 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     const std::string& Name() const { return name; }
-    llvm::Value* Address();
-private:
+    virtual llvm::Value* Address();
+protected:
     std::string name;
+};
+
+class ArrayExprAST : public VariableExprAST
+{
+public:
+    ArrayExprAST(const std::string& nm, 
+		 const std::vector<ExprAST*>& inds, 
+		 const std::vector<Types::Range*>& r)
+	: VariableExprAST(nm), indices(inds), ranges(r)
+    {
+	size_t mul = 1;
+	for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
+	{
+	    indexmul.push_back(mul);
+	    mul *= (*j)->Size();
+	}
+	std::reverse(indexmul.begin(), indexmul.end());
+    }
+    virtual void DoDump(std::ostream& out) const;
+    /* Don't need CodeGen, just calculate address and use parent CodeGen */
+    virtual llvm::Value* Address();
+private:
+    std::vector<ExprAST*> indices;
+    std::vector<Types::Range*> ranges;
+    std::vector<size_t> indexmul;
 };
 
 class BinaryExprAST : public ExprAST

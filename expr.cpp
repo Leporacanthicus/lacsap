@@ -136,6 +136,7 @@ llvm::Value* VariableExprAST::CodeGen()
 
 llvm::Value* VariableExprAST::Address()
 {
+    TRACE();
     llvm::Value* v = variables.Find(name);
     if (!v)
     {
@@ -143,7 +144,54 @@ llvm::Value* VariableExprAST::Address()
     }
     return v;
 }
-    
+
+void ArrayExprAST::DoDump(std::ostream& out) const
+{ 
+    out << "Array: " << name;
+    out << "[";
+    bool first = true;
+    for(auto i : indices)
+    {
+	if (!first)
+	{
+	    out << ", ";
+	}
+	first = false;
+	i->Dump(out);
+    }
+}
+
+llvm::Value* ArrayExprAST::Address()
+{
+    TRACE();
+    llvm::Value* v = variables.Find(name);
+    if (!v)
+    {
+	return ErrorV(std::string("Unknown variable name '") + name + "'");
+    }
+    llvm::Value* index; 
+    for(size_t i = 0; i < indices.size(); i++)
+    {
+	TRACE();
+	/* TODO: Add range checking? */
+	index = indices[i]->CodeGen();
+	if (!index)
+	{
+	    return ErrorV("Expression failed for index");
+	}
+	if (!index->getType()->isIntegerTy())
+	{
+	    return ErrorV("Index is supposed to be integral type");
+	}
+	index = builder.CreateSub(index, MakeIntegerConstant(ranges[i]->GetStart()));
+	index = builder.CreateMul(index, MakeIntegerConstant(indexmul[i]));
+    }
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(index);
+    v = builder.CreateGEP(v, ind, "valueindex");
+    return v;
+}
 
 void BinaryExprAST::DoDump(std::ostream& out) const
 { 
@@ -505,6 +553,7 @@ llvm::Function* FunctionAST::CodeGen()
     }
 
     TRACE();
+    theFunction->dump();
     verifyFunction(*theFunction);
     
     fpm->run(*theFunction);

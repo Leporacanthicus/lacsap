@@ -151,8 +151,20 @@ begin
       writeln('y=', y:1);
       y := y + 1;
    until y > 10;
-end;
+end; { repeatTest }
 
+procedure arrayTest;
+var
+   arr : array [1..100] of integer;
+   i   : integer;
+begin
+   for i := 1 to 100 do
+      arr[i] := i;
+
+   for i := 1 to 100 do
+      writeln('arr[', i:0, ']=', arr[i]:0);
+end; { arrayTest }
+   
 begin
    a := 12;
    writeln('Hello, world!');
@@ -176,7 +188,8 @@ begin
 
    whileTest;
    repeatTest;
-
+   arrayTest;
+   
    testUpdateVars;
    testChar;
    write('Enter a number:');
@@ -186,6 +199,4 @@ begin
    readln(b);
    writeln('a=', b:2:5);
    readTest;
-
-   
 end.

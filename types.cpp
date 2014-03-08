@@ -29,7 +29,6 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
     case Types::Boolean:
 	return llvm::Type::getInt1Ty(llvm::getGlobalContext());
 
-
     case Types::Void:
 	return llvm::Type::getVoidTy(llvm::getGlobalContext());
 	
@@ -41,8 +40,32 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
 
 llvm::Type* Types::GetType(const Types::TypeDecl* type)
 {
-    /* Need to support pointer, array and record here */
-    return GetType(type->GetType());
+    if (type->GetType() == Types::Array)
+    {
+	const Types::ArrayDecl* a = dynamic_cast<const Types::ArrayDecl*>(type);
+	assert(a && "Huh? Couldn't convert type that says it's an array to ArrayDecl");
+	size_t nelems = 0;
+	for(auto r : a->Ranges())
+	{
+	    
+	    if (!nelems)
+	    {
+		nelems = r->Size();
+	    }
+	    else
+	    {
+		nelems *= r->Size();
+	    }
+	}
+	assert(nelems && "Expect number of elements to be non-zero!");
+	const Types::TypeDecl* base = a->BaseType();
+	llvm::Type* ty = GetType(base);
+	assert(ty && "Expected to get a type back!");
+	return llvm::ArrayType::get(ty, nelems);
+    }
+    llvm::Type* ty = GetType(type->GetType());
+    assert(ty && "Expect basic type to return a Type*");
+    return ty;
 }
 
 Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
@@ -54,11 +77,26 @@ Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
 std::string Types::TypeDecl::to_string() const
 {
     std::stringstream ss; 
-    ss << "Type: " << (int)base << std::endl;
+    ss << "Type: " << (int)type << std::endl;
     return ss.str();
 }
 
-
+bool Types::TypeDecl::isIntegral() const
+{
+    switch(type)
+    {
+    case Array:
+    case Record:
+    case Set:
+    case Real:
+    case Void:
+    case Function:
+    case Procedure:
+	return false;
+    default:
+	return true;
+    }
+}
 
 Types::Types()
 {

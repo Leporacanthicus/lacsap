@@ -41,7 +41,7 @@ Token::Token(TokenType t, const Location& w, const std::string& str): type(t), w
 
 Token::Token(TokenType t, const Location& w, int v) : type(t), where(w), intVal(v)
 {
-    assert(t == Token::Integer || t == Token::Char);
+    assert(t == Token::Integer || t == Token::Char || t == Token::EnumValue);
 }
 
 
@@ -156,6 +156,7 @@ const TokenEntry tokenTable[] =
     { Token::Period,        -1, "." },
     { Token::DotDot,        -1, ".." },
     { Token::TypeName,      -1, "typename" },
+    { Token::EnumValue,     -1, "enumvalue" },
     { Token::Identifier,    -1, "identifier" },
     { Token::Unknown,       -1, "Unknown" },
     { Token::Unused,        -1, "Unused" },

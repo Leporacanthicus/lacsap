@@ -524,13 +524,10 @@ llvm::Function* FunctionAST::CodeGen()
 	return theFunction;
     }
 
-    TRACE();
     llvm::BasicBlock *bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
     builder.SetInsertPoint(bb);
 
     proto->CreateArgumentAlloca(theFunction);
-
-    TRACE();
 
     if (varDecls)
     {
@@ -539,9 +536,8 @@ llvm::Function* FunctionAST::CodeGen()
     }
 
     variables.Dump(std::cerr);
-    BlockAST* bl = dynamic_cast<BlockAST*>(body);
-    llvm::Value *block = bl->CodeGen();
-    if (!block && !bl->IsEmpty())
+    llvm::Value *block = body->CodeGen();
+    if (!block && !body->IsEmpty())
     {
 	return 0;
     }

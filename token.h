@@ -23,12 +23,26 @@ public:
     enum TokenType
     {
 	Unused     = 0,
-	Identifier,
+
+	// Values of different types
 	Integer,
 	Real,
 	String,
 	Char,
 	Boolean,
+	EnumValue,
+
+	// Type/var/const declarations:
+	Type,
+	Var,
+	Packed,
+	Array,
+	Of,
+	Record,
+	Identifier,
+	TypeName,
+
+	// Symbols and such
 	LeftParen,
 	RightParen,
 	LeftSquare,
@@ -49,7 +63,8 @@ public:
 	NotEqual,
 	Period,
 	DotDot,
-	TypeName,
+
+	// Keywords
 	For,
 	To,
 	Downto,
@@ -69,14 +84,9 @@ public:
 	Writeln,
 	Read,
 	Readln,
-	Var,
-	Packed,
-	Array,
-	Of,
-	Record,
 	Builtin,
-	Type,
 	Forward,
+
 	EndOfFile  = -1, 
 	Unknown    = -1000,
     };
@@ -108,8 +118,6 @@ public:
     std::string Where();
 
     int Precedence() const;
-
-private:
 
 private:
     TokenType   type;

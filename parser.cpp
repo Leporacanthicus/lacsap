@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cassert>
 
+#define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
+
 Parser::Parser(Lexer &l, Types& ty) 
     : 	lexer(l), nextTokenValid(false), errCnt(0), types(ty)
 {
@@ -117,12 +119,11 @@ Types::TypeDecl* Parser::ParseSimpleType()
     return ty;
 }
 
-
 Types::Range* Parser::ParseRange()
 {
     Token::TokenType tt = CurrentToken().GetType();
     
-    if (tt == Token::Integer || tt == Token::Char)
+    if (tt == Token::Integer || tt == Token::Char || tt == Token::EnumValue)
     {
 	int start = CurrentToken().GetIntVal();
 	NextToken();
@@ -166,23 +167,67 @@ Types::Range* Parser::ParseRangeOrTypeRange()
 // Deal with type name = ... defintions
 void Parser::ParseTypeDef()
 {
+    TRACE();
     NextToken();
-    if (!Expect(Token::Identifier, false))
+    do
     {
-	return;
-    }
-    std::string nm = CurrentToken().GetIdentName();
-    NextToken();
-    if (!Expect(Token::Equal, true))
+	if (!Expect(Token::Identifier, false))
+	{
+	    TRACE();
+	    return;
+	}
+	std::string nm = CurrentToken().GetIdentName();
+	NextToken();
+	if (!Expect(Token::Equal, true))
+	{
+	    TRACE();
+	    return;
+	}
+	Types::TypeDecl* ty = ParseType();
+	if (!ty)
+	{
+	    TRACE();
+	    return;
+	}
+	types.Add(nm, ty);
+	if (!Expect(Token::Semicolon, true))
+	{
+	    TRACE();
+	    return;
+	}
+	TRACE();
+	CurrentToken().Dump(std::cerr);
+    } while (CurrentToken().GetType() == Token::Identifier);
+}
+
+Types::EnumDecl* Parser::ParseEnumDef()
+{
+    if (!Expect(Token::LeftParen, true))
     {
-	return;
+	return 0;
     }
-    Types::TypeDecl* ty = ParseType();
-    if (!ty)
+    std::vector<std::string> values;
+    while(CurrentToken().GetType() != Token::RightParen)
     {
-	return;
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
+	values.push_back(CurrentToken().GetIdentName());
+	NextToken();
+	if (CurrentToken().GetType() != Token::RightParen)
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return 0;
+	    }
+	}
     }
-    types.Add(nm, ty);
+    if (!Expect(Token::RightParen, true))
+    {
+	return 0;
+    }
+    return new Types::EnumDecl(values);
 }
 
 Types::TypeDecl* Parser::ParseType()
@@ -230,9 +275,16 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::Integer:
     case Token::Char:
+    case Token::EnumValue:
     {
 	Types::Range* r = ParseRange();
 	return new Types::RangeDecl(r, (tt == Token::Char)?Types::Char:Types::Integer);
+    }
+    
+    case Token::LeftParen:
+    {
+	Types::EnumDecl* e = ParseEnumDef();
+	return e;
     }
     default:
 	return ErrorT("Can't understand type");
@@ -347,6 +399,10 @@ ExprAST* Parser::ParseIdentifierExpr()
 	{
 	    assert(def->Type()->GetType() == Types::Array && "Expected array type here");
 	    const Types::ArrayDecl* adecl = dynamic_cast<const Types::ArrayDecl*>(def->Type()); 
+	    if (!adecl)
+	    {
+		return Error("Expected variable of array type when using index");
+	    }
 	    NextToken();
 	    std::vector<ExprAST*> indices;
 	    while(CurrentToken().GetType() != Token::RightSquare)
@@ -658,7 +714,7 @@ FunctionAST* Parser::ParseDefinition()
     }
 
     VarDeclAST* varDecls = 0;
-    ExprAST* body = 0;
+    BlockAST* body = 0;
     do
     {
 	switch(CurrentToken().GetType())
@@ -1061,11 +1117,11 @@ ExprAST* Parser::Parse()
 	    
 	case Token::Begin:
 	{
-	    curAst = ParseBlock();
+	    BlockAST* body = ParseBlock();
 	    // Parse the "main" of the program - we call that
 	    // "__PascalMain" so we can call it from C-code.
 	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
-	    FunctionAST* fun = new FunctionAST(proto, 0, curAst);
+	    FunctionAST* fun = new FunctionAST(proto, 0, body);
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))
 	    {

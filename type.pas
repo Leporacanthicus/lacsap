@@ -1,11 +1,13 @@
 program typetest;
 
 type
-   letter = 'A'..'Z';
+   letter   = 'A'..'Z';
+   days	    = (monday, tuesday, wednesday, thursday, friday, saturday, sunday);
+   workdays =  monday..friday;
 
 var
-   ll :  letter;
-
+   ll : letter;
+   
 function f : integer;
 var a :  array [char] of integer;
 begin

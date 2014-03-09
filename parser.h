@@ -51,6 +51,7 @@ private:
 
     Types::TypeDecl* ParseSimpleType();
     Types::TypeDecl* ParseType();
+    Types::EnumDecl* ParseEnumDef();
 
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 

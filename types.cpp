@@ -4,10 +4,7 @@
 #include <sstream>
 #include <climits>
 
-bool Types::IsTypeName(const std::string& name)
-{
-    return !!types.Find(name);
-}
+#define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
 llvm::Type* Types::GetType(Types::SimpleTypes type)
 {
@@ -70,6 +67,38 @@ Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
     return ty;
 }
 
+bool Types::IsTypeName(const std::string& name)
+{
+    return !!types.Find(name);
+}
+
+bool Types::IsEnumValue(const std::string& name)
+{
+    return !!enums.Find(name);
+}
+
+void Types::Add(const std::string& nm, TypeDecl* ty)
+{
+    Types::EnumDecl* ed = dynamic_cast<EnumDecl*>(ty);
+    if (ed)
+    {
+	const Types::EnumValues values = ed->GetValues();
+	for(auto v : values)
+	{
+	    if (!enums.Add(v.name, new Types::EnumValue(v)))
+	    {
+		std::cerr << "Enumerated value by name " << v.name << " already exists..." << std::endl;
+	    }
+	}
+    }
+    types.Add(nm, ty);
+}
+
+Types::EnumValue* Types::FindEnumValue(const std::string& nm)
+{
+    return enums.Find(nm);
+}
+
 std::string Types::TypeDecl::to_string() const
 {
     std::stringstream ss; 
@@ -105,6 +134,18 @@ Types::Range* Types::TypeDecl::GetRange() const
 	return new Range(INT_MIN, INT_MAX);
     default:
 	return 0;
+    }
+}
+
+void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
+{
+    TRACE();
+    unsigned int v = 0;
+    for(auto n : nmv)
+    {
+	EnumValue e(n, v);
+	values.push_back(e);
+	v++;
     }
 }
 

@@ -145,6 +145,18 @@ private:
     ExprAST* rhs;
 };
 
+class BlockAST : public ExprAST
+{
+public:
+    BlockAST(ExprAST* blockContent) : 
+	content(blockContent) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    bool IsEmpty() { return content == NULL; }
+private:
+    ExprAST* content;
+};
+
 class AssignExprAST : public ExprAST
 {
 public:
@@ -184,7 +196,7 @@ private:
     bool                isForward;
 };
 
-class VarDeclAST: public ExprAST
+class VarDeclAST : public ExprAST
 {
 public:
     VarDeclAST(std::vector<VarDef> v)
@@ -197,10 +209,10 @@ private:
     llvm::Function* func;
 };
 
-class FunctionAST: public ExprAST
+class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(PrototypeAST *prot, VarDeclAST* v, ExprAST* b) 
+    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b) 
 	: proto(prot), varDecls(v), body(b)
     { 
 	assert((proto->IsForward() || body) && "Function should have body"); 
@@ -211,7 +223,7 @@ public:
 private:
     PrototypeAST *proto;
     VarDeclAST   *varDecls;
-    ExprAST      *body;
+    BlockAST     *body;
 };
 
 class CallExprAST : public ExprAST
@@ -227,19 +239,7 @@ private:
     std::vector<ExprAST*> args;
 };
 
-class BlockAST: public ExprAST
-{
-public:
-    BlockAST(ExprAST* blockContent) : 
-	content(blockContent) {}
-    virtual void DoDump(std::ostream& out) const;
-    virtual llvm::Value* CodeGen();
-    bool IsEmpty() { return content == NULL; }
-private:
-    ExprAST* content;
-};
-
-class IfExprAST: public ExprAST
+class IfExprAST : public ExprAST
 {
 public:
     IfExprAST(ExprAST* c, ExprAST* t, ExprAST* e) 
@@ -252,7 +252,7 @@ private:
     ExprAST* other;
 };
 
-class ForExprAST: public ExprAST
+class ForExprAST : public ExprAST
 {
 public:
     ForExprAST(const std::string& var, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
@@ -267,7 +267,7 @@ private:
     ExprAST* body;
 };
 
-class WhileExprAST: public ExprAST
+class WhileExprAST : public ExprAST
 {
 public:
     WhileExprAST(ExprAST* c, ExprAST* b)
@@ -279,7 +279,7 @@ private:
     ExprAST* body;
 };
 
-class RepeatExprAST: public ExprAST
+class RepeatExprAST : public ExprAST
 {
 public:
     RepeatExprAST(ExprAST* c, ExprAST* b)
@@ -291,7 +291,7 @@ private:
     ExprAST* body;
 };
 
-class WriteAST: public ExprAST
+class WriteAST : public ExprAST
 {
 public:
     struct WriteArg
@@ -313,7 +313,7 @@ private:
     bool isWriteln;
 };
 
-class ReadAST: public ExprAST
+class ReadAST : public ExprAST
 {
 public:
     ReadAST(const std::vector<ExprAST*> &a, bool isLn)

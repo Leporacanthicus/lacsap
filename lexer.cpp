@@ -216,11 +216,17 @@ Token Lexer::GetToken()
 	{
 	    tt = Token::TypeName;
 	}
+	else if (types.IsEnumValue(str))
+	{
+	    tt = Token::EnumValue;
+	    Types::EnumValue* e = types.FindEnumValue(str); 
+	    assert(e && "Expected to find enum value...");
+	    return Token(tt, w, e->value);
+	}
 	else 
 	{
 	    tt = Token::Identifier;
 	}
-
 	return Token(tt, w, str);
     }
 

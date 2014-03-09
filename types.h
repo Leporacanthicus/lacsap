@@ -20,6 +20,7 @@ public:
 	Record,
         Set,
 	SubRange,
+	Enum,
 	Void,
     };
 
@@ -53,6 +54,7 @@ public:
 	virtual std::string to_string() const;
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
+
     private:
 	SimpleTypes type;
     };
@@ -89,23 +91,58 @@ public:
 	SimpleTypes baseType;
     };
 
+    struct EnumValue
+    {
+	EnumValue(const std::string& nm, int v)
+	    : name(nm), value(v) {}
+	EnumValue(const EnumValue &e)
+	    : name(e.name), value(e.value) {}
+	std::string name;
+	int value;
+    };
+
+    typedef std::vector<EnumValue> EnumValues;
+
+    class EnumDecl : public TypeDecl
+    {
+    public:
+	EnumDecl(const std::vector<std::string>& nmv)
+	    : TypeDecl(Enum)
+	{
+	    assert(nmv.size() && "Must have names in the enum type.");
+	    SetValues(nmv);
+	}
+    private:
+	void SetValues(const std::vector<std::string>& nmv);
+    public:
+	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
+	const EnumValues& GetValues() const { return values; }
+    private:
+	EnumValues values;
+    };
+
+
     typedef Stack<TypeDecl*> TypeStack;
     typedef StackWrapper<TypeDecl*> TypeWrapper;
+    typedef Stack<EnumValue*> EnumStack;
+    typedef StackWrapper<EnumValue*> EnumWrapper;
 
     TypeStack& GetTypes() { return types; }
 
     static llvm::Type* GetType(const TypeDecl* type);
     static llvm::Type* GetType(SimpleTypes type);
-    
 
     bool IsTypeName(const std::string& name);
-    void Add(const std::string& nm, TypeDecl* ty) { types.Add(nm, ty); }
+    bool IsEnumValue(const std::string& name);
+    void Add(const std::string& nm, TypeDecl* ty);
     TypeDecl* GetTypeDecl(const std::string& name);
+    EnumValue* FindEnumValue(const std::string& name);
     
     Types();
 
 private:
     TypeStack types;
+    EnumStack enums;
 };
 
 #endif

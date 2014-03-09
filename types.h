@@ -52,7 +52,7 @@ public:
 	virtual ~TypeDecl() { }
 	virtual std::string to_string() const;
 	virtual bool isIntegral() const;
-	Range *GetRange() const;
+	virtual Range *GetRange() const;
     private:
 	SimpleTypes type;
     };
@@ -83,6 +83,7 @@ public:
     public:
 	virtual bool isIntegral() const { return true; }
 	virtual SimpleTypes GetType() const { return baseType; }
+	virtual Range* GetRange() const { return range; }
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -99,7 +100,7 @@ public:
 
     bool IsTypeName(const std::string& name);
     void Add(const std::string& nm, TypeDecl* ty) { types.Add(nm, ty); }
-   TypeDecl* GetTypeDecl(const std::string& name);
+    TypeDecl* GetTypeDecl(const std::string& name);
     
     Types();
 

@@ -2,6 +2,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <sstream>
+#include <climits>
 
 bool Types::IsTypeName(const std::string& name)
 {
@@ -90,6 +91,20 @@ bool Types::TypeDecl::isIntegral() const
 	return false;
     default:
 	return true;
+    }
+}
+
+Types::Range* Types::TypeDecl::GetRange() const
+{
+    assert(isIntegral());
+    switch(type)
+    {
+    case Char:
+	return new Range(0, UCHAR_MAX);
+    case Integer:
+	return new Range(INT_MIN, INT_MAX);
+    default:
+	return 0;
     }
 }
 

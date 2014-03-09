@@ -139,23 +139,29 @@ Types::Range* Parser::ParseRange()
 
 	return new Types::Range(start, end);
     }
-#if 0
-    else if (tt == Token::TypeName)
-    {
-	TypeDecl* ty = Types::GetTypeDecl(); 
-	if (!ty->IsInteger())
-	{
-	    return ErrorR("Type used for array index must be of integer type");
-	}
-	return ty->GetRange();
-    }
-#endif
     else
     {
 	return ErrorR("Invalid range specification");
     }
 }
 
+Types::Range* Parser::ParseRangeOrTypeRange()
+{
+    if (CurrentToken().GetType() == Token::TypeName)
+    {
+	Types::TypeDecl* ty = types.GetTypeDecl(CurrentToken().GetIdentName());
+	if (!ty->isIntegral())
+	{
+	    return ErrorR("Type used as index specification should be integral type");
+	}
+	NextToken();
+	return ty->GetRange();
+    }
+    else
+    {
+	return ParseRange();
+    }
+}
 
 // Deal with type name = ... defintions
 void Parser::ParseTypeDef()
@@ -198,7 +204,7 @@ Types::TypeDecl* Parser::ParseType()
 	std::vector<Types::Range*> rv;
 	while(CurrentToken().GetType() != Token::RightSquare)
 	{
-	    Types::Range* r = ParseRange();
+	    Types::Range* r = ParseRangeOrTypeRange();
 	    if (!r) 
 	    {
 		return 0;

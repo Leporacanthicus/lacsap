@@ -5,6 +5,11 @@ type
 
 var
    ll :  letter;
+
+function f : integer;
+var a :  array [char] of integer;
+begin
+end;
    
 begin
    ll := 'B';

@@ -183,8 +183,9 @@ llvm::Value* ArrayExprAST::Address()
 	{
 	    return ErrorV("Index is supposed to be integral type");
 	}
-	index = builder.CreateSub(index, MakeIntegerConstant(ranges[i]->GetStart()));
-	index = builder.CreateMul(index, MakeIntegerConstant(indexmul[i]));
+	llvm::Type* ty = index->getType();
+	index = builder.CreateSub(index, MakeConstant(ranges[i]->GetStart(), ty));
+	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
     }
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
@@ -538,8 +539,9 @@ llvm::Function* FunctionAST::CodeGen()
     }
 
     variables.Dump(std::cerr);
-    llvm::Value *block = body->CodeGen();
-    if (!block)
+    BlockAST* bl = dynamic_cast<BlockAST*>(body);
+    llvm::Value *block = bl->CodeGen();
+    if (!block && !bl->IsEmpty())
     {
 	return 0;
     }

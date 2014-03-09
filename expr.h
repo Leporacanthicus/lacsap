@@ -234,6 +234,7 @@ public:
 	content(blockContent) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
+    bool IsEmpty() { return content == NULL; }
 private:
     ExprAST* content;
 };

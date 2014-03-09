@@ -46,6 +46,7 @@ private:
     PrototypeAST* ParsePrototype(bool isFunction);
 
     Types::Range* ParseRange();
+    Types::Range* ParseRangeOrTypeRange();
     void ParseTypeDef();
 
     Types::TypeDecl* ParseSimpleType();

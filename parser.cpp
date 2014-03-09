@@ -1025,6 +1025,7 @@ ExprAST* Parser::ParsePrimary()
 	return ParseRealExpr();
 
     case Token::Integer:
+    case Token::EnumValue:
 	return ParseIntegerExpr();
 
     case Token::Char:

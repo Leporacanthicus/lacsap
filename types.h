@@ -121,13 +121,10 @@ public:
 	EnumValues values;
     };
 
-
     typedef Stack<TypeDecl*> TypeStack;
     typedef StackWrapper<TypeDecl*> TypeWrapper;
     typedef Stack<EnumValue*> EnumStack;
     typedef StackWrapper<EnumValue*> EnumWrapper;
-
-    TypeStack& GetTypes() { return types; }
 
     static llvm::Type* GetType(const TypeDecl* type);
     static llvm::Type* GetType(SimpleTypes type);

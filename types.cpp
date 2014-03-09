@@ -33,7 +33,9 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
 
 llvm::Type* Types::GetType(const Types::TypeDecl* type)
 {
-    if (type->GetType() == Types::Array)
+    switch(type->GetType())
+    {
+    case Types::Array:
     {
 	const Types::ArrayDecl* a = dynamic_cast<const Types::ArrayDecl*>(type);
 	assert(a && "Huh? Couldn't convert type that says it's an array to ArrayDecl");
@@ -56,9 +58,17 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
 	assert(ty && "Expected to get a type back!");
 	return llvm::ArrayType::get(ty, nelems);
     }
-    llvm::Type* ty = GetType(type->GetType());
-    assert(ty && "Expect basic type to return a Type*");
-    return ty;
+    case Types::Enum:
+    {
+	return GetType(Integer);
+    }
+    default:
+    {
+	llvm::Type* ty = GetType(type->GetType());
+	assert(ty && "Expect basic type to return a Type*");
+	return ty;
+    }
+    }
 }
 
 Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)

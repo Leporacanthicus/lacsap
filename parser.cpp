@@ -1097,11 +1097,6 @@ ExprAST* Parser::Parse()
 	    NextToken();
 	    break;
 
-	case Token::Unused:
-	case Token::Unknown:
-	    assert(0);
-	    break;
-
 	case Token::Function:
 	case Token::Procedure:
 	    curAst = ParseDefinition();

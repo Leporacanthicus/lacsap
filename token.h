@@ -22,8 +22,6 @@ class Token
 public:
     enum TokenType
     {
-	Unused     = 0,
-
 	// Values of different types
 	Integer,
 	Real,

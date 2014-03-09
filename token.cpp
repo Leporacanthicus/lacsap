@@ -159,7 +159,6 @@ const TokenEntry tokenTable[] =
     { Token::EnumValue,     -1, "enumvalue" },
     { Token::Identifier,    -1, "identifier" },
     { Token::Unknown,       -1, "Unknown" },
-    { Token::Unused,        -1, "Unused" },
     { Token::EndOfFile,     -1, "EOF" },
 };
 

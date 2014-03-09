@@ -81,7 +81,7 @@ Token Lexer::GetToken()
 	return Token(Token::EndOfFile, w);
     }
 
-    Token::TokenType tt = Token::Unused;
+    Token::TokenType tt = Token::Unknown;
     switch(ch)
     {
     case '(':
@@ -171,7 +171,7 @@ Token Lexer::GetToken()
 	tt = Token::RightSquare;
 	break;
     }
-    if (tt != Token::Unused)
+    if (tt != Token::Unknown)
     {
 	NextChar();
 	return Token(tt, w);

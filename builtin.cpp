@@ -165,7 +165,7 @@ static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 
 static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 argument to ord");
+    assert(args.size() == 1 && "Expect 1 argument to chr");
 
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");

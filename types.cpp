@@ -33,7 +33,7 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
 
 llvm::Type* Types::GetType(const Types::TypeDecl* type)
 {
-    switch(type->GetType())
+    switch(type->Type())
     {
     case Types::Array:
     {
@@ -42,7 +42,7 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
 	size_t nelems = 0;
 	for(auto r : a->Ranges())
 	{
-	    
+	    assert(r->Size() && "Expectig range to have a non-zero size!");
 	    if (!nelems)
 	    {
 		nelems = r->Size();
@@ -62,9 +62,15 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
     {
 	return GetType(Integer);
     }
+    case Types::Pointer:
+    {
+	const Types::PointerDecl* pd = dynamic_cast<const Types::PointerDecl*>(type);
+	llvm::Type* ty = llvm::PointerType::getUnqual(GetType(pd->BaseType()));
+	return ty;
+    }
     default:
     {
-	llvm::Type* ty = GetType(type->GetType());
+	llvm::Type* ty = GetType(type->Type());
 	assert(ty && "Expect basic type to return a Type*");
 	return ty;
     }
@@ -92,8 +98,7 @@ void Types::Add(const std::string& nm, TypeDecl* ty)
     Types::EnumDecl* ed = dynamic_cast<EnumDecl*>(ty);
     if (ed)
     {
-	const Types::EnumValues values = ed->GetValues();
-	for(auto v : values)
+	for(auto v : ed->Values())
 	{
 	    if (!enums.Add(v.name, new Types::EnumValue(v)))
 	    {
@@ -103,6 +108,20 @@ void Types::Add(const std::string& nm, TypeDecl* ty)
     }
     types.Add(nm, ty);
 }
+
+void Types::FixUpIncomplete(Types::PointerDecl *p)
+{
+    TRACE();
+    TypeDecl *ty = types.Find(p->Name());
+    if(!ty)
+    {
+	std::cerr << "Forward declared pointer type not declared: " << p->Name() << std::endl;
+	return;
+    }
+    TRACE();
+    p->SetBaseType(ty);
+}
+    
 
 Types::EnumValue* Types::FindEnumValue(const std::string& nm)
 {
@@ -127,6 +146,8 @@ bool Types::TypeDecl::isIntegral() const
     case Void:
     case Function:
     case Procedure:
+    case Pointer:
+    case PointerIncomplete:
 	return false;
     default:
 	return true;
@@ -149,7 +170,6 @@ Types::Range* Types::TypeDecl::GetRange() const
 
 void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
 {
-    TRACE();
     unsigned int v = 0;
     for(auto n : nmv)
     {
@@ -157,6 +177,12 @@ void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
 	values.push_back(e);
 	v++;
     }
+}
+
+Types::TypeDecl* Types::PointerDecl::BaseType() const
+{
+    assert(baseType && "Should have backpatched this to point");
+    return baseType;
 }
 
 Types::Types()
@@ -167,3 +193,4 @@ Types::Types()
     types.Add("char", new TypeDecl(Char));
     types.Add("boolean", new TypeDecl(Boolean));
 }
+

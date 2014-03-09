@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "binary.h"
+#include "types.h"
 #include <iostream>
 #include <fstream>
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -18,6 +19,7 @@ static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
 static llvm::ExecutionEngine* theExecutionEngine;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+Types types;
 
 void DumpModule(llvm::Module* module)
 {
@@ -84,7 +86,6 @@ static void Compile(const std::string& filename)
     try
     {
 	ExprAST* ast;
-	Types types;
 	Lexer l(filename, types);
 	Parser p(l, types);
 	OptimizerInit();

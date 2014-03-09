@@ -61,6 +61,7 @@ public:
 	NotEqual,
 	Period,
 	DotDot,
+	Uparrow,
 
 	// Keywords
 	For,

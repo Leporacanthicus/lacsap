@@ -495,7 +495,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    ErrorF(std::string("Duplicate variable name ") + args[idx].Name());
 	}
     }
-    if (resultType->GetType() != Types::Void)
+    if (resultType->Type() != Types::Void)
     {
 	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, resultType));
 	variables.Add(name, a);
@@ -542,7 +542,7 @@ llvm::Function* FunctionAST::CodeGen()
 	return 0;
     }
 
-    if (proto->ResultType()->GetType() == Types::Void)
+    if (proto->ResultType()->Type() == Types::Void)
     {
 	builder.CreateRetVoid();
     }

@@ -170,6 +170,10 @@ Token Lexer::GetToken()
     case ']':
 	tt = Token::RightSquare;
 	break;
+	
+    case '^':
+	tt = Token::Uparrow;
+	break;
     }
     if (tt != Token::Unknown)
     {

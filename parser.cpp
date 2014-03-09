@@ -167,37 +167,42 @@ Types::Range* Parser::ParseRangeOrTypeRange()
 // Deal with type name = ... defintions
 void Parser::ParseTypeDef()
 {
-    TRACE();
+    std::vector<Types::PointerDecl*> incomplete;
     NextToken();
     do
     {
 	if (!Expect(Token::Identifier, false))
 	{
-	    TRACE();
 	    return;
 	}
 	std::string nm = CurrentToken().GetIdentName();
 	NextToken();
 	if (!Expect(Token::Equal, true))
 	{
-	    TRACE();
 	    return;
 	}
 	Types::TypeDecl* ty = ParseType();
 	if (!ty)
 	{
-	    TRACE();
 	    return;
 	}
 	types.Add(nm, ty);
+	if (ty->Type() == Types::PointerIncomplete)
+	{
+	    Types::PointerDecl* pd = dynamic_cast<Types::PointerDecl*>(ty);
+	    incomplete.push_back(pd);
+	}	    
 	if (!Expect(Token::Semicolon, true))
 	{
-	    TRACE();
 	    return;
 	}
-	TRACE();
 	CurrentToken().Dump(std::cerr);
     } while (CurrentToken().GetType() == Token::Identifier);
+
+    for(auto p : incomplete)
+    {
+	types.FixUpIncomplete(p);
+    }
 }
 
 Types::EnumDecl* Parser::ParseEnumDef()
@@ -230,6 +235,65 @@ Types::EnumDecl* Parser::ParseEnumDef()
     return new Types::EnumDecl(values);
 }
 
+Types::PointerDecl* Parser::ParsePointerType()
+{
+    if(!Expect(Token::Uparrow, true))
+    {
+	return 0;
+    }
+    // If the name is an "identifier" then it's a name of a not yet declared type.
+    // We need to forward declare it, and backpatch later. 
+    if (CurrentToken().GetType() == Token::Identifier)
+    {
+	std::string name = CurrentToken().GetIdentName();
+	NextToken();
+	return new Types::PointerDecl(name);
+    }
+    else
+    {
+	Types::TypeDecl *ty = ParseType();
+	return new Types::PointerDecl(ty);
+    }
+}
+
+Types::ArrayDecl* Parser::ParseArrayDecl()
+{
+    if (!Expect(Token::Array, true))
+    {
+	return 0;
+    }
+    if (!Expect(Token::LeftSquare, true))
+    {
+	return 0;
+    }
+    std::vector<Types::Range*> rv;
+    while(CurrentToken().GetType() != Token::RightSquare)
+    {
+	Types::Range* r = ParseRangeOrTypeRange();
+	if (!r) 
+
+	{
+	    return 0;
+	}
+	rv.push_back(r);
+	if (CurrentToken().GetType() == Token::Comma)
+	{
+	    NextToken();
+	}
+    }
+    if (!Expect(Token::RightSquare, true) || 
+	!Expect(Token::Of, true))
+    {
+	return 0;
+    }
+    Types::TypeDecl* ty = ParseType();
+    if (!ty)
+    {
+	return 0;
+    }
+    return new Types::ArrayDecl(ty, rv);
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetType();
@@ -238,40 +302,9 @@ Types::TypeDecl* Parser::ParseType()
     {
     case Token::TypeName:
 	return ParseSimpleType();
-	    
+
     case Token::Array:
-    {
-	NextToken();
-	if (!Expect(Token::LeftSquare, true))
-	{
-	    return 0;
-	}
-	std::vector<Types::Range*> rv;
-	while(CurrentToken().GetType() != Token::RightSquare)
-	{
-	    Types::Range* r = ParseRangeOrTypeRange();
-	    if (!r) 
-	    {
-		return 0;
-	    }
-	    rv.push_back(r);
-	    if (CurrentToken().GetType() == Token::Comma)
-	    {
-		NextToken();
-	    }
-	}
-	if (!Expect(Token::RightSquare, true) || 
-	    !Expect(Token::Of, true))
-	{
-	    return 0;
-	}
-	Types::TypeDecl* ty = ParseType();
-	if (!ty)
-	{
-	    return 0;
-	}
-	return new Types::ArrayDecl(ty, rv);
-    }
+	return ParseArrayDecl();
 
     case Token::Integer:
     case Token::Char:
@@ -282,10 +315,11 @@ Types::TypeDecl* Parser::ParseType()
     }
     
     case Token::LeftParen:
-    {
-	Types::EnumDecl* e = ParseEnumDef();
-	return e;
-    }
+	return ParseEnumDef();
+
+    case Token::Uparrow:
+	return ParsePointerType();
+
     default:
 	return ErrorT("Can't understand type");
     }
@@ -397,7 +431,6 @@ ExprAST* Parser::ParseIdentifierExpr()
 	// Left Square = array access.
 	if (CurrentToken().GetType() == Token::LeftSquare)
 	{
-	    assert(def->Type()->GetType() == Types::Array && "Expected array type here");
 	    const Types::ArrayDecl* adecl = dynamic_cast<const Types::ArrayDecl*>(def->Type()); 
 	    if (!adecl)
 	    {
@@ -431,8 +464,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
-	if ((def->Type()->GetType() != Types::Function && 
-	     def->Type()->GetType() != Types::Procedure) || 
+	if ((def->Type()->Type() != Types::Function && 
+	     def->Type()->Type() != Types::Procedure) || 
 	    CurrentToken().GetType() == Token::Assign)
 	{
 	    return new VariableExprAST(idName);

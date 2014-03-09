@@ -17,10 +17,12 @@ public:
     int GetErrors() { return errCnt; } 
 
 private:
+    /* Token handling functions */
     const Token& CurrentToken() const;
     const Token& NextToken(const char* file, int line);
     const Token& PeekToken(const char* file, int line);
 
+    /* Simple expression parsing */
     ExprAST* ParseExpression();
     ExprAST* ParseIdentifierExpr();
     ExprAST* ParseRealExpr();
@@ -29,37 +31,46 @@ private:
     ExprAST* ParseStringExpr();
     ExprAST* ParseParenExpr();
     ExprAST* ParsePrimary();
-    ExprAST* ParseStatement();
-    ExprAST* ParseReturnExpr();
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
+    ExprAST* ParseUnaryOp();
+
+    /* Control flow functionality */
+    ExprAST* ParseRepeat();
     ExprAST* ParseIfExpr();
     ExprAST* ParseForExpr();
     ExprAST* ParseWhile();
-    ExprAST* ParseRepeat();
-    ExprAST* ParseWrite();
-    ExprAST* ParseRead();
-    ExprAST* ParseUnaryOp();
-    ExprAST* ParseStmtOrBlock();
-    VarDeclAST* ParseVarDecls();
-    BlockAST* ParseBlock();
-    FunctionAST* ParseDefinition();
+
+    /* I/O functions */
+    ExprAST*      ParseWrite();
+    ExprAST*      ParseRead();
+
+    /* Statements, blocks and calls. */
+    ExprAST*      ParseStatement();
+    ExprAST*      ParseStmtOrBlock();
+    VarDeclAST*   ParseVarDecls();
+    BlockAST*     ParseBlock();
+    FunctionAST*  ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
-    Types::Range* ParseRange();
-    Types::Range* ParseRangeOrTypeRange();
-    void ParseTypeDef();
+    /* Type declarations and defintitions */
+    void                ParseTypeDef();
+    Types::Range*       ParseRange();
+    Types::Range*       ParseRangeOrTypeRange();
+    Types::TypeDecl*    ParseSimpleType();
+    Types::TypeDecl*    ParseType();
+    Types::EnumDecl*    ParseEnumDef();
+    Types::PointerDecl* ParsePointerType();
+    Types::ArrayDecl*   ParseArrayDecl();
 
-    Types::TypeDecl* ParseSimpleType();
-    Types::TypeDecl* ParseType();
-    Types::EnumDecl* ParseEnumDef();
-
+    /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 
-    ExprAST* Error(const std::string& msg, const char* file = 0, int line = 0);
-    PrototypeAST* ErrorP(const std::string& msg);
-    FunctionAST* ErrorF(const std::string& msg);
+    /* Error functions - all the same except for the return type */
+    ExprAST*         Error(const std::string& msg, const char* file = 0, int line = 0);
+    PrototypeAST*    ErrorP(const std::string& msg);
+    FunctionAST*     ErrorF(const std::string& msg);
     Types::TypeDecl* ErrorT(const std::string& msg);
-    Types::Range* ErrorR(const std::string& msg);
+    Types::Range*    ErrorR(const std::string& msg);
 
 private:
     typedef Stack<NamedObject*> NameStack;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 extern void __PascalMain(void);
 
@@ -59,10 +60,19 @@ void __read_nl()
 	;
 }
 
-
 void __write_nl(void)
 {
     putchar('\n');
+}
+
+void* __new(int size)
+{
+    return malloc(size);
+}
+
+void __dispose(void *ptr)
+{
+    free(ptr);
 }
 
 

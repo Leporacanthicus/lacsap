@@ -21,9 +21,20 @@ public:
         Set,
 	SubRange,
 	Enum,
+	Pointer,
+	PointerIncomplete,
 	Void,
     };
 
+    class TypeDecl;
+    struct EnumValue;
+    typedef Stack<TypeDecl*> TypeStack;
+    typedef StackWrapper<TypeDecl*> TypeWrapper;
+    typedef Stack<EnumValue*> EnumStack;
+    typedef StackWrapper<EnumValue*> EnumWrapper;
+
+
+    /* Range is either created by the user, or calculated on basetype */
     class Range
     {
     public:
@@ -49,13 +60,13 @@ public:
 	{
 	}
 
-	virtual SimpleTypes GetType() const { return type; }
+	virtual SimpleTypes Type() const { return type; }
 	virtual ~TypeDecl() { }
 	virtual std::string to_string() const;
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
 
-    private:
+    protected:
 	SimpleTypes type;
     };
 
@@ -84,7 +95,7 @@ public:
 	}
     public:
 	virtual bool isIntegral() const { return true; }
-	virtual SimpleTypes GetType() const { return baseType; }
+	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
     private:
 	Range* range;
@@ -116,15 +127,34 @@ public:
 	void SetValues(const std::vector<std::string>& nmv);
     public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
-	const EnumValues& GetValues() const { return values; }
+	const EnumValues& Values() const { return values; }
     private:
 	EnumValues values;
     };
 
-    typedef Stack<TypeDecl*> TypeStack;
-    typedef StackWrapper<TypeDecl*> TypeWrapper;
-    typedef Stack<EnumValue*> EnumStack;
-    typedef StackWrapper<EnumValue*> EnumWrapper;
+    // Since we need do "late" binding of pointer types, we just keep
+    // the name and resolve the actual type at a later point. If the
+    // type is known, store it directly. (Otherwise, on lookup).
+    class PointerDecl : public TypeDecl
+    {
+    public:
+	PointerDecl(const std::string& nm)
+	    : TypeDecl(PointerIncomplete), name(nm), baseType(0) {}
+	PointerDecl(TypeDecl* ty)
+	    : TypeDecl(Pointer), name(""), baseType(ty) {}
+    public:
+	TypeDecl* BaseType() const;
+	const std::string& Name() { return name; }
+	void SetBaseType(TypeDecl* t) 
+	{
+	    assert(t && "Type should be non-NULL");
+	    baseType = t; 
+	    type = Pointer; 
+	}
+    private:
+	std::string name;
+	TypeDecl* baseType;
+    };
 
     static llvm::Type* GetType(const TypeDecl* type);
     static llvm::Type* GetType(SimpleTypes type);
@@ -134,6 +164,8 @@ public:
     void Add(const std::string& nm, TypeDecl* ty);
     TypeDecl* GetTypeDecl(const std::string& name);
     EnumValue* FindEnumValue(const std::string& name);
+
+    void FixUpIncomplete(PointerDecl* p);
     
     Types();
 

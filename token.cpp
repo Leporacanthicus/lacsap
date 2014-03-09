@@ -155,6 +155,7 @@ const TokenEntry tokenTable[] =
     { Token::Colon,         -1, ":" },
     { Token::Period,        -1, "." },
     { Token::DotDot,        -1, ".." },
+    { Token::Uparrow,       -1, "^" },
     { Token::TypeName,      -1, "typename" },
     { Token::EnumValue,     -1, "enumvalue" },
     { Token::Identifier,    -1, "identifier" },

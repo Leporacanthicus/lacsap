@@ -1,6 +1,8 @@
 #include "expr.h"
 #include "builtin.h"
 
+#include <llvm/IR/DataLayout.h>
+
 typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
 
 struct BuiltinFunction
@@ -123,9 +125,7 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
     }
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
-	std::vector<llvm::Value*> argsV;
-	argsV.push_back(a);
-	return builder.CreateCall(f, argsV, "calltmp");
+	return builder.CreateCall(f, a, "calltmp");
     }
     return ErrorV("Expected type of real or integer for 'sqr'");
 }
@@ -202,7 +202,6 @@ static llvm::Value* SuccCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
     return ErrorV("Expected integer type for succ function");
 }
 
-
 static llvm::Value* PredCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to pred");
@@ -216,24 +215,87 @@ static llvm::Value* PredCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
     return ErrorV("Expected integer type for pred function");
 }
 
+static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to 'new'");
+
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->isPointerTy())
+    {
+	llvm::Type* ty = Types::GetType(Types::Integer);
+	std::vector<llvm::Type*> argTypes;
+	argTypes.push_back(ty);
+
+	std::string name = "__new";
+	llvm::FunctionType* ft = llvm::FunctionType::get(a->getType(), argTypes, false);
+	llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
+						   name, theModule);
+	if (f->getName() != name)
+	{
+	    f->eraseFromParent();
+	    f = theModule->getFunction(name);
+	}
+	
+	ty = a->getType()->getContainedType(0);
+	const llvm::DataLayout dl(theModule);
+	llvm::Value* aSize = MakeIntegerConstant(dl.getTypeAllocSize(ty));
+	
+	llvm::Value* retVal = builder.CreateCall(f, aSize, "new");
+	
+	VariableExprAST* var = dynamic_cast<VariableExprAST*>(args[0]);
+	llvm::Value* pA = var->Address();
+	return builder.CreateStore(retVal, pA);
+    }
+    return ErrorV("Expected pointer argument for 'new'");
+}
+
+
+static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to 'new'");
+
+    llvm::Value* a = args[0]->CodeGen();
+    if (a->getType()->isPointerTy())
+    {
+	llvm::Type* ty = a->getType();
+	std::vector<llvm::Type*> argTypes;
+	argTypes.push_back(ty);
+
+	std::string name = "__dispose";
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+	llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
+						   name, theModule);
+	if (f->getName() != name)
+	{
+	    f->eraseFromParent();
+	    f = theModule->getFunction(name);
+	}
+	return builder.CreateCall(f, a);
+    }
+    return ErrorV("Expected pointer argument for 'new'");
+}
+
+
 
 const static BuiltinFunction bifs[] =
 {
-    { "abs",    AbsCodeGen    },
-    { "odd",    OddCodeGen    },
-    { "trunc",  TruncCodeGen  },
-    { "round",  RoundCodeGen  },
-    { "sqr",    SqrCodeGen    },
-    { "sqrt",   SqrtCodeGen   },
-    { "sin",    SinCodeGen    },
-    { "cos",    CosCodeGen    },
-    { "arctan", ArctanCodeGen },
-    { "ln",     LnCodeGen     },
-    { "exp",    ExpCodeGen    },
-    { "chr",    ChrCodeGen    },
-    { "ord",    OrdCodeGen    },
-    { "succ",   SuccCodeGen   },
-    { "pred",   PredCodeGen   },
+    { "abs",     AbsCodeGen     },
+    { "odd",     OddCodeGen     },
+    { "trunc",   TruncCodeGen   },
+    { "round",   RoundCodeGen   },
+    { "sqr",     SqrCodeGen     },
+    { "sqrt",    SqrtCodeGen    },
+    { "sin",     SinCodeGen     },
+    { "cos",     CosCodeGen     },
+    { "arctan",  ArctanCodeGen  },
+    { "ln",      LnCodeGen      },
+    { "exp",     ExpCodeGen     },
+    { "chr",     ChrCodeGen     },
+    { "ord",     OrdCodeGen     },
+    { "succ",    SuccCodeGen    },
+    { "pred",    PredCodeGen    },
+    { "new",     NewCodeGen     },
+    { "dispose", DisposeCodeGen },
 };
 
 static const BuiltinFunction* find(const std::string& name)

@@ -12,7 +12,7 @@ public:
     NamedObject(const std::string& nm, Types::TypeDecl* ty, PrototypeAST* p = 0) 
 	: name(nm), type(ty), proto(p) 
     {
-	if (ty->GetType() == Types::Function || ty->GetType() == Types::Procedure)
+	if (ty->Type() == Types::Function || ty->Type() == Types::Procedure)
 	{
 	    assert(p && "Prototype should not be NULL for functions and procedures");
 	}

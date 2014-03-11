@@ -3,12 +3,13 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-Type declarations (allowed at global scope, not in functions at present)
+* Record (pretty important)
 Function/Procedure arguments.
-Record (pretty important)
 File/Text variable types
 Pointers and dynamic memory allocation (and release thereof).
 Proper testing.
+
+* Marks that "I'm working on it now". 
 
 The driver properly linking the runtime.
 Lots of other small and large things that I can't think of right now.

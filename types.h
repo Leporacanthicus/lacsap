@@ -170,6 +170,8 @@ public:
     void Add(const std::string& nm, TypeDecl* ty);
     TypeDecl* GetTypeDecl(const std::string& name);
     EnumValue* FindEnumValue(const std::string& name);
+    
+    TypeStack& GetTypes() { return types; }
 
     void FixUpIncomplete(PointerDecl* p);
 

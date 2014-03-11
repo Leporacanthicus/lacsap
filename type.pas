@@ -8,7 +8,6 @@ type
    ptrMonth = ^month;
    month    = (january, february, march, april, may, june, july, august, september,
 	       october, november, december);
-   at = array [1..20] of integer;
    
 var
    ll	   : letter;
@@ -34,10 +33,13 @@ end;
 
 procedure testAccess;
 
+type
+   at = array [1..20] of integer;
+   
 var
    x	: integer;
    p	: ^integer;
-   arr	: array [1..20] of integer; 
+   arr	: at;
    parr	: ^at;
    arrp	: array [1..20] of ^integer;
 
@@ -50,8 +52,9 @@ begin
    parr^[x] := 10;
    new(arrp[x]);
    arrp[x]^ := 11;
-   writeln('p^', p^);
-   writeln('parr^[x]', parr^[x]);
+   writeln('p^=', p^:0);
+   writeln('parr^[x]=', parr^[x]:0);
+   writeln('arrp[x]^=', arrp[x]^:0);
 end;
    
 begin

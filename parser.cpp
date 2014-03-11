@@ -772,6 +772,7 @@ FunctionAST* Parser::ParseDefinition()
     }
     
     NameWrapper wrapper(nameStack);
+    Types::TypeWrapper typewrap(types.GetTypes());
     for(auto v : proto->Args())
     {
 	if (!nameStack.Add(v.Name(), new NamedObject(v.Name(), v.Type())))
@@ -782,6 +783,7 @@ FunctionAST* Parser::ParseDefinition()
 
     VarDeclAST* varDecls = 0;
     BlockAST* body = 0;
+    bool typeDecls = false;
     do
     {
 	switch(CurrentToken().GetType())
@@ -789,9 +791,18 @@ FunctionAST* Parser::ParseDefinition()
 	case Token::Var:
 	    if (varDecls)
 	    {
-		return ErrorF("Error: Can't declare variables multiple times");
+		return ErrorF("Can't declare variables multiple times");
 	    }
 	    varDecls = ParseVarDecls();
+	    break;
+
+	case Token::Type:
+	    if (typeDecls)
+	    {
+		return ErrorF("Can't declare types multiple times");
+	    }
+	    ParseTypeDef();
+	    typeDecls = true;
 	    break;
 	    
 	case Token::Begin:

@@ -8,25 +8,50 @@ type
    ptrMonth = ^month;
    month    = (january, february, march, april, may, june, july, august, september,
 	       october, november, december);
+   at = array [1..20] of integer;
+   
 var
    ll	   : letter;
    d	   : days;
    w	   : workdays;
    
 function f : integer;
-var a	   : array [char] of integer;
 begin
    w := wednesday;
    d := saturday;
    f := ord(w) + ord(d);
-end; { f }
+end; 
 
 procedure ptrtest;
 var
    p : ^integer;
 begin
    new(p);
+   p^ := 12;
    dispose(p);
+end;
+
+
+procedure testAccess;
+
+var
+   x	: integer;
+   p	: ^integer;
+   arr	: array [1..20] of integer; 
+   parr	: ^at;
+   arrp	: array [1..20] of ^integer;
+
+begin
+   x := 7;
+   new(p);
+   p^ := 8;
+   arr[x] := 9;
+   new(parr);
+   parr^[x] := 10;
+   new(arrp[x]);
+   arrp[x]^ := 11;
+   writeln('p^', p^);
+   writeln('parr^[x]', parr^[x]);
 end;
    
 begin
@@ -36,4 +61,5 @@ begin
       writeln('LL=', ll);
    writeln('f=', f:2);
    ptrtest;
+   testAccess;
 end.

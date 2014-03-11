@@ -22,9 +22,9 @@ public:
     PrototypeAST* Proto() const { return proto; }
     void dump() { std::cerr << "Name: " << name << " Type:" << type << std::endl; }
 private:
-    std::string         name;
-    Types::TypeDecl*    type;
-    PrototypeAST* proto;
+    std::string      name;
+    Types::TypeDecl* type;
+    PrototypeAST*    proto;
 };
 
 #endif

@@ -88,6 +88,8 @@ class VariableExprAST : public ExprAST
 public:
     VariableExprAST(const std::string& nm) 
 	: name(nm) {}
+    VariableExprAST(const VariableExprAST* v) 
+	: name(v->name) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     const std::string& Name() const { return name; }
@@ -99,10 +101,10 @@ protected:
 class ArrayExprAST : public VariableExprAST
 {
 public:
-    ArrayExprAST(const std::string& nm, 
+    ArrayExprAST(VariableExprAST *v,
 		 const std::vector<ExprAST*>& inds, 
 		 const std::vector<Types::Range*>& r)
-	: VariableExprAST(nm), indices(inds), ranges(r)
+	: VariableExprAST(v), expr(v), indices(inds), ranges(r)
     {
 	size_t mul = 1;
 	for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
@@ -116,9 +118,22 @@ public:
     /* Don't need CodeGen, just calculate address and use parent CodeGen */
     virtual llvm::Value* Address();
 private:
+    VariableExprAST* expr;
     std::vector<ExprAST*> indices;
     std::vector<Types::Range*> ranges;
     std::vector<size_t> indexmul;
+};
+
+class PointerExprAST : public VariableExprAST
+{
+public:
+    PointerExprAST(VariableExprAST *p)
+	: VariableExprAST(p), pointer(p) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    virtual llvm::Value* Address();
+private:
+    ExprAST* pointer;
 };
 
 class BinaryExprAST : public ExprAST

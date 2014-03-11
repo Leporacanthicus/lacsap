@@ -164,7 +164,7 @@ void ArrayExprAST::DoDump(std::ostream& out) const
 llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
-    llvm::Value* v = variables.Find(name);
+    llvm::Value* v = expr->Address();
     if (!v)
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
@@ -191,6 +191,45 @@ llvm::Value* ArrayExprAST::Address()
     ind.push_back(MakeIntegerConstant(0));
     ind.push_back(index);
     v = builder.CreateGEP(v, ind, "valueindex");
+    return v;
+}
+
+void PointerExprAST::DoDump(std::ostream& out) const
+{
+    out << "Pointer:";
+    pointer->Dump(out);
+}
+
+
+llvm::Value* PointerExprAST::CodeGen()
+{ 
+    // Look this variable up in the function.
+    TRACE();
+    llvm::Value* v = pointer->CodeGen();
+    if (!v)
+    {
+	return 0;
+    }
+    if (!v->getType()->isPointerTy())
+    {
+	return ErrorV("Expected pointer type.");
+    }
+    return builder.CreateLoad(v, "ptr"); 
+}
+
+llvm::Value* PointerExprAST::Address()
+{
+    TRACE();
+    VariableExprAST* vp = dynamic_cast<VariableExprAST*>(pointer);
+    if (!vp)
+    {
+	return ErrorV("Taking address of non-variable type.");
+    }
+    llvm::Value* v = vp->CodeGen();
+    if (!v)
+    {
+	return 0;
+    }
     return v;
 }
 

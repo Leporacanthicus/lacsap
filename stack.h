@@ -68,8 +68,6 @@ public:
     }
 
 private:
-    
-private:
 	StackType stack;
 };
 

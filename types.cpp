@@ -53,7 +53,7 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
 	    }
 	}
 	assert(nelems && "Expect number of elements to be non-zero!");
-	const Types::TypeDecl* base = a->BaseType();
+	const Types::TypeDecl* base = a->SubType();
 	llvm::Type* ty = GetType(base);
 	assert(ty && "Expected to get a type back!");
 	return llvm::ArrayType::get(ty, nelems);
@@ -65,7 +65,7 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
     case Types::Pointer:
     {
 	const Types::PointerDecl* pd = dynamic_cast<const Types::PointerDecl*>(type);
-	llvm::Type* ty = llvm::PointerType::getUnqual(GetType(pd->BaseType()));
+	llvm::Type* ty = llvm::PointerType::getUnqual(GetType(pd->SubType()));
 	return ty;
     }
     default:
@@ -119,7 +119,7 @@ void Types::FixUpIncomplete(Types::PointerDecl *p)
 	return;
     }
     TRACE();
-    p->SetBaseType(ty);
+    p->SetSubType(ty);
 }
     
 
@@ -168,6 +168,73 @@ Types::Range* Types::TypeDecl::GetRange() const
     }
 }
 
+static const char* TypeToStr(Types::SimpleTypes t)
+{
+    switch(t)
+    {
+    case Types::Integer:
+	return "Integer";
+    case Types::Real:
+	return "Real";
+    case Types::Char:
+	return "Char";
+    case Types::Boolean:
+	return "Boolean";
+    case Types::Array:
+	return "Array";
+    case Types::Function:
+	return "Function";
+    case Types::Procedure:
+	return "Procedure";
+    case Types::Record:
+	return "Record";
+    case Types::Set:
+	return "Set";
+    case Types::SubRange:
+	return "SubRange";
+    case Types::Enum:
+	return "Enum";
+    case Types::Pointer:
+	return "Pointer";
+    case Types::PointerIncomplete:
+	return "PointerIncomplete";
+    case Types::Void:
+	return "Void";
+    }
+}
+
+void Types::TypeDecl::dump()
+{
+    std::cerr << "Type: " << TypeToStr(type);
+}
+
+void Types::PointerDecl::dump()
+{
+    std::cerr << "Pointer to: ";
+    baseType->dump();
+}
+
+void Types::ArrayDecl::dump()
+{
+    std::cerr << "Array ";
+    for(auto r : ranges)
+    {
+	r->dump();
+    }
+    std::cerr << " of "; 
+    baseType->dump();
+}
+
+void Types::Range::dump()
+{
+    std::cerr << "[" << start << ".." << end << "]";
+}
+
+void Types::RangeDecl::dump()
+{
+    std::cerr << "RangeDecl: " << TypeToStr(baseType) << " " << range << std::endl;
+}
+
 void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
 {
     unsigned int v = 0;
@@ -179,10 +246,18 @@ void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
     }
 }
 
-Types::TypeDecl* Types::PointerDecl::BaseType() const
+void Types::EnumDecl::dump()
 {
-    assert(baseType && "Should have backpatched this to point");
-    return baseType;
+    std::cerr << "EnumDecl:";
+    for(auto v : values)
+    {
+	std::cerr << "   " << v.name << ": " << v.value;
+    }
+}
+
+void Types::Dump()
+{
+    types.Dump(std::cerr);
 }
 
 Types::Types()

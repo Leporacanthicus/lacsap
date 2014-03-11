@@ -3,7 +3,7 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-Type declarations (pretty important)
+Type declarations (allowed at global scope, not in functions at present)
 Function/Procedure arguments.
 Record (pretty important)
 File/Text variable types

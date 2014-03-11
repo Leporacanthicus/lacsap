@@ -11,6 +11,13 @@ struct BuiltinFunction
     CodeGenFunc CodeGen;
 };
 
+// Void pointer is not a "pointer to void", but a "pointer to Int8". 
+static llvm::Type* MakeVoidPtrType()
+{
+    llvm::Type* base = llvm::IntegerType::getInt8Ty(llvm::getGlobalContext());
+    return llvm::PointerType::getUnqual(base);
+}
+
 static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to abs");
@@ -227,7 +234,10 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	argTypes.push_back(ty);
 
 	std::string name = "__new";
-	llvm::FunctionType* ft = llvm::FunctionType::get(a->getType(), argTypes, false);
+	// Result is "void *"
+	
+	llvm::Type* resTy = MakeVoidPtrType();
+	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
 						   name, theModule);
 	if (f->getName() != name)
@@ -243,12 +253,16 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	llvm::Value* retVal = builder.CreateCall(f, aSize, "new");
 	
 	VariableExprAST* var = dynamic_cast<VariableExprAST*>(args[0]);
+	if (!var)
+	{
+	    return ErrorV("Expected a variable expression");
+	}
+	retVal = builder.CreateBitCast(retVal, a->getType(), "cast");
 	llvm::Value* pA = var->Address();
 	return builder.CreateStore(retVal, pA);
     }
     return ErrorV("Expected pointer argument for 'new'");
 }
-
 
 static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
@@ -274,8 +288,6 @@ static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector
     }
     return ErrorV("Expected pointer argument for 'new'");
 }
-
-
 
 const static BuiltinFunction bifs[] =
 {

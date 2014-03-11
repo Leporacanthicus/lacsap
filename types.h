@@ -47,6 +47,7 @@ public:
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
 	size_t Size() const { return (size_t) end - start; }
+	void dump();
     private:
 	int start;
 	int end;
@@ -65,7 +66,8 @@ public:
 	virtual std::string to_string() const;
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
-
+	virtual TypeDecl *SubType() const { return 0; }
+	virtual void dump();
     protected:
 	SimpleTypes type;
     };
@@ -79,7 +81,8 @@ public:
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	const std::vector<Range*>& Ranges() const { return ranges; }
-	TypeDecl* BaseType() const { return baseType; }
+	TypeDecl* SubType() const { return baseType; }
+	virtual void dump();
     private:
 	TypeDecl* baseType;
 	std::vector<Range*> ranges;
@@ -97,6 +100,7 @@ public:
 	virtual bool isIntegral() const { return true; }
 	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
+	virtual void dump();
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -128,13 +132,14 @@ public:
     public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
 	const EnumValues& Values() const { return values; }
+	virtual void dump();
     private:
 	EnumValues values;
     };
 
-    // Since we need do "late" binding of pointer types, we just keep
+    // Since we need to do "late" binding of pointer types, we just keep
     // the name and resolve the actual type at a later point. If the
-    // type is known, store it directly. (Otherwise, on lookup).
+    // type is known, store it directly. (Otherwise, when we call the fixup).
     class PointerDecl : public TypeDecl
     {
     public:
@@ -143,14 +148,15 @@ public:
 	PointerDecl(TypeDecl* ty)
 	    : TypeDecl(Pointer), name(""), baseType(ty) {}
     public:
-	TypeDecl* BaseType() const;
+	TypeDecl* SubType() const { return baseType; }
 	const std::string& Name() { return name; }
-	void SetBaseType(TypeDecl* t) 
+	void SetSubType(TypeDecl* t) 
 	{
 	    assert(t && "Type should be non-NULL");
 	    baseType = t; 
 	    type = Pointer; 
 	}
+	virtual void dump();
     private:
 	std::string name;
 	TypeDecl* baseType;
@@ -166,6 +172,8 @@ public:
     EnumValue* FindEnumValue(const std::string& name);
 
     void FixUpIncomplete(PointerDecl* p);
+
+    void Dump();
     
     Types();
 

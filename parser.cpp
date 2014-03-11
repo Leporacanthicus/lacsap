@@ -50,6 +50,12 @@ Types::Range* Parser::ErrorR(const std::string& msg)
     return 0;
 }
 
+VariableExprAST* Parser::ErrorV(const std::string& msg)
+{
+    Error(msg);
+    return 0;
+}
+
 const Token& Parser::CurrentToken() const
 {
     return curToken;
@@ -416,6 +422,42 @@ ExprAST* Parser::ParseExpression()
     return ParseBinOpRHS(0, lhs);
 }
 
+
+VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::TypeDecl* type)
+{
+    const Types::ArrayDecl* adecl = 
+	dynamic_cast<const Types::ArrayDecl*>(type); 
+    if (!adecl)
+    {
+	return ErrorV("Expected variable of array type when using index");
+    }
+    NextToken();
+    std::vector<ExprAST*> indices;
+    while(CurrentToken().GetType() != Token::RightSquare)
+    {
+	ExprAST* index = ParseExpression();
+	if (!index)
+	{
+	    return ErrorV("Expected index expression");
+	}
+	indices.push_back(index);
+	if (CurrentToken().GetType() != Token::RightSquare)
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return 0;
+	    }
+	}
+    }
+    assert(indices.size() ==  adecl->Ranges().size() && 
+	   "Expected same number of indices as declared subscripts");
+    if (!Expect(Token::RightSquare, true))
+    {
+	return 0;
+    }
+    return new ArrayExprAST(expr, indices, adecl->Ranges());
+}
+
 ExprAST* Parser::ParseIdentifierExpr()
 {
     std::string idName = CurrentToken().GetIdentName();
@@ -428,47 +470,39 @@ ExprAST* Parser::ParseIdentifierExpr()
 	{
 	    return Error(std::string("Undefined name '") + idName + "'");
 	}
-	// Left Square = array access.
-	if (CurrentToken().GetType() == Token::LeftSquare)
-	{
-	    const Types::ArrayDecl* adecl = dynamic_cast<const Types::ArrayDecl*>(def->Type()); 
-	    if (!adecl)
-	    {
-		return Error("Expected variable of array type when using index");
-	    }
-	    NextToken();
-	    std::vector<ExprAST*> indices;
-	    while(CurrentToken().GetType() != Token::RightSquare)
-	    {
-		ExprAST* index = ParseExpression();
-		if (!index)
-		{
-		    return Error("Expected index expression");
-		}
-		indices.push_back(index);
-		if (CurrentToken().GetType() != Token::RightSquare)
-		{
-		    if (!Expect(Token::Comma, true))
-		    {
-			return 0;
-		    }
-		}
-	    }
-	    assert(indices.size() ==  adecl->Ranges().size() && 
-		   "Expected same number of indices as declared subscripts");
-	    if (!Expect(Token::RightSquare, true))
-	    {
-		return 0;
-	    }
-	    return new ArrayExprAST(idName, indices, adecl->Ranges());
-	}
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
-	if ((def->Type()->Type() != Types::Function && 
-	     def->Type()->Type() != Types::Procedure) || 
+	Types::TypeDecl* type = def->Type();
+	assert(type && "Expect type here...");
+	if ((type->Type() != Types::Function && 
+	     type->Type() != Types::Procedure) || 
 	    CurrentToken().GetType() == Token::Assign)
 	{
-	    return new VariableExprAST(idName);
+	    VariableExprAST* expr = new VariableExprAST(idName);
+
+	    assert(type);
+
+	    Token::TokenType tt = CurrentToken().GetType();
+	    while(tt == Token::LeftSquare || tt == Token::Uparrow)
+	    {
+		switch(tt)
+		{
+		case Token::LeftSquare:
+		    expr = ParseArrayExpr(expr, type);
+		    break;
+
+		case Token::Uparrow:
+		    NextToken();
+		    expr = new PointerExprAST(expr);
+		    break;
+
+		default:
+		    assert(0);
+		}
+		tt = CurrentToken().GetType();
+		type = type->SubType();
+	    }
+	    return expr;	
 	}
     }
     // Get past the '(' and fetch the next one. 
@@ -664,7 +698,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 ExprAST* Parser::ParseStatement()
 {
     ExprAST* expr = ParsePrimary();
-    if(CurrentToken().GetType() == Token::Assign)
+    if (CurrentToken().GetType() == Token::Assign)
     {
 	NextToken();
 	ExprAST* rhs = ParseExpression();

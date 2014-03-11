@@ -34,6 +34,8 @@ private:
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseUnaryOp();
 
+    VariableExprAST* ParseArrayExpr(VariableExprAST* expr, const Types::TypeDecl* type);
+
     /* Control flow functionality */
     ExprAST* ParseRepeat();
     ExprAST* ParseIfExpr();
@@ -71,6 +73,8 @@ private:
     FunctionAST*     ErrorF(const std::string& msg);
     Types::TypeDecl* ErrorT(const std::string& msg);
     Types::Range*    ErrorR(const std::string& msg);
+    VariableExprAST* ErrorV(const std::string& msg);
+
 
 private:
     typedef Stack<NamedObject*> NameStack;

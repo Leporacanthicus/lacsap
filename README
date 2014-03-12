@@ -3,11 +3,13 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-* Record (pretty important)
+* Constants
 Function/Procedure arguments.
 File/Text variable types
-Pointers and dynamic memory allocation (and release thereof).
 Proper testing.
+
+Other work that is needed: 
+Store all nested data in one block.
 
 * Marks that "I'm working on it now". 
 

@@ -4,6 +4,7 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 
 Among things NOT yet supported are:
 * Constants
+Boolean
 Function/Procedure arguments.
 File/Text variable types
 Proper testing.

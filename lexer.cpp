@@ -265,8 +265,8 @@ Token Lexer::GetToken()
 }
 
 
-Lexer::Lexer(const std::string& sourceFile, Types& ty):
-    fName(sourceFile), lineNo(1),column(0), curValid(0), types(ty)
+Lexer::Lexer(const std::string& sourceFile, Types& ty, Constants& co):
+    fName(sourceFile), lineNo(1),column(0), curValid(0), types(ty), constants(co)
 {
     inFile.open(fName);
     if (!inFile.good())

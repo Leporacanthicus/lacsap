@@ -10,8 +10,8 @@
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
-Parser::Parser(Lexer &l, Types& ty) 
-    : 	lexer(l), nextTokenValid(false), errCnt(0), types(ty)
+Parser::Parser(Lexer &l, Types& ty, Constants& co) 
+    : 	lexer(l), nextTokenValid(false), errCnt(0), types(ty), constants(co)
 {
 }
 
@@ -170,11 +170,80 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     }
 }
 
+void Parser::ParseConstDef()
+{
+    if (!Expect(Token::Const, true))
+    {
+	return;
+    }
+    do
+    {
+	if (!Expect(Token::Identifier, false))
+	{
+	    return;
+	}
+	std::string nm = CurrentToken().GetIdentName();
+	NextToken();
+	if (!Expect(Token::Equal, true))
+	{
+	    return;
+	}
+	Constants::ConstDecl *cd = 0;
+	Location loc = CurrentToken().Loc();
+	switch(CurrentToken().GetType())
+	{
+	case Token::String:
+	    cd = new Constants:: StringConstDecl(loc, CurrentToken().GetStrVal());
+	    break;
+
+	case Token::Integer:
+	    cd = new Constants:: IntConstDecl(loc, CurrentToken().GetIntVal());
+	    break;
+
+	case Token::Real:
+	    cd = new Constants:: RealConstDecl(loc, CurrentToken().GetRealVal());
+	    break;
+
+	case Token::Char:
+	    cd = new Constants:: CharConstDecl(loc, (char) CurrentToken().GetIntVal());
+	    break;
+
+	case Token::True:
+	    cd = new Constants:: BoolConstDecl(loc, true);
+	    break;
+
+	case Token::False:
+	    cd = new Constants:: BoolConstDecl(loc, false);
+	    break;
+
+	default:
+	    break;
+	}
+	if (!cd) 
+	{
+	    Error("Invalid constant value");
+	}
+	NextToken();
+	if (!constants.Add(nm, cd))
+	{
+	    Error(std::string("Name ") + nm + " is already declared as a constant");
+	    return;
+	}
+	if (!Expect(Token::Semicolon, true))
+	{
+	    return;
+	}
+    } while (CurrentToken().GetType() == Token::Identifier);
+}
+
 // Deal with type name = ... defintions
 void Parser::ParseTypeDef()
 {
     std::vector<Types::PointerDecl*> incomplete;
-    NextToken();
+    if (!Expect(Token::Type, true))
+    {
+	return;
+    }
     do
     {
 	if (!Expect(Token::Identifier, false))
@@ -202,7 +271,6 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	CurrentToken().Dump(std::cerr);
     } while (CurrentToken().GetType() == Token::Identifier);
 
     for(auto p : incomplete)
@@ -1284,6 +1352,11 @@ ExprAST* Parser::Parse()
 	case Token::Type:
 	    ParseTypeDef();   
 	    // Generates no AST, so need to "continue" here
+	    continue;
+
+	case Token::Const:
+	    ParseConstDef();
+	    // No AST from constdef, so continue.
 	    continue;
 	    
 	case Token::Begin:

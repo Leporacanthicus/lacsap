@@ -52,7 +52,7 @@ bool Types::IsEnumValue(const std::string& name)
     return !!enums.Find(name);
 }
 
-void Types::Add(const std::string& nm, TypeDecl* ty)
+bool Types::Add(const std::string& nm, TypeDecl* ty)
 {
     Types::EnumDecl* ed = dynamic_cast<EnumDecl*>(ty);
     if (ed)
@@ -65,19 +65,17 @@ void Types::Add(const std::string& nm, TypeDecl* ty)
 	    }
 	}
     }
-    types.Add(nm, ty);
+    return types.Add(nm, ty);
 }
 
 void Types::FixUpIncomplete(Types::PointerDecl *p)
 {
-    TRACE();
     TypeDecl *ty = types.Find(p->Name());
     if(!ty)
     {
 	std::cerr << "Forward declared pointer type not declared: " << p->Name() << std::endl;
 	return;
     }
-    TRACE();
     p->SetSubType(ty);
 }
 

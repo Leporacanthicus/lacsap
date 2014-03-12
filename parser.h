@@ -11,7 +11,7 @@
 class Parser
 {
 public:
-    Parser(Lexer &l, Types& ty);
+    Parser(Lexer &l, Types& ty, Constants& co);
     ExprAST* Parse();
 
     int GetErrors() { return errCnt; } 
@@ -57,6 +57,7 @@ private:
 
     /* Type declarations and defintitions */
     void                ParseTypeDef();
+    void                ParseConstDef();
     Types::Range*       ParseRange();
     Types::Range*       ParseRangeOrTypeRange();
     Types::TypeDecl*    ParseSimpleType();
@@ -81,14 +82,15 @@ private:
 private:
     typedef Stack<NamedObject*> NameStack;
     typedef StackWrapper<NamedObject*> NameWrapper;
-    Lexer& lexer;
-    Token curToken;
-    Token nextToken;
-    bool nextTokenValid;
+    Lexer&      lexer;
+    Token       curToken;
+    Token       nextToken;
+    bool        nextTokenValid;
     std::string moduleName;
-    int errCnt;
-    NameStack nameStack;
-    Types& types;
+    int         errCnt;
+    NameStack   nameStack;
+    Types&      types;
+    Constants&  constants;
 };
 
 #endif

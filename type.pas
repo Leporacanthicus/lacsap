@@ -1,5 +1,12 @@
 program typetest;
 
+const
+   a = 1;
+   b = 'b';
+   c = 'A string';
+   d = 3.9;
+   e = true;
+
 type
    letter   = 'A'..'Z';
    days	    = (monday, tuesday, wednesday, thursday, friday, saturday, sunday);

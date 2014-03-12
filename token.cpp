@@ -17,7 +17,6 @@ std::string Location::to_string() const
     return fname+ ":" + std::to_string(lineNo) + ":" + std::to_string(column); 
 }
 
-
 Token::Token() : type(Token::Unknown), where("", 0, 0) {}
 
 Token::Token(TokenType t, const Location& w): type(t), where(w)
@@ -43,7 +42,6 @@ Token::Token(TokenType t, const Location& w, int v) : type(t), where(w), intVal(
 {
     assert(t == Token::Integer || t == Token::Char || t == Token::EnumValue);
 }
-
 
 Token::Token(TokenType t, const Location& w, double v) : type(t), where(w), realVal(v)
 {
@@ -129,6 +127,9 @@ const TokenEntry tokenTable[] =
     { Token::Record,        -2, "record" },
     { Token::Type,          -2, "type" },
     { Token::Forward,       -2, "forward" },
+    { Token::Const,         -2, "const" },
+    { Token::True,          -2, "true" },
+    { Token::False,         -2, "false" },
     { Token::Plus,          10, "+" },
     { Token::Minus,         10, "-" },
     { Token::Multiply,      40, "*" },
@@ -158,6 +159,7 @@ const TokenEntry tokenTable[] =
     { Token::Uparrow,       -1, "^" },
     { Token::TypeName,      -1, "typename" },
     { Token::EnumValue,     -1, "enumvalue" },
+    { Token::ConstName,     -1, "constant" },
     { Token::Identifier,    -1, "identifier" },
     { Token::Unknown,       -1, "Unknown" },
     { Token::EndOfFile,     -1, "EOF" },

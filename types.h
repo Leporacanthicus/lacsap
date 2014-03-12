@@ -206,7 +206,7 @@ public:
 
     bool IsTypeName(const std::string& name);
     bool IsEnumValue(const std::string& name);
-    void Add(const std::string& nm, TypeDecl* ty);
+    bool Add(const std::string& nm, TypeDecl* ty);
     TypeDecl* GetTypeDecl(const std::string& name);
     EnumValue* FindEnumValue(const std::string& name);
     

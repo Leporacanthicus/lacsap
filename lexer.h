@@ -3,6 +3,7 @@
 
 #include "token.h"
 #include "types.h"
+#include "constants.h"
 #include <string>
 #include <fstream>
 #include <exception>
@@ -10,7 +11,7 @@
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile, Types& ty);
+    Lexer(const std::string& sourceFile, Types& ty, Constants& co);
     Token GetToken();
 
 private:
@@ -21,14 +22,15 @@ private:
     Location Where() const { return Location(fName, lineNo, column); }
 
 private:
-    std::string fName;
-    int lineNo;
-    int column;
+    std::string   fName;
+    int           lineNo;
+    int           column;
     std::ifstream inFile;
-    int curChar;
-    int nextChar;
-    int curValid;
-    Types& types;
+    int           curChar;
+    int           nextChar;
+    int           curValid;
+    Types&        types;
+    Constants&    constants;;
 };
 
 class LexerException : public std::exception

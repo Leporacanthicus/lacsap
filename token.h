@@ -28,7 +28,8 @@ public:
 	String,
 	Char,
 	Boolean,
-	EnumValue,
+	True,
+	False,
 
 	// Type/var/const declarations:
 	Type,
@@ -39,6 +40,9 @@ public:
 	Record,
 	Identifier,
 	TypeName,
+	Const,
+	ConstName,
+	EnumValue,
 
 	// Symbols and such
 	LeftParen,
@@ -115,19 +119,19 @@ public:
 
     void SetWhere(const std::string& file, int line, int col);
     std::string Where();
+    const Location& Loc() const { return where; }
 
     int Precedence() const;
 
 private:
     TokenType   type;
     // Store location where token started.
-    Location where;
+    Location    where;
     
     // Values. 
     std::string strVal; 
-    int intVal;
-    double realVal;
-
+    int         intVal;
+    double      realVal;
 };
 
 #endif

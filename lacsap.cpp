@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "binary.h"
+#include "constants.h"
 #include <iostream>
 #include <fstream>
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -83,10 +84,12 @@ static void Compile(const std::string& filename)
 {
     try
     {
-	ExprAST* ast;
-	Types types;
-	Lexer l(filename, types);
-	Parser p(l, types);
+	ExprAST*  ast;
+	Types     types;
+	Constants constants;
+	Lexer     l(filename, types, constants);
+	Parser    p(l, types, constants);
+
 	OptimizerInit();
 
 	ast = p.Parse();

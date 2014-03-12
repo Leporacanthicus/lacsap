@@ -200,6 +200,8 @@ static const char* TypeToStr(Types::SimpleTypes t)
 	return "PointerIncomplete";
     case Types::Void:
 	return "Void";
+    case Types::Field:
+	return "Field";
     }
 }
 

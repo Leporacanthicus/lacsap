@@ -24,6 +24,7 @@ public:
 	Pointer,
 	PointerIncomplete,
 	Void,
+	Field,
     };
 
     class TypeDecl;
@@ -160,6 +161,29 @@ public:
     private:
 	std::string name;
 	TypeDecl* baseType;
+    };
+
+    class FieldDecl : public TypeDecl
+    {
+    public:
+	FieldDecl(const std::string& nm, TypeDecl* ty)
+	    : TypeDecl(Field), name(nm), type(ty) {}
+    public:
+	const std::string& Name() { return name; }
+	TypeDecl* FieldType() { return type; }
+
+    private:
+	std::string name;
+	TypeDecl*   type;
+    };
+
+    class RecordDecl : public TypeDecl
+    {
+    public:
+	RecordDecl(const std::vector<FieldDecl>& flds)
+	    : TypeDecl(Record), fields(flds) { };
+    private:
+	std::vector<FieldDecl> fields;
     };
 
     static llvm::Type* GetType(const TypeDecl* type);

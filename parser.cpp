@@ -300,6 +300,63 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     return new Types::ArrayDecl(ty, rv);
 }
 
+Types::RecordDecl* Parser::ParseRecordDecl()
+{
+    if (!Expect(Token::Record, true))
+    {
+	return 0;
+    }
+    std::vector<Types::FieldDecl> fields;
+    do
+    {
+	std::vector<std::string> names;
+	do
+	{
+	    if (!Expect(Token::Identifier, false))
+	    {
+		return 0;
+	    }
+	    names.push_back(CurrentToken().GetIdentName());
+	    NextToken();
+	    if (CurrentToken().GetType() != Token::Colon)
+	    {
+		if (!Expect(Token::Comma, true))
+		{
+		    return 0;
+		}
+	    }
+	} while(CurrentToken().GetType() != Token::Colon);
+	if (!Expect(Token::Colon, true))
+	{
+	    return 0;
+	}
+	if (names.size() == 0)
+	{
+	    assert(0 && "Should have at least one name declared?");
+	    return 0;
+	}
+	Types::TypeDecl* ty = ParseType();
+	if (!ty)
+	{
+	    return 0;
+	}
+	for(auto n : names)
+	{
+	    fields.push_back(Types::FieldDecl(n, ty));
+	}
+	if (!Expect(Token::Semicolon, true))
+	{
+	    return 0;
+	}
+    } while(CurrentToken().GetType() != Token::End);
+    NextToken();
+    if (fields.size() == 0)
+    {
+	return 0;
+    }
+    return new Types::RecordDecl(fields);
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetType();
@@ -311,6 +368,9 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::Array:
 	return ParseArrayDecl();
+
+    case Token::Record:
+	return ParseRecordDecl();
 
     case Token::Integer:
     case Token::Char:

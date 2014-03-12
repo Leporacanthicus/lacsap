@@ -8,11 +8,15 @@ type
    ptrMonth = ^month;
    month    = (january, february, march, april, may, june, july, august, september,
 	       october, november, december);
-   
-var
-   ll	   : letter;
-   d	   : days;
-   w	   : workdays;
+   rec = record
+	    f1 : integer;
+	    f2 : real;
+	 end;  
+	    
+var   
+   ll : letter;
+   d  : days;
+   w  : workdays;
    
 function f : integer;
 begin

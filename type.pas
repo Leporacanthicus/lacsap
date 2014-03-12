@@ -32,8 +32,27 @@ begin
    new(p);
    p^ := 12;
    dispose(p);
-end;
+end; { ptrtest }
 
+procedure recordtest;
+var
+   r : rec;
+   s : record
+	  g1 : integer;
+	  g2 : integer;
+       end;
+
+begin
+   r.f1 := 2;
+   r.f2 := 1;
+   s.g2 := 8;
+   s.g1 := 9;
+   writeln('r.f1=', r.f1:0);
+   writeln('r.f2=', r.f2:0);
+   writeln('s.g1=', s.g1:0);
+   writeln('s.g2=', s.g2:0);
+end;
+   
 
 procedure testAccess;
 
@@ -69,4 +88,5 @@ begin
    writeln('f=', f:2);
    ptrtest;
    testAccess;
+   recordtest;
 end.

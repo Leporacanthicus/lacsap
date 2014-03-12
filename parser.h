@@ -35,6 +35,7 @@ private:
     ExprAST* ParseUnaryOp();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, const Types::TypeDecl* type);
+    VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
 
     /* Control flow functionality */
     ExprAST* ParseRepeat();

@@ -136,6 +136,18 @@ private:
     ExprAST* pointer;
 };
 
+class FieldExprAST : public VariableExprAST
+{
+public:
+    FieldExprAST(VariableExprAST* base, int elem)
+	: VariableExprAST(base), expr(base), element(elem) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* Address();
+private:
+    VariableExprAST* expr;
+    int element;
+};
+
 class BinaryExprAST : public ExprAST
 {
 public:

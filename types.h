@@ -68,6 +68,7 @@ public:
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
+	virtual llvm::Type* LlvmType() const;
 	virtual void dump();
     protected:
 	SimpleTypes type;
@@ -83,6 +84,8 @@ public:
 	}
 	const std::vector<Range*>& Ranges() const { return ranges; }
 	TypeDecl* SubType() const { return baseType; }
+	virtual bool isIntegral() const { return false; }
+	virtual llvm::Type* LlvmType() const;
 	virtual void dump();
     private:
 	TypeDecl* baseType;
@@ -102,6 +105,7 @@ public:
 	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
 	virtual void dump();
+	virtual llvm::Type* LlvmType() const;
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -132,7 +136,9 @@ public:
 	void SetValues(const std::vector<std::string>& nmv);
     public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
+	virtual bool isIntegral() const { return true; }
 	const EnumValues& Values() const { return values; }
+	virtual llvm::Type* LlvmType() const;
 	virtual void dump();
     private:
 	EnumValues values;
@@ -157,6 +163,8 @@ public:
 	    baseType = t; 
 	    type = Pointer; 
 	}
+	virtual bool isIntegral() const { return false; }
+	virtual llvm::Type* LlvmType() const;
 	virtual void dump();
     private:
 	std::string name;
@@ -167,14 +175,16 @@ public:
     {
     public:
 	FieldDecl(const std::string& nm, TypeDecl* ty)
-	    : TypeDecl(Field), name(nm), type(ty) {}
+	    : TypeDecl(Field), name(nm), baseType(ty) {}
     public:
 	const std::string& Name() { return name; }
-	TypeDecl* FieldType() { return type; }
-
+	TypeDecl* FieldType() const { return baseType; } 
+	virtual llvm::Type* LlvmType() const;
+	virtual void dump();
+	virtual bool isIntegral() const { return baseType->isIntegral(); }
     private:
 	std::string name;
-	TypeDecl*   type;
+	TypeDecl*   baseType;
     };
 
     class RecordDecl : public TypeDecl
@@ -182,6 +192,11 @@ public:
     public:
 	RecordDecl(const std::vector<FieldDecl>& flds)
 	    : TypeDecl(Record), fields(flds) { };
+	virtual bool isIntegral() const { return false; }
+	virtual llvm::Type* LlvmType() const;
+	virtual void dump();
+	int Element(const std::string& name) const;
+	const FieldDecl& GetElement(int n) { return fields[n]; }
     private:
 	std::vector<FieldDecl> fields;
     };

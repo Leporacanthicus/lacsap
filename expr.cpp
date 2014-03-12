@@ -172,7 +172,6 @@ llvm::Value* ArrayExprAST::Address()
     llvm::Value* index; 
     for(size_t i = 0; i < indices.size(); i++)
     {
-	TRACE();
 	/* TODO: Add range checking? */
 	index = indices[i]->CodeGen();
 	if (!index)
@@ -194,12 +193,28 @@ llvm::Value* ArrayExprAST::Address()
     return v;
 }
 
+void FieldExprAST::DoDump(std::ostream& out) const
+{
+    out << "Field " << element << std::endl;
+    expr->DoDump(out);
+}
+
+llvm::Value* FieldExprAST::Address()
+{
+    TRACE();
+    llvm::Value* v = expr->Address();
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(element));
+    v = builder.CreateGEP(v, ind, "valueindex");
+    return v;
+}
+
 void PointerExprAST::DoDump(std::ostream& out) const
 {
     out << "Pointer:";
     pointer->Dump(out);
 }
-
 
 llvm::Value* PointerExprAST::CodeGen()
 { 

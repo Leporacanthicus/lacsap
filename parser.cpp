@@ -342,6 +342,14 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	}
 	for(auto n : names)
 	{
+	    for(auto f : fields)
+	    {
+		if (n == f.Name())
+		{
+		    Error(std::string("Duplicate field name '") + n + "' in record");
+		    return 0;
+		}
+	    }
 	    fields.push_back(Types::FieldDecl(n, ty));
 	}
 	if (!Expect(Token::Semicolon, true))
@@ -518,6 +526,28 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::Type
     return new ArrayExprAST(expr, indices, adecl->Ranges());
 }
 
+VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+{
+    if(!Expect(Token::Period, true))
+    {
+	return 0;
+    }
+    if (!Expect(Token::Identifier, false))
+    {
+	return 0;
+    }
+    Types::RecordDecl* rd = dynamic_cast<Types::RecordDecl*>(type);
+    std::string name = CurrentToken().GetIdentName();
+    int elem = rd->Element(name);
+    if (elem < 0)
+    {
+	return ErrorV(std::string("Can't find element ") + name + " in record");
+    }
+    type = rd->GetElement(elem).FieldType();
+    NextToken();
+    return new FieldExprAST(expr, elem);
+}
+
 ExprAST* Parser::ParseIdentifierExpr()
 {
     std::string idName = CurrentToken().GetIdentName();
@@ -543,24 +573,31 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    assert(type);
 
 	    Token::TokenType tt = CurrentToken().GetType();
-	    while(tt == Token::LeftSquare || tt == Token::Uparrow)
+	    while(tt == Token::LeftSquare || 
+		  tt == Token::Uparrow || 
+		  tt == Token::Period)
 	    {
 		switch(tt)
 		{
 		case Token::LeftSquare:
 		    expr = ParseArrayExpr(expr, type);
+		    type = type->SubType();
 		    break;
 
 		case Token::Uparrow:
 		    NextToken();
 		    expr = new PointerExprAST(expr);
+		    type = type->SubType();
+		    break;
+
+		case Token::Period:
+		    expr = ParseFieldExpr(expr, type);
 		    break;
 
 		default:
 		    assert(0);
 		}
 		tt = CurrentToken().GetType();
-		type = type->SubType();
 	    }
 	    return expr;	
 	}

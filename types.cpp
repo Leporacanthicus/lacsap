@@ -33,48 +33,7 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
 
 llvm::Type* Types::GetType(const Types::TypeDecl* type)
 {
-    switch(type->Type())
-    {
-    case Types::Array:
-    {
-	const Types::ArrayDecl* a = dynamic_cast<const Types::ArrayDecl*>(type);
-	assert(a && "Huh? Couldn't convert type that says it's an array to ArrayDecl");
-	size_t nelems = 0;
-	for(auto r : a->Ranges())
-	{
-	    assert(r->Size() && "Expectig range to have a non-zero size!");
-	    if (!nelems)
-	    {
-		nelems = r->Size();
-	    }
-	    else
-	    {
-		nelems *= r->Size();
-	    }
-	}
-	assert(nelems && "Expect number of elements to be non-zero!");
-	const Types::TypeDecl* base = a->SubType();
-	llvm::Type* ty = GetType(base);
-	assert(ty && "Expected to get a type back!");
-	return llvm::ArrayType::get(ty, nelems);
-    }
-    case Types::Enum:
-    {
-	return GetType(Integer);
-    }
-    case Types::Pointer:
-    {
-	const Types::PointerDecl* pd = dynamic_cast<const Types::PointerDecl*>(type);
-	llvm::Type* ty = llvm::PointerType::getUnqual(GetType(pd->SubType()));
-	return ty;
-    }
-    default:
-    {
-	llvm::Type* ty = GetType(type->Type());
-	assert(ty && "Expect basic type to return a Type*");
-	return ty;
-    }
-    }
+    return type->LlvmType();
 }
 
 Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
@@ -121,7 +80,6 @@ void Types::FixUpIncomplete(Types::PointerDecl *p)
     TRACE();
     p->SetSubType(ty);
 }
-    
 
 Types::EnumValue* Types::FindEnumValue(const std::string& nm)
 {
@@ -139,16 +97,9 @@ bool Types::TypeDecl::isIntegral() const
 {
     switch(type)
     {
-    case Array:
-    case Record:
-    case Set:
-    case Real:
-    case Void:
-    case Function:
-    case Procedure:
-    case Pointer:
-    case PointerIncomplete:
-	return false;
+    case Integer:
+    case Char:
+	return true;
     default:
 	return true;
     }
@@ -210,10 +161,22 @@ void Types::TypeDecl::dump()
     std::cerr << "Type: " << TypeToStr(type);
 }
 
+llvm::Type* Types::TypeDecl::LlvmType() const
+{
+    llvm::Type* ty = GetType(type);
+    return ty;
+}
+
 void Types::PointerDecl::dump()
 {
     std::cerr << "Pointer to: ";
     baseType->dump();
+}
+
+llvm::Type* Types::PointerDecl::LlvmType() const
+{
+    llvm::Type* ty = llvm::PointerType::getUnqual(GetType(baseType));
+    return ty;
 }
 
 void Types::ArrayDecl::dump()
@@ -227,6 +190,27 @@ void Types::ArrayDecl::dump()
     baseType->dump();
 }
 
+llvm::Type* Types::ArrayDecl::LlvmType() const
+{
+    size_t nelems = 0;
+    for(auto r : ranges)
+    {
+	assert(r->Size() && "Expectig range to have a non-zero size!");
+	if (!nelems)
+	{
+	    nelems = r->Size();
+	}
+	else
+	{
+	    nelems *= r->Size();
+	}
+    }
+    assert(nelems && "Expect number of elements to be non-zero!");
+    llvm::Type* ty = baseType->LlvmType();
+    assert(ty && "Expected to get a type back!");
+    return llvm::ArrayType::get(ty, nelems);
+}
+
 void Types::Range::dump()
 {
     std::cerr << "[" << start << ".." << end << "]";
@@ -235,6 +219,11 @@ void Types::Range::dump()
 void Types::RangeDecl::dump()
 {
     std::cerr << "RangeDecl: " << TypeToStr(baseType) << " " << range << std::endl;
+}
+
+llvm::Type* Types::RangeDecl::LlvmType() const
+{
+    return GetType(baseType);
 }
 
 void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
@@ -255,6 +244,57 @@ void Types::EnumDecl::dump()
     {
 	std::cerr << "   " << v.name << ": " << v.value;
     }
+}
+
+llvm::Type* Types::EnumDecl::LlvmType() const
+{
+    return GetType(Integer);
+}
+
+void Types::FieldDecl::dump()
+{
+    std::cerr << "Field " << name << ": ";
+    baseType->dump();
+}
+
+llvm::Type* Types::FieldDecl::LlvmType() const
+{
+    return baseType->LlvmType();
+}
+
+void Types::RecordDecl::dump()
+{
+    std::cerr << "Record ";
+    for(auto f : fields)
+    {
+	f.dump();
+    }
+}
+
+llvm::Type* Types::RecordDecl::LlvmType() const
+{
+    std::vector<llvm::Type*> fv;
+    for(auto f : fields)
+    {
+	fv.push_back(f.LlvmType());
+    }
+    return llvm::StructType::create(fv);
+}
+
+// This is a very basic algorithm, but I think it's good enough for 
+// most structures - there's unlikely to be a HUGE number of them. 
+int Types::RecordDecl::Element(const std::string& name) const
+{
+    int i = 0;
+    for(auto f : fields)
+    {
+	if (f.Name() == name)
+	{
+	    return i;
+	}
+	i++;
+    }
+    return -1;
 }
 
 void Types::Dump()

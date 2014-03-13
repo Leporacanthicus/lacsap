@@ -25,10 +25,10 @@ private:
     /* Simple expression parsing */
     ExprAST* ParseExpression();
     ExprAST* ParseIdentifierExpr();
-    ExprAST* ParseRealExpr();
-    ExprAST* ParseIntegerExpr();
-    ExprAST* ParseCharExpr();
-    ExprAST* ParseStringExpr();
+    ExprAST* ParseRealExpr(Token token);
+    ExprAST* ParseIntegerExpr(Token token);
+    ExprAST* ParseCharExpr(Token token);
+    ExprAST* ParseStringExpr(Token token);
     ExprAST* ParseParenExpr();
     ExprAST* ParsePrimary();
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);

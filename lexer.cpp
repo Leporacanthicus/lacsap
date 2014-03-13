@@ -1,5 +1,7 @@
 #include "lexer.h"
 #include "types.h"
+#include "constants.h"
+
 #include <cassert>
 #include <cctype>
 #include <iostream>
@@ -222,10 +224,13 @@ Token Lexer::GetToken()
 	}
 	else if (types.IsEnumValue(str))
 	{
-	    tt = Token::EnumValue;
 	    Types::EnumValue* e = types.FindEnumValue(str); 
 	    assert(e && "Expected to find enum value...");
-	    return Token(tt, w, e->value);
+	    return Token(Token::EnumValue, w, e->value);
+	}
+	else if (constants.IsConstant(str))
+	{
+	    tt = Token::ConstName;
 	}
 	else 
 	{

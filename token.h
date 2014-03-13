@@ -106,7 +106,11 @@ public:
     TokenType GetType() const { return type; }
     std::string GetIdentName() const 
     { 
-	assert(type == Token::Identifier || type == Token::TypeName);
+	assert(type == Token::Identifier || 
+	       type == Token::TypeName || 
+	       type == Token::ConstName &&
+	       "Incorrect type for identname");
+	assert(strVal.size() != 0 && "String should not be empty!");
 	return strVal; 
     }
     int GetIntVal() const { return intVal; }

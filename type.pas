@@ -22,14 +22,14 @@ type
 	    
 var   
    ll : letter;
-   d  : days;
+   dd : days;
    w  : workdays;
    
 function f : integer;
 begin
-   w := wednesday;
-   d := saturday;
-   f := ord(w) + ord(d);
+   w  := wednesday;
+   dd := saturday;
+   f  := ord(w) + ord(dd);
 end; 
 
 procedure ptrtest;
@@ -37,7 +37,8 @@ var
    p : ^integer;
 begin
    new(p);
-   p^ := 12;
+   p^ := a;
+   writeln('p^=', p^);
    dispose(p);
 end; { ptrtest }
 
@@ -51,7 +52,7 @@ var
 
 begin
    r.f1 := 2;
-   r.f2 := 1;
+   r.f2 := d;
    s.g2 := 8;
    s.g1 := 9;
    writeln('r.f1=', r.f1:0);

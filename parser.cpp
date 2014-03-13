@@ -467,30 +467,30 @@ Types::TypeDecl* Parser::ParseType()
     }
 }
 
-ExprAST* Parser::ParseIntegerExpr()
+ExprAST* Parser::ParseIntegerExpr(Token token)
 {
-    ExprAST* result = new IntegerExprAST(CurrentToken().GetIntVal());
+    ExprAST* result = new IntegerExprAST(token.GetIntVal());
     NextToken();
     return result;
 }
 
-ExprAST* Parser::ParseCharExpr()
+ExprAST* Parser::ParseCharExpr(Token token)
 {
-    ExprAST* result = new CharExprAST(CurrentToken().GetIntVal());
+    ExprAST* result = new CharExprAST(token.GetIntVal());
     NextToken();
     return result;
 }
 
-ExprAST* Parser::ParseRealExpr()
+ExprAST* Parser::ParseRealExpr(Token token)
 {
-    ExprAST* result = new RealExprAST(CurrentToken().GetRealVal());
+    ExprAST* result = new RealExprAST(token.GetRealVal());
     NextToken();
     return result;
 }
 
-ExprAST* Parser::ParseStringExpr()
+ExprAST* Parser::ParseStringExpr(Token token)
 {
-    ExprAST* result = new StringExprAST(CurrentToken().GetStrVal());
+    ExprAST* result = new StringExprAST(token.GetStrVal());
     NextToken();
     return result;
 }
@@ -1262,20 +1262,31 @@ ExprAST* Parser::ParseRead()
 
 ExprAST* Parser::ParsePrimary()
 {
-    switch(CurrentToken().GetType())
+    Token token = CurrentToken();
+    if (token.GetType() == Token::ConstName)
+    {
+	Constants::ConstDecl* cd = constants.GetConstDecl(token.GetIdentName());
+	if (!cd)
+	{
+	    return Error(std::string("Undefined constant name: ") + token.GetIdentName());
+	}
+	token = cd->Translate();
+
+    }
+    switch(token.GetType())
     {
     case Token::Real:
-	return ParseRealExpr();
+	return ParseRealExpr(token);
 
     case Token::Integer:
     case Token::EnumValue:
-	return ParseIntegerExpr();
+	return ParseIntegerExpr(token);
 
     case Token::Char:
-	return ParseCharExpr();
+	return ParseCharExpr(token);
 
     case Token::String:
-	return ParseStringExpr();
+	return ParseStringExpr(token);
 
     case Token::LeftParen:
 	return ParseParenExpr();

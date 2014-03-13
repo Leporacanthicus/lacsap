@@ -49,7 +49,6 @@ var
 	  g1 : integer;
 	  g2 : integer;
        end;
-
 begin
    r.f1 := 2;
    r.f2 := d;
@@ -63,6 +62,9 @@ end;
    
 
 procedure testAccess;
+
+const
+   h =  'Another string';
 
 type
    at = array [1..20] of integer;
@@ -86,6 +88,7 @@ begin
    writeln('p^=', p^:0);
    writeln('parr^[x]=', parr^[x]:0);
    writeln('arrp[x]^=', arrp[x]^:0);
+   writeln('h=', h);
 end;
    
 begin

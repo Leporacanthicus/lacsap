@@ -938,6 +938,7 @@ FunctionAST* Parser::ParseDefinition()
     
     NameWrapper wrapper(nameStack);
     Types::TypeWrapper typewrap(types.GetTypes());
+    Constants::ConstWrapper constwrap(constants.GetConsts());
     for(auto v : proto->Args())
     {
 	if (!nameStack.Add(v.Name(), new NamedObject(v.Name(), v.Type())))
@@ -949,6 +950,7 @@ FunctionAST* Parser::ParseDefinition()
     VarDeclAST* varDecls = 0;
     BlockAST* body = 0;
     bool typeDecls = false;
+    bool constDecls = false;
     do
     {
 	switch(CurrentToken().GetType())
@@ -968,6 +970,15 @@ FunctionAST* Parser::ParseDefinition()
 	    }
 	    ParseTypeDef();
 	    typeDecls = true;
+	    break;
+
+	case Token::Const:
+	    if (constDecls)
+	    {
+		return ErrorF("Can't declare const multiple times");
+	    }
+	    ParseConstDef();
+	    constDecls = true;
 	    break;
 	    
 	case Token::Begin:

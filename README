@@ -7,6 +7,7 @@ Among things NOT yet supported are:
 - File/Text variable types
 - Proper tests.
 - Set variables.
+- Not allowing "empty then" in if/then/else statements.
 
 Other work that is needed: 
 - Store all nested data in one block.

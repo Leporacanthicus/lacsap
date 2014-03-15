@@ -540,7 +540,7 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << "Prototype: name: " << name << "(" << std::endl;
     for(auto i : args)
     {
-	i.Dump(); 
+	i.dump(); 
 	out << std::endl;
     }
     out << ")";
@@ -1204,7 +1204,7 @@ void VarDeclAST::DoDump(std::ostream& out) const
     out << "Var ";
     for(auto v : vars)
     {
-	v.Dump();
+	v.dump();
 	out << std::endl;
     }
 }

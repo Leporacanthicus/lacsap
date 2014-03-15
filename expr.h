@@ -2,7 +2,7 @@
 #define EXPR_H
 
 #include "token.h"
-#include "variables.h"
+#include "namedobject.h"
 #include "types.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>

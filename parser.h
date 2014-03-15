@@ -1,7 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "variables.h"
 #include "namedobject.h"
 #include "stack.h"
 #include "expr.h"

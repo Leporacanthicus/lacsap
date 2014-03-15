@@ -1,6 +1,5 @@
 #include "lexer.h"
 #include "parser.h"
-#include "variables.h"
 #include "expr.h"
 #include "namedobject.h"
 #include "stack.h"
@@ -688,6 +687,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
     }
     // Get past the '(' and fetch the next one. 
+    const FuncDef *funcDef = dynamic_cast<const FuncDef*>(def);
     std::vector<ExprAST* > args;
     if (CurrentToken().GetType() == Token::LeftParen)
     {
@@ -699,9 +699,9 @@ ExprAST* Parser::ParseIdentifierExpr()
 	while (CurrentToken().GetType() != Token::RightParen)
 	{
 	    bool isFuncArg = false;
-	    if (def && def->Proto())
+	    if (funcDef && funcDef->Proto())
 	    {
-		Types::TypeDecl* td = def->Proto()->Args()[argNo].Type();
+		Types::TypeDecl* td = funcDef->Proto()->Args()[argNo].Type();
 		if (td->Type() == Types::Pointer && 
 		    (td->SubType()->Type() == Types::Function ||
 		     td->SubType()->Type() == Types::Procedure))
@@ -742,28 +742,33 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
 
     const PrototypeAST* proto = 0;
-    ExprAST* expr;
-    if (def)
+    ExprAST* expr = 0;
+    if (funcDef)
     {
+	proto = funcDef->Proto();
+	expr = new FunctionExprAST(idName);
+	return new CallExprAST(expr, args, proto);
+    }
+    else if (def)
+    {
+	const VarDef* varDef = dynamic_cast<const VarDef*>(def);
+	if (!varDef)
+	{
+	    assert(0 && "Expected variable definition!");
+	    return 0;
+	}
 	if (def->Type()->Type() == Types::Pointer)
 	{
 	    Types::FuncPtrDecl* fp = dynamic_cast<Types::FuncPtrDecl*>(def->Type());
 	    assert(fp && "Expected function pointer here...");
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(idName);
+	    return new CallExprAST(expr, args, proto);
 	}
-	else
-	{
-	    proto = def->Proto();
-	    expr = new FunctionExprAST(idName);
-	}
-	return new CallExprAST(expr, args, proto);
     }
-    else
-    {
-	assert(isBuiltin && "Should be a builtin function if we get here");
-	return new BuiltinExprAST(idName, args);
-    }
+
+    assert(isBuiltin && "Should be a builtin function if we get here");
+    return new BuiltinExprAST(idName, args);
 }
 
 ExprAST* Parser::ParseParenExpr()
@@ -812,7 +817,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	    {
 		VarDef v(n, type);
 		varList.push_back(v);
-		nameStack.Add(n, new NamedObject(n, type));
+		nameStack.Add(n, new VarDef(n, type));
 	    }
 	    if (!Expect(Token::Semicolon, true))
 	    {
@@ -991,10 +996,11 @@ FunctionAST* Parser::ParseDefinition()
     }
     std::string name = proto->Name();
     Types::TypeDecl* ty = new Types::TypeDecl(isFunction?Types::Function:Types::Procedure);
-    NamedObject* nmObj = new NamedObject(name, ty, proto);
+    NamedObject* nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);
-    if (!(def && def->Proto() && def->Proto()->IsForward()))
+    const FuncDef *fnDef = dynamic_cast<const FuncDef*>(def);
+    if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
     {
 	if (!nameStack.Add(name, nmObj))
 	{
@@ -1014,7 +1020,7 @@ FunctionAST* Parser::ParseDefinition()
     Constants::ConstWrapper constwrap(constants.GetConsts());
     for(auto v : proto->Args())
     {
-	if (!nameStack.Add(v.Name(), new NamedObject(v.Name(), v.Type())))
+	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
 	    return ErrorF(std::string("Duplicate name ") + v.Name()); 
 	}

@@ -23,12 +23,8 @@ public:
     virtual ~ExprAST() {}
     ExprAST* SetNext(ExprAST* n) { next = n; return next; };
     ExprAST* Next() { return next; }
-    void Dump(std::ostream& out) const
-    { 
-	out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
-	DoDump(out); 
-	out << std::endl;
-    }
+    void Dump(std::ostream& out) const;
+    void Dump() const;
     virtual void DoDump(std::ostream& out) const
     { 
 	out << "Empty node";
@@ -148,6 +144,17 @@ private:
     int element;
 };
 
+class FunctionExprAST : public VariableExprAST
+{
+public:
+    FunctionExprAST(const std::string& nm)
+	: VariableExprAST(nm) { }
+
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* Address();
+    virtual llvm::Value* CodeGen();
+};
+
 class BinaryExprAST : public ExprAST
 {
 public:
@@ -256,13 +263,31 @@ private:
 class CallExprAST : public ExprAST
 {
 public:
-    CallExprAST(const std::string& c, std::vector<ExprAST*> a, const PrototypeAST* p)
-	: proto(p), callee(c), args(a) {}
+    CallExprAST(ExprAST *c, std::vector<ExprAST*> a, const PrototypeAST* p)
+	: proto(p), callee(c), args(a) 
+    {
+	assert(proto && "Should have prototype!");
+    }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
 private:
-    const PrototypeAST* proto;
-    std::string callee;
+    const PrototypeAST*   proto;
+    ExprAST*              callee;
+    std::vector<ExprAST*> args;
+};
+
+// Builtin function call
+class BuiltinExprAST : public ExprAST
+{
+public:
+    BuiltinExprAST(const std::string& nm, std::vector<ExprAST*> a)
+	: name(nm), args(a) 
+    {
+    }
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+private:
+    std::string           name;
     std::vector<ExprAST*> args;
 };
 

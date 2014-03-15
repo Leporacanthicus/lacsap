@@ -5,6 +5,9 @@
 #include <llvm/IR/Type.h>
 #include <string>
 
+
+class PrototypeAST;
+
 class Types
 {
 public:
@@ -16,7 +19,7 @@ public:
 	Boolean,
 	Array,
 	Function,
-	Procedure,
+	Procedure,    // Do we need this?
 	Record,
         Set,
 	SubRange,
@@ -199,6 +202,20 @@ public:
 	const FieldDecl& GetElement(int n) { return fields[n]; }
     private:
 	std::vector<FieldDecl> fields;
+    };
+
+    class FuncPtrDecl : public TypeDecl
+    {
+    public:
+	FuncPtrDecl(PrototypeAST* func);
+	virtual bool isIntegral() const { return false; }
+	virtual TypeDecl* SubType() const { return baseType; }
+	virtual llvm::Type* LlvmType() const;
+	virtual void dump();
+	PrototypeAST* Proto() const { return proto; }
+    private:
+	PrototypeAST* proto;
+	TypeDecl *baseType;
     };
 
     static llvm::Type* GetType(const TypeDecl* type);

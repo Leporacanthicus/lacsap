@@ -19,6 +19,8 @@ private:
     int CurChar();
     int PeekChar();
 
+    Token NumberToken();
+
     Location Where() const { return Location(fName, lineNo, column); }
 
 private:

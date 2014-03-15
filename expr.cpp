@@ -29,6 +29,20 @@ static int errCnt;
 #define TRACE()
 #endif
 
+
+void ExprAST::Dump(std::ostream& out) const
+{
+    out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
+    DoDump(out); 
+    out << std::endl;
+}	
+
+void ExprAST::Dump(void) const
+{ 
+    Dump(std::cerr);
+}
+
+
 llvm::Value *ErrorV(const std::string& msg)
 {
     std::cerr << msg << std::endl;
@@ -248,6 +262,21 @@ llvm::Value* PointerExprAST::Address()
     return v;
 }
 
+void FunctionExprAST::DoDump(std::ostream& out) const
+{
+    out << "Function " << name;
+}
+
+llvm::Value* FunctionExprAST::CodeGen()
+{
+    return theModule->getFunction(name);
+}
+
+llvm::Value* FunctionExprAST::Address()
+{
+    return 0;
+}
+
 void BinaryExprAST::DoDump(std::ostream& out) const
 { 
     out << "BinaryOp: ";
@@ -275,9 +304,14 @@ llvm::Value* BinaryExprAST::CodeGen()
 	lty == llvm::Type::DoubleTyID)
     {
 	r = builder.CreateSIToFP(r, Types::GetType(Types::Real), "tofp");
-	r->dump();
 	rty = r->getType()->getTypeID();
-    }	
+    }
+    if (lty == llvm::Type::IntegerTyID && 
+	rty == llvm::Type::DoubleTyID)
+    {
+	l = builder.CreateSIToFP(l, Types::GetType(Types::Real), "tofp");
+	lty = r->getType()->getTypeID();
+    }
 
     if (rty != lty)
     {
@@ -312,6 +346,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateICmpSGT(l, r, "gt");
 	case Token::GreaterOrEqual:
 	    return builder.CreateICmpSGE(l, r, "ge");
+
+	case Token::And:
+	    return builder.CreateAnd(l, r, "and");
+
+	case Token::Or:
+	    return builder.CreateOr(l, r, "or");
 	    
 	default:
 	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
@@ -391,7 +431,7 @@ llvm::Value* UnaryExprAST::CodeGen()
 
 void CallExprAST::DoDump(std::ostream& out) const
 { 
-    out << "call: " << callee << "(";
+    out << "call: " << proto->Name() << "(";
     for(auto i : args)
     {
 	i->Dump(out);
@@ -402,21 +442,17 @@ void CallExprAST::DoDump(std::ostream& out) const
 llvm::Value* CallExprAST::CodeGen()
 {
     TRACE();
-    if (Builtin::IsBuiltin(callee))
-    {
-	return Builtin::CodeGen(builder, callee, args);
-    }
-    
     assert(proto && "Function prototype should be set in this case!");
 
-    llvm::Function* calleF = theModule->getFunction(callee);
+    llvm::Value* calleF = callee->CodeGen();
     if (!calleF)
     {
-	return ErrorV(std::string("Unknown function ") + callee + " referenced");
-    }
-    if (calleF->arg_size() != args.size())
+	return ErrorV(std::string("Unknown function ") + proto->Name() + " referenced");
+    }	
+
+    if (proto->Args().size() != args.size())
     {
-	return ErrorV(std::string("Incorrect number of arguments for ") + callee + ".");
+	return ErrorV(std::string("Incorrect number of arguments for ") + proto->Name() + ".");
     }
 
     std::vector<llvm::Value*> argsV;
@@ -438,20 +474,44 @@ llvm::Value* CallExprAST::CodeGen()
 	else
 	{
 	    v = i->CodeGen();
+	    if (!v)
+	    {
+		return 0;
+	    }
+	    /* Do we need to convert to float? */
+	    if (v->getType()->isIntegerTy() && viter->Type()->Type() == Types::Real)
+	    {
+		v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
+	    }
 	}
 	if (!v)
 	{
-	    return ErrorV("Invalid argument for " + callee + " (" + i->ToString() + ")");
+	    return ErrorV("Invalid argument for " + proto->Name() + " (" + i->ToString() + ")");
 	}
 	
 	argsV.push_back(v);
 	viter++;
     }
-    if (calleF->getReturnType()->getTypeID() == llvm::Type::VoidTyID) 
+    if (proto->ResultType()->Type() == Types::Void) 
 	return builder.CreateCall(calleF, argsV, "");
     else
 	return builder.CreateCall(calleF, argsV, "calltmp");
 }
+
+void BuiltinExprAST::DoDump(std::ostream& out) const
+{ 
+    out << " builtin call: " << name << "(";
+    for(auto i : args)
+    {
+	i->Dump(out);
+    }
+    out << ")";
+}
+
+llvm::Value* BuiltinExprAST::CodeGen()
+{
+    return Builtin::CodeGen(builder, name, args);
+}    
 
 void BlockAST::DoDump(std::ostream& out) const
 {
@@ -480,7 +540,7 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << "Prototype: name: " << name << "(" << std::endl;
     for(auto i : args)
     {
-	i.Dump(out); 
+	i.Dump(); 
 	out << std::endl;
     }
     out << ")";
@@ -589,7 +649,7 @@ llvm::Function* FunctionAST::CodeGen()
 	varDecls->CodeGen();
     }
 
-    variables.Dump(std::cerr);
+    variables.Dump();
     llvm::Value *block = body->CodeGen();
     if (!block && !body->IsEmpty())
     {
@@ -609,7 +669,6 @@ llvm::Function* FunctionAST::CodeGen()
     }
 
     TRACE();
-    theFunction->dump();
     verifyFunction(*theFunction);
     
     fpm->run(*theFunction);
@@ -674,22 +733,25 @@ void IfExprAST::DoDump(std::ostream& out) const
     cond->Dump(out);
     out << "then: ";
     then->Dump(out);
-    out << " else::";
-    other->Dump(out);
+    if (other)
+    {
+	out << " else::";
+	other->Dump(out);
+    }
 }
 
 llvm::Value* IfExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value *condv = cond->CodeGen();
-    if (!condv)
+    llvm::Value *condV = cond->CodeGen();
+    if (!condV)
     {
 	return 0;
     }
 
-    if (condv->getType()->getTypeID() ==  llvm::Type::IntegerTyID)
+    if (condV->getType()->getTypeID() ==  llvm::Type::IntegerTyID)
     {
-	condv = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "ifcond");
+	condV = builder.CreateICmpNE(condV, MakeBooleanConstant(0), "ifcond");
     }
     else
     {
@@ -697,11 +759,15 @@ llvm::Value* IfExprAST::CodeGen()
     }
     llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "then", theFunction);
-    llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "else");
     llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "ifcont");
 
-    builder.CreateCondBr(condv, thenBB, elseBB);
+    llvm::BasicBlock* elseBB = mergeBB;
+    if (other)
+    {
+	elseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "else");
+    }
 
+    builder.CreateCondBr(condV, thenBB, elseBB);
     builder.SetInsertPoint(thenBB);
 
     llvm::Value* thenV = then->CodeGen();
@@ -711,25 +777,24 @@ llvm::Value* IfExprAST::CodeGen()
     }
 
     builder.CreateBr(mergeBB);
-    thenBB = builder.GetInsertBlock();
 
-    theFunction->getBasicBlockList().push_back(elseBB);
-    builder.SetInsertPoint(elseBB);
-
-    llvm::Value* elseV =  other->CodeGen();
-
-    builder.CreateBr(mergeBB);
-    elseBB = builder.GetInsertBlock();
-    
+    if (other)
+    {
+	assert(elseBB != mergeBB && "ElseBB should be different from MergeBB");
+	theFunction->getBasicBlockList().push_back(elseBB);
+	builder.SetInsertPoint(elseBB);
+	
+	llvm::Value* elseV =  other->CodeGen();
+	if (!elseV)
+	{
+	    return 0;
+	}
+	builder.CreateBr(mergeBB);
+    }
     theFunction->getBasicBlockList().push_back(mergeBB);
     builder.SetInsertPoint(mergeBB);
 
-    llvm::PHINode* pn = builder.CreatePHI(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 2, "iftmp");
-
-    pn->addIncoming(thenV, thenBB);
-    pn->addIncoming(elseV, elseBB);
-
-    return pn;
+    return reinterpret_cast<llvm::Value*>(1);
 }
 
 void ForExprAST::DoDump(std::ostream& out) const
@@ -1139,7 +1204,7 @@ void VarDeclAST::DoDump(std::ostream& out) const
     out << "Var ";
     for(auto v : vars)
     {
-	v.Dump(out);
+	v.Dump();
 	out << std::endl;
     }
 }

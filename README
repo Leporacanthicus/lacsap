@@ -3,8 +3,7 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-- Boolean
-- Function/Procedure arguments.
+- Boolean expressions
 - File/Text variable types
 - Proper tests.
 - Set variables.
@@ -12,6 +11,7 @@ Among things NOT yet supported are:
 Other work that is needed: 
 - Store all nested data in one block.
 - Local variables collide with global types and global constants - this shouldn't be the case.
+- Dump of types should be "const"
 
 Lots of other small and large things that I can't think of right now.
 

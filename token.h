@@ -89,6 +89,9 @@ public:
 	Readln,
 	Builtin,
 	Forward,
+	And,
+	Or,
+	Not,
 
 	EndOfFile  = -1, 
 	Unknown    = -1000,

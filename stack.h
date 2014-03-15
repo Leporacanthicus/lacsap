@@ -51,18 +51,18 @@ public:
 	return 0;
     }
 				 
-    void Dump(std::ostream& out)
+    void Dump()
     {
 	int n = 0;
 	for(auto s : stack)
 	{
-	    out << "Level " << n << std::endl;
+	    std::cerr << "Level " << n << std::endl;
 	    n++;
 	    for(auto v : s)
 	    {
-		out << v.first << ": ";
+		std::cerr << v.first << ": ";
 		v.second->dump();
-		out << std::endl;
+		std::cerr << std::endl;
 	    }
 	}
     }

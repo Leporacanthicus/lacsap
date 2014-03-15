@@ -616,13 +616,31 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     return new FieldExprAST(expr, elem);
 }
 
+bool Parser::IsCall(Types::TypeDecl* type)
+{
+    if (type->Type() == Types::Pointer &&
+	(type->SubType()->Type() == Types::Function ||
+	 type->SubType()->Type() == Types::Procedure))
+    {
+	return true;
+    }
+    if ((type->Type() == Types::Procedure || 
+	 type->Type() == Types::Function) && 
+	CurrentToken().GetType() != Token::Assign)
+    {
+	return true;
+    }
+    return false;
+}
+
 ExprAST* Parser::ParseIdentifierExpr()
 {
     std::string idName = CurrentToken().GetIdentName();
     NextToken();
     /* TODO: Should we add builtin's to names at global level? */
     const NamedObject* def = nameStack.Find(idName);
-    if (!Builtin::IsBuiltin(idName))
+    bool isBuiltin = Builtin::IsBuiltin(idName);
+    if (!isBuiltin)
     {
 	if (!def)
 	{
@@ -632,9 +650,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 	// then we want a "variable" with this name. 
 	Types::TypeDecl* type = def->Type();
 	assert(type && "Expect type here...");
-	if ((type->Type() != Types::Function && 
-	     type->Type() != Types::Procedure) || 
-	    CurrentToken().GetType() == Token::Assign)
+	 
+	if (!IsCall(type))
 	{
 	    VariableExprAST* expr = new VariableExprAST(idName);
 
@@ -678,10 +695,38 @@ ExprAST* Parser::ParseIdentifierExpr()
 	{
 	    return 0;
 	}
+	unsigned argNo = 0;
 	while (CurrentToken().GetType() != Token::RightParen)
 	{
-	    ExprAST* arg = ParseExpression();
-	    if (!arg) return 0;
+	    bool isFuncArg = false;
+	    if (def && def->Proto())
+	    {
+		Types::TypeDecl* td = def->Proto()->Args()[argNo].Type();
+		if (td->Type() == Types::Pointer && 
+		    (td->SubType()->Type() == Types::Function ||
+		     td->SubType()->Type() == Types::Procedure))
+		{
+		    isFuncArg = true;
+		}
+	    }
+	    ExprAST* arg;
+	    if (isFuncArg)
+	    {
+		if (CurrentToken().GetType() != Token::Identifier)
+		{
+		    return Error("Expected name of a function or procedure");
+		}
+		arg = new FunctionExprAST(CurrentToken().GetIdentName());
+		NextToken();
+	    }
+	    else
+	    {
+		arg = ParseExpression();
+	    }
+	    if (!arg) 
+	    {
+		return 0;
+	    }
 	    args.push_back(arg);
 	    if (CurrentToken().GetType() == Token::Comma)
 	    {
@@ -691,16 +736,34 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    {
 		return 0;
 	    }
+	    argNo++;
 	}
 	NextToken();
     }
+
     const PrototypeAST* proto = 0;
+    ExprAST* expr;
     if (def)
     {
-	proto = def->Proto();
+	if (def->Type()->Type() == Types::Pointer)
+	{
+	    Types::FuncPtrDecl* fp = dynamic_cast<Types::FuncPtrDecl*>(def->Type());
+	    assert(fp && "Expected function pointer here...");
+	    proto = fp->Proto();
+	    expr = new VariableExprAST(idName);
+	}
+	else
+	{
+	    proto = def->Proto();
+	    expr = new FunctionExprAST(idName);
+	}
+	return new CallExprAST(expr, args, proto);
     }
-    assert((!def || proto) && "Expected prototype...");
-    return new CallExprAST(idName, args, proto);
+    else
+    {
+	assert(isBuiltin && "Should be a builtin function if we get here");
+	return new BuiltinExprAST(idName, args);
+    }
 }
 
 ExprAST* Parser::ParseParenExpr()
@@ -794,43 +857,53 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	while(CurrentToken().GetType() != Token::RightParen)
 	{
 	    bool isRef = false;
-	    if (CurrentToken().GetType() == Token::Var)
+	    if (CurrentToken().GetType() == Token::Function ||
+		CurrentToken().GetType() == Token::Procedure)
 	    {
-		isRef = true;
-		NextToken();
-	    }
-	    if (!Expect(Token::Identifier, false))
-	    {
-		return 0;
-	    }
-	    
-	    std::string arg = CurrentToken().GetIdentName();
-	    NextToken();
-
-	    names.push_back(arg);
-	    if (CurrentToken().GetType() == Token::Colon)
-	    {
-		NextToken();
-		Types::TypeDecl* type = ParseSimpleType();
-		for(auto n : names)
-		{
-		    VarDef v(n, type, isRef);
-		    args.push_back(v);
-		}
-		names.clear();
-		if (CurrentToken().GetType() != Token::RightParen)
-		{
-		    if (!Expect(Token::Semicolon, true))
-		    {
-			return 0;
-		    }
-		}
+		PrototypeAST* proto = ParsePrototype(CurrentToken().GetType() == Token::Function);
+		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
+		VarDef v(proto->Name(), type, false);
+		args.push_back(v);
 	    }
 	    else
 	    {
-		if (!Expect(Token::Comma, true))
+		if (CurrentToken().GetType() == Token::Var)
+		{
+		    isRef = true;
+		    NextToken();
+		}
+		if (!Expect(Token::Identifier, false))
 		{
 		    return 0;
+		}
+		std::string arg = CurrentToken().GetIdentName();
+		NextToken();
+
+		names.push_back(arg);
+		if (CurrentToken().GetType() == Token::Colon)
+		{
+		    NextToken();
+		    Types::TypeDecl* type = ParseSimpleType();
+		    for(auto n : names)
+		    {
+			VarDef v(n, type, isRef);
+			args.push_back(v);
+		    }
+		    names.clear();
+		    if (CurrentToken().GetType() != Token::RightParen)
+		    {
+			if (!Expect(Token::Semicolon, true))
+			{
+			    return 0;
+			}
+		    }
+		}
+		else
+		{
+		    if (!Expect(Token::Comma, true))
+		    {
+			return 0;
+		    }
 		}
 	    }
 	}
@@ -1125,6 +1198,10 @@ ExprAST* Parser::ParseRepeat()
     while(CurrentToken().GetType() != Token::Until)
     {
 	ExprAST* stmt = ParseStatement();
+	if (!stmt)
+	{
+	    return 0;
+	}
 	if (!bhead)
 	{
 	    bhead = btail = stmt;

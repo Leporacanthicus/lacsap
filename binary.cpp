@@ -58,7 +58,6 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	return;
     }
 
-
     llvm::PassManager PM;
     llvm::TargetLibraryInfo *TLI = new llvm::TargetLibraryInfo(triple);
     PM.add(TLI);
@@ -90,7 +89,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 void CreateBinary(llvm::Module *module, const std::string& objname, const std::string& exename)
 {
     CreateObject(module, objname);
-    std::string cmd = std::string("clang ") + objname + " runtime.o -o " + exename; 
+    std::string cmd = std::string("clang ") + objname + " runtime.o -lm -o " + exename; 
     std::cerr << "Executing final link command: " << cmd << std::endl;
     system(cmd.c_str());
 }

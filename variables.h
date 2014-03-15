@@ -16,9 +16,9 @@ public:
     Types::TypeDecl* Type() const { return type; }
     const std::string Name() const { return name; }
     bool IsRef() const { return isRef; }
-    void Dump(std::ostream& out)
+    void Dump()
     {
-	out << "name: " << name << " type:" << type->to_string(); 
+	std::cerr << "name: " << name << " type:" << type->to_string(); 
     }
 private:
     std::string  name;

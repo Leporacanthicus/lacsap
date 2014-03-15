@@ -67,6 +67,7 @@ private:
     Types::ArrayDecl*   ParseArrayDecl();
     Types::RecordDecl*  ParseRecordDecl();
 
+
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 
@@ -78,6 +79,8 @@ private:
     Types::Range*    ErrorR(const std::string& msg);
     VariableExprAST* ErrorV(const std::string& msg);
 
+    // Helper functions for expression evaluation.
+    bool IsCall(Types::TypeDecl* type);
 
 private:
     typedef Stack<NamedObject*> NameStack;

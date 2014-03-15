@@ -1,4 +1,5 @@
 #include "types.h"
+#include "expr.h"
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <sstream>
@@ -295,9 +296,37 @@ int Types::RecordDecl::Element(const std::string& name) const
     return -1;
 }
 
+void Types::FuncPtrDecl::dump()
+{
+    std::cerr << "FunctionPtr " << std::endl;
+}
+
+llvm::Type* Types::FuncPtrDecl::LlvmType() const
+{
+    llvm::Type* resty = proto->ResultType()->LlvmType();
+    std::vector<llvm::Type*> argTys;
+    for(auto v : proto->Args())
+    {
+	argTys.push_back(v.Type()->LlvmType());
+    }
+    llvm::Type*  ty = llvm::FunctionType::get(resty, argTys, false);
+    return llvm::PointerType::getUnqual(ty);
+}
+
+Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
+    : TypeDecl(Pointer), proto(func) 
+{
+    Types::SimpleTypes t = Types::Function;
+    if (proto->ResultType()->Type() == Types::Void)
+    {
+	t = Types::Procedure;
+    }
+    baseType = new TypeDecl(t);
+}
+
 void Types::Dump()
 {
-    types.Dump(std::cerr);
+    types.Dump();
 }
 
 Types::Types()

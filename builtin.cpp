@@ -109,7 +109,7 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
 				    const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 argument to sqrt");
+    assert(args.size() == 1 && "Expect 1 argument to function");
 
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
@@ -128,7 +128,7 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
 
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	a = builder.CreateSIToFP(a, Types::GetType(Types::Real), "sqrttofp");
+	a = builder.CreateSIToFP(a, Types::GetType(Types::Real), "tofp");
     }
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {

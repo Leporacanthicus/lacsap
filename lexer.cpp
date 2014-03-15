@@ -47,7 +47,96 @@ int Lexer::PeekChar()
     curValid++;
     nextChar = inFile.get();
     return nextChar;
-}    
+}
+
+Token Lexer::NumberToken()
+{
+    int ch = CurChar();
+    Location w = Where();
+    std::string num;
+
+    num = static_cast<char>(ch);
+    
+    enum State
+    {
+	Intpart,
+	Fraction,
+	Exponent,
+	Done
+    } state = Intpart;
+
+    bool isFloat = false;
+    while(state != Done)
+    {
+	switch(state)
+	{
+	case Intpart:
+	    while(isdigit(ch = NextChar()))
+	    {
+		num += ch;
+	    }
+	    break;
+	    
+	case Fraction:
+	    assert(ch == '.' && "Fraction should start with '.'");
+	    if (PeekChar() == '.')
+	    {
+		break;
+	    }
+	    isFloat = true;
+	    num += ch;
+	    while(isdigit(ch = NextChar()))
+	    {
+		num += ch;
+	    }
+	    break;
+
+	case Exponent:
+	    isFloat = true;
+	    assert((ch == 'e' || ch == 'E') && "Fraction should start with '.'");
+	    num += ch;
+	    ch = PeekChar();
+	    if (ch == '+' || ch == '-')
+	    {
+		num += ch;
+		NextChar();
+		ch = NextChar();
+	    }
+	    while(isdigit(ch))
+	    {
+		num += ch;
+		ch = NextChar();
+	    }
+	    break;
+
+	default:
+	    assert(0 && "Huh? We should not be here...");
+	    break;
+	}
+
+	if (ch == '.' && state != Fraction)
+	{
+	    state = Fraction;
+	}
+	else if (state != Exponent && (ch == 'E' || ch == 'e'))
+	{
+	    state = Exponent;
+	}
+	else 
+	{
+	    state = Done;
+	}
+    }
+    // If the next char is a dot or an 'e'/'E', we have a floating point number. 
+    if (isFloat)
+    {
+	return Token(Token::Real, w, std::stod(num));
+    }
+    else
+    {
+	return Token(Token::Integer, w, std::stoi(num));
+    }
+}
 
 Token Lexer::GetToken()
 {
@@ -242,26 +331,7 @@ Token Lexer::GetToken()
     // Digit, so a number. Either "real" or "integer".
     if (std::isdigit(ch))
     {
-	std::string num;
-	num = static_cast<char>(ch);
-	while(isdigit(ch = NextChar()))
-	{
-	    num += static_cast<char>(ch);
-	}
-	if ((ch == '.' && PeekChar() != '.') ||  ch == 'E' || ch == 'e')
-	{
-	    bool wasDot = (ch == '.');
-	    num += ch;
-	    while(isdigit(ch = NextChar()) || (wasDot && ((ch == 'E') || ch == 'e')))
-	    {
-		num += ch;
-	    }
-	    return Token(Token::Real, w, std::stod(num));
-	}
-	else
-	{
-	    return Token(Token::Integer, w, std::stoi(num));
-	}
+	return NumberToken();
     }
     // We really shouldn't get here!
     std::cerr << "ch=" << ch << std::endl;

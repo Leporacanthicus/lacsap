@@ -38,7 +38,7 @@ var
 begin
    new(p);
    p^ := a;
-   writeln('p^=', p^);
+   writeln('p^=', p^:0);
    dispose(p);
 end; { ptrtest }
 

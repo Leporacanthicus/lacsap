@@ -11,7 +11,7 @@
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile, Types& ty, Constants& co);
+    Lexer(const std::string& sourceFile);
     Token GetToken();
 
 private:
@@ -31,8 +31,6 @@ private:
     int           curChar;
     int           nextChar;
     int           curValid;
-    Types&        types;
-    Constants&    constants;;
 };
 
 class LexerException : public std::exception

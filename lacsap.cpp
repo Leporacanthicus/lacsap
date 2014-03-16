@@ -85,10 +85,8 @@ static void Compile(const std::string& filename)
     try
     {
 	ExprAST*  ast;
-	Types     types;
-	Constants constants;
-	Lexer     l(filename, types, constants);
-	Parser    p(l, types, constants);
+	Lexer     l(filename);
+	Parser    p(l);
 
 	OptimizerInit();
 

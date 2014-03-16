@@ -1,7 +1,6 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include "stack.h"
 #include <llvm/IR/Type.h>
 #include <string>
 
@@ -29,14 +28,6 @@ public:
 	Void,
 	Field,
     };
-
-    class TypeDecl;
-    struct EnumValue;
-    typedef Stack<TypeDecl*> TypeStack;
-    typedef StackWrapper<TypeDecl*> TypeWrapper;
-    typedef Stack<EnumValue*> EnumStack;
-    typedef StackWrapper<EnumValue*> EnumWrapper;
-
 
     /* Range is either created by the user, or calculated on basetype */
     class Range
@@ -221,23 +212,8 @@ public:
     static llvm::Type* GetType(const TypeDecl* type);
     static llvm::Type* GetType(SimpleTypes type);
 
-    bool IsTypeName(const std::string& name);
-    bool IsEnumValue(const std::string& name);
-    bool Add(const std::string& nm, TypeDecl* ty);
-    TypeDecl* GetTypeDecl(const std::string& name);
-    EnumValue* FindEnumValue(const std::string& name);
-    
-    TypeStack& GetTypes() { return types; }
-
-    void FixUpIncomplete(PointerDecl* p);
-
     void Dump();
-    
-    Types();
-
-private:
-    TypeStack types;
-    EnumStack enums;
 };
+
 
 #endif

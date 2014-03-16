@@ -6,6 +6,16 @@
 #include <cctype>
 #include <iostream>
 
+Lexer::Lexer(const std::string& sourceFile):
+    fName(sourceFile), lineNo(1),column(0), curValid(0)
+{
+    inFile.open(fName);
+    if (!inFile.good())
+    {
+	throw LexerException(std::string("File ") + fName + " could not be opened...");
+    }
+}
+
 int Lexer::CurChar()
 {
     if (!curValid)
@@ -307,20 +317,6 @@ Token Lexer::GetToken()
 	{
 	    return Token(tt, w);
 	}
-	if (types.IsTypeName(str))
-	{
-	    tt = Token::TypeName;
-	}
-	else if (types.IsEnumValue(str))
-	{
-	    Types::EnumValue* e = types.FindEnumValue(str); 
-	    assert(e && "Expected to find enum value...");
-	    return Token(Token::EnumValue, w, e->value);
-	}
-	else if (constants.IsConstant(str))
-	{
-	    tt = Token::ConstName;
-	}
 	else 
 	{
 	    tt = Token::Identifier;
@@ -337,15 +333,4 @@ Token Lexer::GetToken()
     std::cerr << "ch=" << ch << std::endl;
     assert(0);
     return Token(Token::Unknown, w);
-}
-
-
-Lexer::Lexer(const std::string& sourceFile, Types& ty, Constants& co):
-    fName(sourceFile), lineNo(1),column(0), curValid(0), types(ty), constants(co)
-{
-    inFile.open(fName);
-    if (!inFile.good())
-    {
-	throw LexerException(std::string("File ") + fName + " could not be opened...");
-    }
 }

@@ -9,9 +9,17 @@
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
-Parser::Parser(Lexer &l, Types& ty, Constants& co) 
-    : 	lexer(l), nextTokenValid(false), errCnt(0), types(ty), constants(co)
+Parser::Parser(Lexer &l) 
+    : 	lexer(l), nextTokenValid(false), errCnt(0)
 {
+    nameStack.NewLevel();
+    if (!(AddType("integer", new Types::TypeDecl(Types::Integer)) &&
+	  AddType("real", new Types::TypeDecl(Types::Real)) &&
+	  AddType("char", new Types::TypeDecl(Types::Char)) &&
+	  AddType("boolean", new Types::TypeDecl(Types::Boolean))))
+    {
+	assert(0 && "Failed to add basic types...");
+    }
 }
 
 ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
@@ -113,13 +121,80 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
 #define PeekToken() PeekToken(__FILE__, __LINE__)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
 
+Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
+{
+    NamedObject* def = nameStack.Find(name);
+    if (!def) 
+    {
+	return 0;
+    }
+    TypeDef *typeDef = dynamic_cast<TypeDef*>(def);
+    if (!typeDef)
+    {
+	return 0;
+    }
+    return typeDef->Type();
+}
+
+Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
+{
+    NamedObject* def = nameStack.Find(name);
+    if (!def) 
+    {
+	return 0;
+    }
+    ConstDef *constDef = dynamic_cast<ConstDef*>(def);
+    if (!constDef)
+    {
+	return 0;
+    }
+    return constDef->ConstValue();
+}
+
+bool Parser::GetEnumValue(const std::string& name, int& value)
+{
+    NamedObject* def = nameStack.Find(name);
+    if (!def) 
+    {
+	return false;
+    }
+    EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
+    if (!enumDef)
+    {
+	return false;
+    }
+    value = enumDef->Value();
+    return true;
+}
+
+bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
+{
+    Types::EnumDecl* ed = dynamic_cast<Types::EnumDecl*>(ty);
+    if (ed)
+    {
+	for(auto v : ed->Values())
+	{
+	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value)))
+	    {
+		Error("Enumerated value by name " + v.name + " already exists...");
+		return false;
+	    }
+	}
+    }
+    return nameStack.Add(name, new TypeDef(name, ty));
+}
+
 Types::TypeDecl* Parser::ParseSimpleType()
 {
-    if (CurrentToken().GetType() != Token::TypeName)
+    if (CurrentToken().GetType() != Token::Identifier)
     {
-	return ErrorT("Expected simple type");
+	return ErrorT("Expected identifier of simple type");
     }
-    Types::TypeDecl* ty = types.GetTypeDecl(CurrentToken().GetIdentName());
+    Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
+    if (!ty)
+    {
+	return ErrorT("Identifier does not name a type");
+    }
     NextToken();
     return ty;
 }
@@ -128,7 +203,7 @@ Types::Range* Parser::ParseRange()
 {
     Token::TokenType tt = CurrentToken().GetType();
     
-    if (tt == Token::Integer || tt == Token::Char || tt == Token::EnumValue)
+    if (tt == Token::Integer || tt == Token::Char)
     {
 	int start = CurrentToken().GetIntVal();
 	NextToken();
@@ -145,6 +220,27 @@ Types::Range* Parser::ParseRange()
 
 	return new Types::Range(start, end);
     }
+    else if (tt == Token::Identifier)
+    {
+	int start;
+	int end;
+	if (!GetEnumValue(CurrentToken().GetIdentName(), start))
+	{
+	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
+	}
+	NextToken();
+        if (!Expect(Token::DotDot, true))
+	{
+	    return 0;
+	}
+	if (CurrentToken().GetType() != Token::Identifier ||
+	    !GetEnumValue(CurrentToken().GetIdentName(), end))
+	{
+	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
+	}
+	NextToken();
+	return new Types::Range(start, end);
+    }
     else
     {
 	return ErrorR("Invalid range specification");
@@ -153,9 +249,9 @@ Types::Range* Parser::ParseRange()
 
 Types::Range* Parser::ParseRangeOrTypeRange()
 {
-    if (CurrentToken().GetType() == Token::TypeName)
+    if (CurrentToken().GetType() == Token::Identifier)
     {
-	Types::TypeDecl* ty = types.GetTypeDecl(CurrentToken().GetIdentName());
+	Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
 	if (!ty->isIntegral())
 	{
 	    return ErrorR("Type used as index specification should be integral type");
@@ -223,7 +319,7 @@ void Parser::ParseConstDef()
 	    Error("Invalid constant value");
 	}
 	NextToken();
-	if (!constants.Add(nm, cd))
+	if (!nameStack.Add(nm, new ConstDef(nm, cd)))
 	{
 	    Error(std::string("Name ") + nm + " is already declared as a constant");
 	    return;
@@ -260,7 +356,11 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	types.Add(nm, ty);
+	
+	if (!AddType(nm,  ty))
+	{
+	    Error(std::string("Name ") + nm + " is already in use.");
+	}
 	if (ty->Type() == Types::PointerIncomplete)
 	{
 	    Types::PointerDecl* pd = dynamic_cast<Types::PointerDecl*>(ty);
@@ -272,9 +372,16 @@ void Parser::ParseTypeDef()
 	}
     } while (CurrentToken().GetType() == Token::Identifier);
 
+    // Now fix up any incomplete types...
     for(auto p : incomplete)
     {
-	types.FixUpIncomplete(p);
+	Types::TypeDecl *ty = GetTypeDecl(p->Name());
+	if(!ty)
+	{
+	    Error("Forward declared pointer type not declared: " + p->Name());
+	    return;
+	}
+	p->SetSubType(ty);
     }
 }
 
@@ -310,7 +417,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 
 Types::PointerDecl* Parser::ParsePointerType()
 {
-    if(!Expect(Token::Uparrow, true))
+    if (!Expect(Token::Uparrow, true))
     {
 	return 0;
     }
@@ -319,7 +426,14 @@ Types::PointerDecl* Parser::ParsePointerType()
     if (CurrentToken().GetType() == Token::Identifier)
     {
 	std::string name = CurrentToken().GetIdentName();
+	// Is it a known type?
 	NextToken();
+	Types::TypeDecl* ty = GetTypeDecl(name); 
+	if (ty)
+	{
+	    return new Types::PointerDecl(ty);	
+	}
+	// Otherwise, forward declare... 
 	return new Types::PointerDecl(name);
     }
     else
@@ -438,8 +552,21 @@ Types::TypeDecl* Parser::ParseType()
 
     switch(tt)
     {
-    case Token::TypeName:
-	return ParseSimpleType();
+    case Token::Identifier:
+    {
+	int dummy;
+	if (!GetEnumValue(CurrentToken().GetIdentName(), dummy))
+	{
+	    return ParseSimpleType();
+	}
+    }
+    // Fall through:
+    case Token::Integer:
+    case Token::Char:
+    {
+	Types::Range* r = ParseRange();
+	return new Types::RangeDecl(r, (tt == Token::Char)?Types::Char:Types::Integer);
+    }
 
     case Token::Array:
 	return ParseArrayDecl();
@@ -447,13 +574,6 @@ Types::TypeDecl* Parser::ParseType()
     case Token::Record:
 	return ParseRecordDecl();
 
-    case Token::Integer:
-    case Token::Char:
-    case Token::EnumValue:
-    {
-	Types::Range* r = ParseRange();
-	return new Types::RangeDecl(r, (tt == Token::Char)?Types::Char:Types::Integer);
-    }
     
     case Token::LeftParen:
 	return ParseEnumDef();
@@ -638,6 +758,11 @@ ExprAST* Parser::ParseIdentifierExpr()
     NextToken();
     /* TODO: Should we add builtin's to names at global level? */
     const NamedObject* def = nameStack.Find(idName);
+    const EnumDef *enumDef = dynamic_cast<const EnumDef*>(def);
+    if (enumDef)
+    {
+	return new IntegerExprAST(enumDef->Value());
+    }
     bool isBuiltin = Builtin::IsBuiltin(idName);
     if (!isBuiltin)
     {
@@ -661,6 +786,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		  tt == Token::Uparrow || 
 		  tt == Token::Period)
 	    {
+		assert(type && "Expect to have a type here...");
 		switch(tt)
 		{
 		case Token::LeftSquare:
@@ -671,6 +797,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		case Token::Uparrow:
 		    NextToken();
 		    expr = new PointerExprAST(expr);
+		    type->dump();
 		    type = type->SubType();
 		    break;
 
@@ -1016,8 +1143,6 @@ FunctionAST* Parser::ParseDefinition()
     }
     
     NameWrapper wrapper(nameStack);
-    Types::TypeWrapper typewrap(types.GetTypes());
-    Constants::ConstWrapper constwrap(constants.GetConsts());
     for(auto v : proto->Args())
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
@@ -1357,23 +1482,21 @@ ExprAST* Parser::ParseRead()
 ExprAST* Parser::ParsePrimary()
 {
     Token token = CurrentToken();
-    if (token.GetType() == Token::ConstName)
+    if (token.GetType() == Token::Identifier)
     {
-	Constants::ConstDecl* cd = constants.GetConstDecl(token.GetIdentName());
-	if (!cd)
+	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
+	if (cd)
 	{
-	    return Error(std::string("Undefined constant name: ") + token.GetIdentName());
+	    token = cd->Translate();
 	}
-	token = cd->Translate();
-
     }
+
     switch(token.GetType())
     {
     case Token::Real:
 	return ParseRealExpr(token);
 
     case Token::Integer:
-    case Token::EnumValue:
 	return ParseIntegerExpr(token);
 
     case Token::Char:

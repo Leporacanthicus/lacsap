@@ -39,10 +39,7 @@ public:
 	Of,
 	Record,
 	Identifier,
-	TypeName,
 	Const,
-	ConstName,
-	EnumValue,
 
 	// Symbols and such
 	LeftParen,
@@ -109,17 +106,15 @@ public:
     TokenType GetType() const { return type; }
     std::string GetIdentName() const 
     { 
-	assert(type == Token::Identifier || 
-	       type == Token::TypeName || 
-	       type == Token::ConstName &&
+	assert(type == Token::Identifier && 
 	       "Incorrect type for identname");
 	assert(strVal.size() != 0 && "String should not be empty!");
 	return strVal; 
     }
+
     int GetIntVal() const 
     { 
-	assert(type == Token::EnumValue || 
-	       type == Token::Integer ||
+	assert(type == Token::Integer ||
 	       type == Token::Char &&
 	       "Request for integer value from wrong type???");
 	return intVal; 
@@ -130,11 +125,13 @@ public:
 	assert(type == Token::Real && "Request for real from wrong type???");
 	return realVal; 
     }
+
     std::string GetStrVal() const 
     { 
 	assert(type == Token::String && "Request for string from wrong type???");
 	return strVal; 
     }
+
     // For debug purposes.
     void Dump(std::ostream& out, const char* file = 0, int line = 0) const;
     std::string ToString() const;

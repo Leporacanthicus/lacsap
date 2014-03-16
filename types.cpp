@@ -37,54 +37,6 @@ llvm::Type* Types::GetType(const Types::TypeDecl* type)
     return type->LlvmType();
 }
 
-Types::TypeDecl* Types::GetTypeDecl(const std::string& nm)
-{
-    Types::TypeDecl *ty = types.Find(nm);
-    return ty;
-}
-
-bool Types::IsTypeName(const std::string& name)
-{
-    return !!types.Find(name);
-}
-
-bool Types::IsEnumValue(const std::string& name)
-{
-    return !!enums.Find(name);
-}
-
-bool Types::Add(const std::string& nm, TypeDecl* ty)
-{
-    Types::EnumDecl* ed = dynamic_cast<EnumDecl*>(ty);
-    if (ed)
-    {
-	for(auto v : ed->Values())
-	{
-	    if (!enums.Add(v.name, new Types::EnumValue(v)))
-	    {
-		std::cerr << "Enumerated value by name " << v.name << " already exists..." << std::endl;
-	    }
-	}
-    }
-    return types.Add(nm, ty);
-}
-
-void Types::FixUpIncomplete(Types::PointerDecl *p)
-{
-    TypeDecl *ty = types.Find(p->Name());
-    if(!ty)
-    {
-	std::cerr << "Forward declared pointer type not declared: " << p->Name() << std::endl;
-	return;
-    }
-    p->SetSubType(ty);
-}
-
-Types::EnumValue* Types::FindEnumValue(const std::string& nm)
-{
-    return enums.Find(nm);
-}
-
 std::string Types::TypeDecl::to_string() const
 {
     std::stringstream ss; 
@@ -324,17 +276,4 @@ Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
     baseType = new TypeDecl(t);
 }
 
-void Types::Dump()
-{
-    types.Dump();
-}
-
-Types::Types()
-{
-    types.NewLevel();
-    types.Add("integer", new TypeDecl(Integer));
-    types.Add("real", new TypeDecl(Real));
-    types.Add("char", new TypeDecl(Char));
-    types.Add("boolean", new TypeDecl(Boolean));
-}
 

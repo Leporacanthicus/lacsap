@@ -1,17 +1,12 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+// Need token for "location". 
 #include "token.h"
-#include "stack.h"
 
 class Constants
 {
 public:
-    class ConstDecl;
-
-    typedef Stack<ConstDecl*> ConstStack;
-    typedef StackWrapper<ConstDecl*> ConstWrapper;
-
     class ConstDecl
     {
     public:
@@ -72,18 +67,6 @@ public:
     private:
 	std::string value;
     };
-
-    bool IsConstant(const std::string& name);
-
-    bool Add(const std::string& nm, ConstDecl* ty);
-    ConstDecl* GetConstDecl(const std::string& name);
-
-    ConstStack& GetConsts() { return constants; }
-
-    Constants();
-    
-private:
-    ConstStack constants;
 };
 
 #endif

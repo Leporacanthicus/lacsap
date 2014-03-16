@@ -24,24 +24,3 @@ Token Constants::StringConstDecl::Translate()
 {
     return Token(Token::String, loc, value);
 }
-
-bool Constants::IsConstant(const std::string& name)
-{
-    return !!constants.Find(name);
-}
-
-bool Constants::Add(const std::string& nm, ConstDecl* c)
-{
-    return constants.Add(nm, c);
-}
-
-Constants::ConstDecl* Constants::GetConstDecl(const std::string& name)
-{
-    Constants::ConstDecl* d = constants.Find(name);
-    return d;
-}
-
-Constants::Constants()
-{
-    constants.NewLevel();
-};

@@ -24,7 +24,6 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
     if (where.to_string() != ":0:0")
     {
 	assert(t != Token::Identifier && 
-	       t != Token::TypeName && 
 	       t != Token::String &&
 	       t != Token::Integer && 
 	       t != Token::Real);
@@ -33,14 +32,14 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
 
 Token::Token(TokenType t, const Location& w, const std::string& str): type(t), where(w), strVal(str)
 {
-    assert(t ==  Token::Identifier || t == Token::TypeName || Token::String &&
+    assert(t ==  Token::Identifier || Token::String &&
 	   "Invalid token for string argument");
-    assert((t != Token::String || str != "") && "String should not be empty for identifier or typename");
+    assert((t != Token::String || str != "") && "String should not be empty for identifier");
 }
 
 Token::Token(TokenType t, const Location& w, int v) : type(t), where(w), intVal(v)
 {
-    assert(t == Token::Integer || t == Token::Char || t == Token::EnumValue);
+    assert(t == Token::Integer || t == Token::Char);
 }
 
 Token::Token(TokenType t, const Location& w, double v) : type(t), where(w), realVal(v)
@@ -66,7 +65,6 @@ void Token::Dump(std::ostream& out, const char* file, int line) const
     switch(type)
     {
     case Token::Identifier:
-    case Token::TypeName:
 	out << strVal << " ";
 	break;
 
@@ -161,9 +159,6 @@ const TokenEntry tokenTable[] =
     { Token::Period,        false, -1, "." },
     { Token::DotDot,        false, -1, ".." },
     { Token::Uparrow,       false, -1, "^" },
-    { Token::TypeName,      false, -1, "typename" },
-    { Token::EnumValue,     false, -1, "enumvalue" },
-    { Token::ConstName,     false, -1, "constant" },
     { Token::Identifier,    false, -1, "identifier" },
     { Token::Unknown,       false, -1, "Unknown" },
     { Token::EndOfFile,     false, -1, "EOF" },

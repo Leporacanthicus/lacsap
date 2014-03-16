@@ -10,7 +10,7 @@
 class Parser
 {
 public:
-    Parser(Lexer &l, Types& ty, Constants& co);
+    Parser(Lexer &l);
     ExprAST* Parse();
 
     int GetErrors() { return errCnt; } 
@@ -66,7 +66,6 @@ private:
     Types::ArrayDecl*   ParseArrayDecl();
     Types::RecordDecl*  ParseRecordDecl();
 
-
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
 
@@ -80,6 +79,12 @@ private:
 
     // Helper functions for expression evaluation.
     bool IsCall(Types::TypeDecl* type);
+    
+    // Helper functions for identifier access/checking.
+    bool GetEnumValue(const std::string& name, int& enumValue);
+    Types::TypeDecl* GetTypeDecl(const std::string& name);
+    Constants::ConstDecl* GetConstDecl(const std::string& name);
+    bool AddType(const std::string& name, Types::TypeDecl* type);
 
 private:
     typedef Stack<NamedObject*> NameStack;
@@ -91,8 +96,6 @@ private:
     std::string moduleName;
     int         errCnt;
     NameStack   nameStack;
-    Types&      types;
-    Constants&  constants;
 };
 
 #endif

@@ -2,6 +2,7 @@
 #define NAMEDOBJECT_H
 
 #include "types.h"
+#include "constants.h"
 #include <iostream>
 
 class NamedObject
@@ -39,7 +40,6 @@ private:
     bool             isRef;   /* "var" arguments are "references" */
 };
 
-
 class FuncDef : public NamedObject
 {
 public:
@@ -56,5 +56,52 @@ private:
     PrototypeAST* proto;
 };
 
+class TypeDef : public NamedObject
+{
+public:
+    TypeDef(const std::string& nm, Types::TypeDecl* ty) 
+	: NamedObject(nm), type(ty) { }
+    Types::TypeDecl* Type() const { return type; }
+    void dump() 
+    { 
+	std::cerr << "Type: " << Name() << " type : ";
+	type->dump();
+	std::cerr << std::endl; 
+    }
+private:
+    Types::TypeDecl* type;
+};
+
+class ConstDef : public NamedObject
+{
+public:
+    ConstDef(const std::string& nm, Constants::ConstDecl* cv)
+	: NamedObject(nm), constVal(cv) { }
+
+    Constants::ConstDecl* ConstValue() const { return constVal; }
+    Types::TypeDecl* Type() const { return 0; }
+    void dump() 
+    { 
+	std::cerr << "Const: " << Name() << " Value: " << constVal->Translate().ToString();
+	std::cerr << std::endl; 
+    }
+private:
+    Constants::ConstDecl *constVal;
+};
+
+class EnumDef : public NamedObject
+{
+public:
+    EnumDef(const std::string& nm, int v)
+	: NamedObject(nm), enumValue(v) { }
+    int Value() const { return enumValue; }
+    Types::TypeDecl* Type() const { return 0; }
+    void dump() 
+    { 
+	std::cerr << "Enum: " << Name() << " Value: " << enumValue << std::endl; 
+    }
+private:
+    int enumValue;
+};
 
 #endif

@@ -944,7 +944,10 @@ VarDeclAST* Parser::ParseVarDecls()
 	    {
 		VarDef v(n, type);
 		varList.push_back(v);
-		nameStack.Add(n, new VarDef(n, type));
+		if (!nameStack.Add(n, new VarDef(n, type)))
+		{
+		    Error(std::string("Name ") + n + " is already defined");
+		}
 	    }
 	    if (!Expect(Token::Semicolon, true))
 	    {
@@ -1062,7 +1065,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
     {
 	return 0;
     }
-    return new PrototypeAST(funcName, args) ;
+    return new PrototypeAST(funcName, args);
 }
 
 ExprAST* Parser::ParseStatement()

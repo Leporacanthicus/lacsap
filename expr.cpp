@@ -612,7 +612,10 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     if (resultType->Type() != Types::Void)
     {
 	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, resultType));
-	variables.Add(name, a);
+	if(!variables.Add(name, a))
+	{
+	    ErrorF(std::string("Duplicate variable name ") + name);
+	}
     }
 }
 

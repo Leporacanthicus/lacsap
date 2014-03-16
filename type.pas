@@ -22,15 +22,18 @@ type
 	    
 var   
    ll : letter;
-   dd : days;
+   dd  : days;
    w  : workdays;
    
 function f : integer;
-begin
+var
+   b :  integer;
+begin 
    w  := wednesday;
    dd := saturday;
    f  := ord(w) + ord(dd);
-end; 
+   b  := 7;
+end;  
 
 procedure ptrtest;
 var

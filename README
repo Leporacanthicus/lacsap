@@ -10,8 +10,6 @@ Among things NOT yet supported are:
 - Not allowing "empty then" in if/then/else statements.
 
 Other work that is needed: 
-- Store all nested data in one block.
-- Local variables collide with global types and global constants - this shouldn't be the case.
 - Dump of types should be "const"
 
 Lots of other small and large things that I can't think of right now.

@@ -19,7 +19,6 @@ private:
     std::string      name;
 };
 
-
 class VarDef : public NamedObject
 {
 public:

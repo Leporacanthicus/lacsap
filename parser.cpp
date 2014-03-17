@@ -1614,10 +1614,12 @@ ExprAST* Parser::Parse()
 	    }
 	    break;
 	}
+
 	default:
 	    curAst = ParseExpression();
 	    break;
 	}
+
 	if (curAst)
 	{
 	    // Append to the ast.

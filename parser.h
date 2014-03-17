@@ -51,7 +51,7 @@ private:
     ExprAST*      ParseStmtOrBlock();
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
-    FunctionAST*  ParseDefinition();
+    FunctionAST*  ParseDefinition(const std::string& parentName);
     PrototypeAST* ParsePrototype(bool isFunction);
 
     /* Type declarations and defintitions */

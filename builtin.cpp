@@ -118,13 +118,8 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
     argTypes.push_back(ty);
     std::string name = "llvm." + func + ".f64";
     llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
-					       name, theModule);
-    if (f->getName() != name)
-    {
-	f->eraseFromParent();
-	f = theModule->getFunction(name);
-    }
+
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
@@ -238,13 +233,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	
 	llvm::Type* resTy = MakeVoidPtrType();
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
-						   name, theModule);
-	if (f->getName() != name)
-	{
-	    f->eraseFromParent();
-	    f = theModule->getFunction(name);
-	}
+	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 	
 	ty = a->getType()->getContainedType(0);
 	const llvm::DataLayout dl(theModule);
@@ -277,13 +266,8 @@ static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector
 
 	std::string name = "__dispose";
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
-	llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
-						   name, theModule);
-	if (f->getName() != name)
-	{
-	    f->eraseFromParent();
-	    f = theModule->getFunction(name);
-	}
+	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+
 	return builder.CreateCall(f, a);
     }
     return ErrorV("Expected pointer argument for 'new'");

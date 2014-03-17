@@ -1116,7 +1116,7 @@ BlockAST* Parser::ParseBlock()
     return new BlockAST(astHead);
 }
 
-FunctionAST* Parser::ParseDefinition()
+FunctionAST* Parser::ParseDefinition(const std::string& parentName)
 {
     bool isFunction = CurrentToken().GetType() == Token::Function;
     PrototypeAST* proto = ParsePrototype(isFunction);
@@ -1141,7 +1141,7 @@ FunctionAST* Parser::ParseDefinition()
 	{
 	    NextToken();
 	    proto->SetIsForward(true);
-	    return new FunctionAST(proto, 0, 0);
+	    return new FunctionAST(proto, 0, 0, parentName);
 	}
     }
     
@@ -1158,6 +1158,7 @@ FunctionAST* Parser::ParseDefinition()
     BlockAST* body = 0;
     bool typeDecls = false;
     bool constDecls = false;
+    std::vector<FunctionAST*>  subFunctions;
     do
     {
 	switch(CurrentToken().GetType())
@@ -1187,7 +1188,15 @@ FunctionAST* Parser::ParseDefinition()
 	    ParseConstDef();
 	    constDecls = true;
 	    break;
-	    
+
+	case Token::Function:
+	case Token::Procedure:
+	{
+	    FunctionAST* fn = ParseDefinition(name);
+	    subFunctions.push_back(fn);
+	    break;
+	}
+	   
 	case Token::Begin:
 	{
 	    if (body)
@@ -1204,7 +1213,8 @@ FunctionAST* Parser::ParseDefinition()
 		return 0;
 	    }
 
-	    FunctionAST* fn = new FunctionAST(proto, varDecls, body);
+	    FunctionAST* fn = new FunctionAST(proto, varDecls, body, parentName);
+	    fn->AddSubFunctions(subFunctions);
 	    return fn;
 	}
 
@@ -1573,7 +1583,7 @@ ExprAST* Parser::Parse()
 
 	case Token::Function:
 	case Token::Procedure:
-	    curAst = ParseDefinition();
+	    curAst = ParseDefinition("");
 	    break;
 
 	case Token::Var:
@@ -1596,7 +1606,7 @@ ExprAST* Parser::Parse()
 	    // Parse the "main" of the program - we call that
 	    // "__PascalMain" so we can call it from C-code.
 	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
-	    FunctionAST* fun = new FunctionAST(proto, 0, body);
+	    FunctionAST* fun = new FunctionAST(proto, 0, body, "");
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))
 	    {

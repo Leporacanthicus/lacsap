@@ -217,6 +217,7 @@ public:
     }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
+    virtual llvm::Function* CodeGen(const std::string& namePrefix);
     void CreateArgumentAlloca(llvm::Function* fn);
     Types::TypeDecl* ResultType() const { return resultType; }
     std::string Name() const { return name; }
@@ -246,18 +247,22 @@ private:
 class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b) 
-	: proto(prot), varDecls(v), body(b)
+    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b, const std::string& par) 
+	: proto(prot), varDecls(v), body(b), parent(par)
     { 
 	assert((proto->IsForward() || body) && "Function should have body"); 
     }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
+    llvm::Function* CodeGen(const std::string& namePrefix);
     const PrototypeAST* Proto() const { return proto; }
+    void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
 private:
-    PrototypeAST *proto;
-    VarDeclAST   *varDecls;
-    BlockAST     *body;
+    PrototypeAST              *proto;
+    VarDeclAST                *varDecls;
+    BlockAST                  *body;
+    std::vector<FunctionAST*>  subFunctions;
+    std::string                parent;
 };
 
 class CallExprAST : public ExprAST

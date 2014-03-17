@@ -15,11 +15,28 @@
 #include <sstream>
 #include <map>
 
-
 typedef Stack<llvm::Value *> VarStack;
 typedef StackWrapper<llvm::Value *> VarStackWrapper;
 
+class MangleMap
+{
+public:
+    MangleMap(const std::string& name)
+	: actualName(name) {}
+    void dump() 
+    { 
+	std::cerr << "Name: " << actualName << std::endl; 
+    }
+    const std::string& Name() { return actualName; }
+private:
+    std::string actualName;
+};
+
+typedef Stack<MangleMap*> MangleStack;
+typedef StackWrapper<MangleMap*> MangleWrapper;
+
 VarStack variables;
+MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
@@ -41,7 +58,6 @@ void ExprAST::Dump(void) const
 { 
     Dump(std::cerr);
 }
-
 
 llvm::Value *ErrorV(const std::string& msg)
 {
@@ -269,11 +285,19 @@ void FunctionExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* FunctionExprAST::CodeGen()
 {
-    return theModule->getFunction(name);
+    MangleMap* mm = mangles.Find(name); 
+    if (!mm)
+    {
+	return ErrorV(std::string("Name ") + name + " could not be found...");
+    }
+    std::string actualName = mm->Name();
+    std::cerr << "Actual Name: "  << actualName << std::endl;
+    return theModule->getFunction(actualName);
 }
 
 llvm::Value* FunctionExprAST::Address()
 {
+    assert(0 && "Don't expect this to be called...");
     return 0;
 }
 
@@ -494,8 +518,7 @@ llvm::Value* CallExprAST::CodeGen()
     }
     if (proto->ResultType()->Type() == Types::Void) 
 	return builder.CreateCall(calleF, argsV, "");
-    else
-	return builder.CreateCall(calleF, argsV, "calltmp");
+    return builder.CreateCall(calleF, argsV, "calltmp");
 }
 
 void BuiltinExprAST::DoDump(std::ostream& out) const
@@ -546,13 +569,13 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-llvm::Function* PrototypeAST::CodeGen()
+llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
     std::vector<llvm::Type*> argTypes;
     for(auto i : args)
     {
-	llvm::Type* ty = Types::GetType(i.Type());
+	llvm::Type* ty = i.Type()->LlvmType();
 	if (!ty)
 	{
 	    return ErrorF(std::string("Invalid type for argument") + i.Name() + "...");
@@ -565,26 +588,39 @@ llvm::Function* PrototypeAST::CodeGen()
     }
     llvm::Type* resTy = Types::GetType(resultType);
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, name, theModule);
-
-    // Validate function. 
-    if (f->getName() != name)
+    std::string actualName;
+    if (namePrefix != "")
     {
-	f->eraseFromParent();
-	f = theModule->getFunction(name);
-	
-	if (!f->empty())
-	{
-	    return ErrorF(std::string("redefinition of function: ") + name);
-	}
-
-	if (f->arg_size() != args.size())
-	{
-	    return ErrorF(std::string("Change in number of arguemts for function: ") + name);
-	}	    
+	actualName = namePrefix + "." + name;
+    }
+    else
+    {
+	actualName = name;
     }
 
+    if (!mangles.Add(name, new MangleMap(actualName)))
+    {
+	return ErrorF(std::string("Name ") + name + " already in use?");
+    }
+
+    llvm::Constant* cf = theModule->getOrInsertFunction(actualName, ft);
+    llvm::Function* f = llvm::dyn_cast<llvm::Function>(cf);
+    if (!f->empty())
+    {
+	return ErrorF(std::string("redefinition of function: ") + name);
+    }
+    
+    if (f->arg_size() != args.size())
+    {
+	return ErrorF(std::string("Change in number of arguemts for function: ") + name);
+    }	    
+
     return f;
+}
+
+llvm::Function* PrototypeAST::CodeGen()
+{
+    return CodeGen("");
 }
 
 void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
@@ -627,11 +663,11 @@ void FunctionAST::DoDump(std::ostream& out) const
     body->Dump(out);
 }
 
-llvm::Function* FunctionAST::CodeGen()
+llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
     VarStackWrapper w(variables);
     TRACE();
-    llvm::Function* theFunction = proto->CodeGen();
+    llvm::Function* theFunction = proto->CodeGen(namePrefix);
     if (!theFunction)
     {
 	return 0;
@@ -652,7 +688,32 @@ llvm::Function* FunctionAST::CodeGen()
 	varDecls->CodeGen();
     }
 
+    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
+
+    MangleWrapper   m(mangles);
+
+    if (subFunctions.size())
+    {
+	std::string newPrefix;
+	if (namePrefix != "")
+	{
+	    newPrefix = namePrefix + "." + proto->Name();
+	}
+	else
+	{
+	    newPrefix = proto->Name();
+	}
+	std::cerr << "newPrefix = "  << newPrefix << std::endl;
+	for(auto fn : subFunctions)
+	{
+	    fn->CodeGen(newPrefix);
+	}
+    }
+
     variables.Dump();
+    mangles.Dump();
+    
+    builder.SetInsertPoint(bb, ip);
     llvm::Value *block = body->CodeGen();
     if (!block && !body->IsEmpty())
     {
@@ -673,9 +734,14 @@ llvm::Function* FunctionAST::CodeGen()
 
     TRACE();
     verifyFunction(*theFunction);
-    
+    theFunction->dump();
     fpm->run(*theFunction);
     return theFunction;
+}
+
+llvm::Function* FunctionAST::CodeGen()
+{
+    return CodeGen("");
 }
 
 void StringExprAST::DoDump(std::ostream& out) const
@@ -712,6 +778,10 @@ llvm::Value* AssignExprAST::CodeGen()
     if (!dest)
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
+    }
+    if (!v) 
+    {
+	return ErrorV("Could not produce expression for assignment");
     }
     llvm::Type::TypeID lty = dest->getType()->getContainedType(0)->getTypeID();
     llvm::Type::TypeID rty = v->getType()->getTypeID();
@@ -969,7 +1039,7 @@ void WriteAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Function *CreateWriteFunc(llvm::Type* ty)
+static llvm::Constant *CreateWriteFunc(llvm::Type* ty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
@@ -1020,13 +1090,7 @@ static llvm::Function *CreateWriteFunc(llvm::Type* ty)
     }
     std::string name = std::string("__write_") + suffix;
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
-					       name, theModule);
-    if (f->getName() != name)
-    {
-	f->eraseFromParent();
-	f = theModule->getFunction(name);
-    }
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
     return f;
 }
@@ -1043,7 +1107,7 @@ llvm::Value* WriteAST::CodeGen()
 	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
-	llvm::Function* f = CreateWriteFunc(ty);
+	llvm::Constant* f = CreateWriteFunc(ty);
 	llvm::Value* w;
 	if (!arg.width)
 	{
@@ -1092,7 +1156,7 @@ llvm::Value* WriteAST::CodeGen()
     }
     if (isWriteln)
     {
-	llvm::Function* f = CreateWriteFunc(0);
+	llvm::Constant* f = CreateWriteFunc(0);
 	builder.CreateCall(f, std::vector<llvm::Value*>(), "");
     }
     return MakeIntegerConstant(0);
@@ -1121,7 +1185,7 @@ void ReadAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Function *CreateReadFunc(llvm::Type* ty)
+static llvm::Constant *CreateReadFunc(llvm::Type* ty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
@@ -1161,13 +1225,7 @@ static llvm::Function *CreateReadFunc(llvm::Type* ty)
     }
     std::string name = std::string("__read_") + suffix;
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Function* f = llvm::Function::Create(ft, llvm::Function::ExternalLinkage, 
-					       name, theModule);
-    if (f->getName() != name)
-    {
-	f->eraseFromParent();
-	f = theModule->getFunction(name);
-    }
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
     return f;
 }
@@ -1190,13 +1248,13 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
-	llvm::Function* f = CreateReadFunc(ty);
+	llvm::Constant* f = CreateReadFunc(ty);
 
 	builder.CreateCall(f, argsV, "");
     }
     if (isReadln)
     {
-	llvm::Function* f = CreateReadFunc(0);
+	llvm::Constant* f = CreateReadFunc(0);
 	builder.CreateCall(f, std::vector<llvm::Value*>(), "");
     }
     return MakeIntegerConstant(0);

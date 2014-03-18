@@ -18,11 +18,8 @@ extern llvm::Module* theModule;
 class ExprAST
 {
 public:
-    ExprAST() 
-	: next(0) {}
+    ExprAST() {}
     virtual ~ExprAST() {}
-    ExprAST* SetNext(ExprAST* n) { next = n; return next; };
-    ExprAST* Next() { return next; }
     void Dump(std::ostream& out) const;
     void Dump() const;
     virtual void DoDump(std::ostream& out) const
@@ -31,8 +28,6 @@ public:
     }
     std::string ToString();
     virtual llvm::Value* CodeGen() = 0;
-private:
-    ExprAST* next;
 };
 
 class RealExprAST : public ExprAST
@@ -182,13 +177,13 @@ private:
 class BlockAST : public ExprAST
 {
 public:
-    BlockAST(ExprAST* blockContent) : 
-	content(blockContent) {}
+    BlockAST(std::vector<ExprAST*> block) : 
+	content(block) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
-    bool IsEmpty() { return content == NULL; }
+    bool IsEmpty() { return content.size() == 0; }
 private:
-    ExprAST* content;
+    std::vector<ExprAST*> content;
 };
 
 class AssignExprAST : public ExprAST
@@ -200,35 +195,6 @@ public:
     virtual llvm::Value* CodeGen();
 private:
     ExprAST* lhs, *rhs;
-};
-
-class PrototypeAST : public ExprAST
-{
-public:
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar) 
-	: name(nm), args(ar), isForward(false)
-    { 
-	resultType = new Types::TypeDecl(Types::Void); 
-    }
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, Types::TypeDecl* ty) 
-	: name(nm), args(ar), resultType(ty), isForward(false)
-    {
-	assert(ty && "Type must not be null!");
-    }
-    virtual void DoDump(std::ostream& out) const;
-    virtual llvm::Function* CodeGen();
-    virtual llvm::Function* CodeGen(const std::string& namePrefix);
-    void CreateArgumentAlloca(llvm::Function* fn);
-    Types::TypeDecl* ResultType() const { return resultType; }
-    std::string Name() const { return name; }
-    const std::vector<VarDef>& Args() const { return args; }
-    bool IsForward() { return isForward; }
-    void SetIsForward(bool v) { isForward = v; }
-private:
-    std::string         name;
-    std::vector<VarDef> args;
-    Types::TypeDecl*    resultType;
-    bool                isForward;
 };
 
 class VarDeclAST : public ExprAST
@@ -244,25 +210,69 @@ private:
     llvm::Function* func;
 };
 
+class FunctionAST;
+
+class PrototypeAST : public ExprAST
+{
+public:
+    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar) 
+	: name(nm), args(ar), isForward(false), function(0)
+    { 
+	resultType = new Types::TypeDecl(Types::Void); 
+    }
+    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, Types::TypeDecl* resTy) 
+	: name(nm), args(ar), resultType(resTy), isForward(false), function(0)
+    {
+	assert(resTy && "Type must not be null!");
+    }
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Function* CodeGen();
+    virtual llvm::Function* CodeGen(const std::string& namePrefix);
+    void CreateArgumentAlloca(llvm::Function* fn);
+    Types::TypeDecl* ResultType() const { return resultType; }
+    std::string Name() const { return name; }
+    const std::vector<VarDef>& Args() const { return args; }
+    bool IsForward() { return isForward; }
+    void SetIsForward(bool v) { isForward = v; }
+    void SetFunction(FunctionAST* fun) { function = fun; }
+    FunctionAST* Function() const { return function; }
+    void AddExtraArgs(const std::vector<VarDef>& extra);
+private:
+    std::string         name;
+    std::vector<VarDef> args;
+    Types::TypeDecl*    resultType;
+    bool                isForward;
+    FunctionAST*        function;
+};
+
 class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b, const std::string& par) 
-	: proto(prot), varDecls(v), body(b), parent(par)
+    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b) 
+	: proto(prot), varDecls(v), body(b)
     { 
 	assert((proto->IsForward() || body) && "Function should have body"); 
+	if (!proto->IsForward())
+	{
+	    proto->SetFunction(this);
+	}
     }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
     llvm::Function* CodeGen(const std::string& namePrefix);
     const PrototypeAST* Proto() const { return proto; }
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
+    void SetParent(FunctionAST* p) { parent = p; }
+    void SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
+		     const std::vector<NamedObject*>& localVars);
+    const std::vector<VarDef>& UsedVars() { return usedVariables; }
 private:
-    PrototypeAST              *proto;
-    VarDeclAST                *varDecls;
-    BlockAST                  *body;
+    PrototypeAST*              proto;
+    VarDeclAST*                varDecls;
+    BlockAST*                  body;
     std::vector<FunctionAST*>  subFunctions;
-    std::string                parent;
+    std::vector<VarDef>        usedVariables;
+    FunctionAST*               parent;
 };
 
 class CallExprAST : public ExprAST

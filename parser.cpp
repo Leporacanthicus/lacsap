@@ -757,8 +757,8 @@ ExprAST* Parser::ParseIdentifierExpr()
     std::string idName = CurrentToken().GetIdentName();
     NextToken();
     /* TODO: Should we add builtin's to names at global level? */
-    const NamedObject* def = nameStack.Find(idName);
-    const EnumDef *enumDef = dynamic_cast<const EnumDef*>(def);
+    NamedObject* def = nameStack.Find(idName);
+    EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
     if (enumDef)
     {
 	return new IntegerExprAST(enumDef->Value());
@@ -778,6 +778,9 @@ ExprAST* Parser::ParseIdentifierExpr()
 	if (!IsCall(type))
 	{
 	    VariableExprAST* expr = new VariableExprAST(idName);
+	    // Ignore result - we may be adding the same variable 
+	    // several times, but we don't really care.
+	    usedVariables.Add(idName, def);
 
 	    assert(type);
 
@@ -874,7 +877,6 @@ ExprAST* Parser::ParseIdentifierExpr()
     {
 	proto = funcDef->Proto();
 	expr = new FunctionExprAST(idName);
-	return new CallExprAST(expr, args, proto);
     }
     else if (def)
     {
@@ -890,8 +892,19 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    assert(fp && "Expected function pointer here...");
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(idName);
-	    return new CallExprAST(expr, args, proto);
 	}
+    }
+    if (expr)
+    {
+	FunctionAST* fn = proto->Function();
+	if (fn)
+	{
+	    for(auto u : fn->UsedVars())
+	    {
+		args.push_back(new VariableExprAST(u.Name()));
+	    }
+	}
+	return new CallExprAST(expr, args, proto);
     }
 
     assert(isBuiltin && "Should be a builtin function if we get here");
@@ -1087,23 +1100,16 @@ BlockAST* Parser::ParseBlock()
 	return 0;
     }
     
-    ExprAST* astHead = 0;
-    ExprAST* astTail = 0;
+    std::vector<ExprAST*> v;
     // Build ast of the content of the block.
     while(CurrentToken().GetType() != Token::End)
     {
 	ExprAST* ast = ParseStatement();
-	if (ast)
+	if (!ast)
 	{
-	    if (!astHead)
-	    {
-		astHead = astTail = ast;
-	    }
-	    else
-	    {
-		astTail = astTail->SetNext(ast);
-	    }
+	    return 0;
 	}
+	v.push_back(ast);
 	if (!Expect(Token::Semicolon, true))
 	{
 	    return 0;
@@ -1113,10 +1119,10 @@ BlockAST* Parser::ParseBlock()
     {
 	return 0;
     }
-    return new BlockAST(astHead);
+    return new BlockAST(v);
 }
 
-FunctionAST* Parser::ParseDefinition(const std::string& parentName)
+FunctionAST* Parser::ParseDefinition()
 {
     bool isFunction = CurrentToken().GetType() == Token::Function;
     PrototypeAST* proto = ParsePrototype(isFunction);
@@ -1124,9 +1130,9 @@ FunctionAST* Parser::ParseDefinition(const std::string& parentName)
     {
 	return 0;
     }
-    std::string name = proto->Name();
+    std::string      name = proto->Name();
     Types::TypeDecl* ty = new Types::TypeDecl(isFunction?Types::Function:Types::Procedure);
-    NamedObject* nmObj = new FuncDef(name, ty, proto);
+    NamedObject*     nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = dynamic_cast<const FuncDef*>(def);
@@ -1141,11 +1147,12 @@ FunctionAST* Parser::ParseDefinition(const std::string& parentName)
 	{
 	    NextToken();
 	    proto->SetIsForward(true);
-	    return new FunctionAST(proto, 0, 0, parentName);
+	    return new FunctionAST(proto, 0, 0);
 	}
     }
     
     NameWrapper wrapper(nameStack);
+    NameWrapper usedWrapper(usedVariables);
     for(auto v : proto->Args())
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
@@ -1154,11 +1161,11 @@ FunctionAST* Parser::ParseDefinition(const std::string& parentName)
 	}
     }
 
-    VarDeclAST* varDecls = 0;
-    BlockAST* body = 0;
-    bool typeDecls = false;
-    bool constDecls = false;
-    std::vector<FunctionAST*>  subFunctions;
+    VarDeclAST*               varDecls = 0;
+    BlockAST*                 body = 0;
+    bool                      typeDecls = false;
+    bool                      constDecls = false;
+    std::vector<FunctionAST*> subFunctions;
     do
     {
 	switch(CurrentToken().GetType())
@@ -1192,7 +1199,7 @@ FunctionAST* Parser::ParseDefinition(const std::string& parentName)
 	case Token::Function:
 	case Token::Procedure:
 	{
-	    FunctionAST* fn = ParseDefinition(name);
+	    FunctionAST* fn = ParseDefinition();
 	    subFunctions.push_back(fn);
 	    break;
 	}
@@ -1213,8 +1220,15 @@ FunctionAST* Parser::ParseDefinition(const std::string& parentName)
 		return 0;
 	    }
 
-	    FunctionAST* fn = new FunctionAST(proto, varDecls, body, parentName);
+	    FunctionAST* fn = new FunctionAST(proto, varDecls, body);
+	    for(auto s : subFunctions)
+	    {
+		s->SetParent(fn);
+	    }
+	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
+	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack.GetLevel());
+	    proto->AddExtraArgs(fn->UsedVars()); 
 	    return fn;
 	}
 
@@ -1337,8 +1351,7 @@ ExprAST* Parser::ParseWhile()
 ExprAST* Parser::ParseRepeat()
 {
     NextToken();
-    ExprAST* bhead = 0;
-    ExprAST* btail = 0;
+    std::vector<ExprAST*> v;
     while(CurrentToken().GetType() != Token::Until)
     {
 	ExprAST* stmt = ParseStatement();
@@ -1346,14 +1359,7 @@ ExprAST* Parser::ParseRepeat()
 	{
 	    return 0;
 	}
-	if (!bhead)
-	{
-	    bhead = btail = stmt;
-	}
-	else
-	{
-	    btail = btail->SetNext(stmt);
-	}
+	v.push_back(stmt);
 	if(CurrentToken().GetType() == Token::Semicolon)
 	{
 	    NextToken();
@@ -1364,8 +1370,7 @@ ExprAST* Parser::ParseRepeat()
 	return 0;
     }
     ExprAST* cond = ParseExpression();
-    BlockAST* body = new BlockAST(bhead);
-    return new RepeatExprAST(cond, body);
+    return new RepeatExprAST(cond, new BlockAST(v));
 }
 
 ExprAST* Parser::ParseWrite()
@@ -1554,18 +1559,17 @@ ExprAST* Parser::ParsePrimary()
     }
 }
 
-ExprAST* Parser::Parse()
+std::vector<ExprAST*> Parser::Parse()
 {
-    ExprAST* astHead = 0;
-    ExprAST* astTail = 0;
+    std::vector<ExprAST*> v;
     NextToken();
     if (!Expect(Token::Program, true))
     {
-	return 0;
+	return v;
     }
     if (!Expect(Token::Identifier, false))
     {
-	return 0;
+	return v;
     }
     moduleName = CurrentToken().GetIdentName();
     NextToken();
@@ -1575,7 +1579,8 @@ ExprAST* Parser::Parse()
 	switch(CurrentToken().GetType())
 	{
 	case Token::EndOfFile:
-	    return astHead;
+	    // TODO: Is this not an error?
+	    return v;
 	    
 	case Token::Semicolon:
 	    NextToken();
@@ -1583,7 +1588,7 @@ ExprAST* Parser::Parse()
 
 	case Token::Function:
 	case Token::Procedure:
-	    curAst = ParseDefinition("");
+	    curAst = ParseDefinition();
 	    break;
 
 	case Token::Var:
@@ -1606,11 +1611,12 @@ ExprAST* Parser::Parse()
 	    // Parse the "main" of the program - we call that
 	    // "__PascalMain" so we can call it from C-code.
 	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
-	    FunctionAST* fun = new FunctionAST(proto, 0, body, "");
+	    FunctionAST* fun = new FunctionAST(proto, 0, body);
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))
 	    {
-		return 0;
+		v.clear();
+		return v;
 	    }
 	    break;
 	}
@@ -1622,16 +1628,7 @@ ExprAST* Parser::Parse()
 
 	if (curAst)
 	{
-	    // Append to the ast.
-	    // First the empty list case.
-	    if (!astTail)
-	    {
-		astHead = astTail = curAst;
-	    }
-	    else
-	    {
-		astTail = astTail->SetNext(curAst);
-	    }
+	    v.push_back(curAst);
 	}
     }
 }

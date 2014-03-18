@@ -11,7 +11,7 @@ class Parser
 {
 public:
     Parser(Lexer &l);
-    ExprAST* Parse();
+    std::vector<ExprAST*> Parse();
 
     int GetErrors() { return errCnt; } 
 
@@ -51,7 +51,7 @@ private:
     ExprAST*      ParseStmtOrBlock();
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
-    FunctionAST*  ParseDefinition(const std::string& parentName);
+    FunctionAST*  ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
 
     /* Type declarations and defintitions */
@@ -96,6 +96,7 @@ private:
     std::string moduleName;
     int         errCnt;
     NameStack   nameStack;
+    NameStack   usedVariables;
 };
 
 #endif

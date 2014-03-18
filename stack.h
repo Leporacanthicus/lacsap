@@ -21,6 +21,16 @@ public:
 	stack.push_back(MapType()); 
     }
 
+    std::vector<T> GetLevel()
+    {
+	std::vector<T> v;
+	for(auto i : stack.back())
+	{
+	    v.push_back(i.second);
+	}
+	return v;
+    }
+
     void DropLevel() 
     { 
 	stack.pop_back(); 
@@ -50,7 +60,7 @@ public:
 	}
 	return 0;
     }
-				 
+
     void Dump()
     {
 	int n = 0;

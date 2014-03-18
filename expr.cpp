@@ -94,7 +94,7 @@ static llvm::Value* MakeCharConstant(int val)
 
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 {
-    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
+    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
     llvm::Type* ty = Types::GetType(var.Type());
     if (!ty)
     {
@@ -474,15 +474,14 @@ llvm::Value* CallExprAST::CodeGen()
 	return ErrorV(std::string("Unknown function ") + proto->Name() + " referenced");
     }	
 
-    if (proto->Args().size() != args.size())
+    const std::vector<VarDef>& vdef = proto->Args();
+    if (vdef.size() != args.size())
     {
 	return ErrorV(std::string("Incorrect number of arguments for ") + proto->Name() + ".");
     }
 
     std::vector<llvm::Value*> argsV;
-    const std::vector<VarDef>& vdef = proto->Args();
     std::vector<VarDef>::const_iterator viter = vdef.begin();
-    assert(vdef.size() == args.size());
     for(auto i : args)
     {
 	llvm::Value* v;
@@ -517,7 +516,9 @@ llvm::Value* CallExprAST::CodeGen()
 	viter++;
     }
     if (proto->ResultType()->Type() == Types::Void) 
+    {
 	return builder.CreateCall(calleF, argsV, "");
+    }
     return builder.CreateCall(calleF, argsV, "calltmp");
 }
 
@@ -539,7 +540,7 @@ llvm::Value* BuiltinExprAST::CodeGen()
 void BlockAST::DoDump(std::ostream& out) const
 {
     out << "Block: Begin " << std::endl;
-    for(auto p = content; p; p = p->Next()) 
+    for(auto p : content) 
     {
 	p->Dump(out);
     }
@@ -550,7 +551,7 @@ llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
     llvm::Value *v = 0;
-    for(ExprAST *e = content; e; e = e->Next())
+    for(auto e : content)
     {
 	v = e->CodeGen();
 	assert(v && "Expect codegen to work!");
@@ -655,6 +656,15 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
 }
 
+void PrototypeAST::AddExtraArgs(const std::vector<VarDef>& extra)
+{
+    for(auto v : extra)
+    {
+	VarDef tmp = VarDef(v.Name(), v.Type(), true);
+	args.push_back(tmp);
+    }
+}
+
 void FunctionAST::DoDump(std::ostream& out) const
 { 
     out << "Function: " << std::endl;
@@ -706,6 +716,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	std::cerr << "newPrefix = "  << newPrefix << std::endl;
 	for(auto fn : subFunctions)
 	{
+	    
 	    fn->CodeGen(newPrefix);
 	}
     }
@@ -742,6 +753,39 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 llvm::Function* FunctionAST::CodeGen()
 {
     return CodeGen("");
+}
+
+void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
+			      const std::vector<NamedObject*>& localVars)
+{
+    std::map<std::string, NamedObject*> nonLocal;
+    for(auto v : varsUsed)
+    {
+	nonLocal[v->Name()] = v;
+    }
+    // Now add those of the subfunctions.
+    for(auto fn : subFunctions)
+    {
+	for(auto v : fn->UsedVars())
+	{
+	    nonLocal[v.Name()] = new VarDef(v);
+	}
+    }
+
+    for(auto l : localVars)
+    {
+	nonLocal.erase(l->Name());
+    }
+    std::cerr << "Used variables: ";
+    for(auto n : nonLocal)
+    {
+	VarDef* v = dynamic_cast<VarDef*>(n.second);
+	if (v)
+	{
+	    v->dump();
+	    usedVariables.push_back(*v);
+	}
+    }
 }
 
 void StringExprAST::DoDump(std::ostream& out) const

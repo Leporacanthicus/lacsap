@@ -25,9 +25,9 @@ void DumpModule(llvm::Module* module)
     module->dump();
 }
 
-llvm::Module* CodeGen(ExprAST* ast)
+llvm::Module* CodeGen(std::vector<ExprAST*> ast)
 {
-    for(auto a = ast; a; a = a->Next())
+    for(auto a : ast)
     {
 	llvm::Value* v = a->CodeGen(); 
 	if (!v)
@@ -84,9 +84,9 @@ static void Compile(const std::string& filename)
 {
     try
     {
-	ExprAST*  ast;
-	Lexer     l(filename);
-	Parser    p(l);
+	std::vector<ExprAST*> ast;
+	Lexer                 l(filename);
+	Parser                p(l);
 
 	OptimizerInit();
 

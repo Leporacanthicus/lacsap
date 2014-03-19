@@ -1340,6 +1340,70 @@ llvm::Value* VarDeclAST::CodeGen()
     return v;
 }
 
+void LabelExprAST::DoDump(std::ostream& out) const
+{
+    bool first = false;
+    for(auto l : labelValues)
+    {
+	if (!first)
+	{
+	    out << ", ";
+	}
+	out << l;
+    }
+    out << ": ";
+    stmt->Dump(out);
+}
+
+llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB)
+{
+    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
+    
+    builder.SetInsertPoint(caseBB);
+    stmt->CodeGen();
+    builder.CreateBr(afterBB);
+    for(auto l : labelValues)
+    {
+	llvm::IntegerType* ty = llvm::dyn_cast<llvm::IntegerType>(Types::GetType(Types::Integer));
+	sw->addCase(llvm::ConstantInt::get(ty, l), caseBB);
+    }
+    return caseBB;
+}
+
+void CaseExprAST::DoDump(std::ostream& out) const
+{
+    out << "Case ";
+    expr->Dump(out);
+    out << " of " << std::endl;
+    for(auto l : labels)
+    {
+	l->Dump(out);
+    }
+}
+
+llvm::Value* CaseExprAST::CodeGen()
+{
+    llvm::Value* v = expr->CodeGen();
+    if (!v->getType()->isIntegerTy())
+    {
+	return ErrorV("Case selection must be integral type");
+    }
+
+    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);    
+
+    llvm::SwitchInst* sw = builder.CreateSwitch(v, afterBB, labels.size());
+    for(auto ll : labels)
+    {
+	ll->CodeGen(sw, afterBB);
+    }
+
+    builder.SetInsertPoint(afterBB);
+    
+    return afterBB;
+}
+
 int GetErrors(void)
 {
     return errCnt;

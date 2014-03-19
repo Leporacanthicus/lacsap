@@ -8,6 +8,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/PassManager.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -391,6 +392,33 @@ private:
     // TODO: Add support for file type. 
     std::vector<ExprAST*> args;
     bool isReadln;
+};
+
+
+class LabelExprAST : public ExprAST
+{
+public:
+    LabelExprAST(const std::vector<int>& lab, ExprAST* st)
+	: labelValues(lab),stmt(st) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen() { assert(0); return 0; }
+    llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB);
+private:
+    std::vector<int> labelValues;
+    ExprAST*         stmt;
+};
+
+class CaseExprAST : public ExprAST
+{
+public:
+    CaseExprAST(ExprAST* e, const std::vector<LabelExprAST*>& lab)
+	: expr(e), labels(lab) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+
+private:
+    ExprAST* expr;
+    std::vector<LabelExprAST*> labels;
 };
 
 /* Useful global functions */

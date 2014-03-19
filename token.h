@@ -89,6 +89,7 @@ public:
 	And,
 	Or,
 	Not,
+	Case,
 
 	EndOfFile  = -1, 
 	Unknown    = -1000,

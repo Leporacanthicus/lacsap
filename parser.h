@@ -41,6 +41,7 @@ private:
     ExprAST* ParseIfExpr();
     ExprAST* ParseForExpr();
     ExprAST* ParseWhile();
+    ExprAST* ParseCaseExpr();
 
     /* I/O functions */
     ExprAST*      ParseWrite();

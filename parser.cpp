@@ -1240,7 +1240,6 @@ FunctionAST* Parser::ParseDefinition()
     return 0;
 }
 
-
 ExprAST* Parser::ParseStmtOrBlock()
 {
     if (CurrentToken().GetType() == Token::Begin)
@@ -1249,7 +1248,6 @@ ExprAST* Parser::ParseStmtOrBlock()
     }
     return ParseStatement();
 }
-
 
 ExprAST* Parser::ParseIfExpr()
 {
@@ -1371,6 +1369,87 @@ ExprAST* Parser::ParseRepeat()
     }
     ExprAST* cond = ParseExpression();
     return new RepeatExprAST(cond, new BlockAST(v));
+}
+
+ExprAST* Parser::ParseCaseExpr()
+{
+    if (!Expect(Token::Case, true))
+    {
+	return 0;
+    }
+    ExprAST* expr = ParseExpression();
+    if (!Expect(Token::Of, true))
+    {
+	return 0;
+    }
+    std::vector<LabelExprAST*> labels;
+    std::vector<int> lab;
+    bool isFirst = true;
+    Token::TokenType prevTT;
+    do
+    {
+	if (isFirst)
+	{
+	    prevTT = CurrentToken().GetType();
+	    isFirst = false;
+	}
+	else if (prevTT != CurrentToken().GetType())
+	{
+	    return Error("Type of case labels must not change type");
+	}
+	switch(CurrentToken().GetType())
+	{
+	case Token::Char:
+	case Token::Integer:
+	    lab.push_back(CurrentToken().GetIntVal());
+	    break;
+	    
+	case Token::Identifier:
+	{
+	    int v;
+	    if (GetEnumValue(CurrentToken().GetIdentName(), v))
+	    {
+		lab.push_back(v);
+	    }
+	    else
+	    {
+		return Error("Expected enumerated type value");
+	    }
+	    break;
+	}
+
+	default:
+	    return Error("Syntax error, expected case label");
+	}
+	NextToken();
+	switch(CurrentToken().GetType())
+	{
+	case Token::Comma:
+	    NextToken();
+	    break;
+
+	case Token::Colon:
+	{
+	    NextToken();
+	    ExprAST* s = ParseStmtOrBlock();
+	    labels.push_back(new LabelExprAST(lab, s));
+	    lab.clear();
+	    break;
+	}
+	
+	default:
+	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
+	}
+	if (!Expect(Token::Semicolon, true))
+	{
+	    return 0;
+	}
+    } while(CurrentToken().GetType() != Token::End);
+    if (!Expect(Token::End, true))
+    {
+	return 0;
+    }
+    return new CaseExprAST(expr, labels);
 }
 
 ExprAST* Parser::ParseWrite()
@@ -1540,6 +1619,9 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::Repeat:
 	return ParseRepeat();
+
+    case Token::Case:
+	return ParseCaseExpr();
 
     case Token::Write:
     case Token::Writeln:

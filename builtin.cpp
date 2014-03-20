@@ -55,6 +55,7 @@ static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 
 static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    // TODO: Use llvm builtin function?
     assert(args.size() == 1 && "Expect 1 argument to trunc");
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
@@ -68,6 +69,7 @@ static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
 
 static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    // TODO: I think there is a llvm builtin function for this.
     assert(args.size() == 1 && "Expect 1 argument to round");
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
@@ -104,7 +106,6 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     }
     return ErrorV("Expected type of real or integer for 'sqr'");
 }
-
 
 static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
 				    const std::vector<ExprAST*>& args)
@@ -229,8 +230,8 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	argTypes.push_back(ty);
 
 	std::string name = "__new";
+
 	// Result is "void *"
-	
 	llvm::Type* resTy = MakeVoidPtrType();
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
@@ -255,7 +256,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 
 static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 argument to 'new'");
+    assert(args.size() == 1 && "Expect 1 argument to 'dispos'");
 
     llvm::Value* a = args[0]->CodeGen();
     if (a->getType()->isPointerTy())
@@ -271,6 +272,101 @@ static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector
 	return builder.CreateCall(f, a);
     }
     return ErrorV("Expected pointer argument for 'new'");
+}
+
+static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 2 && "Expect 2 args for 'assign'");
+
+    // assign takes two arguments from the user, and a third "recordsize" that we 
+    // make up here... It will be stored in the file struct by runtime.
+
+    // Arg1: address of the filestruct.
+    VariableExprAST* fvar = dynamic_cast<VariableExprAST*>(args[0]);
+    if (!fvar)
+    {
+	return ErrorV("Expected a variable expression");
+    }
+    llvm::Value* faddr = fvar->Address();
+    std::vector<llvm::Type*> argTypes;
+    argTypes.push_back(faddr->getType());
+
+    llvm::Value* filename = args[1]->CodeGen();
+    llvm::Type* ty = filename->getType();
+    if (ty->isPointerTy() && ty->getContainedType(0) != Types::GetType(Types::Char))
+    {
+	return ErrorV("Argument for filename should be string type.");
+    }
+    argTypes.push_back(ty);
+    argTypes.push_back(Types::GetType(Types::Integer));
+
+    /* Find recordsize */
+    ty = argTypes[0]->getContainedType(0);
+    ty->dump();
+    llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(ty);
+    ty = 0;
+    if (st)
+    {
+	ty = st->getElementType(Types::FileDecl::Buffer);
+	if (ty->isPointerTy())
+	{
+	    ty = ty->getContainedType(0);
+	}
+	else
+	{
+	    ty = 0;
+	}
+    }
+    if (!ty)
+    {
+	return ErrorV("Expected first argument to be of filetype for 'assign'");	
+    }
+    
+    const llvm::DataLayout dl(theModule);
+    llvm::Value* aSize = MakeIntegerConstant(dl.getTypeAllocSize(ty));
+
+    std::vector<llvm::Value*> argsV;
+    argsV.push_back(faddr);
+    argsV.push_back(filename);
+    argsV.push_back(aSize);
+
+    std::string name = "__assign";
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+
+    return builder.CreateCall(f, argsV, "");
+}
+
+
+static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args, 
+				    const std::string func)
+{
+    VariableExprAST* fvar = dynamic_cast<VariableExprAST*>(args[0]);
+    if (!fvar)
+    {
+	return ErrorV("Expected a variable expression");
+    }
+    llvm::Value* faddr = fvar->Address();
+    std::vector<llvm::Type*> argTypes;
+    argTypes.push_back(faddr->getType());
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+    return builder.CreateCall(f, faddr, "");
+}
+
+static llvm::Value* ResetCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 args for 'reset'");
+
+    return FileCallCodeGen(builder, args, "__reset");
+}
+
+static llvm::Value* CloseCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 args for 'close'");
+    return FileCallCodeGen(builder, args, "__close");
 }
 
 const static BuiltinFunction bifs[] =
@@ -292,6 +388,9 @@ const static BuiltinFunction bifs[] =
     { "pred",    PredCodeGen    },
     { "new",     NewCodeGen     },
     { "dispose", DisposeCodeGen },
+    { "assign",  AssignCodeGen  },
+    { "reset",   ResetCodeGen   },
+    { "close",   CloseCodeGen   },
 };
 
 static const BuiltinFunction* find(const std::string& name)

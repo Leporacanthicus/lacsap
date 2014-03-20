@@ -16,7 +16,8 @@ Parser::Parser(Lexer &l)
     if (!(AddType("integer", new Types::TypeDecl(Types::Integer)) &&
 	  AddType("real", new Types::TypeDecl(Types::Real)) &&
 	  AddType("char", new Types::TypeDecl(Types::Char)) &&
-	  AddType("boolean", new Types::TypeDecl(Types::Boolean))))
+	  AddType("boolean", new Types::TypeDecl(Types::Boolean)) &&
+	  AddType("text", new Types::FileDecl(new Types::TypeDecl(Types::Char)))))
     {
 	assert(0 && "Failed to add basic types...");
     }

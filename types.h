@@ -27,6 +27,7 @@ public:
 	PointerIncomplete,
 	Void,
 	Field,
+	File,
     };
 
     /* Range is either created by the user, or calculated on basetype */
@@ -42,7 +43,7 @@ public:
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
 	size_t Size() const { return (size_t) end - start; }
-	void dump();
+	void dump() const;
     private:
 	int start;
 	int end;
@@ -63,7 +64,7 @@ public:
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
     protected:
 	SimpleTypes type;
     };
@@ -80,7 +81,7 @@ public:
 	TypeDecl* SubType() const { return baseType; }
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
     private:
 	TypeDecl* baseType;
 	std::vector<Range*> ranges;
@@ -98,7 +99,7 @@ public:
 	virtual bool isIntegral() const { return true; }
 	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
-	virtual void dump();
+	virtual void dump() const;
 	virtual llvm::Type* LlvmType() const;
     private:
 	Range* range;
@@ -133,7 +134,7 @@ public:
 	virtual bool isIntegral() const { return true; }
 	const EnumValues& Values() const { return values; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
     private:
 	EnumValues values;
     };
@@ -159,7 +160,7 @@ public:
 	}
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
     private:
 	std::string name;
 	TypeDecl* baseType;
@@ -174,7 +175,7 @@ public:
 	const std::string& Name() { return name; }
 	TypeDecl* FieldType() const { return baseType; } 
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
     private:
 	std::string name;
@@ -188,7 +189,7 @@ public:
 	    : TypeDecl(Record), fields(flds) { };
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
 	int Element(const std::string& name) const;
 	const FieldDecl& GetElement(int n) { return fields[n]; }
     private:
@@ -202,17 +203,31 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual TypeDecl* SubType() const { return baseType; }
 	virtual llvm::Type* LlvmType() const;
-	virtual void dump();
+	virtual void dump() const;
 	PrototypeAST* Proto() const { return proto; }
     private:
 	PrototypeAST* proto;
 	TypeDecl *baseType;
     };
 
-    static llvm::Type* GetType(const TypeDecl* type);
-    static llvm::Type* GetType(SimpleTypes type);
+    class FileDecl : public TypeDecl
+    {
+    public:
+	enum
+	{
+	    Handle,
+	    RecordSize,
+	    Buffer,
+	} fields;
+	FileDecl(TypeDecl* ty)
+	    : TypeDecl(File), baseType(ty) {}
+	virtual TypeDecl* SubType() const { return baseType; }
+	virtual llvm::Type* LlvmType() const;
+    private:
+	TypeDecl *baseType;
+    };
 
-    void Dump();
+    static llvm::Type* GetType(SimpleTypes type);
 };
 
 

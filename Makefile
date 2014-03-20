@@ -3,11 +3,13 @@ all: lacsap .depends runtime.o
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o namedobject.o
 
 CXX = clang++
+CC  = clang
 LD = clang++
 
 DEFINES = -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
 
 CXXFLAGS = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 ${DEFINES}
+CFLAGS   = -g -Wall -Werror -Wextra -std=c99
 LDFLAGS = -g -L/usr/local/llvm-debug/lib -rdynamic
 
 LLVMLIBS = 	-lLLVMLTO -lLLVMObjCARCOpts -lLLVMLinker -lLLVMipo -lLLVMVectorize -lLLVMBitWriter \
@@ -25,12 +27,14 @@ LIBS = ${LLVMLIBS} ${OTHERLIBS}
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
-
 lacsap: ${OBJECTS} .depends
 	${LD} ${LDFLAGS} -o $@ ${OBJECTS} ${LIBS}
 
 clean:
 	rm -f ${OBJECTS}
+
+runtime.o : runtime.c
+	${CC} ${CFLAGS} -c $< -o $@
 
 include .depends
 

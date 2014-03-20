@@ -40,6 +40,7 @@ public:
 	Record,
 	Identifier,
 	Const,
+	File,
 
 	// Symbols and such
 	LeftParen,

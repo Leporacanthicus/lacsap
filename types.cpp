@@ -32,11 +32,6 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
     return 0;
 }
 
-llvm::Type* Types::GetType(const Types::TypeDecl* type)
-{
-    return type->LlvmType();
-}
-
 std::string Types::TypeDecl::to_string() const
 {
     std::stringstream ss; 
@@ -104,10 +99,12 @@ static const char* TypeToStr(Types::SimpleTypes t)
 	return "Void";
     case Types::Field:
 	return "Field";
+    case Types::File:
+	return "File";
     }
 }
 
-void Types::TypeDecl::dump()
+void Types::TypeDecl::dump() const
 {
     std::cerr << "Type: " << TypeToStr(type);
 }
@@ -118,7 +115,7 @@ llvm::Type* Types::TypeDecl::LlvmType() const
     return ty;
 }
 
-void Types::PointerDecl::dump()
+void Types::PointerDecl::dump() const
 {
     std::cerr << "Pointer to: ";
     baseType->dump();
@@ -126,11 +123,11 @@ void Types::PointerDecl::dump()
 
 llvm::Type* Types::PointerDecl::LlvmType() const
 {
-    llvm::Type* ty = llvm::PointerType::getUnqual(GetType(baseType));
+    llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
     return ty;
 }
 
-void Types::ArrayDecl::dump()
+void Types::ArrayDecl::dump() const
 {
     std::cerr << "Array ";
     for(auto r : ranges)
@@ -162,12 +159,12 @@ llvm::Type* Types::ArrayDecl::LlvmType() const
     return llvm::ArrayType::get(ty, nelems);
 }
 
-void Types::Range::dump()
+void Types::Range::dump() const
 {
     std::cerr << "[" << start << ".." << end << "]";
 }
 
-void Types::RangeDecl::dump()
+void Types::RangeDecl::dump() const
 {
     std::cerr << "RangeDecl: " << TypeToStr(baseType) << " " << range << std::endl;
 }
@@ -188,7 +185,7 @@ void Types::EnumDecl::SetValues(const std::vector<std::string>& nmv)
     }
 }
 
-void Types::EnumDecl::dump()
+void Types::EnumDecl::dump() const
 {
     std::cerr << "EnumDecl:";
     for(auto v : values)
@@ -202,7 +199,7 @@ llvm::Type* Types::EnumDecl::LlvmType() const
     return GetType(Integer);
 }
 
-void Types::FieldDecl::dump()
+void Types::FieldDecl::dump() const
 {
     std::cerr << "Field " << name << ": ";
     baseType->dump();
@@ -213,7 +210,7 @@ llvm::Type* Types::FieldDecl::LlvmType() const
     return baseType->LlvmType();
 }
 
-void Types::RecordDecl::dump()
+void Types::RecordDecl::dump() const
 {
     std::cerr << "Record ";
     for(auto f : fields)
@@ -248,7 +245,7 @@ int Types::RecordDecl::Element(const std::string& name) const
     return -1;
 }
 
-void Types::FuncPtrDecl::dump()
+void Types::FuncPtrDecl::dump() const
 {
     std::cerr << "FunctionPtr " << std::endl;
 }
@@ -276,4 +273,26 @@ Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
     baseType = new TypeDecl(t);
 }
 
-
+/*
+ * A "file" is represnted by:
+ * struct 
+ * { 
+ *    int32     handle;          // 0: filehandle
+ *    int32     recordSize;      // 1: size of each record.
+ *    baseType *ptr;             // 2: pointer to the record.
+ * }; 
+ * 
+ * The translation from handle to actual file is 
+ * done inside the C runtime part. 
+ * 
+ * Note that this arrangement has to agree with 
+ */
+llvm::Type* Types::FileDecl::LlvmType() const
+{
+    std::vector<llvm::Type*> fv;
+    fv.push_back(GetType(Types::Integer));
+    fv.push_back(GetType(Types::Integer));
+    llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
+    fv.push_back(ty);
+    return llvm::StructType::create(fv);
+}

@@ -46,7 +46,6 @@ static int errCnt;
 #define TRACE()
 #endif
 
-
 void ExprAST::Dump(std::ostream& out) const
 {
     out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
@@ -95,7 +94,7 @@ static llvm::Value* MakeCharConstant(int val)
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 {
     llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
-    llvm::Type* ty = Types::GetType(var.Type());
+    llvm::Type* ty = var.Type()->LlvmType();
     if (!ty)
     {
 	assert(0 && "Can't find type");
@@ -587,7 +586,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	}
 	argTypes.push_back(ty);
     }
-    llvm::Type* resTy = Types::GetType(resultType);
+    llvm::Type* resTy = resultType->LlvmType();
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     std::string actualName;
     if (namePrefix != "")
@@ -1125,7 +1124,7 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty)
 	}
 	else
 	{
-	    return 0;
+	    return ErrorF("Invalid type argument for write");
 	}
     }
     else
@@ -1323,7 +1322,7 @@ llvm::Value* VarDeclAST::CodeGen()
     {
 	if (!func)
 	{
-	    llvm::Type     *ty = Types::GetType(var.Type());
+	    llvm::Type     *ty = var.Type()->LlvmType();
 	    llvm::Constant *init = llvm::Constant::getNullValue(ty);
 	    v = new llvm::GlobalVariable(*theModule, ty, false, 
 					 llvm::Function::InternalLinkage, init, var.Name().c_str());

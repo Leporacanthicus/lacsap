@@ -216,19 +216,29 @@ public:
 	enum
 	{
 	    Handle,
-	    RecordSize,
 	    Buffer,
-	} fields;
+	} FileFields;
 	FileDecl(TypeDecl* ty)
 	    : TypeDecl(File), baseType(ty) {}
 	virtual TypeDecl* SubType() const { return baseType; }
 	virtual llvm::Type* LlvmType() const;
-    private:
+	virtual void dump() const;
+    protected:
 	TypeDecl *baseType;
     };
 
-    static llvm::Type* GetType(SimpleTypes type);
-};
+    class TextDecl : public FileDecl
+    {
+    public:
+	TextDecl()
+	    : FileDecl(new TypeDecl(Char)) {}
+	virtual llvm::Type* LlvmType() const;
+	virtual void dump() const;
+    };
 
+    static llvm::Type* GetType(SimpleTypes type);
+    static llvm::Type* GetVoidPtrType();
+    static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
+};
 
 #endif

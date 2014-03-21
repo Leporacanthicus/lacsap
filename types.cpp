@@ -274,25 +274,56 @@ Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
 }
 
 /*
- * A "file" is represnted by:
+ * A "file" is represented by:
  * struct 
  * { 
  *    int32     handle;          // 0: filehandle
- *    int32     recordSize;      // 1: size of each record.
- *    baseType *ptr;             // 2: pointer to the record.
+ *    baseType *ptr;             // 1: pointer to the record.
  * }; 
  * 
  * The translation from handle to actual file is 
  * done inside the C runtime part. 
  * 
- * Note that this arrangement has to agree with 
+ * Note that this arrangement has to agree with the runtime.c definition.
+ *
+ * The type name is used to determine if the file is a "text" or "file of TYPE" type.
  */
-llvm::Type* Types::FileDecl::LlvmType() const
+llvm::Type* Types::GetFileType(const std::string& name, Types::TypeDecl* baseType)
 {
     std::vector<llvm::Type*> fv;
-    fv.push_back(GetType(Types::Integer));
-    fv.push_back(GetType(Types::Integer));
+    fv.push_back(Types::GetType(Types::Integer));
     llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
     fv.push_back(ty);
-    return llvm::StructType::create(fv);
+    llvm::StructType* st = llvm::StructType::create(fv);
+    st->setName(name);
+    return st;
+}
+
+llvm::Type* Types::FileDecl::LlvmType() const
+{
+    return GetFileType("file", baseType);
+}
+
+void Types::FileDecl::dump() const
+{
+    std::cerr << "File of ";
+    baseType->dump();
+}
+
+llvm::Type* Types::TextDecl::LlvmType() const
+{
+    return GetFileType("text", baseType);
+}
+
+void Types::TextDecl::dump() const
+{
+    std::cerr << "Text ";
+}
+
+
+// Void pointer is not a "pointer to void", but a "pointer to Int8". 
+llvm::Type* Types::GetVoidPtrType()
+{
+    llvm::Type* base = llvm::IntegerType::getInt8Ty(llvm::getGlobalContext());
+    return llvm::PointerType::getUnqual(base);
 }

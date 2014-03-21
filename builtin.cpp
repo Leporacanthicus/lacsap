@@ -11,13 +11,6 @@ struct BuiltinFunction
     CodeGenFunc CodeGen;
 };
 
-// Void pointer is not a "pointer to void", but a "pointer to Int8". 
-static llvm::Type* MakeVoidPtrType()
-{
-    llvm::Type* base = llvm::IntegerType::getInt8Ty(llvm::getGlobalContext());
-    return llvm::PointerType::getUnqual(base);
-}
-
 static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to abs");
@@ -232,7 +225,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	std::string name = "__new";
 
 	// Result is "void *"
-	llvm::Type* resTy = MakeVoidPtrType();
+	llvm::Type* resTy = Types::GetVoidPtrType();
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 	
@@ -299,6 +292,7 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     }
     argTypes.push_back(ty);
     argTypes.push_back(Types::GetType(Types::Integer));
+    argTypes.push_back(Types::GetType(Types::Integer));
 
     /* Find recordsize */
     ty = argTypes[0]->getContainedType(0);
@@ -324,11 +318,13 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     
     const llvm::DataLayout dl(theModule);
     llvm::Value* aSize = MakeIntegerConstant(dl.getTypeAllocSize(ty));
+    llvm::Value* isText = MakeIntegerConstant(st->getName() == "text");
 
     std::vector<llvm::Value*> argsV;
     argsV.push_back(faddr);
     argsV.push_back(filename);
     argsV.push_back(aSize);
+    argsV.push_back(isText);
 
     std::string name = "__assign";
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);

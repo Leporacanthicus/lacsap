@@ -1228,11 +1228,12 @@ void ReadAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateReadFunc(llvm::Type* ty)
+static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
+    argTypes.push_back(fty);
     if (ty)
     {
 	if (!ty->isPointerTy())
@@ -1275,9 +1276,20 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty)
 
 llvm::Value* ReadAST::CodeGen()
 {
+    llvm::Value* f;
+    if (file)
+    {
+	f = file->Address();
+    }
+    else
+    {
+	Types::TypeDecl ty(Types::Char);
+	f = llvm::Constant::getNullValue(Types::GetFileType("text", &ty));
+    }
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
+	argsV.push_back(f);
 	VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(arg);
 	if (!vexpr)
 	{
@@ -1291,14 +1303,14 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
-	llvm::Constant* f = CreateReadFunc(ty);
+	llvm::Constant* fn = CreateReadFunc(ty, f->getType());
 
-	builder.CreateCall(f, argsV, "");
+	builder.CreateCall(fn, argsV, "");
     }
     if (isReadln)
     {
-	llvm::Constant* f = CreateReadFunc(0);
-	builder.CreateCall(f, std::vector<llvm::Value*>(), "");
+	llvm::Constant* fn = CreateReadFunc(0, f->getType());
+	builder.CreateCall(fn, f, "");
     }
     return MakeIntegerConstant(0);
 }

@@ -17,7 +17,7 @@ Parser::Parser(Lexer &l)
 	  AddType("real", new Types::TypeDecl(Types::Real)) &&
 	  AddType("char", new Types::TypeDecl(Types::Char)) &&
 	  AddType("boolean", new Types::TypeDecl(Types::Boolean)) &&
-	  AddType("text", new Types::FileDecl(new Types::TypeDecl(Types::Char)))))
+	  AddType("text", new Types::TextDecl())))
     {
 	assert(0 && "Failed to add basic types...");
     }
@@ -711,7 +711,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::Type
     {
 	return 0;
     }
-    return new ArrayExprAST(expr, indices, adecl->Ranges());
+    return new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
 }
 
 VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
@@ -733,7 +733,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     }
     type = rd->GetElement(elem).FieldType();
     NextToken();
-    return new FieldExprAST(expr, elem);
+    return new FieldExprAST(expr, elem, type);
 }
 
 bool Parser::IsCall(Types::TypeDecl* type)
@@ -778,7 +778,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	 
 	if (!IsCall(type))
 	{
-	    VariableExprAST* expr = new VariableExprAST(idName);
+	    VariableExprAST* expr = new VariableExprAST(idName, type);
 	    // Ignore result - we may be adding the same variable 
 	    // several times, but we don't really care.
 	    usedVariables.Add(idName, def);
@@ -800,9 +800,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 
 		case Token::Uparrow:
 		    NextToken();
-		    expr = new PointerExprAST(expr);
-		    type->dump();
 		    type = type->SubType();
+		    expr = new PointerExprAST(expr, type);
 		    break;
 
 		case Token::Period:
@@ -847,7 +846,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 		{
 		    return Error("Expected name of a function or procedure");
 		}
-		arg = new FunctionExprAST(CurrentToken().GetIdentName());
+		arg = new FunctionExprAST(CurrentToken().GetIdentName(), 
+					  funcDef->Proto()->Args()[argNo].Type());
 		NextToken();
 	    }
 	    else
@@ -877,7 +877,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     if (funcDef)
     {
 	proto = funcDef->Proto();
-	expr = new FunctionExprAST(idName);
+	expr = new FunctionExprAST(idName, funcDef->Type());
     }
     else if (def)
     {
@@ -892,7 +892,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    Types::FuncPtrDecl* fp = dynamic_cast<Types::FuncPtrDecl*>(def->Type());
 	    assert(fp && "Expected function pointer here...");
 	    proto = fp->Proto();
-	    expr = new VariableExprAST(idName);
+	    expr = new VariableExprAST(idName, def->Type());
 	}
     }
     if (expr)
@@ -902,7 +902,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	{
 	    for(auto u : fn->UsedVars())
 	    {
-		args.push_back(new VariableExprAST(u.Name()));
+		args.push_back(new VariableExprAST(u.Name(), u.Type()));
 	    }
 	}
 	return new CallExprAST(expr, args, proto);
@@ -1536,6 +1536,7 @@ ExprAST* Parser::ParseRead()
     NextToken();
 
     std::vector<ExprAST*> args;
+    VariableExprAST* file = 0;
     if (CurrentToken().GetType() == Token::Semicolon)
     {
 	if (!isReadln)
@@ -1556,7 +1557,22 @@ ExprAST* Parser::ParseRead()
 	    {
 		return 0;
 	    }
-	    args.push_back(expr);
+	    if (args.size() == 0)
+	    {
+		VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(expr);
+		if (vexpr)
+		{
+		    if (vexpr->Type()->Type() == Types::File)
+		    {
+			file = vexpr;
+			expr = 0;
+		    }
+		}
+	    }
+	    if (expr)
+	    {
+		args.push_back(expr);
+	    }
 	    if (CurrentToken().GetType() != Token::RightParen)
 	    {
 		if (!Expect(Token::Comma, true))
@@ -1569,12 +1585,12 @@ ExprAST* Parser::ParseRead()
 	{
 	    return 0;
 	}
-	if (args.size() < 1)
+	if (args.size() < 1 && !isReadln)
 	{
-	    return Error("Expected expression in parenthesis of read statement");
+	    return Error("Expected at least one variable in read statement");
 	}
     }
-    return new ReadAST(args, isReadln);
+    return new ReadAST(file, args, isReadln);
 }
 
 ExprAST* Parser::ParsePrimary()

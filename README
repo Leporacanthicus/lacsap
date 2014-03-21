@@ -4,7 +4,6 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 
 Among things NOT yet supported are:
 - Boolean expressions
-- File/Text variable types
 - Proper tests.
 - Set variables.
 - Not allowing "empty then" in if/then/else statements.

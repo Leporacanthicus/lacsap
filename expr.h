@@ -78,16 +78,18 @@ private:
 class VariableExprAST : public ExprAST
 {
 public:
-    VariableExprAST(const std::string& nm) 
-	: name(nm) {}
-    VariableExprAST(const VariableExprAST* v) 
-	: name(v->name) {}
+    VariableExprAST(const std::string& nm, Types::TypeDecl* ty) 
+	: name(nm), type(ty) {}
+    VariableExprAST(const VariableExprAST* v, Types::TypeDecl* ty) 
+	: name(v->name), type(ty) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     const std::string& Name() const { return name; }
     virtual llvm::Value* Address();
+    Types::TypeDecl *Type() const { return type; }
 protected:
     std::string name;
+    Types::TypeDecl* type;
 };
 
 class ArrayExprAST : public VariableExprAST
@@ -95,8 +97,9 @@ class ArrayExprAST : public VariableExprAST
 public:
     ArrayExprAST(VariableExprAST *v,
 		 const std::vector<ExprAST*>& inds, 
-		 const std::vector<Types::Range*>& r)
-	: VariableExprAST(v), expr(v), indices(inds), ranges(r)
+		 const std::vector<Types::Range*>& r, 
+		 Types::TypeDecl* ty)
+	: VariableExprAST(v, ty), expr(v), indices(inds), ranges(r)
     {
 	size_t mul = 1;
 	for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
@@ -119,8 +122,8 @@ private:
 class PointerExprAST : public VariableExprAST
 {
 public:
-    PointerExprAST(VariableExprAST *p)
-	: VariableExprAST(p), pointer(p) {}
+    PointerExprAST(VariableExprAST *p, Types::TypeDecl* ty)
+	: VariableExprAST(p, ty), pointer(p) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     virtual llvm::Value* Address();
@@ -131,8 +134,8 @@ private:
 class FieldExprAST : public VariableExprAST
 {
 public:
-    FieldExprAST(VariableExprAST* base, int elem)
-	: VariableExprAST(base), expr(base), element(elem) {}
+    FieldExprAST(VariableExprAST* base, int elem, Types::TypeDecl* ty)
+	: VariableExprAST(base, ty), expr(base), element(elem) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* Address();
 private:
@@ -143,8 +146,8 @@ private:
 class FunctionExprAST : public VariableExprAST
 {
 public:
-    FunctionExprAST(const std::string& nm)
-	: VariableExprAST(nm) { }
+    FunctionExprAST(const std::string& nm, Types::TypeDecl* ty)
+	: VariableExprAST(nm, ty) { }
 
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* Address();
@@ -384,14 +387,14 @@ private:
 class ReadAST : public ExprAST
 {
 public:
-    ReadAST(const std::vector<ExprAST*> &a, bool isLn)
-	: args(a), isReadln(isLn) {}
+    ReadAST(VariableExprAST* fi, const std::vector<ExprAST*> &a, bool isLn)
+	: file(fi), args(a), isReadln(isLn) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
 private:
-    // TODO: Add support for file type. 
+    VariableExprAST*      file;
     std::vector<ExprAST*> args;
-    bool isReadln;
+    bool                  isReadln;
 };
 
 

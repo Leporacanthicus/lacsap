@@ -100,8 +100,10 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return ErrorV("Expected type of real or integer for 'sqr'");
 }
 
-static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
-				    const std::vector<ExprAST*>& args)
+
+static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, 
+				      const std::string& func, 
+				      const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to function");
 
@@ -110,20 +112,26 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
     std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = Types::GetType(Types::Real);
     argTypes.push_back(ty);
-    std::string name = "llvm." + func + ".f64";
     llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 
-    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	a = builder.CreateSIToFP(a, Types::GetType(Types::Real), "tofp");
+	a = builder.CreateSIToFP(a, ty, "tofp");
     }
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
 	return builder.CreateCall(f, a, "calltmp");
     }
-    return ErrorV("Expected type of real or integer for 'sqr'");
+    return ErrorV("Expected type of real or integer for this function'");
+}
+
+static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
+				    const std::vector<ExprAST*>& args)
+{
+    std::string name = "llvm." + func + ".f64";
+    return CallRuntimeFPFunc(builder, name, args);
 }
 
 static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -141,14 +149,6 @@ static llvm::Value* CosCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return CallBuiltinFunc(builder, "cos", args);
 }
 
-static llvm::Value* ArctanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-{
-    (void)builder;
-    (void)args;
-//    return CallBuiltinFunc(builder, "arctan", args);
-    assert(0 && "arctan not supported right now");
-}
-
 static llvm::Value* LnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     return CallBuiltinFunc(builder, "log", args);
@@ -157,6 +157,11 @@ static llvm::Value* LnCodeGen(llvm::IRBuilder<>& builder, const std::vector<Expr
 static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     return CallBuiltinFunc(builder, "exp", args);
+}
+
+static llvm::Value* ArctanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return CallRuntimeFPFunc(builder, "atan", args);
 }
 
 static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)

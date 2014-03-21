@@ -107,7 +107,7 @@ end; { testChar }
 procedure readTest;
 var
    x : integer;
-   y :  real;
+   y : real;
 
 begin
    write('Enter a number:');

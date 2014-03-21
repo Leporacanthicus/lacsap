@@ -984,6 +984,19 @@ void WhileExprAST::DoDump(std::ostream& out) const
     body->Dump(out);
 }
 
+static llvm::Value* FileOrNull(VariableExprAST* file)
+{
+    if (file)
+    {
+	return file->Address();
+    }
+
+    Types::TypeDecl ty(Types::Char);
+    llvm::Type *fty = Types::GetFileType("text", &ty);
+    fty = llvm::PointerType::getUnqual(fty);
+    return llvm::Constant::getNullValue(fty);
+}
+
 llvm::Value* WhileExprAST::CodeGen()
 {
     TRACE();
@@ -1276,16 +1289,7 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
 
 llvm::Value* ReadAST::CodeGen()
 {
-    llvm::Value* f;
-    if (file)
-    {
-	f = file->Address();
-    }
-    else
-    {
-	Types::TypeDecl ty(Types::Char);
-	f = llvm::Constant::getNullValue(Types::GetFileType("text", &ty));
-    }
+    llvm::Value* f = FileOrNull(file);
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;

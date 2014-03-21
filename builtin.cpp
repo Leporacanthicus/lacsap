@@ -365,6 +365,18 @@ static llvm::Value* CloseCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
     return FileCallCodeGen(builder, args, "__close");
 }
 
+static llvm::Value* RewriteCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 args for 'rewrite'");
+    return FileCallCodeGen(builder, args, "__rewrite");
+}
+
+static llvm::Value* AppendCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 args for 'append'");
+    return FileCallCodeGen(builder, args, "__append");
+}
+
 const static BuiltinFunction bifs[] =
 {
     { "abs",     AbsCodeGen     },
@@ -387,6 +399,8 @@ const static BuiltinFunction bifs[] =
     { "assign",  AssignCodeGen  },
     { "reset",   ResetCodeGen   },
     { "close",   CloseCodeGen   },
+    { "rewrite", RewriteCodeGen },
+    { "append",  AppendCodeGen  },
 };
 
 static const BuiltinFunction* find(const std::string& name)

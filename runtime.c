@@ -8,14 +8,14 @@
 typedef struct File
 {
     int   handle;
-    void *buffer;
+    void* buffer;
 } File;
 
 struct FileEntry
 {
     File  fileData;
-    FILE *file;
-    char *name;
+    FILE* file;
+    char* name;
     int   isText;
     int   inUse;
     int   recordSize;
@@ -26,7 +26,7 @@ static struct FileEntry files[MAX_PASCAL_FILES];
 extern void __PascalMain(void);
 
 
-void __assign(File *f, char *name, int recordSize, int isText)
+void __assign(File* f, char* name, int recordSize, int isText)
 {
     int i;
     for(i = 0; i < MAX_PASCAL_FILES && files[i].inUse; i++)
@@ -46,11 +46,10 @@ void __assign(File *f, char *name, int recordSize, int isText)
     strcpy(files[i].name, name);
 }
 
-void __reset(File *f)
+void __reset(File* f)
 {
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
-	fprintf(stderr, "Open file: %s\n", files[f->handle].name);
 	files[f->handle].file = fopen(files[f->handle].name, "r");
 	if (files[f->handle].file)
 	    return;
@@ -58,7 +57,29 @@ void __reset(File *f)
     fprintf(stderr, "Attempt to open file failed\n");
 }
 
-void __close(File *f)
+void __rewrite(File* f)
+{
+    if (files[f->handle].inUse && files[f->handle].file == NULL)
+    {
+	files[f->handle].file = fopen(files[f->handle].name, "w");
+	if (files[f->handle].file)
+	    return;
+    }
+    fprintf(stderr, "Attempt to open file failed\n");
+}
+
+void __append(File* f)
+{
+    if (files[f->handle].inUse && files[f->handle].file == NULL)
+    {
+	files[f->handle].file = fopen(files[f->handle].name, "a");
+	if (files[f->handle].file)
+	    return;
+    }
+    fprintf(stderr, "Attempt to open file failed\n");
+}
+
+void __close(File* f)
 {
     if (files[f->handle].inUse && files[f->handle].file != NULL)
     {
@@ -69,7 +90,7 @@ void __close(File *f)
     fprintf(stderr, "Attempt to open file failed\n");
 }
 
-static FILE* getFile(File *f)
+static FILE* getFile(File* f, FILE* deflt)
 {
     if (f)
     {
@@ -79,72 +100,77 @@ static FILE* getFile(File *f)
 	}
 	return NULL;
     }
-    return stdin;
+    return deflt;
 } 
 
-void __write_int(int v, int width)
+void __write_int(File* file, int v, int width)
 {
-    printf("%*d", width, v);
+    FILE* f = getFile(file, stdout);
+    fprintf(f, "%*d", width, v);
 }
 
-void __write_real(double v, int width, int precision)
+void __write_real(File* file, double v, int width, int precision)
 {
+    FILE* f = getFile(file, stdout);
     if (precision > 0)
     {
-	printf("%*.*f", width, precision, v);
+	fprintf(f, "%*.*f", width, precision, v);
     }
     else
     {
-	printf("%*E", width, v);
+	fprintf(f, "%*E", width, v);
     }
 }
 
-void __write_char(char v, int width)
+void __write_char(File* file, char v, int width)
 {
+    FILE* f = getFile(file, stdout);
     if (width > 0)
     {
-	printf("%*c", width, v);
+	fprintf(f, "%*c", width, v);
     }
     else
     {
-	printf("%c", v);
+	fprintf(f, "%c", v);
     }
 }    
 
-void __write_str(const char* v, int width)
+void __write_str(File* file, const char* v, int width)
 {
+    FILE* f = getFile(file, stdout);
     if (width > 0)
     {
-	printf("%*s", width, v);
+	fprintf(f, "%*s", width, v);
     }
     else
     {
-	printf("%s", v);
+	fprintf(f, "%s", v);
     }
+}
+
+void __write_nl(File* file)
+{
+    FILE* f = getFile(file, stdout);
+    fputc('\n', f);
 }
 
 void __read_int(File* file, int* v)
 {
-    FILE *f = getFile(file);
+    FILE* f = getFile(file, stdin);
     fscanf(f, "%d", v);
 }
 
 void __read_real(File* file, double* v)
-{
-    FILE *f = getFile(file);
+{ 
+    FILE* f = getFile(file, stdin);
     fscanf(f, "%lf", v);
 }
 
-void __read_nl(File *file)
+void __read_nl(File* file)
 {
-    FILE *f = getFile(file);
+    FILE* f = getFile(file, stdin);
     while(fgetc(f) != '\n')
 	;
-}
-
-void __write_nl(void)
-{
-    putchar('\n');
 }
 
 void* __new(int size)
@@ -152,7 +178,7 @@ void* __new(int size)
     return malloc(size);
 }
 
-void __dispose(void *ptr)
+void __dispose(void* ptr)
 {
     free(ptr);
 }

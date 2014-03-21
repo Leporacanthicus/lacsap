@@ -374,14 +374,14 @@ public:
 	ExprAST* precision;
     };
 
-    WriteAST(const std::vector<WriteArg> &a, bool isLn)
-	: args(a), isWriteln(isLn) {}
+    WriteAST(VariableExprAST* f, const std::vector<WriteArg> &a, bool isLn)
+	: file(f), args(a), isWriteln(isLn) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
 private:
-    // TODO: Add support for file type. 
+    VariableExprAST*      file;
     std::vector<WriteArg> args;
-    bool isWriteln;
+    bool                  isWriteln;
 };
 
 class ReadAST : public ExprAST

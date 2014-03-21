@@ -984,19 +984,6 @@ void WhileExprAST::DoDump(std::ostream& out) const
     body->Dump(out);
 }
 
-static llvm::Value* FileOrNull(VariableExprAST* file)
-{
-    if (file)
-    {
-	return file->Address();
-    }
-
-    Types::TypeDecl ty(Types::Char);
-    llvm::Type *fty = Types::GetFileType("text", &ty);
-    fty = llvm::PointerType::getUnqual(fty);
-    return llvm::Constant::getNullValue(fty);
-}
-
 llvm::Value* WhileExprAST::CodeGen()
 {
     TRACE();
@@ -1062,6 +1049,19 @@ llvm::Value* RepeatExprAST::CodeGen()
     return afterBB;
 }
 
+static llvm::Value* FileOrNull(VariableExprAST* file)
+{
+    if (file)
+    {
+	return file->Address();
+    }
+
+    Types::TypeDecl ty(Types::Char);
+    llvm::Type *fty = Types::GetFileType("text", &ty);
+    fty = llvm::PointerType::getUnqual(fty);
+    return llvm::Constant::getNullValue(fty);
+}
+
 void WriteAST::DoDump(std::ostream& out) const
 {
     if (isWriteln)
@@ -1095,11 +1095,12 @@ void WriteAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateWriteFunc(llvm::Type* ty)
+static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
+    argTypes.push_back(fty);
     if (ty)
     {
 	if (ty == Types::GetType(Types::Char))
@@ -1153,9 +1154,11 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty)
 
 llvm::Value* WriteAST::CodeGen()
 {
+    llvm::Value* f = FileOrNull(file);
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
+	argsV.push_back(f);
 	llvm::Value* v = arg.expr->CodeGen();
 	if (!v)
 	{
@@ -1163,7 +1166,7 @@ llvm::Value* WriteAST::CodeGen()
 	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
-	llvm::Constant* f = CreateWriteFunc(ty);
+	llvm::Constant* fn = CreateWriteFunc(ty, f->getType());
 	llvm::Value* w;
 	if (!arg.width)
 	{
@@ -1208,12 +1211,12 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    argsV.push_back(p);
 	}
-	builder.CreateCall(f, argsV, "");
+	builder.CreateCall(fn, argsV, "");
     }
     if (isWriteln)
     {
-	llvm::Constant* f = CreateWriteFunc(0);
-	builder.CreateCall(f, std::vector<llvm::Value*>(), "");
+	llvm::Constant* fn = CreateWriteFunc(0, f->getType());
+	builder.CreateCall(fn, f, "");
     }
     return MakeIntegerConstant(0);
 }

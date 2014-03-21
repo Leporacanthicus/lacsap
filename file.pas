@@ -10,4 +10,11 @@ begin
    read(f, x);
    writeln(x);
    close(f);
+   assign(f, 'test1.txt');
+   rewrite(f);
+   writeln(f, x);
+   close(f);
+   append(f);
+   writeln(f, x * 2);
+   close(f);
 end.

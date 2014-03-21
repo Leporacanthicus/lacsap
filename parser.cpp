@@ -1462,8 +1462,7 @@ ExprAST* Parser::ParseWrite()
 	   "Expected write or writeln keyword here");
     NextToken();
 
-    // TODO: Adde file support. 
-
+    VariableExprAST* file = 0;
     std::vector<WriteAST::WriteArg> args;
     if (CurrentToken().GetType() == Token::Semicolon)
     {
@@ -1487,25 +1486,40 @@ ExprAST* Parser::ParseWrite()
 	    {
 		return 0;
 	    }
-	    if (CurrentToken().GetType() == Token::Colon)
+	    if (args.size() == 0)
 	    {
-		NextToken();
-		wa.width = ParseExpression();
-		if (!wa.width)
+		VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(wa.expr);
+		if (vexpr)
 		{
-		    return Error("Invalid width expression");
+		    if (vexpr->Type()->Type() == Types::File)
+		    {
+			file = vexpr;
+			wa.expr = 0;
+		    }
 		}
 	    }
-	    if (CurrentToken().GetType() == Token::Colon)
+	    if (wa.expr)
 	    {
-		NextToken();
-		wa.precision = ParseExpression();
-		if (!wa.precision)
+		if (CurrentToken().GetType() == Token::Colon)
 		{
-		    return Error("Invalid precision expression");
+		    NextToken();
+		    wa.width = ParseExpression();
+		    if (!wa.width)
+		    {
+			return Error("Invalid width expression");
+		    }
 		}
+		if (CurrentToken().GetType() == Token::Colon)
+		{
+		    NextToken();
+		    wa.precision = ParseExpression();
+		    if (!wa.precision)
+		    {
+			return Error("Invalid precision expression");
+		    }
+		}
+		args.push_back(wa);
 	    }
-	    args.push_back(wa);
 	    if (CurrentToken().GetType() != Token::RightParen)
 	    {
 		if (!Expect(Token::Comma, true))
@@ -1518,12 +1532,12 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return 0;
 	}
-	if (args.size() < 1)
+	if (args.size() < 1 && !isWriteln)
 	{
-	    return Error("Expected expression in parenthesis of write statement");
+	    return Error("Expected at least one expression for output in write");
 	}
     }
-    return new WriteAST(args, isWriteln);
+    return new WriteAST(file, args, isWriteln);
 }
 
 ExprAST* Parser::ParseRead()

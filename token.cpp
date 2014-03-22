@@ -127,8 +127,6 @@ const TokenEntry tokenTable[] =
     { Token::Type,          true,  -1, "type" },
     { Token::Forward,       true,  -1, "forward" },
     { Token::Const,         true,  -1, "const" },
-    { Token::True,          true,  -1, "true" },
-    { Token::False,         true,  -1, "false" },
     { Token::And,           true,  40, "and" },
     { Token::Or,            true,  10, "or" },
     { Token::Not,           true,  60, "not" },

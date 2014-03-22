@@ -13,10 +13,13 @@ Parser::Parser(Lexer &l)
     : 	lexer(l), nextTokenValid(false), errCnt(0)
 {
     nameStack.NewLevel();
+    std::vector<std::string> FalseTrue;
+    FalseTrue.push_back("false");
+    FalseTrue.push_back("true");
     if (!(AddType("integer", new Types::TypeDecl(Types::Integer)) &&
 	  AddType("real", new Types::TypeDecl(Types::Real)) &&
 	  AddType("char", new Types::TypeDecl(Types::Char)) &&
-	  AddType("boolean", new Types::TypeDecl(Types::Boolean)) &&
+	  AddType("boolean", new Types::EnumDecl(FalseTrue, Types::Boolean)) &&
 	  AddType("text", new Types::TextDecl())))
     {
 	assert(0 && "Failed to add basic types...");
@@ -304,14 +307,16 @@ void Parser::ParseConstDef()
 	    cd = new Constants:: CharConstDecl(loc, (char) CurrentToken().GetIntVal());
 	    break;
 
-	case Token::True:
-	    cd = new Constants:: BoolConstDecl(loc, true);
+	case Token::Identifier:
+	{
+	    int v;
+	    if (GetEnumValue(CurrentToken().GetIdentName(), v))
+	    {
+		cd = new Constants:: IntConstDecl(loc, v);
+	    }
 	    break;
-
-	case Token::False:
-	    cd = new Constants:: BoolConstDecl(loc, false);
-	    break;
-
+	}
+	 
 	default:
 	    break;
 	}
@@ -653,7 +658,8 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 
 ExprAST* Parser::ParseUnaryOp()
 {
-    assert(CurrentToken().GetType() == Token::Minus && 
+    assert((CurrentToken().GetType() == Token::Minus || 
+	    CurrentToken().GetType() == Token::Not) && 
 	   "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
@@ -1435,15 +1441,15 @@ ExprAST* Parser::ParseCaseExpr()
 	    ExprAST* s = ParseStmtOrBlock();
 	    labels.push_back(new LabelExprAST(lab, s));
 	    lab.clear();
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return 0;
+	    }
 	    break;
 	}
 	
 	default:
 	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
-	}
-	if (!Expect(Token::Semicolon, true))
-	{
-	    return 0;
 	}
     } while(CurrentToken().GetType() != Token::End);
     if (!Expect(Token::End, true))
@@ -1663,6 +1669,7 @@ ExprAST* Parser::ParsePrimary()
 	return ParseRead();
 
     case Token::Minus:
+    case Token::Not:
 	return ParseUnaryOp();
 
     default:

@@ -172,7 +172,7 @@ static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	return builder.CreateBitCast(a, Types::GetType(Types::Char), "chr");
+	return builder.CreateTrunc(a, Types::GetType(Types::Char), "chr");
     }
     return ErrorV("Expected integer type for chr function");
 }
@@ -185,7 +185,7 @@ static llvm::Value* OrdCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     assert(a && "Expected codegen to work for args[0]");
     if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
     {
-	return builder.CreateBitCast(a, Types::GetType(Types::Integer), "ord");
+	return builder.CreateZExt(a, Types::GetType(Types::Integer), "ord");
     }
     return ErrorV("Expected integer type for ord function");
 }
@@ -339,19 +339,29 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
 }
 
 
-static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args, 
-				    const std::string func)
+static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder, 
+				    const std::vector<ExprAST*>& args, 
+				    const std::string func,
+				    Types::SimpleTypes resTy = Types::Void)
 {
-    VariableExprAST* fvar = dynamic_cast<VariableExprAST*>(args[0]);
-    if (!fvar)
+    VariableExprAST* fvar;
+    if (args.size() > 0)
     {
-	return ErrorV("Expected a variable expression");
+	fvar = dynamic_cast<VariableExprAST*>(args[0]);
+	if (!fvar)
+	{
+	    return ErrorV("Expected a variable expression");
+	}
     }
-    llvm::Value* faddr = fvar->Address();
+    else
+    {
+	fvar = 0;
+    }
+    llvm::Value* faddr = FileOrNull(fvar);
     std::vector<llvm::Type*> argTypes;
     argTypes.push_back(faddr->getType());
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(resTy), argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 
     return builder.CreateCall(f, faddr, "");
@@ -359,27 +369,37 @@ static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder, const std::vecto
 
 static llvm::Value* ResetCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 args for 'reset'");
+    assert(args.size() == 1 && "Expect 1 arg for 'reset'");
 
     return FileCallCodeGen(builder, args, "__reset");
 }
 
 static llvm::Value* CloseCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 args for 'close'");
+    assert(args.size() == 1 && "Expect 1 arg for 'close'");
     return FileCallCodeGen(builder, args, "__close");
 }
 
 static llvm::Value* RewriteCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 args for 'rewrite'");
+    assert(args.size() == 1 && "Expect 1 arg for 'rewrite'");
     return FileCallCodeGen(builder, args, "__rewrite");
 }
 
 static llvm::Value* AppendCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 args for 'append'");
+    assert(args.size() == 1 && "Expect 1 arg for 'append'");
     return FileCallCodeGen(builder, args, "__append");
+}
+
+static llvm::Value* EofCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return FileCallCodeGen(builder, args, "__eof", Types::Boolean);
+}
+
+static llvm::Value* EolnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return FileCallCodeGen(builder, args, "__eoln", Types::Boolean);
 }
 
 const static BuiltinFunction bifs[] =
@@ -406,6 +426,8 @@ const static BuiltinFunction bifs[] =
     { "close",   CloseCodeGen   },
     { "rewrite", RewriteCodeGen },
     { "append",  AppendCodeGen  },
+    { "eof",     EofCodeGen     },
+    { "eoln",    EolnCodeGen    },
 };
 
 static const BuiltinFunction* find(const std::string& name)

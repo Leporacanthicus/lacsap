@@ -28,8 +28,6 @@ public:
 	String,
 	Char,
 	Boolean,
-	True,
-	False,
 
 	// Type/var/const declarations:
 	Type,

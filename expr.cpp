@@ -435,6 +435,8 @@ llvm::Value* UnaryExprAST::CodeGen()
 	{
 	case Token::Minus:
 	    return builder.CreateNeg(r, "minus");
+	case Token::Not:
+	    return builder.CreateNot(r, "not");
 	default:
 	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
 	}
@@ -1049,7 +1051,7 @@ llvm::Value* RepeatExprAST::CodeGen()
     return afterBB;
 }
 
-static llvm::Value* FileOrNull(VariableExprAST* file)
+llvm::Value* FileOrNull(VariableExprAST* file)
 {
     if (file)
     {
@@ -1254,10 +1256,15 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
     {
 	if (!ty->isPointerTy())
 	{
-	    return ErrorF("Read argument is not pointer type!");
+	    return ErrorF("Read argument is not a variable type!");
 	}
 	llvm::Type* innerTy = ty->getContainedType(0);
-	if (innerTy->isIntegerTy())
+	if (innerTy == Types::GetType(Types::Char))
+	{
+	    argTypes.push_back(ty);
+	    suffix = "chr";
+	}
+	else if (innerTy->isIntegerTy())
 	{
 	    // Make args of two integers. 
 	    argTypes.push_back(ty);
@@ -1268,11 +1275,6 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
 	    // Args: double, int, int
 	    argTypes.push_back(ty);
 	    suffix = "real";
-	}
-	else if (innerTy == Types::GetType(Types::Char))
-	{
-	    argTypes.push_back(ty);
-	    suffix = "chr";
 	}
 	else
 	{
@@ -1373,7 +1375,7 @@ void LabelExprAST::DoDump(std::ostream& out) const
     stmt->Dump(out);
 }
 
-llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB)
+llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
 {
     llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
@@ -1383,8 +1385,8 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
     builder.CreateBr(afterBB);
     for(auto l : labelValues)
     {
-	llvm::IntegerType* ty = llvm::dyn_cast<llvm::IntegerType>(Types::GetType(Types::Integer));
-	sw->addCase(llvm::ConstantInt::get(ty, l), caseBB);
+	llvm::IntegerType* intTy = llvm::dyn_cast<llvm::IntegerType>(ty);
+	sw->addCase(llvm::ConstantInt::get(intTy, l), caseBB);
     }
     return caseBB;
 }
@@ -1402,7 +1404,8 @@ void CaseExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* CaseExprAST::CodeGen()
 {
-    llvm::Value* v = expr->CodeGen();
+    llvm::Value* v  = expr->CodeGen();
+    llvm::Type*  ty = v->getType();
     if (!v->getType()->isIntegerTy())
     {
 	return ErrorV("Case selection must be integral type");
@@ -1414,7 +1417,7 @@ llvm::Value* CaseExprAST::CodeGen()
     llvm::SwitchInst* sw = builder.CreateSwitch(v, afterBB, labels.size());
     for(auto ll : labels)
     {
-	ll->CodeGen(sw, afterBB);
+	ll->CodeGen(sw, afterBB, ty);
     }
 
     builder.SetInsertPoint(afterBB);

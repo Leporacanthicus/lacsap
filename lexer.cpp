@@ -169,7 +169,7 @@ Token Lexer::GetToken()
 	if (ch == '(' && PeekChar() == '*')
 	{
 	    ch = NextChar(); /* Skip first * */
-	    while ((ch = NextChar()) != EOF && (ch != '*' && PeekChar() != ')'))
+	    while ((ch = NextChar()) != EOF && !(ch == '*' && PeekChar() == ')'))
 		;
 	    NextChar();
 	    ch = NextChar();

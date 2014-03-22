@@ -109,10 +109,19 @@ void Types::TypeDecl::dump() const
     std::cerr << "Type: " << TypeToStr(type);
 }
 
-llvm::Type* Types::TypeDecl::LlvmType() const
+llvm::Type* Types::TypeDecl::LlvmType()
 {
-    llvm::Type* ty = GetType(type);
-    return ty;
+    if (ltype)
+    {
+	return ltype;
+    }
+    ltype = GetLlvmType();
+    return ltype;
+}
+
+llvm::Type* Types::TypeDecl::GetLlvmType() const
+{
+    return GetType(type);
 }
 
 void Types::PointerDecl::dump() const
@@ -121,7 +130,7 @@ void Types::PointerDecl::dump() const
     baseType->dump();
 }
 
-llvm::Type* Types::PointerDecl::LlvmType() const
+llvm::Type* Types::PointerDecl::GetLlvmType() const
 {
     llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
     return ty;
@@ -138,7 +147,7 @@ void Types::ArrayDecl::dump() const
     baseType->dump();
 }
 
-llvm::Type* Types::ArrayDecl::LlvmType() const
+llvm::Type* Types::ArrayDecl::GetLlvmType() const
 {
     size_t nelems = 0;
     for(auto r : ranges)
@@ -169,7 +178,7 @@ void Types::RangeDecl::dump() const
     std::cerr << "RangeDecl: " << TypeToStr(baseType) << " " << range << std::endl;
 }
 
-llvm::Type* Types::RangeDecl::LlvmType() const
+llvm::Type* Types::RangeDecl::GetLlvmType() const
 {
     return GetType(baseType);
 }
@@ -194,9 +203,9 @@ void Types::EnumDecl::dump() const
     }
 }
 
-llvm::Type* Types::EnumDecl::LlvmType() const
+llvm::Type* Types::EnumDecl::GetLlvmType() const
 {
-    return GetType(Integer);
+    return GetType(subType);
 }
 
 void Types::FieldDecl::dump() const
@@ -205,7 +214,7 @@ void Types::FieldDecl::dump() const
     baseType->dump();
 }
 
-llvm::Type* Types::FieldDecl::LlvmType() const
+llvm::Type* Types::FieldDecl::GetLlvmType() const
 {
     return baseType->LlvmType();
 }
@@ -219,7 +228,7 @@ void Types::RecordDecl::dump() const
     }
 }
 
-llvm::Type* Types::RecordDecl::LlvmType() const
+llvm::Type* Types::RecordDecl::GetLlvmType() const
 {
     std::vector<llvm::Type*> fv;
     for(auto f : fields)
@@ -250,7 +259,7 @@ void Types::FuncPtrDecl::dump() const
     std::cerr << "FunctionPtr " << std::endl;
 }
 
-llvm::Type* Types::FuncPtrDecl::LlvmType() const
+llvm::Type* Types::FuncPtrDecl::GetLlvmType() const
 {
     llvm::Type* resty = proto->ResultType()->LlvmType();
     std::vector<llvm::Type*> argTys;
@@ -299,7 +308,7 @@ llvm::Type* Types::GetFileType(const std::string& name, Types::TypeDecl* baseTyp
     return st;
 }
 
-llvm::Type* Types::FileDecl::LlvmType() const
+llvm::Type* Types::FileDecl::GetLlvmType() const
 {
     return GetFileType("file", baseType);
 }
@@ -310,7 +319,7 @@ void Types::FileDecl::dump() const
     baseType->dump();
 }
 
-llvm::Type* Types::TextDecl::LlvmType() const
+llvm::Type* Types::TextDecl::GetLlvmType() const
 {
     return GetFileType("text", baseType);
 }

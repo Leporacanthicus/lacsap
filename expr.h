@@ -405,7 +405,7 @@ public:
 	: labelValues(lab),stmt(st) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen() { assert(0); return 0; }
-    llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB);
+    llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
 private:
     std::vector<int> labelValues;
     ExprAST*         stmt;
@@ -427,6 +427,7 @@ private:
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
 llvm::Value* MakeConstant(int val, llvm::Type* ty);
-llvm::Value *ErrorV(const std::string& msg);
+llvm::Value* ErrorV(const std::string& msg);
+llvm::Value* FileOrNull(VariableExprAST* file);
 
 #endif

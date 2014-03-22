@@ -160,6 +160,12 @@ void __read_int(File* file, int* v)
     fscanf(f, "%d", v);
 }
 
+void __read_chr(File* file, char* v)
+{
+    FILE* f = getFile(file, stdin);
+    *v = getc(f);
+}
+
 void __read_real(File* file, double* v)
 { 
     FILE* f = getFile(file, stdin);
@@ -169,8 +175,23 @@ void __read_real(File* file, double* v)
 void __read_nl(File* file)
 {
     FILE* f = getFile(file, stdin);
-    while(fgetc(f) != '\n')
+    int ch;
+    while((ch = fgetc(f)) != '\n' && ch != EOF)
 	;
+}
+
+int __eof(File* file)
+{
+    FILE* f = getFile(file, stdin);
+    return !!feof(f);
+}
+
+int __eoln(File* file)
+{
+    FILE* f = getFile(file, stdin);
+    int ch = getc(f);
+    ungetc(ch, f);
+    return !!(ch == '\n' || ch == EOF);
 }
 
 void* __new(int size)

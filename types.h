@@ -53,7 +53,7 @@ public:
     {
     public:
 	TypeDecl(SimpleTypes t)
-	    : type(t)
+	    : type(t), ltype(0)
 	{
 	}
 
@@ -63,10 +63,12 @@ public:
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
-	virtual llvm::Type* LlvmType() const;
+	llvm::Type* LlvmType();
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     protected:
 	SimpleTypes type;
+	llvm::Type* ltype;
     };
 
     class ArrayDecl : public TypeDecl
@@ -80,7 +82,7 @@ public:
 	const std::vector<Range*>& Ranges() const { return ranges; }
 	TypeDecl* SubType() const { return baseType; }
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     private:
 	TypeDecl* baseType;
@@ -100,7 +102,7 @@ public:
 	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
 	virtual void dump() const;
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -121,8 +123,8 @@ public:
     class EnumDecl : public TypeDecl
     {
     public:
-	EnumDecl(const std::vector<std::string>& nmv)
-	    : TypeDecl(Enum)
+	EnumDecl(const std::vector<std::string>& nmv, SimpleTypes ty = Integer)
+	    : TypeDecl(Enum), subType(ty)
 	{
 	    assert(nmv.size() && "Must have names in the enum type.");
 	    SetValues(nmv);
@@ -133,10 +135,11 @@ public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
 	virtual bool isIntegral() const { return true; }
 	const EnumValues& Values() const { return values; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     private:
-	EnumValues values;
+	EnumValues  values;
+	SimpleTypes subType;
     };
 
     // Since we need to do "late" binding of pointer types, we just keep
@@ -159,7 +162,7 @@ public:
 	    type = Pointer; 
 	}
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     private:
 	std::string name;
@@ -174,7 +177,7 @@ public:
     public:
 	const std::string& Name() { return name; }
 	TypeDecl* FieldType() const { return baseType; } 
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
     private:
@@ -188,7 +191,7 @@ public:
 	RecordDecl(const std::vector<FieldDecl>& flds)
 	    : TypeDecl(Record), fields(flds) { };
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	int Element(const std::string& name) const;
 	const FieldDecl& GetElement(int n) { return fields[n]; }
@@ -202,12 +205,12 @@ public:
 	FuncPtrDecl(PrototypeAST* func);
 	virtual bool isIntegral() const { return false; }
 	virtual TypeDecl* SubType() const { return baseType; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	PrototypeAST* Proto() const { return proto; }
     private:
 	PrototypeAST* proto;
-	TypeDecl *baseType;
+	TypeDecl*     baseType;
     };
 
     class FileDecl : public TypeDecl
@@ -221,7 +224,7 @@ public:
 	FileDecl(TypeDecl* ty)
 	    : TypeDecl(File), baseType(ty) {}
 	virtual TypeDecl* SubType() const { return baseType; }
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     protected:
 	TypeDecl *baseType;
@@ -232,7 +235,7 @@ public:
     public:
 	TextDecl()
 	    : FileDecl(new TypeDecl(Char)) {}
-	virtual llvm::Type* LlvmType() const;
+	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     };
 
@@ -240,5 +243,4 @@ public:
     static llvm::Type* GetVoidPtrType();
     static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
 };
-
 #endif

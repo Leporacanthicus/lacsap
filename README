@@ -3,7 +3,6 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-- Boolean expressions
 - Proper tests.
 - Set variables.
 - Not allowing "empty then" in if/then/else statements.

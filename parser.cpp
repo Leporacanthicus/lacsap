@@ -155,20 +155,19 @@ Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
     return constDef->ConstValue();
 }
 
-bool Parser::GetEnumValue(const std::string& name, int& value)
+EnumDef* Parser::GetEnumValue(const std::string& name)
 {
     NamedObject* def = nameStack.Find(name);
     if (!def) 
     {
-	return false;
+	return 0;
     }
     EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
     if (!enumDef)
     {
-	return false;
+	return 0;
     }
-    value = enumDef->Value();
-    return true;
+    return enumDef;
 }
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
@@ -178,7 +177,7 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
     {
 	for(auto v : ed->Values())
 	{
-	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value)))
+	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
 	    {
 		Error("Enumerated value by name " + v.name + " already exists...");
 		return false;
@@ -226,9 +225,8 @@ Types::Range* Parser::ParseRange()
     }
     else if (tt == Token::Identifier)
     {
-	int start;
-	int end;
-	if (!GetEnumValue(CurrentToken().GetIdentName(), start))
+	EnumDef* start = GetEnumValue(CurrentToken().GetIdentName()); 
+	if (!start)
 	{
 	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
 	}
@@ -237,13 +235,14 @@ Types::Range* Parser::ParseRange()
 	{
 	    return 0;
 	}
+	EnumDef* end;
 	if (CurrentToken().GetType() != Token::Identifier ||
-	    !GetEnumValue(CurrentToken().GetIdentName(), end))
+	    !(end = GetEnumValue(CurrentToken().GetIdentName())))
 	{
 	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
 	}
 	NextToken();
-	return new Types::Range(start, end);
+	return new Types::Range(start->Value(), end->Value());
     }
     else
     {
@@ -309,10 +308,10 @@ void Parser::ParseConstDef()
 
 	case Token::Identifier:
 	{
-	    int v;
-	    if (GetEnumValue(CurrentToken().GetIdentName(), v))
+	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
+	    if (ed)
 	    {
-		cd = new Constants:: IntConstDecl(loc, v);
+		cd = new Constants:: IntConstDecl(loc, ed->Value());
 	    }
 	    break;
 	}
@@ -560,8 +559,7 @@ Types::TypeDecl* Parser::ParseType()
     {
     case Token::Identifier:
     {
-	int dummy;
-	if (!GetEnumValue(CurrentToken().GetIdentName(), dummy))
+	if (!GetEnumValue(CurrentToken().GetIdentName()))
 	{
 	    return ParseSimpleType();
 	}
@@ -768,7 +766,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
     if (enumDef)
     {
-	return new IntegerExprAST(enumDef->Value());
+	return new IntegerExprAST(enumDef->Value(), enumDef->Type()->LlvmType());
     }
     bool isBuiltin = Builtin::IsBuiltin(idName);
     if (!isBuiltin)
@@ -1413,10 +1411,10 @@ ExprAST* Parser::ParseCaseExpr()
 	    
 	case Token::Identifier:
 	{
-	    int v;
-	    if (GetEnumValue(CurrentToken().GetIdentName(), v))
+	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
+	    if (ed)
 	    {
-		lab.push_back(v);
+		lab.push_back(ed->Value());
 	    }
 	    else
 	    {

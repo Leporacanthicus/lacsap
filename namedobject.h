@@ -91,16 +91,17 @@ private:
 class EnumDef : public NamedObject
 {
 public:
-    EnumDef(const std::string& nm, int v)
-	: NamedObject(nm), enumValue(v) { }
+    EnumDef(const std::string& nm, int v, Types::TypeDecl* ty)
+	: NamedObject(nm), enumValue(v), type(ty) { }
     int Value() const { return enumValue; }
-    Types::TypeDecl* Type() const { return 0; }
+    Types::TypeDecl* Type() const { return type; }
     void dump() 
     { 
 	std::cerr << "Enum: " << Name() << " Value: " << enumValue << std::endl; 
     }
 private:
-    int enumValue;
+    int              enumValue;
+    Types::TypeDecl* type;
 };
 
 #endif

@@ -45,12 +45,13 @@ private:
 class IntegerExprAST : public ExprAST
 {
 public:
-    IntegerExprAST(int v) 
-	: val(v) {}
+    IntegerExprAST(int v, llvm::Type* ty = 0) 
+	: val(v), type(ty) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
 private:
-    int val;
+    int         val;
+    llvm::Type* type;
 };
 
 class CharExprAST : public ExprAST

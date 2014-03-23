@@ -82,7 +82,7 @@ private:
     bool IsCall(Types::TypeDecl* type);
     
     // Helper functions for identifier access/checking.
-    bool GetEnumValue(const std::string& name, int& enumValue);
+    EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
     Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);

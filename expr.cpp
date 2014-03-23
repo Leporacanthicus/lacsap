@@ -129,7 +129,15 @@ void IntegerExprAST::DoDump(std::ostream& out) const
 llvm::Value* IntegerExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v = MakeIntegerConstant(val);
+    llvm::Value *v;
+    if (type == 0)
+    {
+	v = MakeIntegerConstant(val);
+    }
+    else
+    {
+	v = MakeConstant(val, type);
+    }
     return v;
 }
 

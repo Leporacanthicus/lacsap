@@ -9,20 +9,26 @@ r = record
        z : boolean;
     end;
 
-
 var
    c : r;
    d : r;
+   e : r;
 
 procedure test(a : r; var b :r);
 begin
    b := a;
 end; { test }
 
+function test2(a : r) : r;
+begin
+   test2 := a;
+end;
+
 begin
    c.x := 4;
    c.y := 9.2;
    c.z := true;
    test(c, d);
-   writeln('x=', d.x:1, ' y=', c.y:3:1, ' z=',c.z);
+   e := test2(d);
+   writeln('x=', e.x:1, ' y=', e.y:3:1, ' z=',e.z);
 end.

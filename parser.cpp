@@ -204,21 +204,44 @@ Types::TypeDecl* Parser::ParseSimpleType()
 
 Types::Range* Parser::ParseRange()
 {
-    Token::TokenType tt = CurrentToken().GetToken();
+    Token token = CurrentToken();
+    if (token.GetToken() == Token::Identifier)
+    {
+	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
+	if (cd)
+	{
+	    token = cd->Translate();
+	}
+    }
+
+    Token::TokenType tt = token.GetToken();
     
     if (tt == Token::Integer || tt == Token::Char)
     {
-	int start = CurrentToken().GetIntVal();
+	int start = token.GetIntVal();
 	NextToken();
         if (!Expect(Token::DotDot, true))
 	{
 	    return 0;
 	}
-	if (!Expect(tt, false))
+
+	if (CurrentToken().GetToken() == Token::Identifier)
 	{
-	    return 0;
+	    Constants::ConstDecl* cd = GetConstDecl(CurrentToken().GetIdentName());
+	    if (cd)
+	    {
+		token = cd->Translate();
+	    }
 	}
-	int end = CurrentToken().GetIntVal();
+	else
+	{
+	    if (!Expect(tt, false))
+	    {
+		return 0;
+	    }	
+	    token = CurrentToken();
+	}
+	int end = token.GetIntVal();
 	NextToken();
 
 	return new Types::Range(start, end);

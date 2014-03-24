@@ -876,7 +876,10 @@ void IfExprAST::DoDump(std::ostream& out) const
     out << "if: " << std::endl;
     cond->Dump(out);
     out << "then: ";
-    then->Dump(out);
+    if (then)
+    {
+	then->Dump(out);
+    }
     if (other)
     {
 	out << " else::";
@@ -914,10 +917,13 @@ llvm::Value* IfExprAST::CodeGen()
     builder.CreateCondBr(condV, thenBB, elseBB);
     builder.SetInsertPoint(thenBB);
 
-    llvm::Value* thenV = then->CodeGen();
-    if (!thenV)
+    if (then)
     {
-	return 0;
+	llvm::Value* thenV = then->CodeGen();
+	if (!thenV)
+	{
+	    return 0;
+	}
     }
 
     builder.CreateBr(mergeBB);

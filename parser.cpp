@@ -1266,10 +1266,14 @@ ExprAST* Parser::ParseIfExpr()
 	return 0;
     }
 
-    ExprAST* then = ParseStmtOrBlock();
-    if (!then)
+    ExprAST* then = 0;
+    if (CurrentToken().GetToken() != Token::Else)
     {
-	return 0;
+	then = ParseStmtOrBlock();
+	if (!then)
+	{
+	    return 0;
+	}
     }
 
     ExprAST* elseExpr = 0;

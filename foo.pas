@@ -63,6 +63,12 @@ begin
    fact2 := b;
 end; { fact2 }
 
+procedure ifemptyelse;
+
+begin
+   if a < 0 then
+   else writeln('a is greater than zero');
+end;
 
 function testIntToFloat(x :  integer) : real;
 var r :  real;
@@ -167,6 +173,7 @@ end; { arrayTest }
    
 begin
    a := 12;
+   ifemptyelse;
    writeln('Hello, world!');
    write(4711);
    writeln(3.14);

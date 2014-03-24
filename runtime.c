@@ -218,6 +218,11 @@ void __dispose(void* ptr)
     free(ptr);
 }
 
+double __random(void)
+{
+    return rand() / (double)RAND_MAX;
+}
+
 static void InitFiles()
 {
     for(int i = 0; i < MAX_PASCAL_FILES; i++)

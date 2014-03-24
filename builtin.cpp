@@ -46,41 +46,6 @@ static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return ErrorV("Expected type of integer for 'odd'");
 }
 
-static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-{
-    // TODO: Use llvm builtin function?
-    assert(args.size() == 1 && "Expect 1 argument to trunc");
-    llvm::Value* a = args[0]->CodeGen();
-    assert(a && "Expected codegen to work for args[0]");
-    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
-    {
-	llvm::Value* res = builder.CreateFPToSI(a, Types::GetType(Types::Integer));
-	return res;
-    }
-    return ErrorV("Expected type of real for 'trunc'");
-}
-
-static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-{
-    // TODO: I think there is a llvm builtin function for this.
-    assert(args.size() == 1 && "Expect 1 argument to round");
-    llvm::Value* a = args[0]->CodeGen();
-    assert(a && "Expected codegen to work for args[0]");
-    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
-    {
-	llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
-	llvm::Value* cmp = builder.CreateFCmpOGE(a, zero, "rndcond");
-	llvm::Value* phalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.5));
-	llvm::Value* mhalf = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(-0.5));
-	
-	llvm::Value* half  = builder.CreateSelect(cmp, phalf, mhalf, "half");
-	llvm::Value* sum = builder.CreateFAdd(a, half, "aplushalf");
-	llvm::Value* res = builder.CreateFPToSI(sum, Types::GetType(Types::Integer));
-	return res;
-    }
-    return ErrorV("Expected type of real for 'round'");
-}
-
 static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to sqr");
@@ -105,8 +70,6 @@ static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
 				      const std::string& func, 
 				      const std::vector<ExprAST*>& args)
 {
-    assert(args.size() == 1 && "Expect 1 argument to function");
-
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
     std::vector<llvm::Type*> argTypes;
@@ -136,32 +99,64 @@ static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::strin
 
 static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to 'sqrt'");
     return CallBuiltinFunc(builder, "sqrt", args);
 }
 
 static llvm::Value* SinCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to sin");
     return CallBuiltinFunc(builder, "sin", args);
 }
 
 static llvm::Value* CosCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to cos");
     return CallBuiltinFunc(builder, "cos", args);
 }
 
 static llvm::Value* LnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to ln");
     return CallBuiltinFunc(builder, "log", args);
 }
 
 static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to exp");
     return CallBuiltinFunc(builder, "exp", args);
 }
 
 static llvm::Value* ArctanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
+    assert(args.size() == 1 && "Expect 1 argument to atan");
     return CallRuntimeFPFunc(builder, "atan", args);
+}
+
+static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to round");
+
+    return CallBuiltinFunc(builder, "round", args);
+}
+
+static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 1 && "Expect 1 argument to trunc");
+
+    return CallBuiltinFunc(builder, "trunc", args);
+}
+
+static llvm::Value* RandomCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    assert(args.size() == 0 && "Expect no argument to random");
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* ty = Types::GetType(Types::Real);
+    llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
+
+    llvm::Constant* f = theModule->getOrInsertFunction("__random", ft);
+
+    return builder.CreateCall(f, "calltmp");
 }
 
 static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -428,6 +423,7 @@ const static BuiltinFunction bifs[] =
     { "append",  AppendCodeGen  },
     { "eof",     EofCodeGen     },
     { "eoln",    EolnCodeGen    },
+    { "random",  RandomCodeGen  },
 };
 
 static const BuiltinFunction* find(const std::string& name)

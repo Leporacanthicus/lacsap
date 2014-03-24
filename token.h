@@ -103,7 +103,7 @@ public:
 
     static TokenType KeyWordToToken(const std::string& str);
 
-    TokenType GetType() const { return type; }
+    TokenType GetToken() const { return type; }
     std::string GetIdentName() const 
     { 
 	assert(type == Token::Identifier && 

@@ -107,7 +107,7 @@ const Token& Parser::PeekToken(const char* file, int line)
 
 bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int line)
 {
-    if (CurrentToken().GetType() != type)
+    if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
 	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() + 
@@ -189,7 +189,7 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 
 Types::TypeDecl* Parser::ParseSimpleType()
 {
-    if (CurrentToken().GetType() != Token::Identifier)
+    if (CurrentToken().GetToken() != Token::Identifier)
     {
 	return ErrorT("Expected identifier of simple type");
     }
@@ -204,7 +204,7 @@ Types::TypeDecl* Parser::ParseSimpleType()
 
 Types::Range* Parser::ParseRange()
 {
-    Token::TokenType tt = CurrentToken().GetType();
+    Token::TokenType tt = CurrentToken().GetToken();
     
     if (tt == Token::Integer || tt == Token::Char)
     {
@@ -236,7 +236,7 @@ Types::Range* Parser::ParseRange()
 	    return 0;
 	}
 	EnumDef* end;
-	if (CurrentToken().GetType() != Token::Identifier ||
+	if (CurrentToken().GetToken() != Token::Identifier ||
 	    !(end = GetEnumValue(CurrentToken().GetIdentName())))
 	{
 	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
@@ -252,7 +252,7 @@ Types::Range* Parser::ParseRange()
 
 Types::Range* Parser::ParseRangeOrTypeRange()
 {
-    if (CurrentToken().GetType() == Token::Identifier)
+    if (CurrentToken().GetToken() == Token::Identifier)
     {
 	Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
 	if (!ty->isIntegral())
@@ -288,7 +288,7 @@ void Parser::ParseConstDef()
 	}
 	Constants::ConstDecl *cd = 0;
 	Location loc = CurrentToken().Loc();
-	switch(CurrentToken().GetType())
+	switch(CurrentToken().GetToken())
 	{
 	case Token::String:
 	    cd = new Constants:: StringConstDecl(loc, CurrentToken().GetStrVal());
@@ -333,7 +333,7 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-    } while (CurrentToken().GetType() == Token::Identifier);
+    } while (CurrentToken().GetToken() == Token::Identifier);
 }
 
 // Deal with type name = ... defintions
@@ -375,7 +375,7 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-    } while (CurrentToken().GetType() == Token::Identifier);
+    } while (CurrentToken().GetToken() == Token::Identifier);
 
     // Now fix up any incomplete types...
     for(auto p : incomplete)
@@ -397,7 +397,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	return 0;
     }
     std::vector<std::string> values;
-    while(CurrentToken().GetType() != Token::RightParen)
+    while(CurrentToken().GetToken() != Token::RightParen)
     {
 	if (!Expect(Token::Identifier, false))
 	{
@@ -405,7 +405,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	}
 	values.push_back(CurrentToken().GetIdentName());
 	NextToken();
-	if (CurrentToken().GetType() != Token::RightParen)
+	if (CurrentToken().GetToken() != Token::RightParen)
 	{
 	    if (!Expect(Token::Comma, true))
 	    {
@@ -428,7 +428,7 @@ Types::PointerDecl* Parser::ParsePointerType()
     }
     // If the name is an "identifier" then it's a name of a not yet declared type.
     // We need to forward declare it, and backpatch later. 
-    if (CurrentToken().GetType() == Token::Identifier)
+    if (CurrentToken().GetToken() == Token::Identifier)
     {
 	std::string name = CurrentToken().GetIdentName();
 	// Is it a known type?
@@ -459,7 +459,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	return 0;
     }
     std::vector<Types::Range*> rv;
-    while(CurrentToken().GetType() != Token::RightSquare)
+    while(CurrentToken().GetToken() != Token::RightSquare)
     {
 	Types::Range* r = ParseRangeOrTypeRange();
 	if (!r) 
@@ -468,7 +468,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	    return 0;
 	}
 	rv.push_back(r);
-	if (CurrentToken().GetType() == Token::Comma)
+	if (CurrentToken().GetToken() == Token::Comma)
 	{
 	    NextToken();
 	}
@@ -504,14 +504,14 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    }
 	    names.push_back(CurrentToken().GetIdentName());
 	    NextToken();
-	    if (CurrentToken().GetType() != Token::Colon)
+	    if (CurrentToken().GetToken() != Token::Colon)
 	    {
 		if (!Expect(Token::Comma, true))
 		{
 		    return 0;
 		}
 	    }
-	} while(CurrentToken().GetType() != Token::Colon);
+	} while(CurrentToken().GetToken() != Token::Colon);
 	if (!Expect(Token::Colon, true))
 	{
 	    return 0;
@@ -542,7 +542,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	{
 	    return 0;
 	}
-    } while(CurrentToken().GetType() != Token::End);
+    } while(CurrentToken().GetToken() != Token::End);
     NextToken();
     if (fields.size() == 0)
     {
@@ -553,7 +553,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 
 Types::TypeDecl* Parser::ParseType()
 {
-    Token::TokenType tt = CurrentToken().GetType();
+    Token::TokenType tt = CurrentToken().GetToken();
 
     switch(tt)
     {
@@ -656,8 +656,8 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 
 ExprAST* Parser::ParseUnaryOp()
 {
-    assert((CurrentToken().GetType() == Token::Minus || 
-	    CurrentToken().GetType() == Token::Not) && 
+    assert((CurrentToken().GetToken() == Token::Minus || 
+	    CurrentToken().GetToken() == Token::Not) && 
 	   "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
@@ -693,7 +693,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::Type
     }
     NextToken();
     std::vector<ExprAST*> indices;
-    while(CurrentToken().GetType() != Token::RightSquare)
+    while(CurrentToken().GetToken() != Token::RightSquare)
     {
 	ExprAST* index = ParseExpression();
 	if (!index)
@@ -701,7 +701,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::Type
 	    return ErrorV("Expected index expression");
 	}
 	indices.push_back(index);
-	if (CurrentToken().GetType() != Token::RightSquare)
+	if (CurrentToken().GetToken() != Token::RightSquare)
 	{
 	    if (!Expect(Token::Comma, true))
 	    {
@@ -750,7 +750,7 @@ bool Parser::IsCall(Types::TypeDecl* type)
     }
     if ((type->Type() == Types::Procedure || 
 	 type->Type() == Types::Function) && 
-	CurrentToken().GetType() != Token::Assign)
+	CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
     }
@@ -789,7 +789,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 
 	    assert(type);
 
-	    Token::TokenType tt = CurrentToken().GetType();
+	    Token::TokenType tt = CurrentToken().GetToken();
 	    while(tt == Token::LeftSquare || 
 		  tt == Token::Uparrow || 
 		  tt == Token::Period)
@@ -815,7 +815,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		default:
 		    assert(0);
 		}
-		tt = CurrentToken().GetType();
+		tt = CurrentToken().GetToken();
 	    }
 	    return expr;	
 	}
@@ -823,14 +823,14 @@ ExprAST* Parser::ParseIdentifierExpr()
     // Get past the '(' and fetch the next one. 
     const FuncDef *funcDef = dynamic_cast<const FuncDef*>(def);
     std::vector<ExprAST* > args;
-    if (CurrentToken().GetType() == Token::LeftParen)
+    if (CurrentToken().GetToken() == Token::LeftParen)
     {
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
 	}
 	unsigned argNo = 0;
-	while (CurrentToken().GetType() != Token::RightParen)
+	while (CurrentToken().GetToken() != Token::RightParen)
 	{
 	    bool isFuncArg = false;
 	    if (funcDef && funcDef->Proto())
@@ -846,7 +846,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    ExprAST* arg;
 	    if (isFuncArg)
 	    {
-		if (CurrentToken().GetType() != Token::Identifier)
+		if (CurrentToken().GetToken() != Token::Identifier)
 		{
 		    return Error("Expected name of a function or procedure");
 		}
@@ -863,7 +863,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		return 0;
 	    }
 	    args.push_back(arg);
-	    if (CurrentToken().GetType() == Token::Comma)
+	    if (CurrentToken().GetToken() == Token::Comma)
 	    {
 		NextToken();
 	    }
@@ -950,7 +950,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	}
 	names.push_back(CurrentToken().GetIdentName());
 	NextToken();
-	if (CurrentToken().GetType() == Token::Colon)
+	if (CurrentToken().GetToken() == Token::Colon)
 	{
 	    NextToken(); 
 	    Types::TypeDecl* type = ParseType();
@@ -980,7 +980,7 @@ VarDeclAST* Parser::ParseVarDecls()
 		return 0;
 	    }
 	}
-    } while(CurrentToken().GetType() == Token::Identifier);
+    } while(CurrentToken().GetToken() == Token::Identifier);
     
     return new VarDeclAST(varList);
 }
@@ -992,8 +992,8 @@ VarDeclAST* Parser::ParseVarDecls()
 PrototypeAST* Parser::ParsePrototype(bool isFunction)
 {
     // Consume "function" or "procedure"
-    assert(CurrentToken().GetType() == Token::Procedure ||
-	   CurrentToken().GetType() == Token::Function && 
+    assert(CurrentToken().GetToken() == Token::Procedure ||
+	   CurrentToken().GetToken() == Token::Function && 
 	   "Expected function or procedure token");
     NextToken();
     std::string funcName = CurrentToken().GetIdentName();
@@ -1003,24 +1003,24 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	return 0;
     }
     std::vector<VarDef> args;
-    if (CurrentToken().GetType() == Token::LeftParen)
+    if (CurrentToken().GetToken() == Token::LeftParen)
     {
 	std::vector<std::string> names;
 	NextToken();
-	while(CurrentToken().GetType() != Token::RightParen)
+	while(CurrentToken().GetToken() != Token::RightParen)
 	{
 	    bool isRef = false;
-	    if (CurrentToken().GetType() == Token::Function ||
-		CurrentToken().GetType() == Token::Procedure)
+	    if (CurrentToken().GetToken() == Token::Function ||
+		CurrentToken().GetToken() == Token::Procedure)
 	    {
-		PrototypeAST* proto = ParsePrototype(CurrentToken().GetType() == Token::Function);
+		PrototypeAST* proto = ParsePrototype(CurrentToken().GetToken() == Token::Function);
 		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
 		VarDef v(proto->Name(), type, false);
 		args.push_back(v);
 	    }
 	    else
 	    {
-		if (CurrentToken().GetType() == Token::Var)
+		if (CurrentToken().GetToken() == Token::Var)
 		{
 		    isRef = true;
 		    NextToken();
@@ -1033,7 +1033,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 		NextToken();
 
 		names.push_back(arg);
-		if (CurrentToken().GetType() == Token::Colon)
+		if (CurrentToken().GetToken() == Token::Colon)
 		{
 		    NextToken();
 		    Types::TypeDecl* type = ParseSimpleType();
@@ -1043,7 +1043,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 			args.push_back(v);
 		    }
 		    names.clear();
-		    if (CurrentToken().GetType() != Token::RightParen)
+		    if (CurrentToken().GetToken() != Token::RightParen)
 		    {
 			if (!Expect(Token::Semicolon, true))
 			{
@@ -1089,7 +1089,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 ExprAST* Parser::ParseStatement()
 {
     ExprAST* expr = ParsePrimary();
-    if (CurrentToken().GetType() == Token::Assign)
+    if (CurrentToken().GetToken() == Token::Assign)
     {
 	NextToken();
 	ExprAST* rhs = ParseExpression();
@@ -1107,7 +1107,7 @@ BlockAST* Parser::ParseBlock()
     
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
-    while(CurrentToken().GetType() != Token::End)
+    while(CurrentToken().GetToken() != Token::End)
     {
 	ExprAST* ast = ParseStatement();
 	if (!ast)
@@ -1129,7 +1129,7 @@ BlockAST* Parser::ParseBlock()
 
 FunctionAST* Parser::ParseDefinition()
 {
-    bool isFunction = CurrentToken().GetType() == Token::Function;
+    bool isFunction = CurrentToken().GetToken() == Token::Function;
     PrototypeAST* proto = ParsePrototype(isFunction);
     if (!proto) 
     {
@@ -1148,7 +1148,7 @@ FunctionAST* Parser::ParseDefinition()
 	    return ErrorF(std::string("Name '") + name + "' already exists...");
 	}
 
-	if (CurrentToken().GetType() == Token::Forward)
+	if (CurrentToken().GetToken() == Token::Forward)
 	{
 	    NextToken();
 	    proto->SetIsForward(true);
@@ -1173,7 +1173,7 @@ FunctionAST* Parser::ParseDefinition()
     std::vector<FunctionAST*> subFunctions;
     do
     {
-	switch(CurrentToken().GetType())
+	switch(CurrentToken().GetToken())
 	{
 	case Token::Var:
 	    if (varDecls)
@@ -1247,7 +1247,7 @@ FunctionAST* Parser::ParseDefinition()
 
 ExprAST* Parser::ParseStmtOrBlock()
 {
-    if (CurrentToken().GetType() == Token::Begin)
+    if (CurrentToken().GetToken() == Token::Begin)
     {
 	return ParseBlock();
     }
@@ -1273,7 +1273,7 @@ ExprAST* Parser::ParseIfExpr()
     }
 
     ExprAST* elseExpr = 0;
-    if (CurrentToken().GetType() != Token::Semicolon)
+    if (CurrentToken().GetToken() != Token::Semicolon)
     {
 	if (Expect(Token::Else, true))
 	{
@@ -1297,7 +1297,7 @@ ExprAST* Parser::ParseForExpr()
     {
 	assert(0 && "Huh? Expected for");
     }
-    if (CurrentToken().GetType() != Token::Identifier)
+    if (CurrentToken().GetToken() != Token::Identifier)
     {
 	return Error("Expected identifier name, got " + CurrentToken().ToString());
     }
@@ -1313,7 +1313,7 @@ ExprAST* Parser::ParseForExpr()
 	return 0;
     }
     bool down = false;
-    Token::TokenType tt = CurrentToken().GetType();
+    Token::TokenType tt = CurrentToken().GetToken();
     if (tt == Token::Downto || tt == Token::To)
     {
 	down = (tt == Token::Downto);
@@ -1355,7 +1355,7 @@ ExprAST* Parser::ParseRepeat()
 {
     NextToken();
     std::vector<ExprAST*> v;
-    while(CurrentToken().GetType() != Token::Until)
+    while(CurrentToken().GetToken() != Token::Until)
     {
 	ExprAST* stmt = ParseStatement();
 	if (!stmt)
@@ -1363,7 +1363,7 @@ ExprAST* Parser::ParseRepeat()
 	    return 0;
 	}
 	v.push_back(stmt);
-	if(CurrentToken().GetType() == Token::Semicolon)
+	if(CurrentToken().GetToken() == Token::Semicolon)
 	{
 	    NextToken();
 	}
@@ -1395,14 +1395,14 @@ ExprAST* Parser::ParseCaseExpr()
     {
 	if (isFirst)
 	{
-	    prevTT = CurrentToken().GetType();
+	    prevTT = CurrentToken().GetToken();
 	    isFirst = false;
 	}
-	else if (prevTT != CurrentToken().GetType())
+	else if (prevTT != CurrentToken().GetToken())
 	{
 	    return Error("Type of case labels must not change type");
 	}
-	switch(CurrentToken().GetType())
+	switch(CurrentToken().GetToken())
 	{
 	case Token::Char:
 	case Token::Integer:
@@ -1427,7 +1427,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    return Error("Syntax error, expected case label");
 	}
 	NextToken();
-	switch(CurrentToken().GetType())
+	switch(CurrentToken().GetToken())
 	{
 	case Token::Comma:
 	    NextToken();
@@ -1449,7 +1449,7 @@ ExprAST* Parser::ParseCaseExpr()
 	default:
 	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
 	}
-    } while(CurrentToken().GetType() != Token::End);
+    } while(CurrentToken().GetToken() != Token::End);
     if (!Expect(Token::End, true))
     {
 	return 0;
@@ -1459,16 +1459,16 @@ ExprAST* Parser::ParseCaseExpr()
 
 ExprAST* Parser::ParseWrite()
 {
-    bool isWriteln = CurrentToken().GetType() == Token::Writeln;
+    bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
 
-    assert(CurrentToken().GetType() == Token::Write ||
-	   CurrentToken().GetType() == Token::Writeln &&
+    assert(CurrentToken().GetToken() == Token::Write ||
+	   CurrentToken().GetToken() == Token::Writeln &&
 	   "Expected write or writeln keyword here");
     NextToken();
 
     VariableExprAST* file = 0;
     std::vector<WriteAST::WriteArg> args;
-    if (CurrentToken().GetType() == Token::Semicolon)
+    if (CurrentToken().GetToken() == Token::Semicolon)
     {
 	if (!isWriteln)
 	{
@@ -1482,7 +1482,7 @@ ExprAST* Parser::ParseWrite()
 	    return 0;
 	}
 	
-	while(CurrentToken().GetType() != Token::RightParen)
+	while(CurrentToken().GetToken() != Token::RightParen)
 	{
 	    WriteAST::WriteArg wa;
 	    wa.expr = ParseExpression();
@@ -1504,7 +1504,7 @@ ExprAST* Parser::ParseWrite()
 	    }
 	    if (wa.expr)
 	    {
-		if (CurrentToken().GetType() == Token::Colon)
+		if (CurrentToken().GetToken() == Token::Colon)
 		{
 		    NextToken();
 		    wa.width = ParseExpression();
@@ -1513,7 +1513,7 @@ ExprAST* Parser::ParseWrite()
 			return Error("Invalid width expression");
 		    }
 		}
-		if (CurrentToken().GetType() == Token::Colon)
+		if (CurrentToken().GetToken() == Token::Colon)
 		{
 		    NextToken();
 		    wa.precision = ParseExpression();
@@ -1524,7 +1524,7 @@ ExprAST* Parser::ParseWrite()
 		}
 		args.push_back(wa);
 	    }
-	    if (CurrentToken().GetType() != Token::RightParen)
+	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
 		if (!Expect(Token::Comma, true))
 		{
@@ -1546,16 +1546,16 @@ ExprAST* Parser::ParseWrite()
 
 ExprAST* Parser::ParseRead()
 {
-    bool isReadln = CurrentToken().GetType() == Token::Readln;
+    bool isReadln = CurrentToken().GetToken() == Token::Readln;
 
-    assert(CurrentToken().GetType() == Token::Read ||
-	   CurrentToken().GetType() == Token::Readln &&
+    assert(CurrentToken().GetToken() == Token::Read ||
+	   CurrentToken().GetToken() == Token::Readln &&
 	   "Expected read or readln keyword here");
     NextToken();
 
     std::vector<ExprAST*> args;
     VariableExprAST* file = 0;
-    if (CurrentToken().GetType() == Token::Semicolon)
+    if (CurrentToken().GetToken() == Token::Semicolon)
     {
 	if (!isReadln)
 	{
@@ -1568,7 +1568,7 @@ ExprAST* Parser::ParseRead()
 	{
 	    return 0;
 	}
-	while(CurrentToken().GetType() != Token::RightParen)
+	while(CurrentToken().GetToken() != Token::RightParen)
 	{
 	    ExprAST* expr = ParseExpression();
 	    if (!expr)
@@ -1591,7 +1591,7 @@ ExprAST* Parser::ParseRead()
 	    {
 		args.push_back(expr);
 	    }
-	    if (CurrentToken().GetType() != Token::RightParen)
+	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
 		if (!Expect(Token::Comma, true))
 		{
@@ -1614,7 +1614,7 @@ ExprAST* Parser::ParseRead()
 ExprAST* Parser::ParsePrimary()
 {
     Token token = CurrentToken();
-    if (token.GetType() == Token::Identifier)
+    if (token.GetToken() == Token::Identifier)
     {
 	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
 	if (cd)
@@ -1623,7 +1623,7 @@ ExprAST* Parser::ParsePrimary()
 	}
     }
 
-    switch(token.GetType())
+    switch(token.GetToken())
     {
     case Token::Real:
 	return ParseRealExpr(token);
@@ -1694,7 +1694,7 @@ std::vector<ExprAST*> Parser::Parse()
     for(;;)
     {
 	ExprAST* curAst = 0;
-	switch(CurrentToken().GetType())
+	switch(CurrentToken().GetToken())
 	{
 	case Token::EndOfFile:
 	    // TODO: Is this not an error?

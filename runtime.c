@@ -135,6 +135,20 @@ void __write_char(File* file, char v, int width)
     }
 }    
 
+void __write_bool(File* file, int v, int width)
+{
+    FILE* f = getFile(file, stdout);
+    const char* vstr = (v)?"TRUE":"FALSE";
+    if (width > 0)
+    {
+	fprintf(f, "%*s", width, vstr);
+    }
+    else
+    {
+	fprintf(f, "%s", vstr);
+    }
+}   
+ 
 void __write_str(File* file, const char* v, int width)
 {
     FILE* f = getFile(file, stdout);

@@ -6,6 +6,8 @@ Among things NOT yet supported are:
 - Proper tests.
 - Set variables.
 - Not allowing "empty then" in if/then/else statements.
+- A "random" function (and perhaps a "set seed or similar", e.g. a randomize function)
+- The "with" construct. 
 
 Other work that is needed: 
 - Dump of types should be "const"

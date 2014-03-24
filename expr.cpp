@@ -354,7 +354,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (rty == llvm::Type::IntegerTyID)
     {
-	switch(oper.GetType())
+	switch(oper.GetToken())
 	{
 	case Token::Plus:
 	    return builder.CreateAdd(l, r, "addtmp");
@@ -390,7 +390,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
     else if (rty == llvm::Type::DoubleTyID)
     {
-	switch(oper.GetType())
+	switch(oper.GetToken())
 	{
 	case Token::Plus:
 	    return builder.CreateFAdd(l, r, "addtmp");
@@ -439,7 +439,7 @@ llvm::Value* UnaryExprAST::CodeGen()
     llvm::Type::TypeID rty = r->getType()->getTypeID();
     if (rty == llvm::Type::IntegerTyID)
     {
-	switch(oper.GetType())
+	switch(oper.GetToken())
 	{
 	case Token::Minus:
 	    return builder.CreateNeg(r, "minus");
@@ -451,7 +451,7 @@ llvm::Value* UnaryExprAST::CodeGen()
     }
     else if (rty == llvm::Type::DoubleTyID)
     {
-	switch(oper.GetType())
+	switch(oper.GetToken())
 	{
 	case Token::Minus:
 	    return builder.CreateFNeg(r, "minus");
@@ -1118,6 +1118,12 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
 	    argTypes.push_back(ty);
 	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "char";
+	}
+	if (ty == Types::GetType(Types::Boolean))
+	{
+	    argTypes.push_back(ty);
+	    argTypes.push_back(Types::GetType(Types::Integer));
+	    suffix = "bool";
 	}
 	else if (ty->isIntegerTy())
 	{

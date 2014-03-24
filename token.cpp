@@ -132,6 +132,8 @@ const TokenEntry tokenTable[] =
     { Token::Not,           true,  60, "not" },
     { Token::Case,          true,  -1, "case" },
     { Token::File,          true,  -1, "file" },
+    { Token::Div,           true,  40, "div" },
+    { Token::Mod,           true,  40, "div" },
     { Token::Plus,          false, 10, "+" },
     { Token::Minus,         false, 10, "-" },
     { Token::Multiply,      false, 40, "*" },

@@ -330,20 +330,36 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Type::TypeID rty = r->getType()->getTypeID();
     llvm::Type::TypeID lty = l->getType()->getTypeID();
 
+    bool rToFloat = false;
+    bool lToFloat = false;
+
     /* Convert right hand side to double if left is double, and right is integer */
-    if (rty == llvm::Type::IntegerTyID  &&
-	lty == llvm::Type::DoubleTyID)
+    if (rty == llvm::Type::IntegerTyID)
+    {
+	if (lty == llvm::Type::DoubleTyID || oper.GetToken() == Token::Divide)
+	{
+	    rToFloat = true;
+	}
+    }
+    if (lty == llvm::Type::IntegerTyID)
+    {
+	if (rty == llvm::Type::DoubleTyID || oper.GetToken() == Token::Divide)
+	{
+	    lToFloat = true;
+	}
+    }
+
+    if (rToFloat)
     {
 	r = builder.CreateSIToFP(r, Types::GetType(Types::Real), "tofp");
 	rty = r->getType()->getTypeID();
     }
-    if (lty == llvm::Type::IntegerTyID && 
-	rty == llvm::Type::DoubleTyID)
+
+    if (lToFloat)
     {
 	l = builder.CreateSIToFP(l, Types::GetType(Types::Real), "tofp");
 	lty = r->getType()->getTypeID();
     }
-
     if (rty != lty)
     {
 	std::cout << "Different types..." << std::endl;
@@ -362,8 +378,10 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateSub(l, r, "subtmp");
 	case Token::Multiply:
 	    return builder.CreateMul(l, r, "multmp");
-	case Token::Divide:
+	case Token::Div:
 	    return builder.CreateSDiv(l, r, "divtmp");
+	case Token::Mod:
+	    return builder.CreateSRem(l, r, "modtmp");
 
 	case Token::Equal:
 	    return builder.CreateICmpEQ(l, r, "eq");
@@ -1119,7 +1137,7 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
 	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "char";
 	}
-	if (ty == Types::GetType(Types::Boolean))
+	else if (ty == Types::GetType(Types::Boolean))
 	{
 	    argTypes.push_back(ty);
 	    argTypes.push_back(Types::GetType(Types::Integer));
@@ -1170,6 +1188,7 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
 
 llvm::Value* WriteAST::CodeGen()
 {
+    TRACE();
     llvm::Value* f = FileOrNull(file);
     for(auto arg: args)
     {
@@ -1308,6 +1327,7 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
 
 llvm::Value* ReadAST::CodeGen()
 {
+    TRACE();
     llvm::Value* f = FileOrNull(file);
     for(auto arg: args)
     {

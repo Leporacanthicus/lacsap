@@ -42,7 +42,7 @@ public:
     public:
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
-	size_t Size() const { return (size_t) end - start; }
+	size_t Size() const { return (size_t) (end - start) + 1; }
 	void dump() const;
     private:
 	int start;

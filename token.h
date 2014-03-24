@@ -62,6 +62,8 @@ public:
 	Period,
 	DotDot,
 	Uparrow,
+	Div,
+	Mod,
 
 	// Keywords
 	For,

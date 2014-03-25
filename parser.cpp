@@ -706,10 +706,10 @@ ExprAST* Parser::ParseExpression()
 }
 
 
-VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::TypeDecl* type)
+VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    const Types::ArrayDecl* adecl = 
-	dynamic_cast<const Types::ArrayDecl*>(type); 
+    Types::ArrayDecl* adecl = 
+	dynamic_cast<Types::ArrayDecl*>(type); 
     if (!adecl)
     {
 	return ErrorV("Expected variable of array type when using index");
@@ -724,21 +724,31 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, const Types::Type
 	    return ErrorV("Expected index expression");
 	}
 	indices.push_back(index);
+	if (indices.size() == adecl->Ranges().size())
+	{
+	    expr = new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
+	    indices.clear();
+	    type = adecl->SubType();
+	    adecl = dynamic_cast<Types::ArrayDecl*>(type);
+	}
 	if (CurrentToken().GetToken() != Token::RightSquare)
 	{
-	    if (!Expect(Token::Comma, true))
+	    if (!Expect(Token::Comma, true) || !adecl)
 	    {
 		return 0;
 	    }
 	}
     }
-    assert(indices.size() ==  adecl->Ranges().size() && 
-	   "Expected same number of indices as declared subscripts");
     if (!Expect(Token::RightSquare, true))
     {
 	return 0;
     }
-    return new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
+    if (indices.size())
+    {
+	expr = new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
+	type = adecl->SubType();
+    }
+    return expr;
 }
 
 VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
@@ -822,7 +832,6 @@ ExprAST* Parser::ParseIdentifierExpr()
 		{
 		case Token::LeftSquare:
 		    expr = ParseArrayExpr(expr, type);
-		    type = type->SubType();
 		    break;
 
 		case Token::Uparrow:

@@ -49,7 +49,7 @@ begin
       doorprob[door] := 1/nrofdoors;
    for door := 1 to nrofdoors do
       for event := 1 to nrofevents do
-	 read(eventprob[door][event]);
+	 read(eventprob[door,event]);
    for event := 1 to nrofevents do
       read(factor[event]);
 

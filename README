@@ -7,7 +7,6 @@ Among things NOT yet supported are:
 - Set variables.
 - A "random" function (and perhaps a "set seed or similar", e.g. a randomize function)
 - The "with" construct. 
-- Array access with [x, y] doesn't work when array [ ... ] of typename; where typename is an array.
 
 Lots of other small and large things that I can't think of right now.
 

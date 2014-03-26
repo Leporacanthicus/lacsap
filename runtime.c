@@ -8,7 +8,7 @@
 typedef struct File
 {
     int   handle;
-    void* buffer;
+    char* buffer;
 } File;
 
 struct FileEntry
@@ -24,6 +24,51 @@ struct FileEntry
 static struct FileEntry files[MAX_PASCAL_FILES];
 
 extern void __PascalMain(void);
+
+static FILE* getFile(File* f, FILE* deflt)
+{
+    if (f)
+    {
+	if (f->handle < MAX_PASCAL_FILES && files[f->handle].inUse)
+	{
+	    return files[f->handle].file;
+	}
+	return NULL;
+    }
+    return deflt;
+} 
+
+int __eof(File* file)
+{
+    FILE* f = getFile(file, stdin);
+    return !!feof(f);
+}
+
+int __eoln(File* file)
+{
+    return !!(*file->buffer == '\n' || __eof(file));
+}
+
+void __get(File *file)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    fread(file->buffer, f->recordSize, 1, f->file);
+}
+
+void __put(File *file)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    fwrite(file->buffer, f->recordSize, 1, f->file);
+}
+
 
 void __assign(File* f, char* name, int recordSize, int isText)
 {
@@ -51,7 +96,10 @@ void __reset(File* f)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "r");
 	if (files[f->handle].file)
+	{
+	    __get(f);
 	    return;
+	}
     }
     fprintf(stderr, "Attempt to open file failed\n");
 }
@@ -62,7 +110,9 @@ void __rewrite(File* f)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "w");
 	if (files[f->handle].file)
+	{
 	    return;
+	}
     }
     fprintf(stderr, "Attempt to open file failed\n");
 }
@@ -73,7 +123,9 @@ void __append(File* f)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "a");
 	if (files[f->handle].file)
+	{
 	    return;
+	}
     }
     fprintf(stderr, "Attempt to open file failed\n");
 }
@@ -88,19 +140,6 @@ void __close(File* f)
     }
     fprintf(stderr, "Attempt to open file failed\n");
 }
-
-static FILE* getFile(File* f, FILE* deflt)
-{
-    if (f)
-    {
-	if (f->handle < MAX_PASCAL_FILES && files[f->handle].inUse)
-	{
-	    return files[f->handle].file;
-	}
-	return NULL;
-    }
-    return deflt;
-} 
 
 void __write_int(File* file, int v, int width)
 {
@@ -179,33 +218,37 @@ void __write_bin(File* file, void *val)
 	fprintf(stderr, "Invalid file used for write binary file\n");
 	return;
     }
-    fwrite(val, f->recordSize, 1, f->file);
+    memcpy(file->buffer, val, f->recordSize); 
+    __put(file);
 }
 
 void __read_int(File* file, int* v)
 {
     FILE* f = getFile(file, stdin);
+    ungetc(*file->buffer, f);
     fscanf(f, "%d", v);
+    __get(file);
 }
 
 void __read_chr(File* file, char* v)
 {
-    FILE* f = getFile(file, stdin);
-    *v = getc(f);
+    *v = *file->buffer;
+    __get(file);
 }
 
 void __read_real(File* file, double* v)
 { 
     FILE* f = getFile(file, stdin);
+    
+    ungetc(*file->buffer, f);
     fscanf(f, "%lf", v);
+    __get(file);
 }
 
 void __read_nl(File* file)
 {
-    FILE* f = getFile(file, stdin);
-    int ch;
-    while((ch = fgetc(f)) != '\n' && ch != EOF)
-	;
+    while(*file->buffer != '\n' && !__eof(file))
+	__get(file);
 }
 
 void __read_bin(File* file, void *val)
@@ -220,23 +263,8 @@ void __read_bin(File* file, void *val)
 	fprintf(stderr, "Invalid file used for read binary\n");
 	return;
     }
-    fread(val, f->recordSize, 1, f->file);
-}
-
-int __eof(File* file)
-{
-    FILE* f = getFile(file, stdin);
-    int ch = getc(f);
-    ungetc(ch, f);
-    return !!feof(f);
-}
-
-int __eoln(File* file)
-{
-    FILE* f = getFile(file, stdin);
-    int ch = getc(f);
-    ungetc(ch, f);
-    return !!(ch == '\n' || ch == EOF);
+    memcpy(val, file->buffer, f->recordSize);
+    __get(file);
 }
 
 void* __new(int size)

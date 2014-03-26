@@ -35,6 +35,7 @@ private:
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
+    VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
 
     /* Control flow functionality */
     ExprAST* ParseRepeat();

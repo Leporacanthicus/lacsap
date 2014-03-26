@@ -132,6 +132,19 @@ private:
     ExprAST* pointer;
 };
 
+class FilePointerExprAST : public VariableExprAST
+{
+public:
+    FilePointerExprAST(VariableExprAST *p, Types::TypeDecl* ty)
+	: VariableExprAST(p, ty), pointer(p) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    virtual llvm::Value* Address();
+private:
+    ExprAST* pointer;
+};
+
+
 class FieldExprAST : public VariableExprAST
 {
 public:

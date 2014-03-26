@@ -792,6 +792,22 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     return new FieldExprAST(expr, elem, type);
 }
 
+VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+{
+    if (!Expect(Token::Uparrow, true))
+    {
+	return 0;
+    }
+    if (type->Type() == Types::File)
+    {
+	type = type->SubType();
+	return new FilePointerExprAST(expr, type);
+    }
+
+    type = type->SubType();
+    return new PointerExprAST(expr, type);
+}
+
 bool Parser::IsCall(Types::TypeDecl* type)
 {
     if (type->Type() == Types::Pointer &&
@@ -854,9 +870,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		    break;
 
 		case Token::Uparrow:
-		    NextToken();
-		    type = type->SubType();
-		    expr = new PointerExprAST(expr, type);
+		    expr = ParsePointerExpr(expr, type);
 		    break;
 
 		case Token::Period:

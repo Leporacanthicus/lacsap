@@ -297,7 +297,7 @@ llvm::Value* PointerExprAST::CodeGen()
 { 
     // Look this variable up in the function.
     TRACE();
-    llvm::Value* v = pointer->CodeGen();
+    llvm::Value* v = Address();
     if (!v)
     {
 	return 0;
@@ -312,12 +312,46 @@ llvm::Value* PointerExprAST::CodeGen()
 llvm::Value* PointerExprAST::Address()
 {
     TRACE();
-    VariableExprAST* vp = dynamic_cast<VariableExprAST*>(pointer);
-    if (!vp)
+    llvm::Value* v = pointer->CodeGen();
+    if (!v)
     {
-	return ErrorV("Taking address of non-variable type.");
+	return 0;
     }
-    llvm::Value* v = vp->CodeGen();
+    return v;
+}
+
+void FilePointerExprAST::DoDump(std::ostream& out) const
+{
+    out << "FilePointer:";
+    pointer->Dump(out);
+}
+
+llvm::Value* FilePointerExprAST::CodeGen()
+{ 
+    // Look this variable up in the function.
+    TRACE();
+    llvm::Value* v = Address();
+    if (!v)
+    {
+	return 0;
+    }
+    if (!v->getType()->isPointerTy())
+    {
+	return ErrorV("Expected pointer type.");
+    }
+    return builder.CreateLoad(v, "ptr"); 
+}
+
+llvm::Value* FilePointerExprAST::Address()
+{
+    TRACE();
+    VariableExprAST* vptr = dynamic_cast<VariableExprAST*>(pointer);
+    llvm::Value* v = vptr->Address();
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(Types::FileDecl::Buffer));
+    v = builder.CreateGEP(v, ind, "bufptr");
+    v = builder.CreateLoad(v, "buffer");
     if (!v)
     {
 	return 0;

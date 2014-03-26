@@ -382,6 +382,16 @@ static llvm::Value* EolnCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
     return FileCallCodeGen(builder, args, "__eoln", Types::Boolean);
 }
 
+static llvm::Value* GetCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return FileCallCodeGen(builder, args, "__get");
+}
+
+static llvm::Value* PutCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    return FileCallCodeGen(builder, args, "__put");
+}
+
 const static BuiltinFunction bifs[] =
 {
     { "abs",     AbsCodeGen     },
@@ -409,6 +419,8 @@ const static BuiltinFunction bifs[] =
     { "eof",     EofCodeGen     },
     { "eoln",    EolnCodeGen    },
     { "random",  RandomCodeGen  },
+    { "get",     GetCodeGen     },
+    { "put",     PutCodeGen     },
 };
 
 static const BuiltinFunction* find(const std::string& name)

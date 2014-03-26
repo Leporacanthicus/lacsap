@@ -46,6 +46,46 @@ static int errCnt;
 #define TRACE()
 #endif
 
+
+bool FileInfo(llvm::Value*f, int& recSize, bool& isText)
+{
+    if (!f->getType()->isPointerTy())
+    {
+	return false;
+    }
+    llvm::Type* ty = f->getType()->getContainedType(0);
+    llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(ty);
+    ty = 0;
+    if (st)
+    {
+	ty = st->getElementType(Types::FileDecl::Buffer);
+	if (ty->isPointerTy())
+	{
+	    ty = ty->getContainedType(0);
+	    const llvm::DataLayout dl(theModule);
+	    recSize = dl.getTypeAllocSize(ty);
+	}
+	else
+	{
+	    return false;
+	}
+    }
+    isText = st->getName().substr(0, 4) == "text";
+    return true;
+}
+
+bool FileIsText(llvm::Value* f)
+{
+    bool isText;
+    int  recSize;
+
+    if (FileInfo(f, recSize, isText))
+    {
+	return isText;
+    }
+    return false;
+}
+
 void ExprAST::Dump(std::ostream& out) const
 {
     out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
@@ -772,7 +812,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     TRACE();
     verifyFunction(*theFunction);
-    theFunction->dump();
     fpm->run(*theFunction);
     return theFunction;
 }
@@ -1192,65 +1231,106 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
     return f;
 }
 
+static llvm::Constant *CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
+{
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* resTy = Types::GetType(Types::Void);
+    argTypes.push_back(fty);
+    assert(ty && "Type should not be NULL!");
+    if (!ty->isPointerTy())
+    {
+	return ErrorF("Write argument is not a variable type!");
+    }
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
+    argTypes.push_back(voidPtrTy);
+
+    std::string name = std::string("__write_bin");
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+
+    return f;
+}
+
 llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     llvm::Value* f = FileOrNull(file);
+
+    bool isText = FileIsText(f);
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
+	llvm::Value*    v;
+	llvm::Constant* fn;
 	argsV.push_back(f);
-	llvm::Value* v = arg.expr->CodeGen();
-	if (!v)
+	if (isText)
 	{
-	    return ErrorV("Argument codegen failed");
-	}
-	argsV.push_back(v);
-	llvm::Type *ty = v->getType();
-	llvm::Constant* fn = CreateWriteFunc(ty, f->getType());
-	llvm::Value* w;
-	if (!arg.width)
-	{
-	    if (ty == Types::GetType(Types::Integer))
+	    v = arg.expr->CodeGen();
+	    if (!v)
 	    {
-		w = MakeIntegerConstant(13);
+		return ErrorV("Argument codegen failed");
 	    }
-	    else if (ty->isDoubleTy())
+	    argsV.push_back(v);
+	    llvm::Type*     ty = v->getType();
+	    fn = CreateWriteFunc(ty, f->getType());
+	    llvm::Value*    w;
+	    if (!arg.width)
 	    {
-		w = MakeIntegerConstant(15);
-	    }
+		if (ty == Types::GetType(Types::Integer))
+		{
+		    w = MakeIntegerConstant(13);
+		}
+		else if (ty->isDoubleTy())
+		{
+		    w = MakeIntegerConstant(15);
+		}
+		else
+		{
+		    w = MakeIntegerConstant(0);
+		}
+	    }   
 	    else
 	    {
-		w = MakeIntegerConstant(0);
+		w = arg.width->CodeGen();
+		assert(w && "Expect width expression to generate code ok");
 	    }
-	}   
+
+	    if (!w->getType()->isIntegerTy())
+	    {
+		return ErrorV("Expected width to be integer value");
+	    }
+	    argsV.push_back(w);
+	    if (ty->isDoubleTy())
+	    {
+		llvm::Value* p;
+		if (arg.precision)
+		{
+		    p = arg.precision->CodeGen();
+		    if (!p->getType()->isIntegerTy())
+		    {
+			return ErrorV("Expected precision to be integer value");
+		    }
+		}
+		else
+		{
+		    p = MakeIntegerConstant(-1);
+		}
+		argsV.push_back(p);
+	    }
+	}
 	else
 	{
-	    w = arg.width->CodeGen();
-	    assert(w && "Expect width expression to generate code ok");
-	}
-
-	if (!w->getType()->isIntegerTy())
-	{
-	    return ErrorV("Expected width to be integer value");
-	}
-	argsV.push_back(w);
-	if (ty->isDoubleTy())
-	{
-	    llvm::Value* p;
-	    if (arg.precision)
+	    VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(arg.expr);
+	    if (!vexpr)
 	    {
-		p = arg.precision->CodeGen();
-		if (!p->getType()->isIntegerTy())
-		{
-		    return ErrorV("Expected precision to be integer value");
-		}
+		return ErrorV("Argument for write should be a variable");
 	    }
-	    else
-	    {
-		p = MakeIntegerConstant(-1);
-	    }
-	    argsV.push_back(p);
+	    v = vexpr->Address();
+	    v = builder.CreateBitCast(v, voidPtrTy);
+	    argsV.push_back(v);
+	    llvm::Type *ty = v->getType();
+	    fn = CreateWriteBinFunc(ty, f->getType());
 	}
 	builder.CreateCall(fn, argsV, "");
     }
@@ -1331,10 +1411,33 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
     return f;
 }
 
+static llvm::Constant *CreateReadBinFunc(llvm::Type* ty, llvm::Type* fty)
+{
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* resTy = Types::GetType(Types::Void);
+    argTypes.push_back(fty);
+    assert(ty && "Type should not be NULL!");
+    if (!ty->isPointerTy())
+    {
+	return ErrorF("Read argument is not a variable type!");
+    }
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
+    argTypes.push_back(voidPtrTy);
+
+    std::string name = std::string("__read_bin");
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+
+    return f;
+}
+
 llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     llvm::Value* f = FileOrNull(file);
+
+    bool isText = FileIsText(f);
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
@@ -1350,14 +1453,30 @@ llvm::Value* ReadAST::CodeGen()
 	{
 	    return 0;
 	}
+	if (!isText)
+	{
+	    v = builder.CreateBitCast(v, voidPtrTy);
+	}
 	argsV.push_back(v);
 	llvm::Type *ty = v->getType();
-	llvm::Constant* fn = CreateReadFunc(ty, f->getType());
-
+	llvm::Constant* fn;
+	if (isText)
+	{
+	    fn = CreateReadFunc(ty, f->getType());
+	}
+	else
+	{
+	    fn = CreateReadBinFunc(ty, f->getType());
+	}
+	
 	builder.CreateCall(fn, argsV, "");
     }
     if (isReadln)
     {
+	if (!isText)
+	{
+	    return ErrorV("File is not text for readln");
+	}
 	llvm::Constant* fn = CreateReadFunc(0, f->getType());
 	builder.CreateCall(fn, f, "");
     }

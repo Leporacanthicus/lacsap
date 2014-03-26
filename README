@@ -5,8 +5,9 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 Among things NOT yet supported are:
 - Proper tests.
 - Set variables.
-- A "random" function (and perhaps a "set seed or similar", e.g. a randomize function)
 - The "with" construct. 
+- Variant records are not supported.
+- Proper type checking. 
 
 Lots of other small and large things that I can't think of right now.
 

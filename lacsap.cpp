@@ -4,10 +4,8 @@
 #include "constants.h"
 #include <iostream>
 #include <fstream>
-#include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/raw_os_ostream.h"
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/JIT.h>
+#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DataLayout.h>
@@ -17,7 +15,6 @@
 
 static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
-static llvm::ExecutionEngine* theExecutionEngine;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 
 void DumpModule(llvm::Module* module)
@@ -46,15 +43,6 @@ void OptimizerInit()
 
     llvm::InitializeNativeTarget();
 
-    theExecutionEngine = llvm::EngineBuilder(theModule).setErrorStr(&ErrStr).create();
-    if (!theExecutionEngine) {
-	std::cerr << "Could not create ExecutionEngine:" << ErrStr << std::endl;
-	exit(1);
-    }
-
-    // Set up the optimizer pipeline.  Start with registering info about how the
-    // target lays out data structures.
-    fpm->add(new llvm::DataLayout(*theExecutionEngine->getDataLayout()));
     // Promote allocas to registers.
     fpm->add(llvm::createPromoteMemoryToRegisterPass());
     // Provide basic AliasAnalysis support for GVN.

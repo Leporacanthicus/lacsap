@@ -25,7 +25,6 @@ static struct FileEntry files[MAX_PASCAL_FILES];
 
 extern void __PascalMain(void);
 
-
 void __assign(File* f, char* name, int recordSize, int isText)
 {
     int i;
@@ -168,6 +167,21 @@ void __write_nl(File* file)
     fputc('\n', f);
 }
 
+void __write_bin(File* file, void *val)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    if (!f)
+    {
+	fprintf(stderr, "Invalid file used for write binary file\n");
+	return;
+    }
+    fwrite(val, f->recordSize, 1, f->file);
+}
+
 void __read_int(File* file, int* v)
 {
     FILE* f = getFile(file, stdin);
@@ -194,9 +208,26 @@ void __read_nl(File* file)
 	;
 }
 
+void __read_bin(File* file, void *val)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    if (!f)
+    {
+	fprintf(stderr, "Invalid file used for read binary\n");
+	return;
+    }
+    fread(val, f->recordSize, 1, f->file);
+}
+
 int __eof(File* file)
 {
     FILE* f = getFile(file, stdin);
+    int ch = getc(f);
+    ungetc(ch, f);
     return !!feof(f);
 }
 

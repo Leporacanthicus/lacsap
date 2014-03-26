@@ -271,8 +271,8 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
 {
     assert(args.size() == 2 && "Expect 2 args for 'assign'");
 
-    // assign takes two arguments from the user, and a third "recordsize" that we 
-    // make up here... It will be stored in the file struct by runtime.
+    // assign takes two arguments from the user (file and filename), and a third "recordsize" 
+    // that we make up here, and a fourth for the "isText" argument. 
 
     // Arg1: address of the filestruct.
     VariableExprAST* fvar = dynamic_cast<VariableExprAST*>(args[0]);
@@ -294,31 +294,16 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     argTypes.push_back(Types::GetType(Types::Integer));
     argTypes.push_back(Types::GetType(Types::Integer));
 
-    /* Find recordsize */
-    ty = argTypes[0]->getContainedType(0);
-    ty->dump();
-    llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(ty);
-    ty = 0;
-    if (st)
-    {
-	ty = st->getElementType(Types::FileDecl::Buffer);
-	if (ty->isPointerTy())
-	{
-	    ty = ty->getContainedType(0);
-	}
-	else
-	{
-	    ty = 0;
-	}
-    }
-    if (!ty)
+    bool textFile;    
+    int  recSize;
+    if (!FileInfo(faddr, recSize, textFile))
     {
 	return ErrorV("Expected first argument to be of filetype for 'assign'");	
     }
-    
-    const llvm::DataLayout dl(theModule);
-    llvm::Value* aSize = MakeIntegerConstant(dl.getTypeAllocSize(ty));
-    llvm::Value* isText = MakeIntegerConstant(st->getName() == "text");
+    llvm::Value* isText = MakeIntegerConstant(textFile);
+
+
+    llvm::Value* aSize = MakeIntegerConstant(recSize); 
 
     std::vector<llvm::Value*> argsV;
     argsV.push_back(faddr);

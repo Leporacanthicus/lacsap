@@ -574,6 +574,23 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     return new Types::RecordDecl(fields);
 }
 
+Types::TypeDecl* Parser::ParseFileDecl()
+{
+    if (!Expect(Token::File, true))
+    {
+	return 0;
+    }
+
+    if (!Expect(Token::Of, true))
+    {
+	return 0;
+    }
+
+    Types::TypeDecl* type = ParseType();
+ 
+    return new Types::FileDecl(type);
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetToken();
@@ -601,6 +618,8 @@ Types::TypeDecl* Parser::ParseType()
     case Token::Record:
 	return ParseRecordDecl();
 
+    case Token::File:
+	return ParseFileDecl();
     
     case Token::LeftParen:
 	return ParseEnumDef();

@@ -66,6 +66,7 @@ private:
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
     Types::RecordDecl*  ParseRecordDecl();
+    Types::TypeDecl*    ParseFileDecl();
 
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

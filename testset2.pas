@@ -38,14 +38,12 @@ Var
 begin  
    W:=[mon,tue]+[wed,thu,fri]; {// equals [mon,tue,wed,thu,fri]  }
    PrintDays(W);
-(*
    W:=[mon,tue,wed]-[wed];     {// equals [mon,tue]  }
    PrintDays(W);  
    W:=[mon,tue,wed]-[wed,thu];     {// also equals [mon,tue]  }
    PrintDays(W);  
    W:=[mon,tue,wed]*[wed,thu,fri]; {// equals [wed]  }
    PrintDays(W);
-   *)
 (*   W:=[mon,tue,wed]><[wed,thu,fri]; {// equals [mon,tue,thu,fri]  } 
    PrintDays(W);  *)
 end.

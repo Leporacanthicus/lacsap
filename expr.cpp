@@ -390,7 +390,6 @@ llvm::Value* FunctionExprAST::CodeGen()
 	return ErrorV(std::string("Name ") + name + " could not be found...");
     }
     std::string actualName = mm->Name();
-    std::cerr << "Actual Name: "  << actualName << std::endl;
     return theModule->getFunction(actualName);
 }
 
@@ -961,8 +960,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     TRACE();
     verifyFunction(*theFunction);
-//    fpm->run(*theFunction);
-    theFunction->dump();
+    fpm->run(*theFunction);
     return theFunction;
 }
 
@@ -992,13 +990,12 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
     {
 	nonLocal.erase(l->Name());
     }
-    std::cerr << "Used variables: ";
+
     for(auto n : nonLocal)
     {
 	VarDef* v = dynamic_cast<VarDef*>(n.second);
 	if (v)
 	{
-	    v->dump();
 	    usedVariables.push_back(*v);
 	}
     }
@@ -1141,9 +1138,13 @@ void ForExprAST::DoDump(std::ostream& out) const
     out << "for: " << std::endl;
     start->Dump(out);
     if (stepDown)
+    {
 	out << " downto ";
+    }
     else
+    {
 	out << " to ";
+    }
     end->Dump(out);
     out << " do ";
     body->Dump(out);
@@ -1820,7 +1821,7 @@ llvm::Value* SetExprAST::Address()
 	    ind.push_back(index);
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
-	    builder.CreateOr(bitset, bit);
+	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	    
 	    low = builder.CreateAdd(low, MakeConstant(1, low->getType()), "update");
@@ -1848,11 +1849,10 @@ llvm::Value* SetExprAST::Address()
 	    ind.push_back(index);
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
-	    builder.CreateOr(bitset, bit);
+	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	}
     }
-    builder.GetInsertBlock()->getParent()->dump();
     
     return setV;
 }

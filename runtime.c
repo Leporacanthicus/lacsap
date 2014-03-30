@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 enum
 {
@@ -25,37 +26,43 @@ struct FileEntry
     int   recordSize;
 };
 
-
 typedef struct 
 {
     unsigned int v[MaxSetWords];
 } Set;
 
 static struct FileEntry files[MaxPascalFiles];
+static File input;
+static File output;
 
 extern void __PascalMain(void);
 
-static FILE* getFile(File* f, FILE* deflt)
+static FILE* getFile(File* f, File* deflt)
 {
-    if (f)
+    if (!f)
     {
-	if (f->handle < MaxPascalFiles && files[f->handle].inUse)
-	{
-	    return files[f->handle].file;
-	}
-	return NULL;
+	assert(deflt);
+	f = deflt;
     }
-    return deflt;
+    if (f->handle < MaxPascalFiles && files[f->handle].inUse)
+    {
+	return files[f->handle].file;
+    }
+    return NULL;
 } 
 
 int __eof(File* file)
 {
-    FILE* f = getFile(file, stdin);
+    FILE* f = getFile(file, &input);
     return !!feof(f);
 }
 
 int __eoln(File* file)
 {
+    if (!file)
+    {
+	file = &input;
+    }
     return !!(*file->buffer == '\n' || __eof(file));
 }
 
@@ -137,7 +144,7 @@ void __append(File* f)
 	    return;
 	}
     }
-    fprintf(stderr, "Attempt to open file failed\n");
+    fprintf(stderr, "Attempt to append file failed\n");
 }
 
 void __close(File* f)
@@ -148,18 +155,18 @@ void __close(File* f)
 	files[f->handle].file = NULL;
 	return;
     }
-    fprintf(stderr, "Attempt to open file failed\n");
+    fprintf(stderr, "Attempt to close file failed\n");
 }
 
 void __write_int(File* file, int v, int width)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     fprintf(f, "%*d", width, v);
 }
 
 void __write_real(File* file, double v, int width, int precision)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     if (precision > 0)
     {
 	fprintf(f, "%*.*f", width, precision, v);
@@ -172,7 +179,7 @@ void __write_real(File* file, double v, int width, int precision)
 
 void __write_char(File* file, char v, int width)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     if (width > 0)
     {
 	fprintf(f, "%*c", width, v);
@@ -185,7 +192,7 @@ void __write_char(File* file, char v, int width)
 
 void __write_bool(File* file, int v, int width)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     const char* vstr = (v)?"TRUE":"FALSE";
     if (width > 0)
     {
@@ -199,7 +206,7 @@ void __write_bool(File* file, int v, int width)
  
 void __write_str(File* file, const char* v, int width)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     if (width > 0)
     {
 	fprintf(f, "%*s", width, v);
@@ -212,7 +219,7 @@ void __write_str(File* file, const char* v, int width)
 
 void __write_nl(File* file)
 {
-    FILE* f = getFile(file, stdout);
+    FILE* f = getFile(file, &output);
     fputc('\n', f);
 }
 
@@ -234,7 +241,11 @@ void __write_bin(File* file, void *val)
 
 void __read_int(File* file, int* v)
 {
-    FILE* f = getFile(file, stdin);
+    if (!file)
+    {
+	file = &input;
+    }
+    FILE* f = getFile(file, NULL);
     ungetc(*file->buffer, f);
     fscanf(f, "%d", v);
     __get(file);
@@ -242,13 +253,21 @@ void __read_int(File* file, int* v)
 
 void __read_chr(File* file, char* v)
 {
+    if (!file)
+    {
+	file = &input;
+    }
     *v = *file->buffer;
     __get(file);
 }
 
 void __read_real(File* file, double* v)
 { 
-    FILE* f = getFile(file, stdin);
+    if (!file)
+    {
+	file = &input;
+    }
+    FILE* f = getFile(file, NULL);
     
     ungetc(*file->buffer, f);
     fscanf(f, "%lf", v);
@@ -257,8 +276,14 @@ void __read_real(File* file, double* v)
 
 void __read_nl(File* file)
 {
+    if (!file)
+    {
+	file = &input;
+    }
     while(*file->buffer != '\n' && !__eof(file))
+    {
 	__get(file);
+    }
 }
 
 void __read_bin(File* file, void *val)
@@ -283,6 +308,12 @@ static void InitFiles()
     {
 	files[i].inUse = 0;
     }
+
+    __assign(&input, "INPUT", 1, 1);
+    __assign(&output, "OUTPUT", 1, 1);
+
+    files[input.handle].file = stdin;
+    files[output.handle].file = stdout;
 }
 
 /* Memory allocation functions */

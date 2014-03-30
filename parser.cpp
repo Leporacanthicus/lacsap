@@ -184,9 +184,6 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 	    }
 	}
     }
-    std::cerr << "Adding type: " << name << ": ";
-    ty->dump();
-    std::cerr << std::endl;
     return nameStack.Add(name, new TypeDef(name, ty));
 }
 

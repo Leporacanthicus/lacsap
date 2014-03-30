@@ -246,7 +246,10 @@ void __read_int(File* file, int* v)
 	file = &input;
     }
     FILE* f = getFile(file, NULL);
-    ungetc(*file->buffer, f);
+    if (*file->buffer)
+    {
+	ungetc(*file->buffer, f);
+    }
     fscanf(f, "%d", v);
     __get(file);
 }
@@ -269,7 +272,10 @@ void __read_real(File* file, double* v)
     }
     FILE* f = getFile(file, NULL);
     
-    ungetc(*file->buffer, f);
+    if (*file->buffer)
+    {
+	ungetc(*file->buffer, f);
+    }
     fscanf(f, "%lf", v);
     __get(file);
 }

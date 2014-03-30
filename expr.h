@@ -76,7 +76,14 @@ private:
     std::string val;
 };
 
-class VariableExprAST : public ExprAST
+
+class AddressableAST : public ExprAST
+{
+public:
+    virtual llvm::Value* Address() = 0;
+};
+
+class VariableExprAST : public AddressableAST
 {
 public:
     VariableExprAST(const std::string& nm, Types::TypeDecl* ty) 
@@ -144,7 +151,6 @@ private:
     ExprAST* pointer;
 };
 
-
 class FieldExprAST : public VariableExprAST
 {
 public:
@@ -190,6 +196,33 @@ public:
 private:
     Token oper;
     ExprAST* rhs;
+};
+
+class RangeExprAST : public ExprAST
+{
+public:
+    RangeExprAST(ExprAST* l, ExprAST* h)
+	: low(l), high(h) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    virtual llvm::Value* Low() { return low->CodeGen(); }
+    virtual llvm::Value* High() { return high->CodeGen(); }
+
+private:
+    ExprAST* low;
+    ExprAST* high;
+};
+
+class SetExprAST : public AddressableAST
+{
+public:
+    SetExprAST(std::vector<ExprAST*> v)
+	: values(v) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    virtual llvm::Value* Address();
+private:
+    std::vector<ExprAST*> values;
 };
 
 class BlockAST : public ExprAST

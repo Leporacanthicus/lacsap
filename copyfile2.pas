@@ -24,5 +24,3 @@ begin
    close(outfile);
    writeln(size:1, ' elements have been copied');
 end.
-      
-   

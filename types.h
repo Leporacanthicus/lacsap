@@ -239,8 +239,22 @@ public:
 	virtual void dump() const;
     };
 
+    class SetDecl : public TypeDecl
+    {
+    public:
+	// Must match with "runtime". 
+	enum { MaxSetWords = 16 };
+	SetDecl(Range *r)
+	    : TypeDecl(Set), range(r) {}
+	virtual llvm::Type* GetLlvmType() const;
+	virtual void dump() const;
+    private:
+	Range *range;
+    };
+
     static llvm::Type* GetType(SimpleTypes type);
     static llvm::Type* GetVoidPtrType();
     static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
+    static llvm::Type* TypeForSet();
 };
 #endif

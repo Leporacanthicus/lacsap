@@ -2,7 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_PASCAL_FILES 1000
+enum
+{
+    MaxPascalFiles =  1000,
+    MaxSetWords    =  16,
+};
 
 /* Note: This should match the definition in the compiler, or weirdness happens! */
 typedef struct File
@@ -21,7 +25,13 @@ struct FileEntry
     int   recordSize;
 };
 
-static struct FileEntry files[MAX_PASCAL_FILES];
+
+typedef struct 
+{
+    unsigned int v[MaxSetWords];
+} Set;
+
+static struct FileEntry files[MaxPascalFiles];
 
 extern void __PascalMain(void);
 
@@ -29,7 +39,7 @@ static FILE* getFile(File* f, FILE* deflt)
 {
     if (f)
     {
-	if (f->handle < MAX_PASCAL_FILES && files[f->handle].inUse)
+	if (f->handle < MaxPascalFiles && files[f->handle].inUse)
 	{
 	    return files[f->handle].file;
 	}
@@ -52,7 +62,7 @@ int __eoln(File* file)
 void __get(File *file)
 {
     struct FileEntry *f = 0;
-    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
     }
@@ -62,7 +72,7 @@ void __get(File *file)
 void __put(File *file)
 {
     struct FileEntry *f = 0;
-    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
     }
@@ -73,9 +83,9 @@ void __put(File *file)
 void __assign(File* f, char* name, int recordSize, int isText)
 {
     int i;
-    for(i = 0; i < MAX_PASCAL_FILES && files[i].inUse; i++)
+    for(i = 0; i < MaxPascalFiles && files[i].inUse; i++)
 	;
-    if (i == MAX_PASCAL_FILES)
+    if (i == MaxPascalFiles)
     {
 	fprintf(stderr, "No free files... Exiting\n");
 	exit(1);
@@ -209,7 +219,7 @@ void __write_nl(File* file)
 void __write_bin(File* file, void *val)
 {
     struct FileEntry *f = 0;
-    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
     }
@@ -254,7 +264,7 @@ void __read_nl(File* file)
 void __read_bin(File* file, void *val)
 {
     struct FileEntry *f = 0;
-    if (file->handle < MAX_PASCAL_FILES && files[file->handle].inUse)
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
     }
@@ -267,6 +277,15 @@ void __read_bin(File* file, void *val)
     __get(file);
 }
 
+static void InitFiles()
+{
+    for(int i = 0; i < MaxPascalFiles; i++)
+    {
+	files[i].inUse = 0;
+    }
+}
+
+/* Memory allocation functions */
 void* __new(int size)
 {
     return malloc(size);
@@ -282,12 +301,51 @@ double __random(void)
     return rand() / (double)RAND_MAX;
 }
 
-static void InitFiles()
+/* Set functions */
+int __SetEqual(Set *a, Set *b)
 {
-    for(int i = 0; i < MAX_PASCAL_FILES; i++)
+    return !memcmp(a->v, b->v, sizeof(*a));
+}
+
+Set __SetUnion(Set *a, Set *b)
+{
+    Set res;
+    for(int i = 0; i < MaxSetWords; i++)
     {
-	files[i].inUse = 0;
+	res.v[i] = a->v[i] | b->v[i]; 
     }
+    return res;
+}
+
+Set __SetDiff(Set *a, Set *b)
+{
+    Set res;
+    for(int i = 0; i < MaxSetWords; i++)
+    {
+	res.v[i] = a->v[i] & ~b->v[i]; 
+    }
+    return res;
+}
+
+Set __SetIntersect(Set *a, Set *b)
+{
+    Set res;
+    for(int i = 0; i < MaxSetWords; i++)
+    {
+	res.v[i] = a->v[i] & b->v[i]; 
+    }
+    return res;
+}
+
+/* Check if all values in a are in set b. */
+int __SetContains(Set *a, Set *b)
+{
+    for(int i = 0; i < MaxSetWords; i++)
+    {
+	if ((a->v[i] & b->v[i]) != a->v[i])
+	    return 0;
+    }
+    return 1;
 }
 
 int main()

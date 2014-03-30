@@ -32,6 +32,7 @@ private:
     ExprAST* ParsePrimary();
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseUnaryOp();
+    ExprAST* ParseSetExpr();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
@@ -67,7 +68,8 @@ private:
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
     Types::RecordDecl*  ParseRecordDecl();
-    Types::TypeDecl*    ParseFileDecl();
+    Types::FileDecl*    ParseFileDecl();
+    Types::SetDecl*     ParseSetDecl();
 
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

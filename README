@@ -8,6 +8,7 @@ Among things NOT yet supported are:
 - The "with" construct. 
 - Variant records are not supported.
 - Proper type checking. 
+- Goto statement.
 
 Lots of other small and large things that I can't think of right now.
 

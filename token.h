@@ -39,6 +39,7 @@ public:
 	Identifier,
 	Const,
 	File,
+	Set,
 
 	// Symbols and such
 	LeftParen,
@@ -64,6 +65,7 @@ public:
 	Uparrow,
 	Div,
 	Mod,
+	In,
 
 	// Keywords
 	For,

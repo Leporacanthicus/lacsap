@@ -184,6 +184,9 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 	    }
 	}
     }
+    std::cerr << "Adding type: " << name << ": ";
+    ty->dump();
+    std::cerr << std::endl;
     return nameStack.Add(name, new TypeDef(name, ty));
 }
 
@@ -574,7 +577,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     return new Types::RecordDecl(fields);
 }
 
-Types::TypeDecl* Parser::ParseFileDecl()
+Types::FileDecl* Parser::ParseFileDecl()
 {
     if (!Expect(Token::File, true))
     {
@@ -589,6 +592,26 @@ Types::TypeDecl* Parser::ParseFileDecl()
     Types::TypeDecl* type = ParseType();
  
     return new Types::FileDecl(type);
+}
+
+Types::SetDecl* Parser::ParseSetDecl()
+{
+    if (!Expect(Token::Set, true))
+    {
+	return 0;
+    }
+    if (!Expect(Token::Of, true))
+    {
+	return 0;
+    }
+
+    Types::Range* r = ParseRangeOrTypeRange();
+    if (!r)
+    {
+	return 0;
+    }
+
+    return new Types::SetDecl(r);
 }
 
 Types::TypeDecl* Parser::ParseType()
@@ -620,6 +643,9 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::File:
 	return ParseFileDecl();
+
+    case Token::Set:
+	return ParseSetDecl();
     
     case Token::LeftParen:
 	return ParseEnumDef();
@@ -723,7 +749,6 @@ ExprAST* Parser::ParseExpression()
     }
     return ParseBinOpRHS(0, lhs);
 }
-
 
 VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
@@ -984,8 +1009,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 ExprAST* Parser::ParseParenExpr()
 {
     NextToken();
-    ExprAST* V = ParseExpression();
-    if (!V) 
+    ExprAST* v = ParseExpression();
+    if (!v) 
     {
 	return 0;
     }
@@ -994,7 +1019,47 @@ ExprAST* Parser::ParseParenExpr()
     {
 	return 0;
     }
-    return V;
+    return v;
+}
+
+ExprAST* Parser::ParseSetExpr()
+{
+    if (!Expect(Token::LeftSquare, true))
+    {
+	return 0;
+    }
+
+    std::vector<ExprAST*> values;
+    do
+    {
+	if (CurrentToken().GetToken() != Token::RightSquare)
+	{
+	    ExprAST* v = ParseExpression();
+	    if (!v)
+	    {
+		return 0;
+	    }
+	    if (CurrentToken().GetToken() == Token::DotDot)
+	    {
+		NextToken();
+		ExprAST* vEnd = ParseExpression();
+		v = new RangeExprAST(v, vEnd);
+	    }
+	    values.push_back(v);
+	}
+	if (CurrentToken().GetToken() != Token::RightSquare)
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return 0;
+	    }
+	}
+    } while(CurrentToken().GetToken() != Token::RightSquare);
+    if (!Expect(Token::RightSquare, true))
+    {
+	return 0;
+    }
+    return new SetExprAST(values);
 }
 
 VarDeclAST* Parser::ParseVarDecls()
@@ -1708,6 +1773,9 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::LeftParen:
 	return ParseParenExpr();
+
+    case Token::LeftSquare:
+	return ParseSetExpr();
 	
     case Token::Identifier:
 	return ParseIdentifierExpr();

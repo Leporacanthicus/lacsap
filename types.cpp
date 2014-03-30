@@ -7,6 +7,12 @@
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
+llvm::Type* ErrorT(const std::string& msg)
+{
+    std::cerr << msg << std::endl;
+    return 0;
+}
+
 llvm::Type* Types::GetType(Types::SimpleTypes type)
 {
     switch(type)
@@ -329,6 +335,28 @@ void Types::TextDecl::dump() const
     std::cerr << "Text ";
 }
 
+void Types::SetDecl::dump() const
+{
+    std::cerr << "Set of ";
+    range->dump();
+}
+
+llvm::Type* Types::TypeForSet()
+{
+    static llvm::Type *ty;
+    if (!ty)
+    {
+	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(Types::Integer));
+	size_t nelems = SetDecl::MaxSetWords;
+	ty = llvm::ArrayType::get(ity, nelems);
+    }
+    return ty;
+}
+
+llvm::Type* Types::SetDecl::GetLlvmType() const
+{
+    return TypeForSet();
+}
 
 // Void pointer is not a "pointer to void", but a "pointer to Int8". 
 llvm::Type* Types::GetVoidPtrType()

@@ -143,6 +143,24 @@ static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
     return bld.CreateAlloca(ty, 0, var.Name());
 }
 
+static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
+{
+   /* Save where we were... */
+    llvm::BasicBlock* bb = builder.GetInsertBlock();
+    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
+    
+    /* Get the "entry" block */
+    llvm::Function *fn = builder.GetInsertBlock()->getParent();
+    
+    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
+
+    llvm::AllocaInst* tmp = bld.CreateAlloca(ty, 0, "tmp");
+    
+    builder.SetInsertPoint(bb, ip);
+    
+    return tmp;
+}
+
 std::string ExprAST::ToString()
 {
     std::stringstream ss;
@@ -390,6 +408,39 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->Dump(out); 
 }
 
+static llvm::Value* CallSetFunc(const std::string& name, 
+				llvm::Value* lhs, 
+				llvm::Value* rhs, 
+				llvm::Type *resTy)
+{
+    std::string func = std::string("__Set") + name;
+    std::vector<llvm::Type*> argTypes;
+    
+    llvm::Type* ty = Types::TypeForSet();
+    if (!ty)
+    {
+	return 0;
+    }
+    llvm::Value* rV = CreateTempAlloca(ty);
+    llvm::Value* lV = CreateTempAlloca(ty);
+    if (!rV || !lV)
+    {
+	return 0;
+    }
+
+    builder.CreateStore(lhs, lV);
+    builder.CreateStore(rhs, rV);
+
+    llvm::Type* pty = llvm::PointerType::getUnqual(Types::TypeForSet());
+    argTypes.push_back(pty);
+    argTypes.push_back(pty);
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+    return builder.CreateCall2(f, lV, rV, "calltmp");
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -434,15 +485,79 @@ llvm::Value* BinaryExprAST::CodeGen()
 	l = builder.CreateSIToFP(l, Types::GetType(Types::Real), "tofp");
 	lty = r->getType()->getTypeID();
     }
+
+    if (r->getType() == Types::TypeForSet() && lty == llvm::Type::IntegerTyID)
+    {
+	if (oper.GetToken() == Token::In)
+	{
+	    std::vector<llvm::Value*> ind;
+	    AddressableAST* rhsA = dynamic_cast<AddressableAST*>(rhs);
+	    if (!rhsA)
+	    {
+		return ErrorV("Set value should be addressable!");
+	    }
+	    llvm::Value* setV = rhsA->Address();
+	    l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
+	    llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(5));
+	    llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(31));
+	    ind.push_back(MakeIntegerConstant(0));
+	    ind.push_back(index);
+	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
+
+	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bit = builder.CreateLShr(bitset, offset);
+	    return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
+	}
+    }
+
     if (rty != lty)
     {
 	std::cout << "Different types..." << std::endl;
 	l->dump();
 	r->dump();
 	assert(0 && "Different types...");
+	return 0;
     }
 
-    if (rty == llvm::Type::IntegerTyID)
+    if (r->getType() == Types::TypeForSet())
+    {
+	llvm::Type* resTy = Types::GetType(Types::Boolean);
+	switch(oper.GetToken())
+	{
+	case Token::Minus:
+	    resTy = Types::TypeForSet();
+	    return CallSetFunc("Diff", l, r, resTy);
+
+	case Token::Plus:
+	    resTy = Types::TypeForSet();
+	    return CallSetFunc("Union", l, r, resTy);
+	    
+	case Token::Multiply:
+	    resTy = Types::TypeForSet();
+	    return CallSetFunc("Intersect", l, r, resTy);
+	    
+	case Token::Equal:
+	    return CallSetFunc("Equal", l, r, resTy);
+
+	case Token::NotEqual:
+	{
+	    llvm::Value *res = CallSetFunc("Equal", l, r, resTy);
+	    return builder.CreateNot(res, "notEqual");
+	}
+
+	case Token::LessOrEqual:
+	    return CallSetFunc("Contains", l, r, resTy);
+
+	case Token::GreaterOrEqual:
+	    // Note reverse order to avoid having to write 
+	    // another function
+	    return CallSetFunc("Contains", r, l, resTy);
+
+	default:
+	    return ErrorV("Unknown operator on set");
+	}
+    }
+    else if (rty == llvm::Type::IntegerTyID)
     {
 	switch(oper.GetToken())
 	{
@@ -814,7 +929,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	{
 	    newPrefix = proto->Name();
 	}
-	std::cerr << "newPrefix = "  << newPrefix << std::endl;
+
 	for(auto fn : subFunctions)
 	{
 	    
@@ -846,7 +961,8 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     TRACE();
     verifyFunction(*theFunction);
-    fpm->run(*theFunction);
+//    fpm->run(*theFunction);
+    theFunction->dump();
     return theFunction;
 }
 
@@ -1056,7 +1172,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
+    llvm::Value* stepVal =MakeConstant((stepDown)?-1:1, startV->getType());
     llvm::Value* curVar = builder.CreateLoad(var, varName.c_str());
     llvm::Value* nextVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 
@@ -1537,6 +1653,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	if (!func)
 	{
 	    llvm::Type     *ty = var.Type()->LlvmType();
+	    assert(ty && "Type should have a value");
 	    llvm::Constant *init = llvm::Constant::getNullValue(ty);
 	    v = new llvm::GlobalVariable(*theModule, ty, false, 
 					 llvm::Function::InternalLinkage, init, var.Name().c_str());
@@ -1570,6 +1687,7 @@ void LabelExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
 {
+    TRACE();
     llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
     
@@ -1597,6 +1715,7 @@ void CaseExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* CaseExprAST::CodeGen()
 {
+    TRACE();
     llvm::Value* v  = expr->CodeGen();
     llvm::Type*  ty = v->getType();
     if (!v->getType()->isIntegerTy())
@@ -1617,6 +1736,133 @@ llvm::Value* CaseExprAST::CodeGen()
     
     return afterBB;
 }
+
+void RangeExprAST::DoDump(std::ostream& out) const
+{
+    out << "Range:";
+    low->Dump(out); 
+    out << "..";
+    high->Dump(out);
+}
+
+llvm::Value* RangeExprAST::CodeGen()
+{
+    TRACE();
+    return 0;
+}
+
+void SetExprAST::DoDump(std::ostream& out) const
+{
+    out << "Set :[";
+    bool first = true;
+    for(auto v : values)
+    {
+	if (!first)
+	{
+	    out << ", ";
+	}
+	first = false;
+	v->Dump(out);
+    }
+    out << "]";
+}
+
+llvm::Value* SetExprAST::Address()
+{
+    TRACE();
+
+    llvm::Type* ty = Types::TypeForSet();
+    if (!ty)
+    {
+	return 0;
+    }
+    llvm::Value* setV = CreateTempAlloca(ty);
+    if (!setV)
+    {
+	return 0;
+    }
+
+    llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
+
+    builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)), 
+			 Types::SetDecl::MaxSetWords * 4, 0);
+
+    // TODO: For optimisation, we may want to pass through the vector and see if the values 
+    // are constants, and if so, be clever about it
+    for(auto v : values)
+    {
+	// If we have a "range", then make a loop. 
+	RangeExprAST* r = dynamic_cast<RangeExprAST*>(v);
+	if (r)
+	{
+	    std::vector<llvm::Value*> ind;
+	    llvm::Value* low = r->Low();
+	    llvm::Value* high = r->High();
+	    llvm::Function *fn = builder.GetInsertBlock()->getParent();
+
+	    if (!low || !high)
+	    {
+		return 0;
+	    }
+
+	    low  = builder.CreateZExt(low, Types::GetType(Types::Integer), "zext.low");
+	    high = builder.CreateZExt(high, Types::GetType(Types::Integer), "zext.high");
+
+	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", fn);    
+	    builder.CreateBr(loopBB);
+	    builder.SetInsertPoint(loopBB);
+
+	    // Set bit "low" in set. 
+	    llvm::Value* index = builder.CreateLShr(low, MakeIntegerConstant(5));
+	    llvm::Value* offset = builder.CreateAnd(low, MakeIntegerConstant(31));
+	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
+	    ind.push_back(MakeIntegerConstant(0));
+	    ind.push_back(index);
+	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
+	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    builder.CreateOr(bitset, bit);
+	    builder.CreateStore(bitset, bitsetAddr);
+	    
+	    low = builder.CreateAdd(low, MakeConstant(1, low->getType()), "update");
+
+	    llvm::Value* endCond = builder.CreateICmpSGE(low, high, "loopcond");
+
+	    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", fn);
+	    builder.CreateCondBr(endCond, loopBB, afterBB);
+
+	    builder.SetInsertPoint(afterBB);
+	}
+	else
+	{
+	    std::vector<llvm::Value*> ind;
+	    llvm::Value* x = v->CodeGen();
+	    if (!x)
+	    {
+		return 0;
+	    }
+	    x = builder.CreateZExt(x, Types::GetType(Types::Integer), "zext");
+	    llvm::Value* index = builder.CreateLShr(x, MakeIntegerConstant(5));
+	    llvm::Value* offset = builder.CreateAnd(x, MakeIntegerConstant(31));
+	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
+	    ind.push_back(MakeIntegerConstant(0));
+	    ind.push_back(index);
+	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
+	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    builder.CreateOr(bitset, bit);
+	    builder.CreateStore(bitset, bitsetAddr);
+	}
+    }
+    builder.GetInsertBlock()->getParent()->dump();
+    
+    return setV;
+}
+
+llvm::Value* SetExprAST::CodeGen()
+{
+    llvm::Value* v = Address();
+    return builder.CreateLoad(v);
+}
+
 
 int GetErrors(void)
 {

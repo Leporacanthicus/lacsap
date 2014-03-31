@@ -4,22 +4,22 @@ OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o
 
 CXX = clang++
 CC  = clang
-LD = clang++
+LD  = clang++
 
-DEFINES = -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS
+LLVM_DIR = /usr/local/llvm-debug
 
-CXXFLAGS = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 ${DEFINES}
-CFLAGS   = -g -Wall -Werror -Wextra -std=c99
-LDFLAGS = -g -L/usr/local/llvm-debug/lib -rdynamic
+CFLAGS    = -g -Wall -Werror -Wextra -std=c99
+INCLUDES  = `${LLVM_DIR}/bin/llvm-config --includedir`
+CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11
+CXXFLAGS += -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+CXXFLAGS += -I ${INCLUDES}
+# llvm-config --cxxflags gives flags like -fno-exception, which doesn't work for this project.
+#CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 
-LLVMLIBS = 	-lLLVMLTO -lLLVMObjCARCOpts -lLLVMLinker -lLLVMipo -lLLVMVectorize -lLLVMBitWriter \
-		-lLLVMIRReader -lLLVMBitReader -lLLVMAsmParser -lLLVMTableGen -lLLVMDebugInfo \
-		-lLLVMOption -lLLVMX86Disassembler -lLLVMX86AsmParser -lLLVMX86CodeGen -lLLVMSelectionDAG \
-		-lLLVMAsmPrinter -lLLVMMCParser -lLLVMX86Desc -lLLVMX86Info -lLLVMX86AsmPrinter \
-		-lLLVMX86Utils -lLLVMJIT -lLLVMLineEditor -lLLVMMCDisassembler -lLLVMInstrumentation \
-		-lLLVMInterpreter -lLLVMCodeGen -lLLVMScalarOpts -lLLVMInstCombine -lLLVMTransformUtils \
-		-lLLVMipa -lLLVMAnalysis -lLLVMMCJIT -lLLVMTarget -lLLVMRuntimeDyld -lLLVMExecutionEngine \
-		-lLLVMMC -lLLVMObject -lLLVMCore -lLLVMSupport 
+LDFLAGS  = -g -rdynamic
+LDFLAGS += `${LLVM_DIR}/bin/llvm-config --ldflags`
+
+LLVMLIBS = `${LLVM_DIR}/bin/llvm-config --libs` -lz
 
 OTHERLIBS = -lpthread -ldl -lcurses
 
@@ -34,9 +34,10 @@ clean:
 	rm -f ${OBJECTS}
 
 runtime.o : runtime.c
+	echo ${CXXFLAGS}
 	${CC} ${CFLAGS} -c $< -o $@
 
 include .depends
 
 .depends: Makefile ${SOURCES}
-	${CXX} -MM ${DEFINES} ${SOURCES} > $@
+	${CXX} -MM ${CXXFLAGS} ${SOURCES} > $@

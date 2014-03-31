@@ -6,7 +6,7 @@
 #include <cctype>
 #include <iostream>
 
-Lexer::Lexer(const std::string& sourceFile):
+Lexer::Lexer(const std::string& sourceFile) throw(LexerException):
     fName(sourceFile), lineNo(1),column(0), curValid(0)
 {
     inFile.open(fName);

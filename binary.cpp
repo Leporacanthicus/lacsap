@@ -15,7 +15,7 @@ static llvm::tool_output_file *GetOutputStream(const std::string& filename)
 {
     // Open the file.
     std::string error;
-    llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_Binary;
+    llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
     llvm::tool_output_file *FDOut = new llvm::tool_output_file(filename.c_str(), error,
 							       OpenFlags);
     if (!error.empty()) 
@@ -63,7 +63,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     PM.add(TLI);
     tm->setAsmVerbosityDefault(true);
 
-    llvm::OwningPtr<llvm::tool_output_file> Out(GetOutputStream(objname));
+    std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(objname));
     if (!Out) 
     {
 	std::cerr << "Could not open file ... " << std::endl;

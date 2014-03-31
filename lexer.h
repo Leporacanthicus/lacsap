@@ -8,10 +8,23 @@
 #include <fstream>
 #include <exception>
 
+class LexerException : public std::exception
+{
+public:
+    LexerException(std::string r)
+    {
+	reason = r;
+    }
+    const char* what() const  noexcept { return (std::string("Lexer Exception") + reason).c_str(); }
+
+private:
+    std::string reason;
+};
+
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile);
+    Lexer(const std::string& sourceFile) throw(LexerException);
     Token GetToken();
 
 private:
@@ -31,19 +44,6 @@ private:
     int           curChar;
     int           nextChar;
     int           curValid;
-};
-
-class LexerException : public std::exception
-{
-public:
-    LexerException(std::string r)
-    {
-	reason = r;
-    }
-    const char* what() const  noexcept { return (std::string("Lexer Exception") + reason).c_str(); }
-
-private:
-    std::string reason;
 };
 
 bool IsKeyWord(const std::string& name);

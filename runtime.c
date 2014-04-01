@@ -290,6 +290,7 @@ void __read_nl(File* file)
     {
 	__get(file);
     }
+    __get(file);
 }
 
 void __read_bin(File* file, void *val)

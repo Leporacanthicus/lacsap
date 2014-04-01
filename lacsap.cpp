@@ -68,7 +68,7 @@ std::string replace_ext(const std::string &origName, const std::string& expected
     return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
 }
 
-static void Compile(const std::string& filename)
+static int Compile(const std::string& filename)
 {
     try
     {
@@ -83,7 +83,7 @@ static void Compile(const std::string& filename)
 	if (e > 0)
 	{
 	    std::cout << "Errors in parsing: " << e << ". Exiting..." << std::endl;
-	    return;
+	    return 1;
 	}
 	llvm::Module* module = CodeGen(ast);
 	DumpModule(module);
@@ -92,17 +92,25 @@ static void Compile(const std::string& filename)
     catch(std::exception e)
     {
 	std::cerr << "Exception: " << e.what() << std::endl;
+	return 1;
     }
     catch(...)
     {
 	std::cerr << "Unknown Exception - this should not happen??? " << std::endl;
+	return 1;
     }
+    return 0;
 }
 
 int main(int argc, char** argv)
 {
     for(int i = 1; i < argc; i++)
     {
-	Compile(argv[i]);
+	int res = Compile(argv[i]);
+	if (res)
+	{
+	    return res;
+	}
     }
+    return 0;
 }

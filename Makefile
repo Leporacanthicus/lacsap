@@ -1,4 +1,4 @@
-all: lacsap .depends runtime.o
+all: lacsap .depends runtime.o tests
 
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o namedobject.o
 
@@ -29,6 +29,14 @@ SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
 lacsap: ${OBJECTS} .depends
 	${LD} ${LDFLAGS} -o $@ ${OBJECTS} ${LIBS}
+
+.phony: tests
+tests:
+	${MAKE} -C test
+
+.phony: runtests
+runtests: tests
+	cd test; ./testrunner
 
 clean:
 	rm -f ${OBJECTS}

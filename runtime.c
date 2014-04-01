@@ -390,4 +390,5 @@ int main()
 {
     InitFiles();
     __PascalMain();
+    return 0;
 }

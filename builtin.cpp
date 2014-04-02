@@ -68,14 +68,19 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 
 static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, 
 				      const std::string& func, 
-				      const std::vector<ExprAST*>& args)
+				      const std::vector<ExprAST*>& args, 
+				      llvm::Type* resTy = 0)
 {
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
     std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = Types::GetType(Types::Real);
+    if (!resTy)
+    {
+	resTy = ty;
+    }
     argTypes.push_back(ty);
-    llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 
@@ -90,11 +95,13 @@ static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
     return ErrorV("Expected type of real or integer for this function'");
 }
 
-static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, const std::string& func, 
-				    const std::vector<ExprAST*>& args)
+static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, 
+				    const std::string& func, 
+				    const std::vector<ExprAST*>& args,
+				    llvm::Type* resTy = 0)
 {
     std::string name = "llvm." + func + ".f64";
-    return CallRuntimeFPFunc(builder, name, args);
+    return CallRuntimeFPFunc(builder, name, args, resTy);
 }
 
 static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -137,14 +144,16 @@ static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<E
 {
     assert(args.size() == 1 && "Expect 1 argument to round");
 
-    return CallBuiltinFunc(builder, "round", args);
+    llvm::Value* v = CallBuiltinFunc(builder, "round", args);
+    return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
 }
 
 static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to trunc");
 
-    return CallBuiltinFunc(builder, "trunc", args);
+    llvm::Value* v = args[0]->CodeGen();
+    return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
 }
 
 static llvm::Value* RandomCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)

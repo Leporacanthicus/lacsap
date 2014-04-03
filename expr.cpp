@@ -1156,43 +1156,59 @@ llvm::Value* ForExprAST::CodeGen()
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::Value* var = variables.Find(varName);
-
+    if (!var)
+    {
+	return 0;
+    }
     llvm::Value* startV = start->CodeGen();
     if (!startV)
     {
 	return 0;
     }
 
-    builder.CreateStore(startV, var); 
+    llvm::Value* stepVal =MakeConstant((stepDown)?-1:1, startV->getType());
+
+    builder.CreateStore(startV, var, "loopvar"); 
 
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);    
-    builder.CreateBr(loopBB);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", 
+							 theFunction);
+    
+    llvm::Value* curVar = builder.CreateLoad(var, varName.c_str(), "temp");
+    llvm::Value* endV = end->CodeGen();
+    llvm::Value* endCond;
+
+    if (stepDown) 
+    {
+	endCond = builder.CreateICmpSGE(curVar, endV, "loopcond");
+    }
+    else
+    {
+	endCond = builder.CreateICmpSLE(curVar, endV, "loopcond");
+    }
+
+    builder.CreateCondBr(endCond, loopBB, afterBB);
+
     builder.SetInsertPoint(loopBB);
 
     if (!body->CodeGen())
     {
 	return 0;
     }
-    llvm::Value* stepVal =MakeConstant((stepDown)?-1:1, startV->getType());
-    llvm::Value* curVar = builder.CreateLoad(var, varName.c_str());
-    llvm::Value* nextVar = builder.CreateAdd(curVar, stepVal, "nextvar");
+    curVar = builder.CreateLoad(var, varName.c_str(), "temp");
+    curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 
-    builder.CreateStore(nextVar, var);
+    builder.CreateStore(curVar, var);
     
-    llvm::Value* endCond;
-    llvm::Value* endV = end->CodeGen();
     if (stepDown) 
     {
-	endCond = builder.CreateICmpSGE(nextVar, endV, "loopcond");
+	endCond = builder.CreateICmpSGE(curVar, endV, "endcond");
     }
     else
     {
-	endCond = builder.CreateICmpSLE(nextVar, endV, "loopcond");
+	endCond = builder.CreateICmpSLE(curVar, endV, "endcond");
     }
 
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", 
-							 theFunction);
-    
     builder.CreateCondBr(endCond, loopBB, afterBB);
     
     builder.SetInsertPoint(afterBB);

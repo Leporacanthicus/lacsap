@@ -121,8 +121,18 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
     return true;
 }
 
+bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
+{
+    if (CurrentToken().GetToken() != Token::End && !Expect(Token::Semicolon, true, file, line))
+    {
+	return false;
+    }
+    return true;
+}
+
 #define NextToken() NextToken(__FILE__, __LINE__)
 #define PeekToken() PeekToken(__FILE__, __LINE__)
+#define ExpectSemicolonOrEnd() ExpectSemicolonOrEnd(__FILE__, __LINE__)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
@@ -561,7 +571,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    }
 	    fields.push_back(Types::FieldDecl(n, ty));
 	}
-	if (!Expect(Token::Semicolon, true))
+	if (!ExpectSemicolonOrEnd())
 	{
 	    return 0;
 	}
@@ -1242,7 +1252,7 @@ BlockAST* Parser::ParseBlock()
 	    return 0;
 	}
 	v.push_back(ast);
-	if (!Expect(Token::Semicolon, true))
+	if (!ExpectSemicolonOrEnd())
 	{
 	    return 0;
 	}
@@ -1570,7 +1580,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    ExprAST* s = ParseStmtOrBlock();
 	    labels.push_back(new LabelExprAST(lab, s));
 	    lab.clear();
-	    if (!Expect(Token::Semicolon, true))
+	    if (!ExpectSemicolonOrEnd())
 	    {
 		return 0;
 	    }
@@ -1599,7 +1609,7 @@ ExprAST* Parser::ParseWrite()
 
     VariableExprAST* file = 0;
     std::vector<WriteAST::WriteArg> args;
-    if (CurrentToken().GetToken() == Token::Semicolon)
+    if (CurrentToken().GetToken() == Token::Semicolon || CurrentToken().GetToken() == Token::End)
     {
 	if (!isWriteln)
 	{
@@ -1686,7 +1696,7 @@ ExprAST* Parser::ParseRead()
 
     std::vector<ExprAST*> args;
     VariableExprAST* file = 0;
-    if (CurrentToken().GetToken() == Token::Semicolon)
+    if (CurrentToken().GetToken() == Token::Semicolon || CurrentToken().GetToken() == Token::End)
     {
 	if (!isReadln)
 	{

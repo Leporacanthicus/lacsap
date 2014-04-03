@@ -73,6 +73,7 @@ private:
 
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
+    bool ExpectSemicolonOrEnd(const char* file, int line);
 
     /* Error functions - all the same except for the return type */
     ExprAST*         Error(const std::string& msg, const char* file = 0, int line = 0);

@@ -23,6 +23,15 @@ int runCmd(const std::string& cmd)
     return system(cmd.c_str());
 }
 
+bool Diff(const std::string& args)
+{
+    if (runCmd("diff " + args))
+    {
+	return false;
+    }
+    return true;
+}
+
 class TestCase
 {
 public:
@@ -31,7 +40,7 @@ public:
     virtual bool Compile();
     virtual bool Run();
     virtual bool Result();
-private:
+protected:
     std::string name;
     std::string source;
     std::string args;
@@ -62,36 +71,68 @@ bool TestCase::Run()
     return true;
 }
 
-
 bool TestCase::Result()
 {
     std::string resname = replace_ext(source, ".pas", ".res");
     std::string tplname = replace_ext(source, ".pas", ".tpl");
-    if (runCmd("diff " + resname + " expected/" + tplname))
-    {
-	return false;
-    }
-    return true;
+    return Diff(resname + " expected/" + tplname);
 }
 
-std::vector<TestCase> tc; 
+
+class FileTestCase : public TestCase
+{
+public:
+    FileTestCase(const std::string& nm, const std::string& src, const std::string& arg);
+    virtual bool Result();
+private:
+    std::string diffArgs;
+};
+
+FileTestCase::FileTestCase(const std::string& nm, const std::string& src, const std::string& arg)
+    : TestCase(nm, src, ""), diffArgs(arg)
+{
+}
+
+bool FileTestCase::Result()
+{
+    return Diff(diffArgs);
+}
+
+
+TestCase* TestCaseFactory(const std::string& type, 
+			  const std::string& name,
+			  const std::string& source,
+			  const std::string& args)
+{
+    if (type == "File")
+    {
+	return new FileTestCase(name, source, args);
+    }
+
+    return new TestCase(name, source, args);
+}
 
 struct
 {
+    const char *type;
     const char *name;
     const char *source;
     const char *args;
 } testCaseList[] = 
 {
-    { "Math",          "math.pas",        "" },
-    { "HungryMouse",   "hungrymouse.pas", " < hungrymouse.txt" },
-    { "Types",         "type.pas",        "" },
-    { "WC",            "wc.pas",          "" },
-    { "Case",          "case.pas",        "" },
-    { "Set",           "testset.pas",     "" },
-    { "Set 2",         "testset2.pas",    "" },
-    { "Record Pass",   "recpass.pas",     "" },
-    { "Random Number", "randtest.pas",    "" },
+    { "Basic", "Math",          "math.pas",        "" },
+    { "Basic", "HungryMouse",   "hungrymouse.pas", " < hungrymouse.txt" },
+    { "Basic", "Types",         "type.pas",        "" },
+    { "Basic", "WC",            "wc.pas",          "" },
+    { "Basic", "Case",          "case.pas",        "" },
+    { "Basic", "Set",           "testset.pas",     "" },
+    { "Basic", "Set 2",         "testset2.pas",    "" },
+    { "Basic", "Record Pass",   "recpass.pas",     "" },
+    { "Basic", "Random Number", "randtest.pas",    "" },
+
+    { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
+    { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
+    { "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
 };
 	
 
@@ -104,29 +145,31 @@ int main()
     int cases       = 0;
     int fail        = 0;
 
+    std::vector<TestCase*> tc; 
+
     for(auto t : testCaseList)
     {
-	tc.push_back(TestCase(t.name, t.source, t.args));
+	tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
     }
 
     for(auto t : tc)
     {
 	cases ++;
-	if (!t.Compile())
+	if (!t->Compile())
 	{
 	    fail++;
 	    compileFail++;
 	}
 	else
 	{
-	    if (!t.Run())
+	    if (!t->Run())
 	    {
 		fail++;
 		runFail++;
 	    }
 	    else
 	    {
-		if (!t.Result())
+		if (!t->Result())
 		{
 		    fail++;
 		    resultFail++;

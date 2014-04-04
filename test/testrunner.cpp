@@ -129,6 +129,7 @@ struct
     { "Basic", "Set 2",         "testset2.pas",    "" },
     { "Basic", "Record Pass",   "recpass.pas",     "" },
     { "Basic", "Random Number", "randtest.pas",    "" },
+    { "Basic", "Fact Bignum",   "fact-bignum.pas", "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

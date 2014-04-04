@@ -1,5 +1,8 @@
 program fact;
 
+(* Thanks to Mihail Popa for the original source to this. Slightly modified by Mats
+ * to match "proper" Pascal syntax. *)
+
 const
     base = 10;
 

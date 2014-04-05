@@ -3,8 +3,6 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-- Proper tests.
-- Set variables.
 - The "with" construct. 
 - Variant records are not supported.
 - Proper type checking. 

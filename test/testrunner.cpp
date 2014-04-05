@@ -1,6 +1,7 @@
 #include <string> 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <iomanip>
 #include <cstdlib>
 
@@ -40,6 +41,7 @@ public:
     virtual bool Compile();
     virtual bool Run();
     virtual bool Result();
+    std::string Name() const;
 protected:
     std::string name;
     std::string source;
@@ -78,6 +80,10 @@ bool TestCase::Result()
     return Diff(resname + " expected/" + tplname);
 }
 
+std::string TestCase::Name() const
+{
+    return name;
+}
 
 class FileTestCase : public TestCase
 {
@@ -112,6 +118,60 @@ TestCase* TestCaseFactory(const std::string& type,
     return new TestCase(name, source, args);
 }
 
+
+class TestResult
+{
+public:
+    TestResult():
+	cases(0), pass(0), fail(0)
+	{
+	}
+public:
+    void RegisterFail(const TestCase* tc, const std::string& stage)
+	{
+	    failedTests.push_back(tc->Name());
+	    failStageMap[stage]++;
+	    fail++;
+	}
+    void RegisterCase(const TestCase* /* tc */)
+	{
+	    cases++;
+	}
+    void RegisterPass(const TestCase* /* tc */)
+	{
+	    pass++;
+	}
+    void Report()
+	{
+	    std::cout << "Cases:  " << std::setw(5) << cases << std::endl;
+	    std::cout << "Pass:   " << std::setw(5) << pass << std::endl;
+	    std::cout << "Fail:   " << std::setw(5) << fail << std::endl;
+	    
+	    for(auto f : failStageMap)
+	    {
+		std::cout << f.first << " fail: " << std::setw(5) << f.second << std::endl;
+	    }
+
+	    bool b = true;
+	    for(auto t : failedTests)
+	    {
+		if (b)
+		{
+		    std::cout << "The following tests failed:" << std::endl;
+		}
+		b = false;
+		std::cout << t << std::endl;
+	    }
+	}
+    
+private:
+    int cases;
+    int pass;
+    int fail;
+    std::map<std::string, int> failStageMap;
+    std::vector<std::string> failedTests;
+};    
+
 struct
 {
     const char *type;
@@ -123,13 +183,15 @@ struct
     { "Basic", "Math",          "math.pas",        "" },
     { "Basic", "HungryMouse",   "hungrymouse.pas", " < hungrymouse.txt" },
     { "Basic", "Types",         "type.pas",        "" },
-    { "Basic", "WC",            "wc.pas",          "" },
+//    { "Basic", "WC",            "wc.pas",          "" },
     { "Basic", "Case",          "case.pas",        "" },
     { "Basic", "Set",           "testset.pas",     "" },
     { "Basic", "Set 2",         "testset2.pas",    "" },
     { "Basic", "Record Pass",   "recpass.pas",     "" },
     { "Basic", "Random Number", "randtest.pas",    "" },
     { "Basic", "Fact Bignum",   "fact-bignum.pas", "" },
+    { "Basic", "Nested Funcs",  "nestfunc.pas",    "" },
+    { "Basic", "Recursion",     "recursion.pas",   " < recursion.txt" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
@@ -139,14 +201,8 @@ struct
 
 int main()
 {
-    int compileFail = 0;
-    int runFail     = 0;
-    int resultFail  = 0;
-    int pass        = 0;
-    int cases       = 0;
-    int fail        = 0;
-
     std::vector<TestCase*> tc; 
+    TestResult res;
 
     for(auto t : testCaseList)
     {
@@ -155,42 +211,30 @@ int main()
 
     for(auto t : tc)
     {
-	cases ++;
+	res.RegisterCase(t);
 	if (!t->Compile())
 	{
-	    fail++;
-	    compileFail++;
+	    res.RegisterFail(t, "compile");
 	}
 	else
 	{
 	    if (!t->Run())
 	    {
-		fail++;
-		runFail++;
+		res.RegisterFail(t, "run");
 	    }
 	    else
 	    {
 		if (!t->Result())
 		{
-		    fail++;
-		    resultFail++;
+		    res.RegisterFail(t, "result");
 		}
 		else
 		{
-		    pass++;
+		    res.RegisterPass(t);
 		}
 	    }
 	}
     }
-    std::cout << "Cases:  " << std::setw(5) << cases << std::endl;
-    std::cout << "Pass:   " << std::setw(5) << cases << std::endl;
-    std::cout << "Fail:   " << std::setw(5) << fail << std::endl;
-
-    if (fail)
-    {
-	std::cout << "Compile fail: " << std::setw(5) << compileFail << std::endl;
-	std::cout << "Run fail:     " << std::setw(5) << runFail << std::endl;
-	std::cout << "Result fail:  " << std::setw(5) << resultFail << std::endl;
-    }
+    res.Report();
 }
 

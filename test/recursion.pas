@@ -25,7 +25,7 @@ begin
    if (x < 2) then
       g := 1
    else
-      g := f(x-1) + g(x/2);
+      g := f(x-1) + g(x div 2);
 end; { g }
 
 begin

@@ -315,7 +315,8 @@ public:
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
     void SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
-		     const std::vector<NamedObject*>& localVars);
+		     const std::vector<NamedObject*>& localVars,
+		     const std::vector<NamedObject*>& globalVars);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
 private:
     PrototypeAST*              proto;

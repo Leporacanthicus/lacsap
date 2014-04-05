@@ -31,6 +31,16 @@ public:
 	return v;
     }
 
+    std::vector<T> GetLevel(int n)
+    {
+	std::vector<T> v;
+	for(auto i : stack[n])
+	{
+	    v.push_back(i.second);
+	}
+	return v;
+    }
+
     void DropLevel() 
     { 
 	stack.pop_back(); 
@@ -57,6 +67,16 @@ public:
 	    {
 		return it->second;
 	    }
+	}
+	return 0;
+    }
+
+    T FindTopLevel(const std::string& name)
+    {
+	MapIter it = stack.back().find(name);
+	if (it != stack.back().end())
+	{
+	    return it->second;
 	}
 	return 0;
     }

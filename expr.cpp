@@ -814,9 +814,12 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	actualName = name;
     }
 
-    if (!mangles.Add(name, new MangleMap(actualName)))
+    if (!mangles.FindTopLevel(name))
     {
-	return ErrorF(std::string("Name ") + name + " already in use?");
+	if (!mangles.Add(name, new MangleMap(actualName)))
+	{
+	    return ErrorF(std::string("Name ") + name + " already in use?");
+	}
     }
 
     llvm::Constant* cf = theModule->getOrInsertFunction(actualName, ft);
@@ -970,7 +973,8 @@ llvm::Function* FunctionAST::CodeGen()
 }
 
 void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
-			      const std::vector<NamedObject*>& localVars)
+			      const std::vector<NamedObject*>& localVars,
+			      const std::vector<NamedObject*>& globalVars)
 {
     std::map<std::string, NamedObject*> nonLocal;
     for(auto v : varsUsed)
@@ -986,9 +990,20 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	}
     }
 
+    // Remove variables inside the function.
+    std::cerr << "locals:" << std::endl;
     for(auto l : localVars)
     {
+	l->dump();
 	nonLocal.erase(l->Name());
+    }
+
+    std::cerr << "Globals:" << std::endl;
+    // Remove variables that are global.
+    for(auto g : globalVars)
+    {
+	g->dump();
+	nonLocal.erase(g->Name());
     }
 
     for(auto n : nonLocal)
@@ -997,6 +1012,7 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	if (v)
 	{
 	    usedVariables.push_back(*v);
+	    v->dump();
 	}
     }
 }

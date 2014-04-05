@@ -12,7 +12,7 @@
 Parser::Parser(Lexer &l) 
     : 	lexer(l), nextTokenValid(false), errCnt(0)
 {
-    nameStack.NewLevel();
+//    nameStack.NewLevel();
     std::vector<std::string> FalseTrue;
     FalseTrue.push_back("false");
     FalseTrue.push_back("true");
@@ -842,14 +842,14 @@ VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl
 
 bool Parser::IsCall(Types::TypeDecl* type)
 {
-    if (type->Type() == Types::Pointer &&
+    Types::SimpleTypes ty = type->Type();
+    if (ty == Types::Pointer &&
 	(type->SubType()->Type() == Types::Function ||
 	 type->SubType()->Type() == Types::Procedure))
     {
 	return true;
     }
-    if ((type->Type() == Types::Procedure || 
-	 type->Type() == Types::Function) && 
+    if ((ty == Types::Procedure || ty == Types::Function) && 
 	CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -1369,7 +1369,9 @@ FunctionAST* Parser::ParseDefinition()
 	    }
 	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
-	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack.GetLevel());
+	    fn->SetUsedVars(usedVariables.GetLevel(), 
+			    nameStack.GetLevel(),
+			    nameStack.GetLevel(0));
 	    proto->AddExtraArgs(fn->UsedVars()); 
 	    return fn;
 	}

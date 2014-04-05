@@ -82,12 +82,17 @@ static int Compile(const std::string& filename)
 	int e = p.GetErrors();
 	if (e > 0)
 	{
-	    std::cout << "Errors in parsing: " << e << ". Exiting..." << std::endl;
+	    std::cerr << "Errors in parsing: " << e << ". Exiting..." << std::endl;
 	    return 1;
 	}
 	llvm::Module* module = CodeGen(ast);
+	if (!module)
+	{
+	    std::cerr << "Code generation failed..." << std::endl;
+	    return 1;
+	}
 	DumpModule(module);
-	CreateBinary(module,   replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
+	CreateBinary(module, replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
     }
     catch(std::exception e)
     {

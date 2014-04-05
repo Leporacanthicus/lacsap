@@ -3,6 +3,7 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
+- String variables. 
 - The "with" construct. 
 - Variant records are not supported.
 - Proper type checking. 
@@ -10,7 +11,7 @@ Among things NOT yet supported are:
 
 Lots of other small and large things that I can't think of right now.
 
-* Marks that "I'm working on it now". 
+The above list is a rough "todo" list in prioritised order. 
 
 Regards,
 Mats

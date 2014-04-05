@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 enum
 {
@@ -24,6 +25,7 @@ struct FileEntry
     int   isText;
     int   inUse;
     int   recordSize;
+    int   readAhead;
 };
 
 typedef struct 
@@ -51,9 +53,38 @@ static FILE* getFile(File* f, File* deflt)
     return NULL;
 } 
 
+void __put(File *file)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    fwrite(file->buffer, f->recordSize, 1, f->file);
+}
+
+void __get(File *file)
+{
+    struct FileEntry *f = 0;
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    fread(file->buffer, f->recordSize, 1, f->file);
+    f->readAhead = 1;
+}
+
 int __eof(File* file)
 {
-    FILE* f = getFile(file, &input);
+    if (!file)
+    {
+	file = &input;
+    }
+    FILE* f = getFile(file, NULL);
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
     return !!feof(f);
 }
 
@@ -65,27 +96,6 @@ int __eoln(File* file)
     }
     return !!(*file->buffer == '\n' || __eof(file));
 }
-
-void __get(File *file)
-{
-    struct FileEntry *f = 0;
-    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
-    {
-	f = &files[file->handle];
-    }
-    fread(file->buffer, f->recordSize, 1, f->file);
-}
-
-void __put(File *file)
-{
-    struct FileEntry *f = 0;
-    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
-    {
-	f = &files[file->handle];
-    }
-    fwrite(file->buffer, f->recordSize, 1, f->file);
-}
-
 
 void __assign(File* f, char* name, int recordSize, int isText)
 {
@@ -104,6 +114,7 @@ void __assign(File* f, char* name, int recordSize, int isText)
     files[i].name = malloc(strlen(name)+1);
     files[i].fileData = *f;
     files[i].isText = isText;
+    files[i].readAhead = 0;
     strcpy(files[i].name, name);
 }
 
@@ -239,19 +250,85 @@ void __write_bin(File* file, void *val)
     __put(file);
 }
 
+
+static void skip_spaces(File* file)
+{
+    while(isspace(*file->buffer) && !__eof(file))
+    {
+	__get(file);
+    }
+}
+
+static int get_sign(File* file)
+{
+    
+    if (*file->buffer == '-')
+    {
+	__get(file);
+	return -1;
+    }
+    else if (*file->buffer == '+')
+    {
+	__get(file);
+    }
+    return 1;
+}
+
+// Turn an exponent into a multiplier value. 
+static double exponent_to_multi(int exponent)
+{
+    double m = 1.0;
+    int oneover = 0;
+    if (exponent < 0)
+    {
+	oneover = 1;
+	exponent = -exponent;
+    }
+    while (exponent > 0)
+    {
+	if (exponent & 1)
+	{
+	    m *= 10.0;
+	    exponent--;
+	}
+	else
+	{
+	    m *= 100.0;
+	    exponent -= 2;
+	}
+    }
+    if (oneover)
+    {
+	return 1.0/m;
+    }
+    return m;
+}
+
 void __read_int(File* file, int* v)
 {
+    int n = 0;
+    int sign;
     if (!file)
     {
 	file = &input;
     }
-    FILE* f = getFile(file, NULL);
-    if (*file->buffer)
+    if (file->handle >= MaxPascalFiles)
     {
-	ungetc(*file->buffer, f);
+	return;
     }
-    fscanf(f, "%d", v);
-    __get(file);
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
+    skip_spaces(file);
+    sign = get_sign(file);
+    while(isdigit(*file->buffer) && !__eoln(file))
+    {
+	n *= 10;
+	n += (*file->buffer) - '0';
+	__get(file);
+    }
+    *v = n * sign;
 }
 
 void __read_chr(File* file, char* v)
@@ -260,24 +337,76 @@ void __read_chr(File* file, char* v)
     {
 	file = &input;
     }
+
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
+
     *v = *file->buffer;
     __get(file);
 }
 
 void __read_real(File* file, double* v)
 { 
+    double n = 0;
+    double divisor = 1.0;
+    double multiplicand = 1.0;
+    int exponent = 0;
+    int sign;
     if (!file)
     {
 	file = &input;
     }
-    FILE* f = getFile(file, NULL);
-    
-    if (*file->buffer)
+    if (file->handle >= MaxPascalFiles)
     {
-	ungetc(*file->buffer, f);
+	return;
     }
-    fscanf(f, "%lf", v);
-    __get(file);
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
+
+    skip_spaces(file);
+    sign = get_sign(file);
+    
+    while(isdigit(*file->buffer) && !__eoln(file))
+    {
+	n *= 10.0;
+	n += (*file->buffer) - '0';
+	__get(file);
+    }
+    if (*file->buffer == '.')
+    {
+	__get(file);
+	while(isdigit(*file->buffer) && !__eoln(file))
+	{
+	    n *= 10.0;
+	    n += (*file->buffer) - '0';
+	    __get(file);
+	    divisor *= 10.0;
+	}
+    }
+    if (*file->buffer == 'e' || *file->buffer == 'E')
+    {
+	__get(file);
+	int expsign = get_sign(file);
+	while(isdigit(*file->buffer) && !__eoln(file))
+	{
+	    exponent *= 10;
+	    exponent += (*file->buffer) - '0';
+	    __get(file);
+	}
+	exponent *= expsign;
+	multiplicand = exponent_to_multi(exponent);
+    }
+    n = n * sign / divisor * multiplicand;
+    *v = n;
 }
 
 void __read_nl(File* file)
@@ -286,11 +415,15 @@ void __read_nl(File* file)
     {
 	file = &input;
     }
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
     while(*file->buffer != '\n' && !__eof(file))
     {
 	__get(file);
     }
-//    __get(file);
+    files[file->handle].readAhead = 0;
 }
 
 void __read_bin(File* file, void *val)

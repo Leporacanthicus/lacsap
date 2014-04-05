@@ -35,8 +35,8 @@ tests:
 	${MAKE} -C test
 
 .phony: runtests
-runtests: tests
-	cd test; ./testrunner
+runtests: 
+	${MAKE} -C test runtests
 
 clean:
 	rm -f ${OBJECTS}

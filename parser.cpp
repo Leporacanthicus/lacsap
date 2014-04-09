@@ -867,11 +867,12 @@ ExprAST* Parser::ParseIdentifierExpr()
     NextToken();
     /* TODO: Should we add builtin's to names at global level? */
     NamedObject* def = nameStack.Find(idName);
-    EnumDef *enumDef = llvm::dyn_cast<EnumDef>(def);
+    EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def);
     if (enumDef)
     {
 	return new IntegerExprAST(enumDef->Value(), enumDef->Type()->LlvmType());
     }
+
     bool isBuiltin = Builtin::IsBuiltin(idName);
     if (!isBuiltin)
     {
@@ -921,11 +922,11 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    return expr;	
 	}
     }
-    // Get past the '(' and fetch the next one. 
-    const FuncDef *funcDef = llvm::dyn_cast<const FuncDef>(def);
+    const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::vector<ExprAST* > args;
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
+	// Get past the '(' and fetch the next one. 
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
@@ -1286,14 +1287,14 @@ FunctionAST* Parser::ParseDefinition()
     NamedObject*     nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);
-    const FuncDef *fnDef = llvm::dyn_cast<const FuncDef>(def);
+    const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
     {
 	if (!nameStack.Add(name, nmObj))
 	{
 	    return ErrorF(std::string("Name '") + name + "' already exists...");
 	}
-
+	
 	if (CurrentToken().GetToken() == Token::Forward)
 	{
 	    NextToken();

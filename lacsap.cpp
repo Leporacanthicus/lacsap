@@ -11,11 +11,17 @@
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Support/CommandLine.h>
 
 
 static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+
+// Command line option definitions.
+llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
+					 llvm::cl::desc("<input file>"));
+llvm::cl::opt<bool>        Verbose("v", llvm::cl::desc("Enable verbose output"));
 
 void DumpModule(llvm::Module* module)
 {
@@ -57,7 +63,9 @@ void OptimizerInit()
     fpm->add(llvm::createCFGSimplificationPass());
 }
 
-std::string replace_ext(const std::string &origName, const std::string& expectedExt, const std::string& newExt)
+std::string replace_ext(const std::string &origName, 
+			const std::string& expectedExt, 
+			const std::string& newExt)
 {
     if (origName.substr(origName.size() - expectedExt.size()) != expectedExt)
     {
@@ -70,52 +78,37 @@ std::string replace_ext(const std::string &origName, const std::string& expected
 
 static int Compile(const std::string& filename)
 {
-    try
+    std::vector<ExprAST*> ast;
+    Lexer                 l(filename);
+    if (!l.Good())
     {
-	std::vector<ExprAST*> ast;
-	Lexer                 l(filename);
-	Parser                p(l);
-
-	OptimizerInit();
-
-	ast = p.Parse();
-	int e = p.GetErrors();
-	if (e > 0)
-	{
-	    std::cerr << "Errors in parsing: " << e << ". Exiting..." << std::endl;
-	    return 1;
-	}
-	llvm::Module* module = CodeGen(ast);
-	if (!module)
-	{
-	    std::cerr << "Code generation failed..." << std::endl;
-	    return 1;
-	}
-	DumpModule(module);
-	CreateBinary(module, replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
-    }
-    catch(std::exception e)
-    {
-	std::cerr << "Exception: " << e.what() << std::endl;
 	return 1;
     }
-    catch(...)
+    Parser                p(l);
+
+    OptimizerInit();
+
+    ast = p.Parse();
+    int e = p.GetErrors();
+    if (e > 0)
     {
-	std::cerr << "Unknown Exception - this should not happen??? " << std::endl;
+	std::cerr << "Errors in parsing: " << e << ". Exiting..." << std::endl;
 	return 1;
     }
+    llvm::Module* module = CodeGen(ast);
+    if (!module)
+    {
+	std::cerr << "Code generation failed..." << std::endl;
+	return 1;
+    }
+    DumpModule(module);
+    CreateBinary(module, replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
     return 0;
 }
 
 int main(int argc, char** argv)
 {
-    for(int i = 1; i < argc; i++)
-    {
-	int res = Compile(argv[i]);
-	if (res)
-	{
-	    return res;
-	}
-    }
-    return 0;
+    llvm::cl::ParseCommandLineOptions(argc, argv);
+    int res = Compile(InputFilename);
+    return res;
 }

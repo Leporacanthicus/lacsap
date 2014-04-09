@@ -13,8 +13,7 @@ INCLUDES  = `${LLVM_DIR}/bin/llvm-config --includedir`
 CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0
 CXXFLAGS += -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 CXXFLAGS += -I ${INCLUDES}
-# llvm-config --cxxflags gives flags like -fno-exception, which doesn't work for this project.
-#CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
+CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 
 LDFLAGS  = -g -rdynamic
 LDFLAGS += `${LLVM_DIR}/bin/llvm-config --ldflags`

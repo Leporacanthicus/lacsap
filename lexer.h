@@ -8,24 +8,13 @@
 #include <fstream>
 #include <exception>
 
-class LexerException : public std::exception
-{
-public:
-    LexerException(std::string r)
-    {
-	reason = r;
-    }
-    const char* what() const  noexcept { return (std::string("Lexer Exception") + reason).c_str(); }
-
-private:
-    std::string reason;
-};
-
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile) throw(LexerException);
+    Lexer(const std::string& sourceFile);
     Token GetToken();
+
+    bool Good() { return inFile.good(); }
 
 private:
     int NextChar();
@@ -33,6 +22,7 @@ private:
     int PeekChar();
 
     Token NumberToken();
+    Token StringToken();
 
     Location Where() const { return Location(fName, lineNo, column); }
 
@@ -45,7 +35,5 @@ private:
     int           nextChar;
     int           curValid;
 };
-
-bool IsKeyWord(const std::string& name);
 
 #endif

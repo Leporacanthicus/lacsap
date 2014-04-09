@@ -244,7 +244,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	
 	llvm::Value* retVal = builder.CreateCall(f, aSize, "new");
 	
-	VariableExprAST* var = dynamic_cast<VariableExprAST*>(args[0]);
+	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
 	if (!var)
 	{
 	    return ErrorV("Expected a variable expression");
@@ -284,7 +284,7 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     // that we make up here, and a fourth for the "isText" argument. 
 
     // Arg1: address of the filestruct.
-    VariableExprAST* fvar = dynamic_cast<VariableExprAST*>(args[0]);
+    VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
     if (!fvar)
     {
 	return ErrorV("Expected a variable expression");
@@ -336,7 +336,7 @@ static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder,
     VariableExprAST* fvar;
     if (args.size() > 0)
     {
-	fvar = dynamic_cast<VariableExprAST*>(args[0]);
+	fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	if (!fvar)
 	{
 	    return ErrorV("Expected a variable expression");

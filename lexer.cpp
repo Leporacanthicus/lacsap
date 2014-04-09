@@ -6,14 +6,10 @@
 #include <cctype>
 #include <iostream>
 
-Lexer::Lexer(const std::string& sourceFile) throw(LexerException):
+Lexer::Lexer(const std::string& sourceFile) :
     fName(sourceFile), lineNo(1),column(0), curValid(0)
 {
     inFile.open(fName);
-    if (!inFile.good())
-    {
-	throw LexerException(std::string("File ") + fName + " could not be opened...");
-    }
 }
 
 int Lexer::CurChar()
@@ -146,6 +142,38 @@ Token Lexer::NumberToken()
     {
 	return Token(Token::Integer, w, std::stoi(num));
     }
+}
+
+// String or character. 
+// Needs to deal with '' in the middle of string and '''' as a char constant.
+Token Lexer::StringToken()
+{
+    int ch;
+    std::string str;
+    Location w = Where();
+    ch = NextChar();
+    while(true)
+    {
+	if (ch == '\'')
+	{
+	    if (PeekChar() == '\'')
+	    {
+		NextChar();
+	    }
+	    else
+	    {
+		break;
+	    }
+	}
+	str += ch;
+	ch = NextChar();
+    }
+    NextChar();
+    if (str.size() == 1)
+    {
+	return Token(Token::Char, w, str[0]);
+    }
+    return Token(Token::String, w, str);
 }
 
 Token Lexer::GetToken()
@@ -284,22 +312,7 @@ Token Lexer::GetToken()
 
     if (ch == '\'')
     {
-	int len = 0;
-	// TODO: Deal with quoted quotes... 
-	std::string str;
-	ch = NextChar();
-	while (ch != '\'')
-	{
-	    len++;
-	    str += ch;
-	    ch = NextChar();
-	}
-	NextChar();
-	if (len == 1)
-	{
-	    return Token(Token::Char, w, str[0]);
-	}
-	return Token(Token::String, w, str); 
+	return StringToken();
     }
 
     // Identifiers start with alpha characters.
@@ -308,7 +321,8 @@ Token Lexer::GetToken()
 	std::string str; 
 	// Default to the "most likely". 
 	str = static_cast<char>(ch);	
-	while(std::isalnum(ch = NextChar()))
+	// Allow alphanumeric and underscore.
+	while(std::isalnum(ch = NextChar()) || ch == '_')
 	{
 	    str += static_cast<char>(ch);
 	}

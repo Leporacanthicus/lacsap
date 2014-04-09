@@ -363,7 +363,7 @@ llvm::Value* FilePointerExprAST::CodeGen()
 llvm::Value* FilePointerExprAST::Address()
 {
     TRACE();
-    VariableExprAST* vptr = dynamic_cast<VariableExprAST*>(pointer);
+    VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
     llvm::Value* v = vptr->Address();
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
@@ -451,23 +451,23 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return 0;
     }
 
-    llvm::Type::TypeID rty = r->getType()->getTypeID();
-    llvm::Type::TypeID lty = l->getType()->getTypeID();
+    llvm::Type* rty = r->getType();
+    llvm::Type* lty = l->getType();
 
     bool rToFloat = false;
     bool lToFloat = false;
 
     /* Convert right hand side to double if left is double, and right is integer */
-    if (rty == llvm::Type::IntegerTyID)
+    if (rty->isIntegerTy())
     {
-	if (lty == llvm::Type::DoubleTyID || oper.GetToken() == Token::Divide)
+	if (lty->isDoubleTy() || oper.GetToken() == Token::Divide)
 	{
 	    rToFloat = true;
 	}
     }
-    if (lty == llvm::Type::IntegerTyID)
+    if (lty->isIntegerTy())
     {
-	if (rty == llvm::Type::DoubleTyID || oper.GetToken() == Token::Divide)
+	if (rty->isDoubleTy() || oper.GetToken() == Token::Divide)
 	{
 	    lToFloat = true;
 	}
@@ -476,21 +476,21 @@ llvm::Value* BinaryExprAST::CodeGen()
     if (rToFloat)
     {
 	r = builder.CreateSIToFP(r, Types::GetType(Types::Real), "tofp");
-	rty = r->getType()->getTypeID();
+	rty = r->getType();
     }
 
     if (lToFloat)
     {
 	l = builder.CreateSIToFP(l, Types::GetType(Types::Real), "tofp");
-	lty = r->getType()->getTypeID();
+	lty = r->getType();
     }
 
-    if (r->getType() == Types::TypeForSet() && lty == llvm::Type::IntegerTyID)
+    if (rty == Types::TypeForSet() && lty->isIntegerTy())
     {
 	if (oper.GetToken() == Token::In)
 	{
 	    std::vector<llvm::Value*> ind;
-	    AddressableAST* rhsA = dynamic_cast<AddressableAST*>(rhs);
+	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
 	    if (!rhsA)
 	    {
 		return ErrorV("Set value should be addressable!");
@@ -518,7 +518,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return 0;
     }
 
-    if (r->getType() == Types::TypeForSet())
+    if (rty == Types::TypeForSet())
     {
 	llvm::Type* resTy = Types::GetType(Types::Boolean);
 	switch(oper.GetToken())
@@ -556,8 +556,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return ErrorV("Unknown operator on set");
 	}
     }
-    else if (rty == llvm::Type::IntegerTyID)
+    else if (rty->isIntegerTy())
     {
+	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(rty);
+	assert(ity && "Expected to make rty into an integer type!");
+	// In future, we may need further "unsigned" variants... 
+	bool isUnsigned = ity->getBitWidth() == 1;
 	switch(oper.GetToken())
 	{
 	case Token::Plus:
@@ -576,12 +580,28 @@ llvm::Value* BinaryExprAST::CodeGen()
 	case Token::NotEqual:
 	    return builder.CreateICmpNE(l, r, "ne");
 	case Token::LessThan:
+	    if (isUnsigned)
+	    {
+		return builder.CreateICmpULT(l, r, "lt");
+	    }
 	    return builder.CreateICmpSLT(l, r, "lt");
 	case Token::LessOrEqual:
+	    if (isUnsigned)
+	    {
+		return builder.CreateICmpULE(l, r, "le");
+	    }
 	    return builder.CreateICmpSLE(l, r, "le");
 	case Token::GreaterThan:
+	    if (isUnsigned)
+	    {
+		return builder.CreateICmpUGT(l, r, "gt");
+	    }
 	    return builder.CreateICmpSGT(l, r, "gt");
 	case Token::GreaterOrEqual:
+	    if (isUnsigned)
+	    {
+		return builder.CreateICmpUGE(l, r, "ge");
+	    }
 	    return builder.CreateICmpSGE(l, r, "ge");
 
 	case Token::And:
@@ -594,7 +614,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
 	}
     }
-    else if (rty == llvm::Type::DoubleTyID)
+    else if (rty->isDoubleTy())
     {
 	switch(oper.GetToken())
 	{
@@ -702,7 +722,7 @@ llvm::Value* CallExprAST::CodeGen()
 	llvm::Value* v;
 	if (viter->IsRef())
 	{
-	    VariableExprAST* vi = dynamic_cast<VariableExprAST*>(i);
+	    VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
 	    if (!vi)
 	    {
 		return ErrorV("Args declared with 'var' must be a variable!");
@@ -1008,7 +1028,7 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 
     for(auto n : nonLocal)
     {
-	VarDef* v = dynamic_cast<VarDef*>(n.second);
+	VarDef* v = llvm::dyn_cast<VarDef>(n.second);
 	if (v)
 	{
 	    usedVariables.push_back(*v);
@@ -1039,7 +1059,7 @@ void AssignExprAST::DoDump(std::ostream& out) const
 llvm::Value* AssignExprAST::CodeGen()
 {
     TRACE();
-    VariableExprAST* lhsv = dynamic_cast<VariableExprAST*>(lhs);
+    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
 	lhs->Dump(std::cerr);
@@ -1504,7 +1524,7 @@ llvm::Value* WriteAST::CodeGen()
 	}
 	else
 	{
-	    VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(arg.expr);
+	    VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg.expr);
 	    if (!vexpr)
 	    {
 		return ErrorV("Argument for write should be a variable");
@@ -1625,7 +1645,7 @@ llvm::Value* ReadAST::CodeGen()
     {
 	std::vector<llvm::Value*> argsV;
 	argsV.push_back(f);
-	VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(arg);
+	VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg);
 	if (!vexpr)
 	{
 	    return ErrorV("Argument for read/readln should be a variable");
@@ -1744,6 +1764,11 @@ void CaseExprAST::DoDump(std::ostream& out) const
     {
 	l->Dump(out);
     }
+    if (otherwise)
+    {
+	out << "otherwise: ";
+	otherwise->Dump();
+    }
 }
 
 llvm::Value* CaseExprAST::CodeGen()
@@ -1758,11 +1783,23 @@ llvm::Value* CaseExprAST::CodeGen()
 
     llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);    
-
-    llvm::SwitchInst* sw = builder.CreateSwitch(v, afterBB, labels.size());
+    llvm::BasicBlock* defaultBB = afterBB;
+    if (otherwise)
+    {
+	defaultBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "default", theFunction);    
+	
+    }	
+    llvm::SwitchInst* sw = builder.CreateSwitch(v, defaultBB, labels.size());
     for(auto ll : labels)
     {
 	ll->CodeGen(sw, afterBB, ty);
+    }
+
+    if (otherwise)
+    {
+	builder.SetInsertPoint(defaultBB);
+	otherwise->CodeGen();
+	builder.CreateBr(afterBB);
     }
 
     builder.SetInsertPoint(afterBB);
@@ -1825,7 +1862,7 @@ llvm::Value* SetExprAST::Address()
     for(auto v : values)
     {
 	// If we have a "range", then make a loop. 
-	RangeExprAST* r = dynamic_cast<RangeExprAST*>(v);
+	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
 	if (r)
 	{
 	    std::vector<llvm::Value*> ind;

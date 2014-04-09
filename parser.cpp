@@ -12,7 +12,6 @@
 Parser::Parser(Lexer &l) 
     : 	lexer(l), nextTokenValid(false), errCnt(0)
 {
-//    nameStack.NewLevel();
     std::vector<std::string> FalseTrue;
     FalseTrue.push_back("false");
     FalseTrue.push_back("true");
@@ -142,7 +141,7 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     {
 	return 0;
     }
-    TypeDef *typeDef = dynamic_cast<TypeDef*>(def);
+    TypeDef *typeDef = llvm::dyn_cast<TypeDef>(def);
     if (!typeDef)
     {
 	return 0;
@@ -157,7 +156,7 @@ Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
     {
 	return 0;
     }
-    ConstDef *constDef = dynamic_cast<ConstDef*>(def);
+    ConstDef *constDef = llvm::dyn_cast<ConstDef>(def);
     if (!constDef)
     {
 	return 0;
@@ -172,7 +171,7 @@ EnumDef* Parser::GetEnumValue(const std::string& name)
     {
 	return 0;
     }
-    EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
+    EnumDef *enumDef = llvm::dyn_cast<EnumDef>(def);
     if (!enumDef)
     {
 	return 0;
@@ -182,7 +181,7 @@ EnumDef* Parser::GetEnumValue(const std::string& name)
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 {
-    Types::EnumDecl* ed = dynamic_cast<Types::EnumDecl*>(ty);
+    Types::EnumDecl* ed = llvm::dyn_cast<Types::EnumDecl>(ty);
     if (ed)
     {
 	for(auto v : ed->Values())
@@ -401,7 +400,7 @@ void Parser::ParseTypeDef()
 	}
 	if (ty->Type() == Types::PointerIncomplete)
 	{
-	    Types::PointerDecl* pd = dynamic_cast<Types::PointerDecl*>(ty);
+	    Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(ty);
 	    incomplete.push_back(pd);
 	}	    
 	if (!Expect(Token::Semicolon, true))
@@ -732,17 +731,23 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 ExprAST* Parser::ParseUnaryOp()
 {
     assert((CurrentToken().GetToken() == Token::Minus || 
+	    CurrentToken().GetToken() == Token::Plus || 
 	    CurrentToken().GetToken() == Token::Not) && 
 	   "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
 
     NextToken();
-    
+
     ExprAST* rhs = ParsePrimary();
     if (!rhs)
     {
 	return 0;
+    }
+    // unary + = no change, so just return the expression.
+    if (oper.GetToken() == Token::Plus)
+    {
+	return rhs;
     }
     return new UnaryExprAST(oper, rhs);
 }
@@ -759,8 +764,7 @@ ExprAST* Parser::ParseExpression()
 
 VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    Types::ArrayDecl* adecl = 
-	dynamic_cast<Types::ArrayDecl*>(type); 
+    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type); 
     if (!adecl)
     {
 	return ErrorV("Expected variable of array type when using index");
@@ -780,7 +784,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    expr = new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
 	    indices.clear();
 	    type = adecl->SubType();
-	    adecl = dynamic_cast<Types::ArrayDecl*>(type);
+	    adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
 	}
 	if (CurrentToken().GetToken() != Token::RightSquare)
 	{
@@ -812,7 +816,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     {
 	return 0;
     }
-    Types::RecordDecl* rd = dynamic_cast<Types::RecordDecl*>(type);
+    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type);
     std::string name = CurrentToken().GetIdentName();
     int elem = rd->Element(name);
     if (elem < 0)
@@ -863,7 +867,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     NextToken();
     /* TODO: Should we add builtin's to names at global level? */
     NamedObject* def = nameStack.Find(idName);
-    EnumDef *enumDef = dynamic_cast<EnumDef*>(def);
+    EnumDef *enumDef = llvm::dyn_cast<EnumDef>(def);
     if (enumDef)
     {
 	return new IntegerExprAST(enumDef->Value(), enumDef->Type()->LlvmType());
@@ -918,7 +922,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
     }
     // Get past the '(' and fetch the next one. 
-    const FuncDef *funcDef = dynamic_cast<const FuncDef*>(def);
+    const FuncDef *funcDef = llvm::dyn_cast<const FuncDef>(def);
     std::vector<ExprAST* > args;
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
@@ -932,7 +936,12 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    bool isFuncArg = false;
 	    if (funcDef && funcDef->Proto())
 	    {
-		Types::TypeDecl* td = funcDef->Proto()->Args()[argNo].Type();
+		auto funcArgs = funcDef->Proto()->Args();
+		if (argNo >= funcArgs.size())
+		{
+		    return Error("Too many arguments");
+		}
+		Types::TypeDecl* td = funcArgs[argNo].Type();
 		if (td->Type() == Types::Pointer && 
 		    (td->SubType()->Type() == Types::Function ||
 		     td->SubType()->Type() == Types::Procedure))
@@ -982,7 +991,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
     else if (def)
     {
-	const VarDef* varDef = dynamic_cast<const VarDef*>(def);
+	const VarDef* varDef = llvm::dyn_cast<const VarDef>(def);
 	if (!varDef)
 	{
 	    assert(0 && "Expected variable definition!");
@@ -990,7 +999,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
 	if (def->Type()->Type() == Types::Pointer)
 	{
-	    Types::FuncPtrDecl* fp = dynamic_cast<Types::FuncPtrDecl*>(def->Type());
+	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
 	    assert(fp && "Expected function pointer here...");
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(idName, def->Type());
@@ -1277,7 +1286,7 @@ FunctionAST* Parser::ParseDefinition()
     NamedObject*     nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);
-    const FuncDef *fnDef = dynamic_cast<const FuncDef*>(def);
+    const FuncDef *fnDef = llvm::dyn_cast<const FuncDef>(def);
     if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
     {
 	if (!nameStack.Add(name, nmObj))
@@ -1416,7 +1425,7 @@ ExprAST* Parser::ParseIfExpr()
     }
 
     ExprAST* elseExpr = 0;
-    if (CurrentToken().GetToken() != Token::Semicolon)
+    if (CurrentToken().GetToken() != Token::Semicolon && CurrentToken().GetToken() != Token::End)
     {
 	if (Expect(Token::Else, true))
 	{
@@ -1534,14 +1543,17 @@ ExprAST* Parser::ParseCaseExpr()
     std::vector<int> lab;
     bool isFirst = true;
     Token::TokenType prevTT;
+    ExprAST* otherwise = 0;
     do
     {
+	bool isOtherwise = false;
 	if (isFirst)
 	{
 	    prevTT = CurrentToken().GetToken();
 	    isFirst = false;
 	}
-	else if (prevTT != CurrentToken().GetToken())
+	else if (CurrentToken().GetToken() != Token::Otherwise && 
+		 prevTT != CurrentToken().GetToken())
 	{
 	    return Error("Type of case labels must not change type");
 	}
@@ -1566,6 +1578,14 @@ ExprAST* Parser::ParseCaseExpr()
 	    break;
 	}
 
+	case Token::Otherwise:
+	    if (otherwise)
+	    {
+		return Error("Otherwise already used in this case block");
+	    }
+	    isOtherwise = true;
+	    break;
+
 	default:
 	    return Error("Syntax error, expected case label");
 	}
@@ -1573,6 +1593,10 @@ ExprAST* Parser::ParseCaseExpr()
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Comma:
+	    if (isOtherwise)
+	    {
+		return Error("Can't have multiple case labels with otherwise case label");
+	    }
 	    NextToken();
 	    break;
 
@@ -1580,8 +1604,19 @@ ExprAST* Parser::ParseCaseExpr()
 	{
 	    NextToken();
 	    ExprAST* s = ParseStmtOrBlock();
-	    labels.push_back(new LabelExprAST(lab, s));
-	    lab.clear();
+	    if (isOtherwise)
+	    {
+		otherwise = s;
+		if (lab.size())
+		{
+		    return Error("Can't have multiple case labels with otherwise case label");
+		}
+	    }
+	    else
+	    {
+		labels.push_back(new LabelExprAST(lab, s));
+		lab.clear();
+	    }
 	    if (!ExpectSemicolonOrEnd())
 	    {
 		return 0;
@@ -1597,7 +1632,7 @@ ExprAST* Parser::ParseCaseExpr()
     {
 	return 0;
     }
-    return new CaseExprAST(expr, labels);
+    return new CaseExprAST(expr, labels, otherwise);
 }
 
 ExprAST* Parser::ParseWrite()
@@ -1635,7 +1670,7 @@ ExprAST* Parser::ParseWrite()
 	    }
 	    if (args.size() == 0)
 	    {
-		VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(wa.expr);
+		VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr);
 		if (vexpr)
 		{
 		    if (vexpr->Type()->Type() == Types::File)
@@ -1720,7 +1755,7 @@ ExprAST* Parser::ParseRead()
 	    }
 	    if (args.size() == 0)
 	    {
-		VariableExprAST* vexpr = dynamic_cast<VariableExprAST*>(expr);
+		VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr);
 		if (vexpr)
 		{
 		    if (vexpr->Type()->Type() == Types::File)
@@ -1813,6 +1848,7 @@ ExprAST* Parser::ParsePrimary()
 	return ParseRead();
 
     case Token::Minus:
+    case Token::Plus:
     case Token::Not:
 	return ParseUnaryOp();
 

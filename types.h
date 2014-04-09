@@ -52,10 +52,29 @@ public:
     class TypeDecl
     {
     public:
-	TypeDecl(SimpleTypes t)
-	    : type(t), ltype(0)
+	enum TypeKind
+	{
+	    TK_Type,
+	    TK_Array,
+	    TK_Range,
+	    TK_Enum,
+	    TK_Pointer,
+	    TK_Field,
+	    TK_Record,
+	    TK_FuncPtr,
+	    TK_File,
+	    TK_Set,
+	};
+	TypeDecl(TypeKind k, SimpleTypes t)
+	    : kind(k), type(t), ltype(0)
 	{
 	}
+
+	TypeDecl(SimpleTypes t)
+	    : kind(TK_Type), type(t), ltype(0)
+	{
+	}
+
 
 	virtual SimpleTypes Type() const { return type; }
 	virtual ~TypeDecl() { }
@@ -66,7 +85,10 @@ public:
 	llvm::Type* LlvmType();
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	TypeKind getKind() const { return kind; }
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Type; }
     protected:
+	const TypeKind kind;
 	SimpleTypes type;
 	llvm::Type* ltype;
     };
@@ -75,7 +97,7 @@ public:
     {
     public:
 	ArrayDecl(TypeDecl *b, const std::vector<Range*>& r)
-	    : TypeDecl(Array), baseType(b), ranges(r)
+	    : TypeDecl(TK_Array, Array), baseType(b), ranges(r)
 	{
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
@@ -84,6 +106,7 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Array; }
     private:
 	TypeDecl* baseType;
 	std::vector<Range*> ranges;
@@ -93,7 +116,7 @@ public:
     {
     public:
 	RangeDecl(Range *r, SimpleTypes base)
-	    : TypeDecl(SubRange), range(r), baseType(base)
+	    : TypeDecl(TK_Range, SubRange), range(r), baseType(base)
 	{
 	    assert(r && "Range should be specified");
 	}
@@ -103,6 +126,7 @@ public:
 	virtual Range* GetRange() const { return range; }
 	virtual void dump() const;
 	virtual llvm::Type* GetLlvmType() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Range; }
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -124,7 +148,7 @@ public:
     {
     public:
 	EnumDecl(const std::vector<std::string>& nmv, SimpleTypes ty = Integer)
-	    : TypeDecl(Enum), subType(ty)
+	    : TypeDecl(TK_Enum, Enum), subType(ty)
 	{
 	    assert(nmv.size() && "Must have names in the enum type.");
 	    SetValues(nmv);
@@ -137,6 +161,7 @@ public:
 	const EnumValues& Values() const { return values; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Enum; }
     private:
 	EnumValues  values;
 	SimpleTypes subType;
@@ -149,9 +174,9 @@ public:
     {
     public:
 	PointerDecl(const std::string& nm)
-	    : TypeDecl(PointerIncomplete), name(nm), baseType(0) {}
+	    : TypeDecl(TK_Pointer, PointerIncomplete), name(nm), baseType(0) {}
 	PointerDecl(TypeDecl* ty)
-	    : TypeDecl(Pointer), name(""), baseType(ty) {}
+	    : TypeDecl(TK_Pointer, Pointer), name(""), baseType(ty) {}
     public:
 	TypeDecl* SubType() const { return baseType; }
 	const std::string& Name() { return name; }
@@ -164,6 +189,7 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Pointer; }
     private:
 	std::string name;
 	TypeDecl* baseType;
@@ -173,13 +199,14 @@ public:
     {
     public:
 	FieldDecl(const std::string& nm, TypeDecl* ty)
-	    : TypeDecl(Field), name(nm), baseType(ty) {}
+	    : TypeDecl(TK_Field, Field), name(nm), baseType(ty) {}
     public:
 	const std::string& Name() { return name; }
 	TypeDecl* FieldType() const { return baseType; } 
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Field; }
     private:
 	std::string name;
 	TypeDecl*   baseType;
@@ -189,12 +216,13 @@ public:
     {
     public:
 	RecordDecl(const std::vector<FieldDecl>& flds)
-	    : TypeDecl(Record), fields(flds) { };
+	    : TypeDecl(TK_Record, Record), fields(flds) { };
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	int Element(const std::string& name) const;
 	const FieldDecl& GetElement(int n) { return fields[n]; }
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Record; }
     private:
 	std::vector<FieldDecl> fields;
     };
@@ -208,6 +236,7 @@ public:
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	PrototypeAST* Proto() const { return proto; }
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_FuncPtr; }
     private:
 	PrototypeAST* proto;
 	TypeDecl*     baseType;
@@ -222,10 +251,11 @@ public:
 	    Buffer,
 	} FileFields;
 	FileDecl(TypeDecl* ty)
-	    : TypeDecl(File), baseType(ty) {}
+	    : TypeDecl(TK_File, File), baseType(ty) {}
 	virtual TypeDecl* SubType() const { return baseType; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_File; }
     protected:
 	TypeDecl *baseType;
     };
@@ -234,7 +264,7 @@ public:
     {
     public:
 	TextDecl()
-	    : FileDecl(new TypeDecl(Char)) {}
+	    : FileDecl(new TypeDecl(TK_Type, Char)) {}
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
     };
@@ -245,9 +275,10 @@ public:
 	// Must match with "runtime". 
 	enum { MaxSetWords = 16 };
 	SetDecl(Range *r)
-	    : TypeDecl(Set), range(r) {}
+	    : TypeDecl(TK_Set, Set), range(r) {}
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
     private:
 	Range *range;
     };

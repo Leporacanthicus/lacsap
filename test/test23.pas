@@ -1,6 +1,8 @@
 program test;
 var i:integer;
 
+procedure beta(x :integer) ; forward;
+
 procedure alfa(x:integer);
 var i:integer;
 begin
@@ -15,5 +17,5 @@ end;
 
 begin
     alfa(3);
-    writeln(i)
+   writeln(i:1)
 end.

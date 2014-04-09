@@ -1,12 +1,16 @@
 program heapsort;
 
+type
+   arr1000 = array [0..1000] of integer;
+   str1000 = array [0..1000] of char;
+
 var
-    v[1001]:integer;
-    n:integer;
-    i:integer;
-    msg[1001]:char;
-    
-procedure sift(n,k:integer;var v[1001]:integer);
+   v   : arr1000;
+   n   : integer;
+   i   : integer;
+   msg : str1000;
+	     
+procedure sift(n,k:integer;var v:arr1000);
 var
     f,t:integer;
 begin
@@ -23,7 +27,7 @@ begin
     end
 end;
     
-procedure heapsort(n:integer;var v[1001]:integer);
+procedure heapsort(n:integer;var v:arr1000);
 var
     i,t:integer;
 begin
@@ -40,20 +44,7 @@ begin
     end
 end;
     
-procedure strcpy(var dest[1001]:char;src[1001]:char);
-var
-    i:integer;
-begin
-    i:=0;
-    while ord(src[i]) do
-    begin
-	dest[i]:=src[i];
-	i:=succ(i)
-    end;
-    dest[i]:=chr(0)
-end;
-
-function check(n,v[1001]:integer):bool;
+function check(n : integer;  v : arr1000):boolean;
 var
     i:integer;
 begin
@@ -62,15 +53,15 @@ begin
 	if(v[i]>v[i+1])then check:=false
 end;
 
-procedure diagnose(n,v[1001]:integer;var msg[1001]:char);
+procedure diagnose(n : integer; v : arr1000 ;var msg: str1000);
 const
-    ok[1001]:='Heapsort did it''s job well. All numbers are well sorted';
-    notok[1001]:char:='Heapsort failed. The numbers are not well sorted. It''s your idiotic interpreter''s fault!';
+    ok = 'Heapsort did it''s job well. All numbers are well sorted';
+    notok = 'Heapsort failed. The numbers are not well sorted. It''s your idiotic interpreter''s fault!';
 begin
-    if(not check(n,v))then
-	strcpy(msg,notok);
+    if not check(n,v) then
+       writeln(notok)
     else
-	strcpy(msg,ok)
+       writeln(ok)
 end;
 
 begin
@@ -81,5 +72,4 @@ begin
     heapsort(n,v); 
     
     diagnose(n,v,msg);
-    writeln(msg)
 end.

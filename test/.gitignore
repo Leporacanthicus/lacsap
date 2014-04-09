@@ -1,3 +1,4 @@
 *.res
 !expected
 *.dat
+core.*

@@ -8,8 +8,8 @@ var
 
    procedure proc_2;
    begin
-      writeln(i + 2);
-      writeln(j + 2)
+      writeln(i + 2:1);
+      writeln(j + 2:1)
    end; 
 
    procedure proc_2a;
@@ -21,8 +21,8 @@ var
 
 begin
    j := 200;
-   writeln(i + 1);
-   writeln(j + 1);
+   writeln(i + 1:1);
+   writeln(j + 1:1);
    proc_2;
    proc_2a
 end;

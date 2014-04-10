@@ -4,6 +4,7 @@
 #include "namedobject.h"
 #include "stack.h"
 #include "builtin.h"
+#include "options.h"
 #include <iostream>
 #include <cassert>
 
@@ -84,7 +85,10 @@ const Token& Parser::NextToken(const char* file, int line)
     {
 	curToken = lexer.GetToken();
     }
-    curToken.Dump(std::cout, file, line);
+    if (verbosity)
+    {
+	curToken.Dump(std::cout, file, line);
+    }
     return curToken;
 }
 
@@ -99,8 +103,11 @@ const Token& Parser::PeekToken(const char* file, int line)
 	nextTokenValid = true;
 	nextToken = lexer.GetToken();
     }
-    std::cout << "peeking: ";
-    nextToken.Dump(std::cout, file, line);
+    if (verbosity > 1)
+    {
+	std::cout << "peeking: ";
+	nextToken.Dump(std::cout, file, line);
+    }
     return nextToken;
 }
 

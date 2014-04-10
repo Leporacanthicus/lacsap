@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "binary.h"
 #include "constants.h"
+#include "options.h"
 #include <iostream>
 #include <fstream>
 #include <llvm/Bitcode/ReaderWriter.h>
@@ -17,11 +18,13 @@
 static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+int verbosity;
 
 // Command line option definitions.
-llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
+static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
 					 llvm::cl::desc("<input file>"));
-llvm::cl::opt<bool>        Verbose("v", llvm::cl::desc("Enable verbose output"));
+static llvm::cl::opt<int, true>         Verbose("v", llvm::cl::desc("Enable verbose output"), 
+						llvm::cl::location(verbosity));
 
 void DumpModule(llvm::Module* module)
 {
@@ -101,7 +104,10 @@ static int Compile(const std::string& filename)
 	std::cerr << "Code generation failed..." << std::endl;
 	return 1;
     }
-    DumpModule(module);
+    if (verbosity)
+    {
+	DumpModule(module);
+    }
     CreateBinary(module, replace_ext(filename, ".pas", ".o"), replace_ext(filename, ".pas", ""));
     return 0;
 }

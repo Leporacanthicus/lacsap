@@ -17,8 +17,6 @@
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
 
-
-
 class ExprAST
 {
 public:

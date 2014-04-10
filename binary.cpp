@@ -1,4 +1,5 @@
 #include "binary.h"
+#include "options.h"
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetRegistry.h>
@@ -90,6 +91,9 @@ void CreateBinary(llvm::Module *module, const std::string& objname, const std::s
 {
     CreateObject(module, objname);
     std::string cmd = std::string("clang ") + objname + " runtime.o -lm -o " + exename; 
-    std::cerr << "Executing final link command: " << cmd << std::endl;
+    if (verbosity)
+    {
+	std::cerr << "Executing final link command: " << cmd << std::endl;
+    }
     system(cmd.c_str());
 }

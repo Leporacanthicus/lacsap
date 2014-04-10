@@ -21,6 +21,7 @@ std::string replace_ext(const std::string &origName, const std::string& expected
 
 int runCmd(const std::string& cmd)
 {
+    std::cout << "Executing: " << cmd << std::endl;
     return system(cmd.c_str());
 }
 

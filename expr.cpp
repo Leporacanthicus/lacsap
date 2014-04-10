@@ -1,6 +1,7 @@
 #include "expr.h"
 #include "stack.h"
 #include "builtin.h"
+#include "options.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/APSInt.h>
@@ -41,10 +42,16 @@ static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
 #if 1
-#define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
+#define TRACE() do { if (verbosity) trace(__FILE__, __LINE__, __PRETTY_FUNCTION__); } while(0)
 #else
 #define TRACE()
 #endif
+
+
+void trace(const char *file, int line, const char *func)
+{
+    std::cerr << file << ":" << line << "::" << func << std::endl;
+}
 
 
 bool FileInfo(llvm::Value*f, int& recSize, bool& isText)
@@ -959,9 +966,12 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	}
     }
 
-    variables.Dump();
-    mangles.Dump();
-    
+    if (verbosity > 1)
+    {
+	variables.Dump();
+	mangles.Dump();
+    }
+
     builder.SetInsertPoint(bb, ip);
     llvm::Value *block = body->CodeGen();
     if (!block && !body->IsEmpty())
@@ -1011,18 +1021,14 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
     }
 
     // Remove variables inside the function.
-    std::cerr << "locals:" << std::endl;
     for(auto l : localVars)
     {
-	l->dump();
 	nonLocal.erase(l->Name());
     }
 
-    std::cerr << "Globals:" << std::endl;
     // Remove variables that are global.
     for(auto g : globalVars)
     {
-	g->dump();
 	nonLocal.erase(g->Name());
     }
 
@@ -1032,7 +1038,10 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	if (v)
 	{
 	    usedVariables.push_back(*v);
-	    v->dump();
+	    if (verbosity)
+	    {
+		v->dump();
+	    }
 	}
     }
 }

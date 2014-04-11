@@ -815,6 +815,7 @@ void PrototypeAST::DoDump(std::ostream& out) const
 llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
+    assert(namePrefix != "" && "Prefix should never be empty");
     std::vector<llvm::Type*> argTypes;
     for(auto i : args)
     {
@@ -832,13 +833,14 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     llvm::Type* resTy = resultType->LlvmType();
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     std::string actualName;
-    if (namePrefix != "")
+    /* Don't mangle our 'main' functions name, as we call that from C */
+    if (name == "__PascalMain")
     {
-	actualName = namePrefix + "." + name;
+	actualName = name;
     }
     else
     {
-	actualName = name;
+	actualName = namePrefix + "." + name;
     }
 
     if (!mangles.FindTopLevel(name))
@@ -866,7 +868,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 
 llvm::Function* PrototypeAST::CodeGen()
 {
-    return CodeGen("");
+    return CodeGen("P");
 }
 
 void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
@@ -922,6 +924,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
     VarStackWrapper w(variables);
     TRACE();
+    assert(namePrefix != "" && "Prefix should not be empty");
     llvm::Function* theFunction = proto->CodeGen(namePrefix);
     if (!theFunction)
     {
@@ -999,7 +1002,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
 llvm::Function* FunctionAST::CodeGen()
 {
-    return CodeGen("");
+    return CodeGen("P");
 }
 
 void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed, 

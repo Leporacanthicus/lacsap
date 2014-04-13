@@ -25,7 +25,7 @@ public:
 	// Values of different types
 	Integer,
 	Real,
-	String,
+	StringLiteral,
 	Char,
 	Boolean,
 
@@ -133,7 +133,7 @@ public:
 
     std::string GetStrVal() const 
     { 
-	assert(type == Token::String && "Request for string from wrong type???");
+	assert(type == Token::StringLiteral && "Request for string from wrong type???");
 	return strVal; 
     }
 

@@ -24,7 +24,7 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
     if (where.to_string() != ":0:0")
     {
 	assert(t != Token::Identifier && 
-	       t != Token::String &&
+	       t != Token::StringLiteral &&
 	       t != Token::Integer && 
 	       t != Token::Real);
     }
@@ -32,9 +32,9 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
 
 Token::Token(TokenType t, const Location& w, const std::string& str): type(t), where(w), strVal(str)
 {
-    assert(t ==  Token::Identifier || Token::String &&
+    assert(t ==  Token::Identifier || Token::StringLiteral &&
 	   "Invalid token for string argument");
-    assert((t != Token::String || str != "") && "String should not be empty for identifier");
+    assert((t != Token::StringLiteral || str != "") && "String should not be empty for identifier");
 }
 
 Token::Token(TokenType t, const Location& w, int v) : type(t), where(w), intVal(v)
@@ -68,7 +68,7 @@ void Token::Dump(std::ostream& out, const char* file, int line) const
 	out << strVal << " ";
 	break;
 
-    case Token::String:
+    case Token::StringLiteral:
 	out << "'" << strVal << "' ";
 	break;
 
@@ -152,7 +152,7 @@ const TokenEntry tokenTable[] =
     { Token::Real,          false, -1, "real" },
     { Token::Boolean,       false, -1, "boolean" },
     { Token::Char,          false, -1, "char" },
-    { Token::String,        false, -1, "string" },
+    { Token::StringLiteral, false, -1, "string" },
     { Token::Char,          false, -1, "char" },
     { Token::LeftParen,     false, -1, "(" },
     { Token::RightParen,    false, -1, ")" },

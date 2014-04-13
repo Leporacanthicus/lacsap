@@ -173,7 +173,7 @@ Token Lexer::StringToken()
     {
 	return Token(Token::Char, w, str[0]);
     }
-    return Token(Token::String, w, str);
+    return Token(Token::StringLiteral, w, str);
 }
 
 Token Lexer::GetToken()

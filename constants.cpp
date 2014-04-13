@@ -22,5 +22,5 @@ Token Constants::BoolConstDecl::Translate()
 
 Token Constants::StringConstDecl::Translate()
 {
-    return Token(Token::String, loc, value);
+    return Token(Token::StringLiteral, loc, value);
 }

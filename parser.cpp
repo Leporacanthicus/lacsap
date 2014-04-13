@@ -329,7 +329,7 @@ void Parser::ParseConstDef()
 	Location loc = CurrentToken().Loc();
 	switch(CurrentToken().GetToken())
 	{
-	case Token::String:
+	case Token::StringLiteral:
 	    cd = new Constants:: StringConstDecl(loc, CurrentToken().GetStrVal());
 	    break;
 
@@ -1820,7 +1820,7 @@ ExprAST* Parser::ParsePrimary()
     case Token::Char:
 	return ParseCharExpr(token);
 
-    case Token::String:
+    case Token::StringLiteral:
 	return ParseStringExpr(token);
 
     case Token::LeftParen:

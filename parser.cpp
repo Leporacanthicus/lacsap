@@ -627,6 +627,45 @@ Types::SetDecl* Parser::ParseSetDecl()
     return new Types::SetDecl(r);
 }
 
+Types::StringDecl* Parser::ParseStringDecl()
+{
+    if (!Expect(Token::String, true))
+    {
+	return 0;
+    }
+
+    unsigned size = 255;
+
+    if (CurrentToken().GetToken() == Token::LeftSquare)
+    {
+	NextToken();
+	Token token = CurrentToken();
+	if (token.GetToken() == Token::Identifier)
+	{
+	    Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
+	    if (cd)
+	    {
+		token = cd->Translate();
+	    }
+	}
+
+	if (token.GetToken() != Token::Integer)
+	{
+	    Error("Expected integer value!");
+	    return 0;
+	}
+
+	size = token.GetIntVal();
+	
+	NextToken();
+	if (!Expect(Token::RightSquare, true))
+	{
+	    return 0;
+	}
+    }
+    return new Types::StringDecl(size);
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetToken();
@@ -665,6 +704,10 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::Uparrow:
 	return ParsePointerType();
+
+    case Token::String:
+	return ParseStringDecl();
+	break;
 
     default:
 	return ErrorT("Can't understand type");

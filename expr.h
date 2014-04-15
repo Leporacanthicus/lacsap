@@ -117,6 +117,7 @@ public:
 	: ExprAST(EK_StringExpr), val(v) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
+    const std::string& Str() const { return val; }
     static bool classof(const ExprAST *e) { return e->getKind() == EK_StringExpr; }
 private:
     std::string val;
@@ -315,6 +316,7 @@ public:
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_AssignExpr; }
 private:
+    llvm::Value* AssignStr();
     ExprAST* lhs, *rhs;
 };
 

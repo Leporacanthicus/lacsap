@@ -1068,14 +1068,69 @@ void AssignExprAST::DoDump(std::ostream& out) const
     rhs->Dump(out);
 }
 
-llvm::Value* AssignExprAST::CodeGen()
+llvm::Value* AssignExprAST::AssignStr()
 {
     TRACE();
+    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+    assert(lhsv && "Expect variable in lhs");
+    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
+    assert(sty && "Expect  string type in lhsv->Type()");
+
+    llvm::Value *dest = lhsv->Address();
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(0));
+    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
+    
+    ind[1] = MakeIntegerConstant(1);
+    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
+
+    if (llvm::isa<CharExprAST>(rhs))
+    {
+	builder.CreateStore(MakeCharConstant(1), dest1);
+	return builder.CreateStore(rhs->CodeGen(), dest2);
+    }
+    else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    {
+	std::string func = "llvm.memcpy.p0i8.p0i8.i32";
+	std::vector<llvm::Type*> argTypes;
+	llvm::Type* ty = Types::GetVoidPtrType();
+	llvm::Type* resTy = Types::GetType(Types::Void);
+	argTypes.push_back(ty);
+	argTypes.push_back(ty);
+	argTypes.push_back(Types::GetType(Types::Integer));
+	argTypes.push_back(Types::GetType(Types::Integer));
+	argTypes.push_back(Types::GetType(Types::Boolean));
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+	llvm::Value* v = srhs->CodeGen();
+	builder.CreateStore(MakeCharConstant(srhs->Str().size()), dest1);
+    
+
+	return builder.CreateCall5(f, dest2, v, MakeIntegerConstant(srhs->Str().size()), 
+				   MakeIntegerConstant(1), MakeBooleanConstant(false));
+    }
+    
+    return 0;
+}
+
+llvm::Value* AssignExprAST::CodeGen()
+{
+    TRACE();    
+
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
 	lhs->Dump(std::cerr);
 	return ErrorV("Left hand side of assignment must be a variable");
+    }
+
+    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
+    if (sty)
+    {
+	return AssignStr(); 
     }
     
     llvm::Value* v = rhs->CodeGen();
@@ -1084,19 +1139,20 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
     }
-    if (!v) 
+    if (!v)
     {
 	return ErrorV("Could not produce expression for assignment");
     }
     llvm::Type::TypeID lty = dest->getType()->getContainedType(0)->getTypeID();
     llvm::Type::TypeID rty = v->getType()->getTypeID();
 
-    if (rty == llvm::Type::IntegerTyID  &&
+    if (rty == llvm::Type::IntegerTyID &&
 	lty == llvm::Type::DoubleTyID)
     {
 	v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
 	rty = v->getType()->getTypeID();
-    }	
+    }
+
     assert(rty == lty && 
 	   "Types must be the same in assignment.");
     

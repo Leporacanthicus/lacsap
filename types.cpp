@@ -107,6 +107,8 @@ static const char* TypeToStr(Types::SimpleTypes t)
 	return "Field";
     case Types::File:
 	return "File";
+    case Types::String:
+	return "String";
     }
 }
 

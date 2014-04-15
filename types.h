@@ -28,6 +28,7 @@ public:
 	Void,
 	Field,
 	File,
+	String,
     };
 
     /* Range is either created by the user, or calculated on basetype */
@@ -56,6 +57,8 @@ public:
 	{
 	    TK_Type,
 	    TK_Array,
+	    TK_String,
+	    TK_LastArray,
 	    TK_Range,
 	    TK_Enum,
 	    TK_Pointer,
@@ -96,8 +99,13 @@ public:
     class ArrayDecl : public TypeDecl
     {
     public:
-	ArrayDecl(TypeDecl *b, const std::vector<Range*>& r)
+	ArrayDecl(TypeDecl *b, const std::vector<Range*>& r) 
 	    : TypeDecl(TK_Array, Array), baseType(b), ranges(r)
+	{
+	    assert(r.size() > 0 && "Empty range not allowed");
+	}
+	ArrayDecl(TypeKind tk, TypeDecl *b, const std::vector<Range*>& r)
+	    : TypeDecl(tk,  Array), baseType(b), ranges(r)
 	{
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
@@ -106,7 +114,7 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
-	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Array; }
+	static bool classof(const TypeDecl *e) { return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray; }
     private:
 	TypeDecl* baseType;
 	std::vector<Range*> ranges;
@@ -281,6 +289,17 @@ public:
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
     private:
 	Range *range;
+    };
+
+    class StringDecl : public ArrayDecl
+    {
+    public:
+	StringDecl(unsigned size)
+	    : ArrayDecl(TK_String, new TypeDecl(Char), std::vector<Range*>(1, new Range(0, size)))
+	{
+	    assert(size > 0 && "Zero size not allowed");
+	}
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_String; }
     };
 
     static llvm::Type* GetType(SimpleTypes type);

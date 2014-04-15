@@ -40,6 +40,7 @@ public:
 	Const,
 	File,
 	Set,
+	String,
 
 	// Symbols and such
 	LeftParen,

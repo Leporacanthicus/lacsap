@@ -11,9 +11,9 @@ LLVM_DIR = /usr/local/llvm-debug
 CFLAGS    = -g -Wall -Werror -Wextra -std=c99
 INCLUDES  = `${LLVM_DIR}/bin/llvm-config --includedir`
 CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0
-CXXFLAGS += -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 CXXFLAGS += -I ${INCLUDES}
 CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
+#CXX_EXTRA = --analyze
 
 LDFLAGS  = -g -rdynamic
 LDFLAGS += `${LLVM_DIR}/bin/llvm-config --ldflags`
@@ -25,6 +25,9 @@ OTHERLIBS = -lpthread -ldl -lcurses
 LIBS = ${LLVMLIBS} ${OTHERLIBS}
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
+
+.cpp.o: 
+	${CXX} ${CXXFLAGS} ${CXX_EXTRA} -c -o $@ $<
 
 lacsap: ${OBJECTS} .depends
 	${LD} ${LDFLAGS} -o $@ ${OBJECTS} ${LIBS}

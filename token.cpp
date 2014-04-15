@@ -128,6 +128,7 @@ const TokenEntry tokenTable[] =
     { Token::Record,        true,  -1, "record" },
     { Token::Type,          true,  -1, "type" },
     { Token::File,          true,  -1, "file" },
+    { Token::String,        true,  -1, "string" },
     { Token::Set,           true,  -1, "set" },
     { Token::Forward,       true,  -1, "forward" },
     { Token::Const,         true,  -1, "const" },

@@ -1233,7 +1233,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 		if (CurrentToken().GetToken() == Token::Colon)
 		{
 		    NextToken();
-		    Types::TypeDecl* type = ParseSimpleType();
+		    Types::TypeDecl* type = ParseType();
 		    for(auto n : names)
 		    {
 			VarDef v(n, type, isRef);

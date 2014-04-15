@@ -581,6 +581,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateSDiv(l, r, "divtmp");
 	case Token::Mod:
 	    return builder.CreateSRem(l, r, "modtmp");
+	case Token::Shr:
+	    return builder.CreateLShr(l, r, "shrtmp");
+	case Token::Shl:
+	    return builder.CreateShl(l, r, "shltmp");
+	case Token::Xor:
+	    return builder.CreateXor(l, r, "xortmp");
 
 	case Token::Equal:
 	    return builder.CreateICmpEQ(l, r, "eq");
@@ -1186,13 +1192,9 @@ llvm::Value* IfExprAST::CodeGen()
 	return 0;
     }
 
-    if (condV->getType()->getTypeID() ==  llvm::Type::IntegerTyID)
+    if (condV->getType() !=  Types::GetType(Types::Boolean))
     {
-	condV = builder.CreateICmpNE(condV, MakeBooleanConstant(0), "ifcond");
-    }
-    else
-    {
-	assert(0 && "Only integer expressions allowed in if-statement");
+	assert(0 && "Only boolean expressions allowed in if-statement");
     }
     llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "then", theFunction);

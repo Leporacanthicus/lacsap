@@ -20,11 +20,23 @@ llvm::FunctionPassManager* fpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 int verbosity;
 
+enum OptLevel
+{
+    g,
+    O1
+};
+
 // Command line option definitions.
 static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
 					 llvm::cl::desc("<input file>"));
 static llvm::cl::opt<int, true>         Verbose("v", llvm::cl::desc("Enable verbose output"), 
 						llvm::cl::location(verbosity));
+static llvm::cl::opt<OptLevel> OptimizationLevel(llvm::cl::desc("Choose optimization level:"),
+						llvm::cl::values(
+						    clEnumVal(g , "No optimizations, enable debugging"),
+						    clEnumVal(O1, "Enable trivial optimizations"),
+						  clEnumValEnd));
+
 
 void DumpModule(llvm::Module* module)
 {
@@ -52,18 +64,21 @@ void OptimizerInit()
 
     llvm::InitializeNativeTarget();
 
-    // Promote allocas to registers.
-    fpm->add(llvm::createPromoteMemoryToRegisterPass());
-    // Provide basic AliasAnalysis support for GVN.
-    fpm->add(llvm::createBasicAliasAnalysisPass());
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
-    fpm->add(llvm::createInstructionCombiningPass());
-    // Reassociate expressions.
-    fpm->add(llvm::createReassociatePass());
-    // Eliminate Common SubExpressions.
-    fpm->add(llvm::createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
-    fpm->add(llvm::createCFGSimplificationPass());
+    if (OptimizationLevel > g)
+    {
+	// Promote allocas to registers.
+	fpm->add(llvm::createPromoteMemoryToRegisterPass());
+	// Provide basic AliasAnalysis support for GVN.
+	fpm->add(llvm::createBasicAliasAnalysisPass());
+	// Do simple "peephole" optimizations and bit-twiddling optzns.
+	fpm->add(llvm::createInstructionCombiningPass());
+	// Reassociate expressions.
+	fpm->add(llvm::createReassociatePass());
+	// Eliminate Common SubExpressions.
+	fpm->add(llvm::createGVNPass());
+	// Simplify the control flow graph (deleting unreachable blocks, etc).
+	fpm->add(llvm::createCFGSimplificationPass());
+    }
 }
 
 std::string replace_ext(const std::string &origName, 

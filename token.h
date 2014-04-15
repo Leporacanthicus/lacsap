@@ -66,6 +66,9 @@ public:
 	Uparrow,
 	Div,
 	Mod,
+	Xor,
+	Shr,
+	Shl,
 	In,
 
 	// Keywords

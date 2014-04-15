@@ -60,7 +60,13 @@ Token Lexer::NumberToken()
     int ch = CurChar();
     Location w = Where();
     std::string num;
+    int base = 10;
 
+    if (ch == '$')
+    {
+	base = 16;
+	ch = NextChar();
+    }
     num = static_cast<char>(ch);
     
     enum State
@@ -77,9 +83,12 @@ Token Lexer::NumberToken()
 	switch(state)
 	{
 	case Intpart:
-	    while(isdigit(ch = NextChar()))
+	    ch = NextChar();
+	    while((base == 10 && isdigit(ch)) ||
+		  (base == 16 && isxdigit(ch)))
 	    {
 		num += ch;
+		ch = NextChar();
 	    }
 	    break;
 	    
@@ -120,7 +129,8 @@ Token Lexer::NumberToken()
 	    break;
 	}
 
-	if (ch == '.' && state != Fraction)
+	    
+	if (ch == '.' && state != Fraction && base != 16)
 	{
 	    state = Fraction;
 	}
@@ -140,7 +150,7 @@ Token Lexer::NumberToken()
     }
     else
     {
-	return Token(Token::Integer, w, std::stoi(num));
+	return Token(Token::Integer, w, (int)std::stoul(num, 0, base));
     }
 }
 
@@ -339,7 +349,7 @@ Token Lexer::GetToken()
     }
 
     // Digit, so a number. Either "real" or "integer".
-    if (std::isdigit(ch))
+    if (std::isdigit(ch) || (ch == '$' && std::isxdigit(PeekChar())))
     {
 	return NumberToken();
     }

@@ -39,7 +39,7 @@ class TestCase
 public:
     TestCase(const std::string& nm, const std::string& src, const std::string& arg);
     // Compile, Run and Result functions return false on "failure", true on "good"
-    virtual bool Compile();
+    virtual bool Compile(const std::string& options);
     virtual bool Run();
     virtual bool Result();
     std::string Name() const;
@@ -54,9 +54,9 @@ TestCase::TestCase(const std::string& nm, const std::string& src, const std::str
 {
 }
 
-bool TestCase::Compile()
+bool TestCase::Compile(const std::string& options)
 {
-    if (runCmd(compiler + " " + source) == 0)
+    if (runCmd(compiler + " " + options + " " + source) == 0)
     {
 	return true;
     }
@@ -213,22 +213,17 @@ struct
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
     { "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
 };
-	
 
-int main()
+
+
+void runTestCases(const std::vector<TestCase*>& tc, 
+		  TestResult& res,
+		  const std::string& options)
 {
-    std::vector<TestCase*> tc; 
-    TestResult res;
-
-    for(auto t : testCaseList)
-    {
-	tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
-    }
-
     for(auto t : tc)
     {
 	res.RegisterCase(t);
-	if (!t->Compile())
+	if (!t->Compile(options))
 	{
 	    res.RegisterFail(t, "compile");
 	}
@@ -251,6 +246,21 @@ int main()
 	    }
 	}
     }
+}
+	
+
+int main()
+{
+    std::vector<TestCase*> tc; 
+    TestResult res;
+
+    for(auto t : testCaseList)
+    {
+	tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
+    }
+
+    runTestCases(tc, res, "-O0");
+    runTestCases(tc, res, "-O1");
     res.Report();
 }
 

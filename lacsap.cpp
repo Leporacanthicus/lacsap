@@ -22,7 +22,7 @@ int verbosity;
 
 enum OptLevel
 {
-    g,
+    O0,
     O1
 };
 
@@ -33,7 +33,7 @@ static llvm::cl::opt<int, true>         Verbose("v", llvm::cl::desc("Enable verb
 						llvm::cl::location(verbosity));
 static llvm::cl::opt<OptLevel> OptimizationLevel(llvm::cl::desc("Choose optimization level:"),
 						llvm::cl::values(
-						    clEnumVal(g , "No optimizations, enable debugging"),
+						    clEnumVal(O0, "No optimizations"),
 						    clEnumVal(O1, "Enable trivial optimizations"),
 						  clEnumValEnd));
 
@@ -64,7 +64,7 @@ void OptimizerInit()
 
     llvm::InitializeNativeTarget();
 
-    if (OptimizationLevel > g)
+    if (OptimizationLevel > O0)
     {
 	// Promote allocas to registers.
 	fpm->add(llvm::createPromoteMemoryToRegisterPass());

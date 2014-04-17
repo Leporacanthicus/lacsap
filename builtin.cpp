@@ -3,6 +3,8 @@
 
 #include <llvm/IR/DataLayout.h>
 
+extern llvm::Module* theModule;
+
 typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
 
 struct BuiltinFunction

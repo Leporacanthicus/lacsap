@@ -261,6 +261,7 @@ int main()
 
     runTestCases(tc, res, "-O0");
     runTestCases(tc, res, "-O1");
+    runTestCases(tc, res, "-O2");
     res.Report();
 }
 

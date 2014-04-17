@@ -5,25 +5,28 @@
 #include "options.h"
 #include <iostream>
 #include <fstream>
-#include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/PassManager.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/IPO.h>
 #include <llvm/Support/CommandLine.h>
 
 
 static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
+llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 int verbosity;
 
 enum OptLevel
 {
     O0,
-    O1
+    O1,
+    O2,
 };
 
 // Command line option definitions.
@@ -35,6 +38,7 @@ static llvm::cl::opt<OptLevel> OptimizationLevel(llvm::cl::desc("Choose optimiza
 						llvm::cl::values(
 						    clEnumVal(O0, "No optimizations"),
 						    clEnumVal(O1, "Enable trivial optimizations"),
+						    clEnumVal(O2, "Enable more optimizations"),
 						  clEnumValEnd));
 
 
@@ -61,6 +65,7 @@ llvm::Module* CodeGen(std::vector<ExprAST*> ast)
 void OptimizerInit()
 {
     fpm = new llvm::FunctionPassManager(theModule);
+    mpm = new llvm::PassManager();
 
     llvm::InitializeNativeTarget();
 
@@ -78,6 +83,21 @@ void OptimizerInit()
 	fpm->add(llvm::createGVNPass());
 	// Simplify the control flow graph (deleting unreachable blocks, etc).
 	fpm->add(llvm::createCFGSimplificationPass());
+        // Memory copying opts. 
+	fpm->add(llvm::createMemCpyOptPass());
+	// Merge constants.
+	mpm->add(llvm::createConstantMergePass());
+	// dead code removal:
+	fpm->add(llvm::createDeadCodeEliminationPass());
+	if (OptimizationLevel > O1)
+	{
+	    // Inline functions. 
+	    mpm->add(llvm::createFunctionInliningPass());
+	    // Thread jumps.
+	    fpm->add(llvm::createJumpThreadingPass());
+	    // Loop strength reduce.
+	    fpm->add(llvm::createLoopStrengthReducePass());
+	}
     }
 }
 
@@ -87,6 +107,7 @@ std::string replace_ext(const std::string &origName,
 {
     if (origName.substr(origName.size() - expectedExt.size()) != expectedExt)
     {
+
 	std::cerr << "Could not find extension..." << std::endl;
 	exit(1);
 	return "";
@@ -102,7 +123,7 @@ static int Compile(const std::string& filename)
     {
 	return 1;
     }
-    Parser                p(l);
+    Parser p(l);
 
     OptimizerInit();
 
@@ -119,6 +140,7 @@ static int Compile(const std::string& filename)
 	std::cerr << "Code generation failed..." << std::endl;
 	return 1;
     }
+    mpm->run(*module);
     if (verbosity)
     {
 	DumpModule(module);

@@ -16,6 +16,9 @@
 #include <sstream>
 #include <map>
 
+extern llvm::FunctionPassManager* fpm;
+extern llvm::Module* theModule;
+
 typedef Stack<llvm::Value *> VarStack;
 typedef StackWrapper<llvm::Value *> VarStackWrapper;
 

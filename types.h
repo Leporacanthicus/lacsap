@@ -18,7 +18,7 @@ public:
 	Boolean,
 	Array,
 	Function,
-	Procedure,    // Do we need this?
+	Procedure,
 	Record,
         Set,
 	SubRange,

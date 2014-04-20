@@ -212,7 +212,6 @@ llvm::Value* CharExprAST::CodeGen()
     return v;
 }
 
-
 void VariableExprAST::DoDump(std::ostream& out) const
 { 
     out << "Variable: " << name;
@@ -408,28 +407,55 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->Dump(out); 
 }
 
-static llvm::Value* CallSetFunc(const std::string& name, 
-				llvm::Value* lhs, 
-				llvm::Value* rhs, 
-				llvm::Type *resTy)
+llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool retIsBool)
 {
     std::string func = std::string("__Set") + name;
     std::vector<llvm::Type*> argTypes;
-    
     llvm::Type* ty = Types::TypeForSet()->LlvmType();
-    if (!ty)
+
+    assert(ty && "Expect to get a type from Types::TypeForSet");
+
+    llvm::Type* resTy;
+    if (retIsBool)
     {
-	return 0;
+	resTy = Types::GetType(Types::Boolean);
     }
-    llvm::Value* rV = CreateTempAlloca(ty);
-    llvm::Value* lV = CreateTempAlloca(ty);
+    else
+    {
+	resTy = ty;
+    }
+
+    llvm::Value* rV = 0;
+    AddressableAST* ra = llvm::dyn_cast<AddressableAST>(rhs);
+    if (ra)
+    {
+	rV = ra->Address();
+	assert(rV && "Expect address to be non-zero");
+    }
+    else
+    {
+	rV = CreateTempAlloca(ty);
+	builder.CreateStore(rhs->CodeGen(), rV);
+	assert(rV && "Expect address to be non-zero");
+    }
+    llvm::Value* lV = 0;
+    AddressableAST* la = llvm::dyn_cast<AddressableAST>(lhs);
+    if (la)
+    {
+	lV = la->Address();
+	assert(lV && "Expect address to be non-zero");
+    }
+    else
+    {
+	lV = CreateTempAlloca(ty);
+	builder.CreateStore(lhs->CodeGen(), lV);
+	assert(lV && "Expect address to be non-zero");
+    }
+	
     if (!rV || !lV)
     {
 	return 0;
     }
-
-    builder.CreateStore(lhs, lV);
-    builder.CreateStore(rhs, rV);
 
     llvm::Type* pty = llvm::PointerType::getUnqual(ty);
     argTypes.push_back(pty);
@@ -455,6 +481,68 @@ llvm::Value* BinaryExprAST::CodeGen()
 	assert(0 && "Huh? Both sides of expression should have type");
 	return ErrorV("One or both sides of binary expression does not have a type...");
     }
+
+    if (llvm::isa<Types::SetDecl>(rhs->Type()))
+    {
+	if (lhs->Type()->isIntegral() &&
+	    oper.GetToken() == Token::In)
+	{
+	    llvm::Value* l = lhs->CodeGen();
+	    std::vector<llvm::Value*> ind;
+	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
+	    if (!rhsA)
+	    {
+		return ErrorV("Set value should be addressable!");
+	    }
+	    llvm::Value* setV = rhsA->Address();
+	    l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
+	    llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(5));
+	    llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(31));
+	    ind.push_back(MakeIntegerConstant(0));
+	    ind.push_back(index);
+	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
+	    
+	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bit = builder.CreateLShr(bitset, offset);
+	    return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
+	}
+	else if (llvm::isa<Types::SetDecl>(lhs->Type()))
+	{
+	    switch(oper.GetToken())
+	    {
+	    case Token::Minus:
+		return CallSetFunc("Diff", false);
+		
+	    case Token::Plus:
+		return CallSetFunc("Union", false);
+		
+	    case Token::Multiply:
+		return CallSetFunc("Intersect", false);
+	    
+	    case Token::Equal:
+		return CallSetFunc("Equal", true);
+
+	    case Token::NotEqual:
+		return builder.CreateNot(CallSetFunc("Equal", true), "notEqual");
+
+	    case Token::LessOrEqual:
+		return CallSetFunc("Contains", true);
+
+	    case Token::GreaterOrEqual:
+		// Note reverse order to avoid having to write 
+		// another function
+		return CallSetFunc("Contains", true);
+
+	    default:
+		return ErrorV("Unknown operator on set");
+	    }
+	}
+	else
+	{
+	    return ErrorV("Invalid arguments in set operation");
+	}
+    }
+
     llvm::Value *l = lhs->CodeGen();
     llvm::Value *r = rhs->CodeGen();
     
@@ -497,29 +585,6 @@ llvm::Value* BinaryExprAST::CodeGen()
 	lty = r->getType();
     }
 
-    if (rty == Types::TypeForSet()->LlvmType() && lty->isIntegerTy())
-    {
-	if (oper.GetToken() == Token::In)
-	{
-	    std::vector<llvm::Value*> ind;
-	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
-	    if (!rhsA)
-	    {
-		return ErrorV("Set value should be addressable!");
-	    }
-	    llvm::Value* setV = rhsA->Address();
-	    l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
-	    llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(5));
-	    llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(31));
-	    ind.push_back(MakeIntegerConstant(0));
-	    ind.push_back(index);
-	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
-
-	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
-	    llvm::Value* bit = builder.CreateLShr(bitset, offset);
-	    return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
-	}
-    }
 
     if (rty != lty)
     {
@@ -530,45 +595,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return 0;
     }
 
-    if (rty == Types::TypeForSet()->LlvmType())
-    {
-	llvm::Type* resTy = Types::GetType(Types::Boolean);
-	switch(oper.GetToken())
-	{
-	case Token::Minus:
-	    resTy = Types::TypeForSet()->LlvmType();
-	    return CallSetFunc("Diff", l, r, resTy);
-
-	case Token::Plus:
-	    resTy = Types::TypeForSet()->LlvmType();
-	    return CallSetFunc("Union", l, r, resTy);
-	    
-	case Token::Multiply:
-	    resTy = Types::TypeForSet()->LlvmType();
-	    return CallSetFunc("Intersect", l, r, resTy);
-	    
-	case Token::Equal:
-	    return CallSetFunc("Equal", l, r, resTy);
-
-	case Token::NotEqual:
-	{
-	    llvm::Value *res = CallSetFunc("Equal", l, r, resTy);
-	    return builder.CreateNot(res, "notEqual");
-	}
-
-	case Token::LessOrEqual:
-	    return CallSetFunc("Contains", l, r, resTy);
-
-	case Token::GreaterOrEqual:
-	    // Note reverse order to avoid having to write 
-	    // another function
-	    return CallSetFunc("Contains", r, l, resTy);
-
-	default:
-	    return ErrorV("Unknown operator on set");
-	}
-    }
-    else if (rty->isIntegerTy())
+    if (rty->isIntegerTy())
     {
 	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(rty);
 	assert(ity && "Expected to make rty into an integer type!");

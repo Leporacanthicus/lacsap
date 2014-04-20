@@ -6,8 +6,9 @@ Type
 Procedure PrintDays(W : Days);  
 
 Var  
-  D	 : Day;
+   D	 : Day;
    first : boolean;
+   
 begin
    first := true;
    write('[');

@@ -7,6 +7,14 @@
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
+
+/* Static variables in Types. */
+
+Types::TypeDecl* Types::voidType = 0;
+Types::TypeDecl* Types::setType = 0;
+
+
+
 llvm::Type* ErrorT(const std::string& msg)
 {
     std::cerr << msg << std::endl;
@@ -269,7 +277,7 @@ void Types::FuncPtrDecl::dump() const
 
 llvm::Type* Types::FuncPtrDecl::GetLlvmType() const
 {
-    llvm::Type* resty = proto->ResultType()->LlvmType();
+    llvm::Type* resty = proto->Type()->LlvmType();
     std::vector<llvm::Type*> argTys;
     for(auto v : proto->Args())
     {
@@ -283,7 +291,7 @@ Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
     : TypeDecl(Pointer), proto(func) 
 {
     Types::SimpleTypes t = Types::Function;
-    if (proto->ResultType()->Type() == Types::Void)
+    if (proto->Type()->Type() == Types::Void)
     {
 	t = Types::Procedure;
     }
@@ -343,21 +351,22 @@ void Types::SetDecl::dump() const
     range->dump();
 }
 
-llvm::Type* Types::TypeForSet()
+Types::TypeDecl* Types::TypeForSet()
 {
-    static llvm::Type *ty;
-    if (!ty)
+    if (!setType)
     {
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(Types::Integer));
-	size_t nelems = SetDecl::MaxSetWords;
-	ty = llvm::ArrayType::get(ity, nelems);
+	Types::Range *r = new Types::Range(0,32 * Types::SetDecl::MaxSetWords);
+	setType = new Types::SetDecl(r);
     }
-    return ty;
+    return setType;
 }
 
 llvm::Type* Types::SetDecl::GetLlvmType() const
 {
-    return TypeForSet();
+    llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(Types::Integer));
+    size_t nelems = MaxSetWords;
+    llvm::Type* ty = llvm::ArrayType::get(ity, nelems);
+    return ty;
 }
 
 // Void pointer is not a "pointer to void", but a "pointer to Int8". 
@@ -365,4 +374,14 @@ llvm::Type* Types::GetVoidPtrType()
 {
     llvm::Type* base = llvm::IntegerType::getInt8Ty(llvm::getGlobalContext());
     return llvm::PointerType::getUnqual(base);
+}
+
+
+Types::TypeDecl* Types::GetVoidType()
+{
+    if (!voidType)
+    {
+	voidType = new TypeDecl(Types::Void);
+    }
+    return voidType;
 }

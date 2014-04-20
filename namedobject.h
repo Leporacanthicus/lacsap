@@ -6,6 +6,7 @@
 #include <llvm/Support/Casting.h>
 #include <iostream>
 
+
 class NamedObject
 {
 public:
@@ -16,6 +17,7 @@ public:
 	NK_Type,
 	NK_Const,
 	NK_Enum,
+	NK_Builtin,
     };
     NamedObject(NamedKind k, const std::string& nm) 
 	: kind(k), name(nm) 

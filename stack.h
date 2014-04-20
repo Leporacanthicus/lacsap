@@ -58,7 +58,7 @@ public:
 	return false;
     }
 
-    T Find(const std::string& name)
+    T Find(const std::string& name) 
     {
 	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++)
 	{
@@ -80,6 +80,17 @@ public:
 	}
 	return 0;
     }
+
+    T FindBottomLevel(const std::string& name)
+    {
+	MapIter it = stack.front().find(name);
+	if (it != stack.front().end())
+	{
+	    return it->second;
+	}
+	return 0;
+    }
+
 
     void Dump()
     {

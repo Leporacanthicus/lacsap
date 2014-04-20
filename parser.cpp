@@ -11,7 +11,7 @@
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
 Parser::Parser(Lexer &l) 
-    : 	lexer(l), nextTokenValid(false), errCnt(0)
+    : lexer(l), nextTokenValid(false), errCnt(0)
 {
     std::vector<std::string> FalseTrue;
     FalseTrue.push_back("false");
@@ -716,28 +716,32 @@ Types::TypeDecl* Parser::ParseType()
 
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
-    ExprAST* result = new IntegerExprAST(token.GetIntVal());
+    ExprAST* result = new IntegerExprAST(token.GetIntVal(), GetTypeDecl("integer"));
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseCharExpr(Token token)
 {
-    ExprAST* result = new CharExprAST(token.GetIntVal());
+    ExprAST* result = new CharExprAST(token.GetIntVal(), GetTypeDecl("char"));
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseRealExpr(Token token)
 {
-    ExprAST* result = new RealExprAST(token.GetRealVal());
+    ExprAST* result = new RealExprAST(token.GetRealVal(), GetTypeDecl("real"));
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseStringExpr(Token token)
 {
-    ExprAST* result = new StringExprAST(token.GetStrVal());
+    std::vector<Types::Range*> rv;
+    Types::Range* r = new Types::Range(0, token.GetStrVal().length()-1);
+    rv.push_back(r);
+    Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
+    ExprAST* result = new StringExprAST(token.GetStrVal(), ty);
     NextToken();
     return result;
 }
@@ -915,12 +919,11 @@ ExprAST* Parser::ParseIdentifierExpr()
 {
     std::string idName = CurrentToken().GetIdentName();
     NextToken();
-    /* TODO: Should we add builtin's to names at global level? */
     NamedObject* def = nameStack.Find(idName);
     EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def);
     if (enumDef)
     {
-	return new IntegerExprAST(enumDef->Value(), enumDef->Type()->LlvmType());
+	return new IntegerExprAST(enumDef->Value(), enumDef->Type());
     }
 
     bool isBuiltin = Builtin::IsBuiltin(idName);
@@ -1070,14 +1073,15 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
 
     assert(isBuiltin && "Should be a builtin function if we get here");
-    return new BuiltinExprAST(idName, args);
+    Types::TypeDecl* ty = Builtin::Type(nameStack, idName, args);
+    return new BuiltinExprAST(idName, args, ty);
 }
 
 ExprAST* Parser::ParseParenExpr()
 {
     NextToken();
     ExprAST* v = ParseExpression();
-    if (!v) 
+    if (!v)
     {
 	return 0;
     }
@@ -1126,7 +1130,8 @@ ExprAST* Parser::ParseSetExpr()
     {
 	return 0;
     }
-    return new SetExprAST(values);
+    // TODO: Fix up type here... 
+    return new SetExprAST(values, Types::TypeForSet());
 }
 
 VarDeclAST* Parser::ParseVarDecls()

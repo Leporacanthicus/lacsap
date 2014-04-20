@@ -197,16 +197,7 @@ void IntegerExprAST::DoDump(std::ostream& out) const
 llvm::Value* IntegerExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v;
-    if (type == 0)
-    {
-	v = MakeIntegerConstant(val);
-    }
-    else
-    {
-	v = MakeConstant(val, type);
-    }
-    return v;
+    return MakeConstant(val, type->LlvmType());
 }
 
 void CharExprAST::DoDump(std::ostream& out) const
@@ -425,7 +416,7 @@ static llvm::Value* CallSetFunc(const std::string& name,
     std::string func = std::string("__Set") + name;
     std::vector<llvm::Type*> argTypes;
     
-    llvm::Type* ty = Types::TypeForSet();
+    llvm::Type* ty = Types::TypeForSet()->LlvmType();
     if (!ty)
     {
 	return 0;
@@ -440,7 +431,7 @@ static llvm::Value* CallSetFunc(const std::string& name,
     builder.CreateStore(lhs, lV);
     builder.CreateStore(rhs, rV);
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(Types::TypeForSet());
+    llvm::Type* pty = llvm::PointerType::getUnqual(ty);
     argTypes.push_back(pty);
     argTypes.push_back(pty);
 
@@ -450,9 +441,20 @@ static llvm::Value* CallSetFunc(const std::string& name,
     return builder.CreateCall2(f, lV, rV, "calltmp");
 }
 
+Types::TypeDecl* BinaryExprAST::Type() const 
+{
+    return lhs->Type();
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
+
+    if (!lhs->Type() || !rhs->Type())
+    {
+	assert(0 && "Huh? Both sides of expression should have type");
+	return ErrorV("One or both sides of binary expression does not have a type...");
+    }
     llvm::Value *l = lhs->CodeGen();
     llvm::Value *r = rhs->CodeGen();
     
@@ -495,7 +497,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	lty = r->getType();
     }
 
-    if (rty == Types::TypeForSet() && lty->isIntegerTy())
+    if (rty == Types::TypeForSet()->LlvmType() && lty->isIntegerTy())
     {
 	if (oper.GetToken() == Token::In)
 	{
@@ -528,21 +530,21 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return 0;
     }
 
-    if (rty == Types::TypeForSet())
+    if (rty == Types::TypeForSet()->LlvmType())
     {
 	llvm::Type* resTy = Types::GetType(Types::Boolean);
 	switch(oper.GetToken())
 	{
 	case Token::Minus:
-	    resTy = Types::TypeForSet();
+	    resTy = Types::TypeForSet()->LlvmType();
 	    return CallSetFunc("Diff", l, r, resTy);
 
 	case Token::Plus:
-	    resTy = Types::TypeForSet();
+	    resTy = Types::TypeForSet()->LlvmType();
 	    return CallSetFunc("Union", l, r, resTy);
 	    
 	case Token::Multiply:
-	    resTy = Types::TypeForSet();
+	    resTy = Types::TypeForSet()->LlvmType();
 	    return CallSetFunc("Intersect", l, r, resTy);
 	    
 	case Token::Equal:
@@ -766,7 +768,7 @@ llvm::Value* CallExprAST::CodeGen()
 	argsV.push_back(v);
 	viter++;
     }
-    if (proto->ResultType()->Type() == Types::Void) 
+    if (proto->Type()->Type() == Types::Void) 
     {
 	return builder.CreateCall(calleF, argsV, "");
     }
@@ -991,7 +993,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	return 0;
     }
 
-    if (proto->ResultType()->Type() == Types::Void)
+    if (proto->Type()->Type() == Types::Void)
     {
 	builder.CreateRetVoid();
     }
@@ -1112,13 +1114,13 @@ llvm::Value* AssignExprAST::AssignStr()
 	argTypes.push_back(Types::GetType(Types::Boolean));
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+	llvm::Constant* fnmemcpy = theModule->getOrInsertFunction(func, ft);
 
 	llvm::Value* v = srhs->CodeGen();
 	builder.CreateStore(MakeCharConstant(srhs->Str().size()), dest1);
     
 
-	return builder.CreateCall5(f, dest2, v, MakeIntegerConstant(srhs->Str().size()), 
+	return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(srhs->Str().size()), 
 				   MakeIntegerConstant(1), MakeBooleanConstant(false));
     }
     
@@ -1136,7 +1138,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	return ErrorV("Left hand side of assignment must be a variable");
     }
 
-    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
+    const Types::StringDecl* sty = llvm::dyn_cast<const Types::StringDecl>(lhsv->Type()); 
     if (sty)
     {
 	return AssignStr(); 
@@ -1914,16 +1916,11 @@ llvm::Value* SetExprAST::Address()
 {
     TRACE();
 
-    llvm::Type* ty = Types::TypeForSet();
-    if (!ty)
-    {
-	return 0;
-    }
+    llvm::Type* ty = Types::TypeForSet()->LlvmType();
+    assert(ty && "Expect type for set to work");
+
     llvm::Value* setV = CreateTempAlloca(ty);
-    if (!setV)
-    {
-	return 0;
-    }
+    assert(setV && "Expect CreateTempAlloca() to work");
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 

@@ -94,7 +94,6 @@ private:
     bool AddType(const std::string& name, Types::TypeDecl* type);
 
 private:
-    typedef Stack<NamedObject*> NameStack;
     typedef StackWrapper<NamedObject*> NameWrapper;
     Lexer&      lexer;
     Token       curToken;
@@ -102,8 +101,8 @@ private:
     bool        nextTokenValid;
     std::string moduleName;
     int         errCnt;
-    NameStack   nameStack;
-    NameStack   usedVariables;
+    Stack<NamedObject*> nameStack;
+    Stack<NamedObject*> usedVariables;
 };
 
 #endif

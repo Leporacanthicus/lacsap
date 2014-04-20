@@ -86,14 +86,16 @@ public:
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
 	llvm::Type* LlvmType();
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	TypeKind getKind() const { return kind; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Type; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     protected:
 	const TypeKind kind;
 	SimpleTypes type;
 	llvm::Type* ltype;
+
     };
 
     class ArrayDecl : public TypeDecl
@@ -112,9 +114,12 @@ public:
 	const std::vector<Range*>& Ranges() const { return ranges; }
 	TypeDecl* SubType() const { return baseType; }
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
-	static bool classof(const TypeDecl *e) { return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray; }
+	static bool classof(const TypeDecl *e) 
+	{ 
+	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray; 
+	}
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	TypeDecl* baseType;
 	std::vector<Range*> ranges;
@@ -133,8 +138,9 @@ public:
 	virtual SimpleTypes Type() const { return baseType; }
 	virtual Range* GetRange() const { return range; }
 	virtual void dump() const;
-	virtual llvm::Type* GetLlvmType() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Range; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	Range* range;
 	SimpleTypes baseType;
@@ -167,9 +173,10 @@ public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
 	virtual bool isIntegral() const { return true; }
 	const EnumValues& Values() const { return values; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Enum; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	EnumValues  values;
 	SimpleTypes subType;
@@ -195,9 +202,10 @@ public:
 	    type = Pointer; 
 	}
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Pointer; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::string name;
 	TypeDecl* baseType;
@@ -211,10 +219,11 @@ public:
     public:
 	const std::string& Name() { return name; }
 	TypeDecl* FieldType() const { return baseType; } 
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Field; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::string name;
 	TypeDecl*   baseType;
@@ -226,11 +235,12 @@ public:
 	RecordDecl(const std::vector<FieldDecl>& flds)
 	    : TypeDecl(TK_Record, Record), fields(flds) { };
 	virtual bool isIntegral() const { return false; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	int Element(const std::string& name) const;
 	const FieldDecl& GetElement(int n) { return fields[n]; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Record; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::vector<FieldDecl> fields;
     };
@@ -241,10 +251,11 @@ public:
 	FuncPtrDecl(PrototypeAST* func);
 	virtual bool isIntegral() const { return false; }
 	virtual TypeDecl* SubType() const { return baseType; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	PrototypeAST* Proto() const { return proto; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_FuncPtr; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	PrototypeAST* proto;
 	TypeDecl*     baseType;
@@ -261,9 +272,10 @@ public:
 	FileDecl(TypeDecl* ty)
 	    : TypeDecl(TK_File, File), baseType(ty) {}
 	virtual TypeDecl* SubType() const { return baseType; }
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_File; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     protected:
 	TypeDecl *baseType;
     };
@@ -273,8 +285,10 @@ public:
     public:
 	TextDecl()
 	    : FileDecl(new TypeDecl(TK_Type, Char)) {}
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
+    private:
+	virtual llvm::Type* GetLlvmType() const;
+
     };
 
     class SetDecl : public TypeDecl
@@ -284,9 +298,10 @@ public:
 	enum { MaxSetWords = 16 };
 	SetDecl(Range *r)
 	    : TypeDecl(TK_Set, Set), range(r) {}
-	virtual llvm::Type* GetLlvmType() const;
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	Range *range;
     };
@@ -305,6 +320,11 @@ public:
     static llvm::Type* GetType(SimpleTypes type);
     static llvm::Type* GetVoidPtrType();
     static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
-    static llvm::Type* TypeForSet();
+    static TypeDecl* TypeForSet();
+    static TypeDecl* GetVoidType();
+
+private:
+    static TypeDecl *voidType;
+    static TypeDecl *setType;
 };
 #endif

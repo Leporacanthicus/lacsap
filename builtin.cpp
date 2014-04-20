@@ -1,17 +1,10 @@
 #include "expr.h"
 #include "builtin.h"
-
 #include <llvm/IR/DataLayout.h>
 
 extern llvm::Module* theModule;
 
 typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
-
-struct BuiltinFunction
-{
-    const char *name;
-    CodeGenFunc CodeGen;
-};
 
 static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
@@ -403,35 +396,52 @@ static llvm::Value* PutCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return FileCallCodeGen(builder, args, "__put");
 }
 
+enum ResultForm
+{
+    RF_Input,
+    RF_Boolean,
+    RF_Integer,
+    RF_Real,
+    RF_Char,
+    RF_Void,
+};
+
+struct BuiltinFunction
+{
+    const char *name;
+    CodeGenFunc CodeGen;
+    ResultForm  rf;
+};
+
 const static BuiltinFunction bifs[] =
 {
-    { "abs",     AbsCodeGen     },
-    { "odd",     OddCodeGen     },
-    { "trunc",   TruncCodeGen   },
-    { "round",   RoundCodeGen   },
-    { "sqr",     SqrCodeGen     },
-    { "sqrt",    SqrtCodeGen    },
-    { "sin",     SinCodeGen     },
-    { "cos",     CosCodeGen     },
-    { "arctan",  ArctanCodeGen  },
-    { "ln",      LnCodeGen      },
-    { "exp",     ExpCodeGen     },
-    { "chr",     ChrCodeGen     },
-    { "ord",     OrdCodeGen     },
-    { "succ",    SuccCodeGen    },
-    { "pred",    PredCodeGen    },
-    { "new",     NewCodeGen     },
-    { "dispose", DisposeCodeGen },
-    { "assign",  AssignCodeGen  },
-    { "reset",   ResetCodeGen   },
-    { "close",   CloseCodeGen   },
-    { "rewrite", RewriteCodeGen },
-    { "append",  AppendCodeGen  },
-    { "eof",     EofCodeGen     },
-    { "eoln",    EolnCodeGen    },
-    { "random",  RandomCodeGen  },
-    { "get",     GetCodeGen     },
-    { "put",     PutCodeGen     },
+    { "abs",     AbsCodeGen,     RF_Input },
+    { "odd",     OddCodeGen,     RF_Boolean },
+    { "trunc",   TruncCodeGen,   RF_Integer },
+    { "round",   RoundCodeGen,   RF_Integer },
+    { "sqr",     SqrCodeGen,     RF_Input },
+    { "sqrt",    SqrtCodeGen,    RF_Real },
+    { "sin",     SinCodeGen,     RF_Real },
+    { "cos",     CosCodeGen,     RF_Real },
+    { "arctan",  ArctanCodeGen,  RF_Real },
+    { "ln",      LnCodeGen,      RF_Real },
+    { "exp",     ExpCodeGen,     RF_Real },
+    { "chr",     ChrCodeGen,     RF_Char },
+    { "ord",     OrdCodeGen,     RF_Integer },
+    { "succ",    SuccCodeGen,    RF_Input },
+    { "pred",    PredCodeGen,    RF_Input },
+    { "new",     NewCodeGen,     RF_Void },
+    { "dispose", DisposeCodeGen, RF_Void },
+    { "assign",  AssignCodeGen,  RF_Void },
+    { "reset",   ResetCodeGen,   RF_Void },
+    { "close",   CloseCodeGen,   RF_Void },
+    { "rewrite", RewriteCodeGen, RF_Void },
+    { "append",  AppendCodeGen,  RF_Void },
+    { "eof",     EofCodeGen,     RF_Boolean },
+    { "eoln",    EolnCodeGen,    RF_Boolean },
+    { "random",  RandomCodeGen,  RF_Real },
+    { "get",     GetCodeGen,     RF_Void },
+    { "put",     PutCodeGen,     RF_Void },
 };
 
 static const BuiltinFunction* find(const std::string& name)
@@ -460,4 +470,48 @@ llvm::Value* Builtin::CodeGen(llvm::IRBuilder<>& builder,
     assert(b && "Expected to find builtin function here!");
 
     return b->CodeGen(builder, args);
+}
+
+Types::TypeDecl* Builtin::Type(Stack<NamedObject*>& ns, 
+			       const std::string& name, 
+			       const std::vector<ExprAST*>& args)
+{
+    const BuiltinFunction* b = find(name);
+    if (!b)
+    {
+	return 0;
+    }
+
+    const char* type = 0;
+    switch(b->rf)
+    {
+    case RF_Input:
+	return args[0]->Type();
+	
+    case RF_Boolean:
+	type = "boolean";
+	break;
+
+    case RF_Integer:
+	type = "integer";
+	break;
+
+    case RF_Char:
+	type = "char";
+	break;
+
+    case RF_Real:
+	type = "real";
+	break;
+
+    case RF_Void:
+	return Types::GetVoidType();
+    }
+    TypeDef* td = llvm::dyn_cast_or_null<TypeDef>(ns.FindBottomLevel(type));
+    assert(td && "TypeDef not found?");
+    if (!td) 
+    {
+	return 0;
+    }
+    return td->Type();
 }

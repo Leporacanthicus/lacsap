@@ -407,8 +407,9 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->Dump(out); 
 }
 
-llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool retIsBool)
+llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet)
 {
+    TRACE();
     std::string func = std::string("__Set") + name;
     std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = Types::TypeForSet()->LlvmType();
@@ -416,13 +417,13 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool retIsBool)
     assert(ty && "Expect to get a type from Types::TypeForSet");
 
     llvm::Type* resTy;
-    if (retIsBool)
+    if (resTyIsSet)
     {
-	resTy = Types::GetType(Types::Boolean);
+	resTy = ty;
     }
     else
     {
-	resTy = ty;
+	resTy = Types::GetType(Types::Boolean);
     }
 
     llvm::Value* rV = 0;
@@ -467,6 +468,68 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool retIsBool)
     return builder.CreateCall2(f, lV, rV, "calltmp");
 }
 
+llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr)
+{
+    TRACE();
+    std::string func = std::string("__Str") + name;
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* ty = rhs->Type()->LlvmType();
+
+    assert(ty && "Expect to get a type from rhs");
+
+    llvm::Type* resTy;
+    if (resTyIsStr)
+    {
+	resTy = ty;
+    }
+    else
+    {
+	resTy = Types::GetType(Types::Integer);
+    }
+
+    llvm::Value* rV = 0;
+    AddressableAST* ra = llvm::dyn_cast<AddressableAST>(rhs);
+    if (ra)
+    {
+	rV = ra->Address();
+	assert(rV && "Expect address to be non-zero");
+    }
+    else
+    {
+	rV = CreateTempAlloca(ty);
+	builder.CreateStore(rhs->CodeGen(), rV);
+	assert(rV && "Expect address to be non-zero");
+    }
+    llvm::Value* lV = 0;
+    AddressableAST* la = llvm::dyn_cast<AddressableAST>(lhs);
+    if (la)
+    {
+	lV = la->Address();
+	assert(lV && "Expect address to be non-zero");
+    }
+    else
+    {
+	lV = CreateTempAlloca(ty);
+	builder.CreateStore(lhs->CodeGen(), lV);
+	assert(lV && "Expect address to be non-zero");
+    }
+	
+    if (!rV || !lV)
+    {
+	return 0;
+    }
+
+    llvm::Type* pty = llvm::PointerType::getUnqual(ty);
+    argTypes.push_back(pty);
+    argTypes.push_back(pty);
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+    return builder.CreateCall2(f, lV, rV, "calltmp");
+}
+
+
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
     return lhs->Type();
@@ -482,7 +545,46 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return ErrorV("One or both sides of binary expression does not have a type...");
     }
 
-    if (llvm::isa<Types::SetDecl>(rhs->Type()))
+    llvm::Value* tmp = 0;
+    if (llvm::isa<Types::StringDecl>(rhs->Type()) || 
+	llvm::isa<Types::StringDecl>(lhs->Type()))
+    {
+	assert(llvm::isa<Types::StringDecl>(lhs->Type())  &&
+	       "Currently only strings on both sides supported");
+	switch(oper.GetToken())
+	{
+	case Token::Plus:
+	    return CallStrFunc("Concat", true);
+
+	case Token::Equal:
+	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "equal");
+	    
+	case Token::NotEqual:
+ 	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "equal");
+
+	case Token::GreaterOrEqual:
+ 	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "equal");
+	    
+	case Token::LessOrEqual:
+ 	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "equal");
+
+	case Token::GreaterThan:
+ 	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "equal");
+	    
+	case Token::LessThan:
+ 	    tmp = CallStrFunc("Compare", false);
+	    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "equal");
+
+	default:
+	    return ErrorV("Invalid operand for strings");
+	}
+    }
+    else if (llvm::isa<Types::SetDecl>(rhs->Type()))
     {
 	if (lhs->Type()->isIntegral() &&
 	    oper.GetToken() == Token::In)
@@ -511,27 +613,34 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    switch(oper.GetToken())
 	    {
 	    case Token::Minus:
-		return CallSetFunc("Diff", false);
+		return CallSetFunc("Diff", true);
 		
 	    case Token::Plus:
-		return CallSetFunc("Union", false);
+		return CallSetFunc("Union", true);
 		
 	    case Token::Multiply:
-		return CallSetFunc("Intersect", false);
+		return CallSetFunc("Intersect", true);
 	    
 	    case Token::Equal:
-		return CallSetFunc("Equal", true);
+		return CallSetFunc("Equal", false);
 
 	    case Token::NotEqual:
-		return builder.CreateNot(CallSetFunc("Equal", true), "notEqual");
+		return builder.CreateNot(CallSetFunc("Equal", false), "notEqual");
 
 	    case Token::LessOrEqual:
-		return CallSetFunc("Contains", true);
+		return CallSetFunc("Contains", false);
 
 	    case Token::GreaterOrEqual:
-		// Note reverse order to avoid having to write 
-		// another function
-		return CallSetFunc("Contains", true);
+	    {
+		ExprAST* tmp = rhs;
+		rhs = lhs;
+		lhs = tmp;
+		llvm::Value* v = CallSetFunc("Contains", false);
+		// Set it back
+		lhs = rhs;
+		rhs = tmp;
+		return v;
+	    }
 
 	    default:
 		return ErrorV("Unknown operator on set");
@@ -1955,7 +2064,8 @@ llvm::Value* SetExprAST::Address()
 			 Types::SetDecl::MaxSetWords * 4, 0);
 
     // TODO: For optimisation, we may want to pass through the vector and see if the values 
-    // are constants, and if so, be clever about it
+    // are constants, and if so, be clever about it.
+    // Also, we should combine stores to the same word!
     for(auto v : values)
     {
 	// If we have a "range", then make a loop. 

@@ -8,6 +8,7 @@ Among things NOT yet supported are:
 - Variant records are not supported.
 - Proper type checking. 
 - Goto statement.
+- Usage of "text" files creates many type declarations - should only be one.
 
 Lots of other small and large things that I can't think of right now.
 

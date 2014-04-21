@@ -738,7 +738,12 @@ ExprAST* Parser::ParseRealExpr(Token token)
 ExprAST* Parser::ParseStringExpr(Token token)
 {
     std::vector<Types::Range*> rv;
-    Types::Range* r = new Types::Range(0, token.GetStrVal().length()-1);
+    int len =  token.GetStrVal().length()-1;
+    if (len < 1)
+    {
+	len = 1;
+    }
+    Types::Range* r = new Types::Range(0, len);
     rv.push_back(r);
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
     ExprAST* result = new StringExprAST(token.GetStrVal(), ty);

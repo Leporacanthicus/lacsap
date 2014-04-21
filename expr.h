@@ -260,7 +260,8 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_BinaryExpr; }
-    llvm::Value* CallSetFunc(const std::string& name, bool retIsBool);
+    llvm::Value* CallSetFunc(const std::string& name, bool resTyIsSet);
+    llvm::Value* CallStrFunc(const std::string& name, bool resTyIsStr);
     virtual Types::TypeDecl* Type() const override;
 private:
     Token oper;

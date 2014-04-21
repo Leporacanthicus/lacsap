@@ -8,6 +8,7 @@ enum
 {
     MaxPascalFiles =  1000,
     MaxSetWords    =  16,
+    MaxStringLen   =  255,
 };
 
 /* Note: This should match the definition in the compiler, or weirdness happens! */
@@ -32,6 +33,13 @@ typedef struct
 {
     unsigned int v[MaxSetWords];
 } Set;
+
+typedef struct 
+{
+    unsigned char len;
+    unsigned char str[MaxStringLen];
+} String;
+
 
 static struct FileEntry files[MaxPascalFiles];
 static File input;
@@ -472,7 +480,10 @@ double __random(void)
     return rand() / (double)RAND_MAX;
 }
 
-/* Set functions */
+/*******************************************
+ * Set functions 
+ *******************************************
+ */
 int __SetEqual(Set *a, Set *b)
 {
     return !memcmp(a->v, b->v, sizeof(*a));
@@ -517,6 +528,50 @@ int __SetContains(Set *a, Set *b)
 	    return 0;
     }
     return 1;
+}
+
+/*******************************************
+ * String functions 
+ *******************************************
+ */
+String __StrConcat(String* a, String* b)
+{
+    String res;
+    int blen = b->len;
+    int total = a->len + blen;
+    if (total > MaxStringLen)
+    {
+	total = MaxStringLen;
+	blen = MaxStringLen-a->len;
+    }
+    res.len = total;
+
+    memcpy(res.str, a->str, a->len);
+    memcpy(&res.str[a->len], b, blen);
+    return res;
+}
+
+/* Return >0 if a is greater than b, 
+ * Return <0 if a is less than b. 
+ * Return 0 if a == b. 
+ */ 
+int __StrCompare(String* a, String* b)
+{
+    int alen = a->len;
+    int blen = b->len;
+    int shortest = alen;
+    if (blen < shortest)
+    {
+	shortest = blen;
+    }
+    for(int i = 0; i < shortest; i++)
+    {
+	if (a->str[i] != b->str[i])
+	{
+	    return a->str[i] - b->str[i];
+	}
+    }
+    return alen - blen;
 }
 
 int main()

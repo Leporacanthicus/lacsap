@@ -399,6 +399,49 @@ llvm::Value* FunctionExprAST::Address()
     return 0;
 }
 
+static llvm::Value* MakeAddressable(ExprAST* e, llvm::Type* ty)
+{
+    AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e);
+    llvm::Value* v;
+    if (ea)
+    {
+	v = ea->Address();
+	assert(v && "Expect address to be non-zero");
+    }
+    else
+    {
+	v = CreateTempAlloca(ty);
+	builder.CreateStore(e->CodeGen(), v);
+	assert(v && "Expect address to be non-zero");
+    }
+    return v;
+}
+
+static int StringishScore(ExprAST* e)
+{
+    if (llvm::isa<CharExprAST>(e))
+    {
+	return 1;
+    }
+    if (llvm::isa<StringExprAST>(e))
+    {
+	return 2;
+    }
+    if (llvm::isa<Types::StringDecl>(e->Type()))
+    {
+	return 3;
+    }
+    return 0;
+}
+
+static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
+{
+    int lScore = StringishScore(lhs);
+    int rScore = StringishScore(rhs);
+
+    return lScore && rScore && (lScore + rScore) > 2;
+}
+
 void BinaryExprAST::DoDump(std::ostream& out) const
 { 
     out << "BinaryOp: ";
@@ -426,33 +469,9 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	resTy = Types::GetType(Types::Boolean);
     }
 
-    llvm::Value* rV = 0;
-    AddressableAST* ra = llvm::dyn_cast<AddressableAST>(rhs);
-    if (ra)
-    {
-	rV = ra->Address();
-	assert(rV && "Expect address to be non-zero");
-    }
-    else
-    {
-	rV = CreateTempAlloca(ty);
-	builder.CreateStore(rhs->CodeGen(), rV);
-	assert(rV && "Expect address to be non-zero");
-    }
-    llvm::Value* lV = 0;
-    AddressableAST* la = llvm::dyn_cast<AddressableAST>(lhs);
-    if (la)
-    {
-	lV = la->Address();
-	assert(lV && "Expect address to be non-zero");
-    }
-    else
-    {
-	lV = CreateTempAlloca(ty);
-	builder.CreateStore(lhs->CodeGen(), lV);
-	assert(lV && "Expect address to be non-zero");
-    }
-	
+    llvm::Value* rV = MakeAddressable(rhs, ty);
+    llvm::Value* lV = MakeAddressable(lhs, ty);
+
     if (!rV || !lV)
     {
 	return 0;
@@ -487,32 +506,8 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
 	resTy = Types::GetType(Types::Integer);
     }
 
-    llvm::Value* rV = 0;
-    AddressableAST* ra = llvm::dyn_cast<AddressableAST>(rhs);
-    if (ra)
-    {
-	rV = ra->Address();
-	assert(rV && "Expect address to be non-zero");
-    }
-    else
-    {
-	rV = CreateTempAlloca(ty);
-	builder.CreateStore(rhs->CodeGen(), rV);
-	assert(rV && "Expect address to be non-zero");
-    }
-    llvm::Value* lV = 0;
-    AddressableAST* la = llvm::dyn_cast<AddressableAST>(lhs);
-    if (la)
-    {
-	lV = la->Address();
-	assert(lV && "Expect address to be non-zero");
-    }
-    else
-    {
-	lV = CreateTempAlloca(ty);
-	builder.CreateStore(lhs->CodeGen(), lV);
-	assert(lV && "Expect address to be non-zero");
-    }
+    llvm::Value* rV = MakeAddressable(rhs, ty);
+    llvm::Value* lV = MakeAddressable(lhs, ty);
 	
     if (!rV || !lV)
     {
@@ -529,9 +524,10 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     return builder.CreateCall2(f, lV, rV, "calltmp");
 }
 
-
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
+    // FIXME: Need to look at both sides, and determine if one side causes the other to convert. 
+    // e.g. LHS and RHS is int and float respectively.
     return lhs->Type();
 }
 
@@ -546,8 +542,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
 
     llvm::Value* tmp = 0;
-    if (llvm::isa<Types::StringDecl>(rhs->Type()) || 
-	llvm::isa<Types::StringDecl>(lhs->Type()))
+    if (BothStringish(lhs, rhs))
     {
 	assert(llvm::isa<Types::StringDecl>(lhs->Type())  &&
 	       "Currently only strings on both sides supported");

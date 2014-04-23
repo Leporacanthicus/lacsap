@@ -4,11 +4,13 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 
 Among things NOT yet supported are:
 - String variables. 
+- Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - The "with" construct. 
 - Variant records are not supported.
 - Proper type checking. 
 - Goto statement.
 - Usage of "text" files creates many type declarations - should only be one.
+
 
 Lots of other small and large things that I can't think of right now.
 

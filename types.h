@@ -173,6 +173,7 @@ public:
     public:
 	virtual Range* GetRange() const { return new Range(0, values.size()-1); }
 	virtual bool isIntegral() const { return true; }
+	virtual SimpleTypes Type() const { return subType; }
 	const EnumValues& Values() const { return values; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Enum; }

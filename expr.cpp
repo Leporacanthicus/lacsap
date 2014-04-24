@@ -814,6 +814,11 @@ void UnaryExprAST::DoDump(std::ostream& out) const
     rhs->Dump(out);
 }
 
+Types::TypeDecl* UnaryExprAST::Type() const
+{
+    return rhs->Type();
+}
+
 llvm::Value* UnaryExprAST::CodeGen()
 {
     llvm::Value* r = rhs->CodeGen();
@@ -1604,11 +1609,12 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    break;
 
 	case Types::Boolean:
+	{
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "bool";
 	    break;
-
+	}
 	case Types::Integer:
 	    // Make args of two integers. 
 	    argTypes.push_back(ty->LlvmType());
@@ -1650,6 +1656,7 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    break;
 	}
 	default:
+	    ty->dump();
 	    assert(0);
 	    return ErrorF("Invalid type argument for write");
 	}

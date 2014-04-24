@@ -4,6 +4,7 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 
 Among things NOT yet supported are:
 - String variables. 
+- test07 currently broken (boolean expressions, such as 7 > 6, do not become "boolean")
 - Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - The "with" construct. 
 - Variant records are not supported.

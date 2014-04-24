@@ -487,25 +487,14 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     return builder.CreateCall2(f, lV, rV, "calltmp");
 }
 
-llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr)
+
+static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, llvm::Type* resTy, 
+				const std::string& twine)
 {
     TRACE();
     std::string func = std::string("__Str") + name;
     std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = rhs->Type()->LlvmType();
-
-    assert(ty && "Expect to get a type from rhs");
-
-    llvm::Type* resTy;
-    if (resTyIsStr)
-    {
-	resTy = ty;
-    }
-    else
-    {
-	resTy = Types::GetType(Types::Integer);
-    }
-
     llvm::Value* rV = MakeAddressable(rhs, ty);
     llvm::Value* lV = MakeAddressable(lhs, ty);
 	
@@ -521,12 +510,29 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 
-    return builder.CreateCall2(f, lV, rV, "calltmp");
+    return builder.CreateCall2(f, lV, rV, twine);
+}
+
+llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr)
+{
+    TRACE();
+
+    llvm::Type* resTy;
+    if (resTyIsStr)
+    {
+	resTy = rhs->Type()->LlvmType();
+    }
+    else
+    {
+	resTy = Types::GetType(Types::Integer);
+    }
+
+    return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
 }
 
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
-    // FIXME: Need to look at both sides, and determine if one side causes the other to convert. 
+    // TODO: Need to look at both sides, and determine if one side causes the other to convert. 
     // e.g. LHS and RHS is int and float respectively.
     return lhs->Type();
 }
@@ -553,27 +559,27 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	case Token::Equal:
 	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
 	    
 	case Token::NotEqual:
  	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
 
 	case Token::GreaterOrEqual:
  	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
 	    
 	case Token::LessOrEqual:
  	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
 
 	case Token::GreaterThan:
  	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
 	    
 	case Token::LessThan:
  	    tmp = CallStrFunc("Compare", false);
-	    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "equal");
+	    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
 
 	default:
 	    return ErrorV("Invalid operand for strings");
@@ -1254,6 +1260,10 @@ llvm::Value* AssignExprAST::AssignStr()
 	return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(srhs->Str().size()), 
 				   MakeIntegerConstant(1), MakeBooleanConstant(false));
     }
+    else if (llvm::isa<Types::StringDecl>(rhs->Type()))
+    {
+	return CallStrFunc("Copy", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
+    }
     
     return 0;
 }
@@ -1577,7 +1587,7 @@ void WriteAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
+static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
@@ -1585,47 +1595,62 @@ static llvm::Constant *CreateWriteFunc(llvm::Type* ty, llvm::Type* fty)
     argTypes.push_back(fty);
     if (ty)
     {
-	if (ty == Types::GetType(Types::Char))
+	switch(ty->Type())
 	{
-	    argTypes.push_back(ty);
+	case Types::Char:
+	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "char";
-	}
-	else if (ty == Types::GetType(Types::Boolean))
-	{
-	    argTypes.push_back(ty);
+	    break;
+
+	case Types::Boolean:
+	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(Types::GetType(Types::Integer));
 	    suffix = "bool";
-	}
-	else if (ty->isIntegerTy())
-	{
+	    break;
+
+	case Types::Integer:
 	    // Make args of two integers. 
-	    argTypes.push_back(ty);
-	    argTypes.push_back(ty);
+	    argTypes.push_back(ty->LlvmType());
+	    argTypes.push_back(ty->LlvmType());
 	    suffix = "int";
-	}
-	else if (ty->isDoubleTy())
+	    break;
+
+	case Types::Real:
 	{
 	    // Args: double, int, int
-	    argTypes.push_back(ty);
+	    argTypes.push_back(ty->LlvmType());
 	    llvm::Type* t = Types::GetType(Types::Integer); 
 	    argTypes.push_back(t);
 	    argTypes.push_back(t);
 	    suffix = "real";
+	    break;
 	}
-	else if (ty->isPointerTy())
+	case Types::String:
 	{
-	    if (ty->getContainedType(0) != Types::GetType(Types::Char))
+	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+	    argTypes.push_back(pty);
+	    argTypes.push_back(Types::GetType(Types::Integer));
+	    suffix = "str";
+	    break;
+	}
+	case Types::Array:
+	{
+	    Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
+	    assert(ad && "Expect array declaration to expand!");
+	    if (ad->SubType()->Type() != Types::Char)
 	    {
 		return ErrorF("Invalid type argument for write");
 	    }
-	    argTypes.push_back(ty);
+	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+	    argTypes.push_back(pty);
 	    llvm::Type* t = Types::GetType(Types::Integer); 
 	    argTypes.push_back(t);
-	    suffix = "str";
+	    suffix = "chars";
+	    break;
 	}
-	else
-	{
+	default:
+	    assert(0);
 	    return ErrorF("Invalid type argument for write");
 	}
     }
@@ -1675,22 +1700,43 @@ llvm::Value* WriteAST::CodeGen()
 	argsV.push_back(f);
 	if (isText)
 	{
-	    v = arg.expr->CodeGen();
+	    Types::TypeDecl* type = arg.expr->Type();
+	    fn = CreateWriteFunc(type, f->getType());
+	    if (type->Type() == Types::String)
+	    {
+		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
+		assert(a && "Expected addressable value");
+		v = a->Address();
+		std::vector<llvm::Value*> ind;
+		ind.push_back(MakeIntegerConstant(0));
+		ind.push_back(MakeIntegerConstant(0));
+		v = builder.CreateGEP(v, ind, "str_addr");
+	    }
+	    else if (type->Type() == Types::Array && 
+		     type->SubType()->Type() == Types::Char &&
+		     !llvm::isa<StringExprAST>(arg.expr))
+	    {
+		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
+		assert(a && "Expected addressable value");
+		v = a->Address();
+	    }
+	    else
+	    {
+		v = arg.expr->CodeGen();
+	    }
 	    if (!v)
 	    {
 		return ErrorV("Argument codegen failed");
 	    }
 	    argsV.push_back(v);
-	    llvm::Type*     ty = v->getType();
-	    fn = CreateWriteFunc(ty, f->getType());
 	    llvm::Value*    w;
 	    if (!arg.width)
 	    {
-		if (ty == Types::GetType(Types::Integer))
+		if (type->Type() == Types::Integer)
 		{
 		    w = MakeIntegerConstant(13);
 		}
-		else if (ty->isDoubleTy())
+		else if (type->Type() == Types::Real)
 		{
 		    w = MakeIntegerConstant(15);
 		}
@@ -1710,7 +1756,7 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV("Expected width to be integer value");
 	    }
 	    argsV.push_back(w);
-	    if (ty->isDoubleTy())
+	    if (type->Type() == Types::Real)
 	    {
 		llvm::Value* p;
 		if (arg.precision)

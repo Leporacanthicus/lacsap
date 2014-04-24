@@ -107,8 +107,9 @@ public:
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	ArrayDecl(TypeKind tk, TypeDecl *b, const std::vector<Range*>& r)
-	    : TypeDecl(tk,  Array), baseType(b), ranges(r)
+	    : TypeDecl(tk,  String), baseType(b), ranges(r)
 	{
+	    assert(tk == TK_String && "Expected this to be a string...");
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	const std::vector<Range*>& Ranges() const { return ranges; }

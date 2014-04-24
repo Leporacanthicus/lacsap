@@ -223,7 +223,7 @@ void __write_bool(File* file, int v, int width)
     }
 }   
  
-void __write_str(File* file, const char* v, int width)
+void __write_chars(File* file, const char* v, int width)
 {
     FILE* f = getFile(file, &output);
     if (width > 0)
@@ -235,6 +235,23 @@ void __write_str(File* file, const char* v, int width)
 	fprintf(f, "%s", v);
     }
 }
+
+void __write_str(File* file, const String* v, int width)
+{
+    FILE* f = getFile(file, &output);
+    if (width > v->len)
+    {
+	char s[256];
+	memcpy(s, v->str, v->len);
+	s[v->len] = 0;
+	fprintf(f, "%*s", width, v->str);
+    }
+    else
+    {
+	fprintf(f, "%*s", v->len, v->str);
+    }
+}
+
 
 void __write_nl(File* file)
 {
@@ -547,8 +564,14 @@ String __StrConcat(String* a, String* b)
     res.len = total;
 
     memcpy(res.str, a->str, a->len);
-    memcpy(&res.str[a->len], b, blen);
+    memcpy(&res.str[a->len], b->str, blen);
     return res;
+}
+
+void __StrCopy(String* a, String* b)
+{
+    a->len = b->len;
+    memcpy(a->str, b->str, a->len);
 }
 
 /* Return >0 if a is greater than b, 

@@ -1,12 +1,21 @@
 program str;
 
 var 
-   mystring  : string;
-   mystring2 : string;
+   str1	: string;
+   str2	: string;
+   str3	: string;
+   str4	: string;
 
 begin
-   mystring := 'too much...';
-   mystring2 := 'A';
-   writeln(ord(mystring[0]));
-   writeln(ord(mystring2[0]));
+   str1 := 'abc';
+   str2 := 'def';
+   str3 := 'abcdef';
+
+   str4 := str1 + str2;
+
+   if str1 + str2 = str3 then
+      writeln('same');
+   writeln(str1);
+   writeln(str2);
+   writeln(str4);
 end.

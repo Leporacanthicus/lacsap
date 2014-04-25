@@ -532,6 +532,12 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
 
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
+    Token::TokenType tt = oper.GetToken();
+    if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
+    {
+	return new Types::TypeDecl(Types::Boolean);
+    }
+
     // TODO: Need to look at both sides, and determine if one side causes the other to convert. 
     // e.g. LHS and RHS is int and float respectively.
     return lhs->Type();

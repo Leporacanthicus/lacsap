@@ -55,12 +55,6 @@ public:
 	Semicolon,
 	Colon,
 	Assign,
-	LessOrEqual,
-	LessThan,
-	GreaterOrEqual,
-	GreaterThan,
-	Equal,
-	NotEqual,
 	Period,
 	DotDot,
 	Uparrow,
@@ -69,7 +63,17 @@ public:
 	Xor,
 	Shr,
 	Shl,
+
+	// Comparison symbols - these return bool in binary ops.
+	LessOrEqual,
+	FirstComparison = LessOrEqual,
+	LessThan,
+	GreaterOrEqual,
+	GreaterThan,
+	Equal,
+	NotEqual,
 	In,
+	LastComparison = In,
 
 	// Keywords
 	For,

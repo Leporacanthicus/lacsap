@@ -171,6 +171,37 @@ static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
     return tmp;
 }
 
+
+static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
+{
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(0));
+    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
+    
+    ind[1] = MakeIntegerConstant(1);
+    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
+
+    std::string func = "llvm.memcpy.p0i8.p0i8.i32";
+    std::vector<llvm::Type*> argTypes;
+    llvm::Type* ty = Types::GetVoidPtrType();
+    llvm::Type* resTy = Types::GetType(Types::Void);
+    argTypes.push_back(ty);
+    argTypes.push_back(ty);
+    argTypes.push_back(Types::GetType(Types::Integer));
+    argTypes.push_back(Types::GetType(Types::Integer));
+    argTypes.push_back(Types::GetType(Types::Boolean));
+    
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* fnmemcpy = theModule->getOrInsertFunction(func, ft);
+    
+    llvm::Value* v = rhs->CodeGen();
+    builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
+    
+    return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(rhs->Str().size()), 
+			       MakeIntegerConstant(1), MakeBooleanConstant(false));
+}
+
 std::string ExprAST::ToString()
 {
     std::stringstream ss;
@@ -494,8 +525,22 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     TRACE();
     std::string func = std::string("__Str") + name;
     std::vector<llvm::Type*> argTypes;
-    llvm::Type* ty = rhs->Type()->LlvmType();
-    llvm::Value* rV = MakeAddressable(rhs, ty);
+
+    llvm::Value* rV;
+    llvm::Type* ty;
+    if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    {
+	Types::StringDecl* sd = new Types::StringDecl(255);
+	ty = sd->LlvmType();
+	llvm::Value* dest = CreateTempAlloca(ty);
+	TempStringFromStringExpr(dest, srhs);
+	rV = dest;
+    }
+    else
+    {
+	ty = rhs->Type()->LlvmType();
+	rV = MakeAddressable(rhs, ty);
+    }
     llvm::Value* lV = MakeAddressable(lhs, ty);
 	
     if (!rV || !lV)
@@ -520,7 +565,7 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     llvm::Type* resTy;
     if (resTyIsStr)
     {
-	resTy = rhs->Type()->LlvmType();
+	resTy = lhs->Type()->LlvmType();
     }
     else
     {
@@ -1251,25 +1296,7 @@ llvm::Value* AssignExprAST::AssignStr()
     }
     else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
-	std::string func = "llvm.memcpy.p0i8.p0i8.i32";
-	std::vector<llvm::Type*> argTypes;
-	llvm::Type* ty = Types::GetVoidPtrType();
-	llvm::Type* resTy = Types::GetType(Types::Void);
-	argTypes.push_back(ty);
-	argTypes.push_back(ty);
-	argTypes.push_back(Types::GetType(Types::Integer));
-	argTypes.push_back(Types::GetType(Types::Integer));
-	argTypes.push_back(Types::GetType(Types::Boolean));
-
-	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Constant* fnmemcpy = theModule->getOrInsertFunction(func, ft);
-
-	llvm::Value* v = srhs->CodeGen();
-	builder.CreateStore(MakeCharConstant(srhs->Str().size()), dest1);
-    
-
-	return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(srhs->Str().size()), 
-				   MakeIntegerConstant(1), MakeBooleanConstant(false));
+	return TempStringFromStringExpr(dest, srhs);
     }
     else if (llvm::isa<Types::StringDecl>(rhs->Type()))
     {
@@ -1293,7 +1320,7 @@ llvm::Value* AssignExprAST::CodeGen()
     const Types::StringDecl* sty = llvm::dyn_cast<const Types::StringDecl>(lhsv->Type()); 
     if (sty)
     {
-	return AssignStr(); 
+	return AssignStr();
     }
     
     llvm::Value* v = rhs->CodeGen();

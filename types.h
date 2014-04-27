@@ -324,9 +324,11 @@ public:
     static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
     static TypeDecl* TypeForSet();
     static TypeDecl* GetVoidType();
+    static StringDecl* GetStringType();
 
 private:
     static TypeDecl *voidType;
     static TypeDecl *setType;
+    static StringDecl *strType;
 };
 #endif

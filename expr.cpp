@@ -203,9 +203,13 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 			       MakeIntegerConstant(1), MakeBooleanConstant(false));
 }
 
-static llvm::Value* TempStringFromCharExpr(llvm::Value* dest, CharExprAST* rhs)
+static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
+    if (rhs->Type()->Type() != Types::Char)
+    {
+	return ErrorV("Expected char value");
+    }
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
     ind.push_back(MakeIntegerConstant(0));
@@ -478,6 +482,10 @@ static int StringishScore(ExprAST* e)
     {
 	return 3;
     }
+    if (e->Type()->Type() == Types::Char)
+    {
+	return 1;
+    }
     return 0;
 }
 
@@ -545,30 +553,30 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* rV;
     llvm::Value* lV;
     llvm::Type* ty;
-    if (CharExprAST* crhs = llvm::dyn_cast<CharExprAST>(rhs))
+    if (rhs->Type()->Type() == Types::Char)
     {
-	Types::StringDecl* sd = new Types::StringDecl(255);
+	Types::StringDecl* sd = Types::GetStringType();
 	ty = sd->LlvmType();
 	rV = CreateTempAlloca(ty);
-	TempStringFromCharExpr(rV, crhs);
+	TempStringFromChar(rV, rhs);
     }
     else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
-	Types::StringDecl* sd = new Types::StringDecl(255);
+	Types::StringDecl* sd = Types::GetStringType();
 	ty = sd->LlvmType();
 	rV = CreateTempAlloca(ty);
 	TempStringFromStringExpr(rV, srhs);
     }
-    else
+    else 
     {
 	ty = rhs->Type()->LlvmType();
 	rV = MakeAddressable(rhs, ty);
     }
 
-    if (CharExprAST* clhs = llvm::dyn_cast<CharExprAST>(lhs))
+    if (lhs->Type()->Type() == Types::Char)
     {
 	lV = CreateTempAlloca(ty);
-	TempStringFromCharExpr(lV, clhs);
+	TempStringFromChar(lV, lhs);
     }
     else if (StringExprAST* slhs = llvm::dyn_cast<StringExprAST>(lhs))
     {
@@ -602,7 +610,7 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     llvm::Type* resTy;
     if (resTyIsStr)
     {
-	Types::StringDecl* sd = new Types::StringDecl(255);
+	Types::StringDecl* sd = Types::GetStringType();
 	resTy = sd->LlvmType();
     }
     else
@@ -1346,9 +1354,9 @@ llvm::Value* AssignExprAST::AssignStr()
 
     llvm::Value *dest = lhsv->Address();
 
-    if (CharExprAST* crhs = llvm::dyn_cast<CharExprAST>(rhs))
+    if (rhs->Type()->Type() == Types::Char)
     {
-	return TempStringFromCharExpr(dest, crhs);
+	return TempStringFromChar    (dest,  rhs);
     }
     else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {

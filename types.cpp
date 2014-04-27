@@ -12,8 +12,7 @@
 
 Types::TypeDecl* Types::voidType = 0;
 Types::TypeDecl* Types::setType = 0;
-
-
+Types::StringDecl* Types::strType = 0;
 
 llvm::Type* ErrorT(const std::string& msg)
 {
@@ -376,7 +375,6 @@ llvm::Type* Types::GetVoidPtrType()
     return llvm::PointerType::getUnqual(base);
 }
 
-
 Types::TypeDecl* Types::GetVoidType()
 {
     if (!voidType)
@@ -384,4 +382,13 @@ Types::TypeDecl* Types::GetVoidType()
 	voidType = new TypeDecl(Types::Void);
     }
     return voidType;
+}
+
+Types::StringDecl* Types::GetStringType()
+{
+    if (!strType)
+    {
+	strType = new Types::StringDecl(255);
+    }
+    return strType;
 }

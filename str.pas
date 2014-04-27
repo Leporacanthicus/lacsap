@@ -6,6 +6,7 @@ var
    str3	: string;
    str4	: string;
    str5	: string;
+   str6	: string;
 
 begin
    str1 := 'abc';
@@ -16,10 +17,17 @@ begin
 
    str4 := str1 + str2;
 
+   str6 := 'a';
+
+   str6 := str6 + 'b';
+
+   str6 := 't' + str6;
+
    if str1 + str2 = str3 then
       writeln('same');
    writeln(str1);
    writeln(str2);
    writeln(str4);
    writeln(str5);
+   writeln(str6);
 end.

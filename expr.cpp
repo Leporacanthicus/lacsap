@@ -174,6 +174,7 @@ static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
 
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
+    TRACE();
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
     ind.push_back(MakeIntegerConstant(0));
@@ -200,6 +201,21 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
     
     return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(rhs->Str().size()), 
 			       MakeIntegerConstant(1), MakeBooleanConstant(false));
+}
+
+static llvm::Value* TempStringFromCharExpr(llvm::Value* dest, CharExprAST* rhs)
+{
+    TRACE();
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(0));
+    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
+    
+    ind[1] = MakeIntegerConstant(1);
+    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
+
+    builder.CreateStore(MakeCharConstant(1), dest1);
+    return builder.CreateStore(rhs->CodeGen(), dest2);
 }
 
 std::string ExprAST::ToString()
@@ -527,21 +543,42 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     std::vector<llvm::Type*> argTypes;
 
     llvm::Value* rV;
+    llvm::Value* lV;
     llvm::Type* ty;
-    if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    if (CharExprAST* crhs = llvm::dyn_cast<CharExprAST>(rhs))
     {
 	Types::StringDecl* sd = new Types::StringDecl(255);
 	ty = sd->LlvmType();
-	llvm::Value* dest = CreateTempAlloca(ty);
-	TempStringFromStringExpr(dest, srhs);
-	rV = dest;
+	rV = CreateTempAlloca(ty);
+	TempStringFromCharExpr(rV, crhs);
+    }
+    else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    {
+	Types::StringDecl* sd = new Types::StringDecl(255);
+	ty = sd->LlvmType();
+	rV = CreateTempAlloca(ty);
+	TempStringFromStringExpr(rV, srhs);
     }
     else
     {
 	ty = rhs->Type()->LlvmType();
 	rV = MakeAddressable(rhs, ty);
     }
-    llvm::Value* lV = MakeAddressable(lhs, ty);
+
+    if (CharExprAST* clhs = llvm::dyn_cast<CharExprAST>(lhs))
+    {
+	lV = CreateTempAlloca(ty);
+	TempStringFromCharExpr(lV, clhs);
+    }
+    else if (StringExprAST* slhs = llvm::dyn_cast<StringExprAST>(lhs))
+    {
+	lV = CreateTempAlloca(ty);
+	TempStringFromStringExpr(lV, slhs);
+    }
+    else
+    {
+	lV = MakeAddressable(lhs, ty);
+    }
 	
     if (!rV || !lV)
     {
@@ -565,7 +602,8 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     llvm::Type* resTy;
     if (resTyIsStr)
     {
-	resTy = lhs->Type()->LlvmType();
+	Types::StringDecl* sd = new Types::StringDecl(255);
+	resTy = sd->LlvmType();
     }
     else
     {
@@ -582,10 +620,38 @@ Types::TypeDecl* BinaryExprAST::Type() const
     {
 	return new Types::TypeDecl(Types::Boolean);
     }
+    
+    Types::TypeDecl* lType = lhs->Type();
+    Types::TypeDecl* rType = rhs->Type();
 
-    // TODO: Need to look at both sides, and determine if one side causes the other to convert. 
-    // e.g. LHS and RHS is int and float respectively.
-    return lhs->Type();
+    // If both are the same, then return this type.
+    if (rType->Type() == lType->Type())
+    {
+	return rType;
+    }
+
+    // If either side is string, then make it string!
+    if (rType->Type() == Types::String)
+    {
+	return rType;
+    }
+    if (lType->Type() == Types::String)
+    {
+	return lType;
+    }
+
+    // If either side is real, return that type, no matter what the other side is.
+    if (rType->Type() == Types::Real)
+    {
+	return rType;
+    }
+    if (lType->Type() == Types::Real)
+    {
+	return lType;
+    }
+
+    // Last resort, return left type.
+    return lType;
 }
 
 llvm::Value* BinaryExprAST::CodeGen()
@@ -601,8 +667,6 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Value* tmp = 0;
     if (BothStringish(lhs, rhs))
     {
-	assert(llvm::isa<Types::StringDecl>(lhs->Type())  &&
-	       "Currently only strings on both sides supported");
 	switch(oper.GetToken())
 	{
 	case Token::Plus:
@@ -1281,18 +1345,10 @@ llvm::Value* AssignExprAST::AssignStr()
     assert(sty && "Expect  string type in lhsv->Type()");
 
     llvm::Value *dest = lhsv->Address();
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(0));
-    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
-    
-    ind[1] = MakeIntegerConstant(1);
-    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
 
-    if (llvm::isa<CharExprAST>(rhs))
+    if (CharExprAST* crhs = llvm::dyn_cast<CharExprAST>(rhs))
     {
-	builder.CreateStore(MakeCharConstant(1), dest1);
-	return builder.CreateStore(rhs->CodeGen(), dest2);
+	return TempStringFromCharExpr(dest, crhs);
     }
     else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
@@ -1302,7 +1358,8 @@ llvm::Value* AssignExprAST::AssignStr()
     {
 	return CallStrFunc("Copy", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
     }
-    
+
+    assert(0 && "Unknown type");
     return 0;
 }
 

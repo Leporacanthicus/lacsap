@@ -41,4 +41,5 @@ begin
    writeln(str6);
    writeln(str7);
    writeln(str8);
+   writeln(length(str8));
 end.

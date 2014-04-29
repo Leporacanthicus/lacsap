@@ -1355,7 +1355,7 @@ llvm::Value* AssignExprAST::AssignStr()
 
     if (rhs->Type()->Type() == Types::Char)
     {
-	return TempStringFromChar    (dest,  rhs);
+	return TempStringFromChar(dest, rhs);
     }
     else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {

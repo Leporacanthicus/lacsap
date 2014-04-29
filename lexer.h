@@ -20,6 +20,7 @@ private:
     int NextChar();
     int CurChar();
     int PeekChar();
+    int GetChar();
 
     Token NumberToken();
     Token StringToken();

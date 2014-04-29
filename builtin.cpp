@@ -413,16 +413,32 @@ static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
 
     llvm::Value* start = args[1]->CodeGen();
     llvm::Value* len   = args[2]->CodeGen();
-    
+
     std::vector<llvm::Type*> argTypes;
     argTypes.push_back(str->getType());
     argTypes.push_back(start->getType());
     argTypes.push_back(len->getType());
-    
+
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
 
     return builder.CreateCall3(f, str, start, len, "copy");
+}
+
+static llvm::Value* LengthCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    if (args[0]->Type()->Type() != Types::String)
+    {
+	return ErrorV("Incorrect argument type - needs to be a string");
+    }
+    llvm::Value* v = MakeAddressable(args[0], args[0]->Type());
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(0));
+    llvm::Value* v1 = builder.CreateGEP(v, ind, "str_0");
+    llvm::Value* v2 = builder.CreateLoad(v1, "len");
+
+    return builder.CreateZExt(v2, Types::GetType(Types::Integer), "extend");
 }
 
 enum ResultForm
@@ -473,6 +489,7 @@ const static BuiltinFunction bifs[] =
     { "get",     GetCodeGen,     RF_Void },
     { "put",     PutCodeGen,     RF_Void },
     { "copy",    CopyCodeGen,    RF_String },
+    { "length",  LengthCodeGen,  RF_Integer },
 };
 
 static const BuiltinFunction* find(const std::string& name)

@@ -12,6 +12,21 @@ Lexer::Lexer(const std::string& sourceFile) :
     inFile.open(fName);
 }
 
+int Lexer::GetChar()
+{
+    int ch = inFile.get();
+    if (ch == '\n')
+    {
+	lineNo++;
+	column = 0;
+    }
+    else
+    {
+	column++;
+    }
+    return ch;
+}
+
 int Lexer::CurChar()
 {
     if (!curValid)
@@ -31,16 +46,7 @@ int Lexer::NextChar()
 	return curChar;
     }
 
-    curChar = inFile.get();
-    if (curChar == '\n')
-    {
-	lineNo++;
-	column = 0; 
-    }
-    else
-    {
-	column++;
-    }
+    curChar = GetChar();
     return curChar;
 }
 
@@ -51,7 +57,7 @@ int Lexer::PeekChar()
 	return nextChar;
     }
     curValid++;
-    nextChar = inFile.get();
+    nextChar = GetChar();
     return nextChar;
 }
 

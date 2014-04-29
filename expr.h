@@ -58,8 +58,8 @@ public:
     ExprAST(ExprKind k) : kind(k) { type = 0; }
     ExprAST(ExprKind k, Types::TypeDecl* ty) : type(ty), kind(k) {}
     virtual ~ExprAST() {}
-    void Dump(std::ostream& out) const;
-    void Dump() const;
+    void dump(std::ostream& out) const;
+    void dump() const;
     virtual void DoDump(std::ostream& out) const
     { 
 	out << "Empty node";
@@ -567,4 +567,6 @@ llvm::Value* ErrorV(const std::string& msg);
 llvm::Value* FileOrNull(VariableExprAST* file);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
 bool FileIsText(llvm::Value* f);
+llvm::Value* MakeAddressable(ExprAST* e, Types::TypeDecl* type);
+
 #endif

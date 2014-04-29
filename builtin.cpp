@@ -396,6 +396,35 @@ static llvm::Value* PutCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     return FileCallCodeGen(builder, args, "__put");
 }
 
+static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+{
+    if (args.size() != 3)
+    {
+	return ErrorV("Copy takes three arguments");
+    }
+    if (args[0]->Type()->Type() != Types::String ||
+	args[1]->Type()->Type() != Types::Integer ||
+	args[2]->Type()->Type() != Types::Integer)
+    {
+	return ErrorV("Arguments to copy should be (string, integer, integer)");
+    }
+    llvm::Value* str = MakeAddressable(args[0], Types::GetStringType());
+    assert(str && "Expect non-NULL return here...");
+
+    llvm::Value* start = args[1]->CodeGen();
+    llvm::Value* len   = args[2]->CodeGen();
+    
+    std::vector<llvm::Type*> argTypes;
+    argTypes.push_back(str->getType());
+    argTypes.push_back(start->getType());
+    argTypes.push_back(len->getType());
+    
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
+
+    return builder.CreateCall3(f, str, start, len, "copy");
+}
+
 enum ResultForm
 {
     RF_Input,
@@ -404,6 +433,7 @@ enum ResultForm
     RF_Real,
     RF_Char,
     RF_Void,
+    RF_String,
 };
 
 struct BuiltinFunction
@@ -442,6 +472,7 @@ const static BuiltinFunction bifs[] =
     { "random",  RandomCodeGen,  RF_Real },
     { "get",     GetCodeGen,     RF_Void },
     { "put",     PutCodeGen,     RF_Void },
+    { "copy",    CopyCodeGen,    RF_String },
 };
 
 static const BuiltinFunction* find(const std::string& name)
@@ -502,6 +533,10 @@ Types::TypeDecl* Builtin::Type(Stack<NamedObject*>& ns,
 
     case RF_Real:
 	type = "real";
+	break;
+
+    case RF_String:
+	return Types::GetStringType();
 	break;
 
     case RF_Void:

@@ -4,7 +4,7 @@
 void FuncDef::dump()
 {
     std::cerr << "Function: Name: " << Name() << " Prototype:";
-    proto->Dump();
+    proto->dump();
     std::cerr << std::endl;
 }
 

@@ -87,7 +87,7 @@ const Token& Parser::NextToken(const char* file, int line)
     }
     if (verbosity)
     {
-	curToken.Dump(std::cout, file, line);
+	curToken.dump(std::cout, file, line);
     }
     return curToken;
 }
@@ -106,7 +106,7 @@ const Token& Parser::PeekToken(const char* file, int line)
     if (verbosity > 1)
     {
 	std::cout << "peeking: ";
-	nextToken.Dump(std::cout, file, line);
+	nextToken.dump(std::cout, file, line);
     }
     return nextToken;
 }
@@ -1914,7 +1914,7 @@ ExprAST* Parser::ParsePrimary()
 	return ParseUnaryOp();
 
     default:
-	CurrentToken().Dump(std::cerr);
+	CurrentToken().dump(std::cerr);
 	assert(0 && "Unexpected token");
 	return 0;
     }

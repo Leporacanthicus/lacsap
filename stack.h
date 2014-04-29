@@ -92,7 +92,7 @@ public:
     }
 
 
-    void Dump()
+    void dump()
     {
 	int n = 0;
 	for(auto s : stack)

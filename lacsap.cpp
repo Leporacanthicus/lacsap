@@ -54,7 +54,7 @@ llvm::Module* CodeGen(std::vector<ExprAST*> ast)
 	if (!v)
 	{
 	    std::cerr << "Sorry, something went wrong here..." << std::endl;
-	    a->Dump(std::cerr);
+	    a->dump(std::cerr);
 	    return 0;
 	}
     }

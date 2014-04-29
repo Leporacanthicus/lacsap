@@ -568,7 +568,8 @@ String __StrConcat(String* a, String* b)
     return res;
 }
 
-void __StrCopy(String* a, String* b)
+/* Assign string b to string a. */
+void __StrAssign(String* a, String* b)
 {
     a->len = b->len;
     memcpy(a->str, b->str, a->len);
@@ -595,6 +596,26 @@ int __StrCompare(String* a, String* b)
 	}
     }
     return alen - blen;
+}
+
+/* Return substring of input */
+String __StrCopy(String* str, int start, int len)
+{
+    assert(start >= 1);
+    assert(len >= 0);
+    
+    String result;
+    if (start > str->len) 
+    {
+	len = 0;
+    }
+    if (start + len > str->len)
+    {
+	len = str->len - start;
+    }
+    result.len = len;
+    memcpy(result.str, &str->str[start], len);
+    return result;
 }
 
 int main()

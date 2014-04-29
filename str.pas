@@ -8,6 +8,7 @@ var
    str5	: string;
    str6	: string;
    str7	: string;
+   str8	: string;
    ch	: char;
 
 begin
@@ -31,10 +32,13 @@ begin
    for ch := 'A' to 'Z' do
       str7 := str7 + ch;
 
+   str8 := copy(str7, 2, 20);
+
    writeln(str1);
    writeln(str2);
    writeln(str4);
    writeln(str5);
    writeln(str6);
    writeln(str7);
+   writeln(str8);
 end.

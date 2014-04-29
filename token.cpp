@@ -50,12 +50,12 @@ Token::Token(TokenType t, const Location& w, double v) : type(t), where(w), real
 std::string Token::ToString() const
 {
     std::stringstream ss;
-    Dump(ss);
+    dump(ss);
     
     return ss.str();
 }
 
-void Token::Dump(std::ostream& out, const char* file, int line) const
+void Token::dump(std::ostream& out, const char* file, int line) const
 {
     if (file)
     {

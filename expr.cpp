@@ -56,7 +56,6 @@ void trace(const char *file, int line, const char *func)
     std::cerr << file << ":" << line << "::" << func << std::endl;
 }
 
-
 bool FileInfo(llvm::Value*f, int& recSize, bool& isText)
 {
     if (!f->getType()->isPointerTy())
@@ -96,16 +95,65 @@ bool FileIsText(llvm::Value* f)
     return false;
 }
 
-void ExprAST::Dump(std::ostream& out) const
+static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
+{
+    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
+    llvm::Type* ty = var.Type()->LlvmType();
+    if (!ty)
+    {
+	assert(0 && "Can't find type");
+	return 0;
+    }
+    return bld.CreateAlloca(ty, 0, var.Name());
+}
+
+static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
+{
+   /* Save where we were... */
+    llvm::BasicBlock* bb = builder.GetInsertBlock();
+    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
+    
+    /* Get the "entry" block */
+    llvm::Function *fn = builder.GetInsertBlock()->getParent();
+    
+    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
+
+    llvm::AllocaInst* tmp = bld.CreateAlloca(ty, 0, "tmp");
+    
+    builder.SetInsertPoint(bb, ip);
+    
+    return tmp;
+}
+
+llvm::Value* MakeAddressable(ExprAST* e, Types::TypeDecl* type)
+{
+    AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e);
+    llvm::Value* v;
+    if (ea)
+    {
+	v = ea->Address();
+	assert(v && "Expect address to be non-zero");
+    }
+    else
+    {
+	llvm::Type* ty = type->LlvmType();
+	v = CreateTempAlloca(ty);
+	builder.CreateStore(e->CodeGen(), v);
+	assert(v && "Expect address to be non-zero");
+    }
+    return v;
+}
+
+void ExprAST::dump(std::ostream& out) const
 {
     out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
     DoDump(out); 
     out << std::endl;
 }	
 
-void ExprAST::Dump(void) const
+void ExprAST::dump(void) const
 { 
-    Dump(std::cerr);
+    dump(std::cerr);
 }
 
 llvm::Value *ErrorV(const std::string& msg)
@@ -140,37 +188,6 @@ static llvm::Value* MakeCharConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::Char));
 }
-
-static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
-{
-    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
-    llvm::Type* ty = var.Type()->LlvmType();
-    if (!ty)
-    {
-	assert(0 && "Can't find type");
-	return 0;
-    }
-    return bld.CreateAlloca(ty, 0, var.Name());
-}
-
-static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
-{
-   /* Save where we were... */
-    llvm::BasicBlock* bb = builder.GetInsertBlock();
-    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
-    
-    /* Get the "entry" block */
-    llvm::Function *fn = builder.GetInsertBlock()->getParent();
-    
-    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
-
-    llvm::AllocaInst* tmp = bld.CreateAlloca(ty, 0, "tmp");
-    
-    builder.SetInsertPoint(bb, ip);
-    
-    return tmp;
-}
-
 
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
@@ -225,7 +242,7 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 std::string ExprAST::ToString()
 {
     std::stringstream ss;
-    Dump(ss);
+    dump(ss);
     return ss.str();
 }
 
@@ -303,7 +320,7 @@ void ArrayExprAST::DoDump(std::ostream& out) const
 	    out << ", ";
 	}
 	first = false;
-	i->Dump(out);
+	i->dump(out);
     }
 }
 
@@ -359,7 +376,7 @@ llvm::Value* FieldExprAST::Address()
 void PointerExprAST::DoDump(std::ostream& out) const
 {
     out << "Pointer:";
-    pointer->Dump(out);
+    pointer->dump(out);
 }
 
 llvm::Value* PointerExprAST::CodeGen()
@@ -392,7 +409,7 @@ llvm::Value* PointerExprAST::Address()
 void FilePointerExprAST::DoDump(std::ostream& out) const
 {
     out << "FilePointer:";
-    pointer->Dump(out);
+    pointer->dump(out);
 }
 
 llvm::Value* FilePointerExprAST::CodeGen()
@@ -450,24 +467,6 @@ llvm::Value* FunctionExprAST::Address()
     return 0;
 }
 
-static llvm::Value* MakeAddressable(ExprAST* e, llvm::Type* ty)
-{
-    AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e);
-    llvm::Value* v;
-    if (ea)
-    {
-	v = ea->Address();
-	assert(v && "Expect address to be non-zero");
-    }
-    else
-    {
-	v = CreateTempAlloca(ty);
-	builder.CreateStore(e->CodeGen(), v);
-	assert(v && "Expect address to be non-zero");
-    }
-    return v;
-}
-
 static int StringishScore(ExprAST* e)
 {
     if (llvm::isa<CharExprAST>(e))
@@ -500,9 +499,9 @@ static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
 void BinaryExprAST::DoDump(std::ostream& out) const
 { 
     out << "BinaryOp: ";
-    lhs->Dump(out);
-    oper.Dump(out);
-    rhs->Dump(out); 
+    lhs->dump(out);
+    oper.dump(out);
+    rhs->dump(out); 
 }
 
 llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet)
@@ -510,29 +509,29 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     TRACE();
     std::string func = std::string("__Set") + name;
     std::vector<llvm::Type*> argTypes;
-    llvm::Type* ty = Types::TypeForSet()->LlvmType();
+    Types::TypeDecl* type = Types::TypeForSet();
 
-    assert(ty && "Expect to get a type from Types::TypeForSet");
+    assert(type && "Expect to get a type from Types::TypeForSet");
 
     llvm::Type* resTy;
     if (resTyIsSet)
     {
-	resTy = ty;
+	resTy = type->LlvmType();
     }
     else
     {
 	resTy = Types::GetType(Types::Boolean);
     }
 
-    llvm::Value* rV = MakeAddressable(rhs, ty);
-    llvm::Value* lV = MakeAddressable(lhs, ty);
+    llvm::Value* rV = MakeAddressable(rhs, type);
+    llvm::Value* lV = MakeAddressable(lhs, type);
 
     if (!rV || !lV)
     {
 	return 0;
     }
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(ty);
+    llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
     argTypes.push_back(pty);
     argTypes.push_back(pty);
 
@@ -570,7 +569,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     else 
     {
 	ty = rhs->Type()->LlvmType();
-	rV = MakeAddressable(rhs, ty);
+	rV = MakeAddressable(rhs, rhs->Type());
     }
 
     if (lhs->Type()->Type() == Types::Char)
@@ -585,7 +584,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     }
     else
     {
-	lV = MakeAddressable(lhs, ty);
+	lV = MakeAddressable(lhs, lhs->Type());
     }
 	
     if (!rV || !lV)
@@ -925,7 +924,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     else
     {
 	l->dump();
-	oper.Dump(std::cout);
+	oper.dump(std::cout);
 	r->dump();
 	return ErrorV("Huh?");
     }
@@ -934,7 +933,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 void UnaryExprAST::DoDump(std::ostream& out) const
 { 
     out << "Unary: " << oper.ToString();
-    rhs->Dump(out);
+    rhs->dump(out);
 }
 
 Types::TypeDecl* UnaryExprAST::Type() const
@@ -976,7 +975,7 @@ void CallExprAST::DoDump(std::ostream& out) const
     out << "call: " << proto->Name() << "(";
     for(auto i : args)
     {
-	i->Dump(out);
+	i->dump(out);
     }
     out << ")";
 }
@@ -1045,7 +1044,7 @@ void BuiltinExprAST::DoDump(std::ostream& out) const
     out << " builtin call: " << name << "(";
     for(auto i : args)
     {
-	i->Dump(out);
+	i->dump(out);
     }
     out << ")";
 }
@@ -1060,7 +1059,7 @@ void BlockAST::DoDump(std::ostream& out) const
     out << "Block: Begin " << std::endl;
     for(auto p : content) 
     {
-	p->Dump(out);
+	p->dump(out);
     }
     out << "Block End;" << std::endl;
 }
@@ -1191,9 +1190,9 @@ void PrototypeAST::AddExtraArgs(const std::vector<VarDef>& extra)
 void FunctionAST::DoDump(std::ostream& out) const
 { 
     out << "Function: " << std::endl;
-    proto->Dump(out);
+    proto->dump(out);
     out << "Function body:" << std::endl;
-    body->Dump(out);
+    body->dump(out);
 }
 
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
@@ -1247,8 +1246,8 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     if (verbosity > 1)
     {
-	variables.Dump();
-	mangles.Dump();
+	variables.dump();
+	mangles.dump();
     }
 
     builder.SetInsertPoint(bb, ip);
@@ -1339,9 +1338,9 @@ llvm::Value* StringExprAST::CodeGen()
 void AssignExprAST::DoDump(std::ostream& out) const
 {
     out << "Assign: " << std::endl;
-    lhs->Dump(out);
+    lhs->dump(out);
     out << ":=";
-    rhs->Dump(out);
+    rhs->dump(out);
 }
 
 llvm::Value* AssignExprAST::AssignStr()
@@ -1364,7 +1363,7 @@ llvm::Value* AssignExprAST::AssignStr()
     }
     else if (llvm::isa<Types::StringDecl>(rhs->Type()))
     {
-	return CallStrFunc("Copy", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
+	return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
     }
 
     assert(0 && "Unknown type");
@@ -1378,7 +1377,7 @@ llvm::Value* AssignExprAST::CodeGen()
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
-	lhs->Dump(std::cerr);
+	lhs->dump(std::cerr);
 	return ErrorV("Left hand side of assignment must be a variable");
     }
 
@@ -1419,16 +1418,16 @@ llvm::Value* AssignExprAST::CodeGen()
 void IfExprAST::DoDump(std::ostream& out) const
 {
     out << "if: " << std::endl;
-    cond->Dump(out);
+    cond->dump(out);
     out << "then: ";
     if (then)
     {
-	then->Dump(out);
+	then->dump(out);
     }
     if (other)
     {
 	out << " else::";
-	other->Dump(out);
+	other->dump(out);
     }
 }
 
@@ -1491,7 +1490,7 @@ llvm::Value* IfExprAST::CodeGen()
 void ForExprAST::DoDump(std::ostream& out) const
 {
     out << "for: " << std::endl;
-    start->Dump(out);
+    start->dump(out);
     if (stepDown)
     {
 	out << " downto ";
@@ -1500,9 +1499,9 @@ void ForExprAST::DoDump(std::ostream& out) const
     {
 	out << " to ";
     }
-    end->Dump(out);
+    end->dump(out);
     out << " do ";
-    body->Dump(out);
+    body->dump(out);
 }
 
 llvm::Value* ForExprAST::CodeGen()
@@ -1574,9 +1573,9 @@ llvm::Value* ForExprAST::CodeGen()
 void WhileExprAST::DoDump(std::ostream& out) const
 {
     out << "While: ";
-    cond->Dump(out);
+    cond->dump(out);
     out << " Do: ";
-    body->Dump(out);
+    body->dump(out);
 }
 
 llvm::Value* WhileExprAST::CodeGen()
@@ -1614,9 +1613,9 @@ llvm::Value* WhileExprAST::CodeGen()
 void RepeatExprAST::DoDump(std::ostream& out) const
 {
     out << "Repeat: ";
-    body->Dump(out);
+    body->dump(out);
     out << " until: ";
-    cond->Dump(out);
+    cond->dump(out);
 }
 
 llvm::Value* RepeatExprAST::CodeGen()
@@ -1675,16 +1674,16 @@ void WriteAST::DoDump(std::ostream& out) const
 	    out << ", ";
 	}
 	first = false;
-	a.expr->Dump(out);
+	a.expr->dump(out);
 	if (a.width)
 	{
 	    out << ":";
-	    a.width->Dump(out);
+	    a.width->dump(out);
 	}
 	if (a.precision)
 	{
 	    out << ":";
-	    a.precision->Dump(out);
+	    a.precision->dump(out);
 	}
     }
     out << ")";
@@ -1920,7 +1919,7 @@ void ReadAST::DoDump(std::ostream& out) const
 	    out << ", ";
 	}
 	first = false;
-	a->Dump(out);
+	a->dump(out);
     }
     out << ")";
 }
@@ -2092,7 +2091,7 @@ void LabelExprAST::DoDump(std::ostream& out) const
 	out << l;
     }
     out << ": ";
-    stmt->Dump(out);
+    stmt->dump(out);
 }
 
 llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
@@ -2115,16 +2114,16 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
 void CaseExprAST::DoDump(std::ostream& out) const
 {
     out << "Case ";
-    expr->Dump(out);
+    expr->dump(out);
     out << " of " << std::endl;
     for(auto l : labels)
     {
-	l->Dump(out);
+	l->dump(out);
     }
     if (otherwise)
     {
 	out << "otherwise: ";
-	otherwise->Dump();
+	otherwise->dump();
     }
 }
 
@@ -2167,9 +2166,9 @@ llvm::Value* CaseExprAST::CodeGen()
 void RangeExprAST::DoDump(std::ostream& out) const
 {
     out << "Range:";
-    low->Dump(out); 
+    low->dump(out); 
     out << "..";
-    high->Dump(out);
+    high->dump(out);
 }
 
 llvm::Value* RangeExprAST::CodeGen()
@@ -2189,7 +2188,7 @@ void SetExprAST::DoDump(std::ostream& out) const
 	    out << ", ";
 	}
 	first = false;
-	v->Dump(out);
+	v->dump(out);
     }
     out << "]";
 }

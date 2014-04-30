@@ -21,11 +21,11 @@ public:
     class IntConstDecl : public ConstDecl
     {
     public:
-	IntConstDecl(const Location& w, int v) 
+	IntConstDecl(const Location& w, long v) 
 	    : ConstDecl(w), value(v) {}
 	virtual Token Translate();
     private:
-	int value;
+	long value;
     };
 
     class RealConstDecl : public ConstDecl

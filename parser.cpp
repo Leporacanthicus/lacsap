@@ -7,6 +7,7 @@
 #include "options.h"
 #include <iostream>
 #include <cassert>
+#include <limits>
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
@@ -17,6 +18,7 @@ Parser::Parser(Lexer &l)
     FalseTrue.push_back("false");
     FalseTrue.push_back("true");
     if (!(AddType("integer", new Types::TypeDecl(Types::Integer)) &&
+	  AddType("longint", new Types::TypeDecl(Types::Int64)) &&
 	  AddType("real", new Types::TypeDecl(Types::Real)) &&
 	  AddType("char", new Types::TypeDecl(Types::Char)) &&
 	  AddType("boolean", new Types::EnumDecl(FalseTrue, Types::Boolean)) &&
@@ -716,7 +718,16 @@ Types::TypeDecl* Parser::ParseType()
 
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
-    ExprAST* result = new IntegerExprAST(token.GetIntVal(), GetTypeDecl("integer"));
+    long val = token.GetIntVal();
+    ExprAST* result;
+    if (val < std::numeric_limits<unsigned int>::min() || val > std::numeric_limits<unsigned int>::max())
+    {
+	result = new IntegerExprAST(val, GetTypeDecl("longint"));
+    }
+    else
+    {
+	result = new IntegerExprAST(val, GetTypeDecl("integer"));
+    }
     NextToken();
     return result;
 }

@@ -156,7 +156,7 @@ Token Lexer::NumberToken()
     }
     else
     {
-	return Token(Token::Integer, w, (int)std::stoul(num, 0, base));
+	return Token(Token::Integer, w, (long)std::stoul(num, 0, base));
     }
 }
 
@@ -187,7 +187,7 @@ Token Lexer::StringToken()
     NextChar();
     if (str.size() == 1)
     {
-	return Token(Token::Char, w, str[0]);
+	return Token(Token::Char, w, (long)str[0]);
     }
     return Token(Token::StringLiteral, w, str);
 }

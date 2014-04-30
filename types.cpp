@@ -27,6 +27,9 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
     case Types::Integer:
 	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
 
+    case Types::Int64:
+	return llvm::Type::getInt64Ty(llvm::getGlobalContext());
+
     case Types::Real:
 	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
 
@@ -84,6 +87,8 @@ static const char* TypeToStr(Types::SimpleTypes t)
     {
     case Types::Integer:
 	return "Integer";
+    case Types::Int64:
+	return "Int64";
     case Types::Real:
 	return "Real";
     case Types::Char:

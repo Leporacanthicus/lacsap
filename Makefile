@@ -36,8 +36,8 @@ lacsap: ${OBJECTS} .depends
 tests:
 	${MAKE} -C test
 
-.phony: runtests
-runtests: 
+.phony: runtests 
+runtests: lacsap tests
 	${MAKE} -C test runtests
 
 clean:

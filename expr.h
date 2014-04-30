@@ -90,13 +90,13 @@ private:
 class IntegerExprAST : public ExprAST
 {
 public:
-    IntegerExprAST(int v, Types::TypeDecl* ty) 
+    IntegerExprAST(long v, Types::TypeDecl* ty) 
 	: ExprAST(EK_IntegerExpr, ty), val(v) {}
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_IntegerExpr; }
 private:
-    int         val;
+    long val;
 };
 
 class CharExprAST : public ExprAST
@@ -562,7 +562,7 @@ private:
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
-llvm::Value* MakeConstant(int val, llvm::Type* ty);
+llvm::Value* MakeConstant(long val, llvm::Type* ty);
 llvm::Value* ErrorV(const std::string& msg);
 llvm::Value* FileOrNull(VariableExprAST* file);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);

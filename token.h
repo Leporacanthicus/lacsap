@@ -111,7 +111,7 @@ public:
 	
     Token(TokenType t, const Location& w);
     Token(TokenType t, const Location& w, const std::string& str);
-    Token(TokenType t, const Location& w, int v);
+    Token(TokenType t, const Location& w, long v);
     Token(TokenType t, const Location& w, double v);
 
     static TokenType KeyWordToToken(const std::string& str);
@@ -125,7 +125,7 @@ public:
 	return strVal; 
     }
 
-    int GetIntVal() const 
+    long GetIntVal() const 
     { 
 	assert(type == Token::Integer ||
 	       type == Token::Char &&
@@ -163,7 +163,7 @@ private:
     
     // Values. 
     std::string strVal; 
-    int         intVal;
+    long        intVal;
     double      realVal;
 };
 

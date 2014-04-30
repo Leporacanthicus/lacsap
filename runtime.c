@@ -183,6 +183,12 @@ void __write_int(File* file, int v, int width)
     fprintf(f, "%*d", width, v);
 }
 
+void __write_int64(File* file, long v, int width)
+{
+    FILE* f = getFile(file, &output);
+    fprintf(f, "%*ld", width, v);
+}
+
 void __write_real(File* file, double v, int width, int precision)
 {
     FILE* f = getFile(file, &output);

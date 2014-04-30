@@ -12,12 +12,12 @@ Token Constants::RealConstDecl::Translate()
 
 Token Constants::CharConstDecl::Translate()
 {
-    return Token(Token::Char, loc, value);
+    return Token(Token::Char, loc, (long)value);
 }
 
 Token Constants::BoolConstDecl::Translate()
 {
-    return Token(Token::Boolean, loc, value);
+    return Token(Token::Boolean, loc, (long)value);
 }
 
 Token Constants::StringConstDecl::Translate()

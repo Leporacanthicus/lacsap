@@ -13,6 +13,7 @@ public:
     enum SimpleTypes
     {
 	Integer,
+	Int64,
 	Real,
 	Char,
 	Boolean,

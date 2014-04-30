@@ -169,7 +169,7 @@ static llvm::Function *ErrorF(const std::string& msg)
     return 0;
 }
 
-llvm::Value* MakeConstant(int val, llvm::Type* ty)
+llvm::Value* MakeConstant(long val, llvm::Type* ty)
 {
     return llvm::ConstantInt::get(ty, val);
 }
@@ -177,6 +177,11 @@ llvm::Value* MakeConstant(int val, llvm::Type* ty)
 llvm::Value* MakeIntegerConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::Integer));
+}
+
+llvm::Value* MakeInt64Constant(long val)
+{
+    return MakeConstant(val, Types::GetType(Types::Int64));
 }
 
 static llvm::Value* MakeBooleanConstant(int val)
@@ -1712,11 +1717,19 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    suffix = "bool";
 	    break;
 	}
+
 	case Types::Integer:
 	    // Make args of two integers. 
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(ty->LlvmType());
 	    suffix = "int";
+	    break;
+
+	case Types::Int64:
+	    // Make args of two integers. 
+	    argTypes.push_back(ty->LlvmType());
+	    argTypes.push_back(Types::GetType(Types::Integer));
+	    suffix = "int64";
 	    break;
 
 	case Types::Real:

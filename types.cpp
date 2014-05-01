@@ -121,6 +121,8 @@ static const char* TypeToStr(Types::SimpleTypes t)
 	return "File";
     case Types::String:
 	return "String";
+    case Types::Variant:
+	return "Variant";
     }
 }
 

@@ -30,6 +30,7 @@ public:
 	Field,
 	File,
 	String,
+	Variant,
     };
 
     /* Range is either created by the user, or calculated on basetype */
@@ -68,6 +69,7 @@ public:
 	    TK_FuncPtr,
 	    TK_File,
 	    TK_Set,
+	    TK_Variant,
 	};
 	TypeDecl(TypeKind k, SimpleTypes t)
 	    : kind(k), type(t), ltype(0)
@@ -232,11 +234,21 @@ public:
 	TypeDecl*   baseType;
     };
 
+    class VariantDecl : public TypeDecl
+    {
+    public:
+	VariantDecl(const std::vector<FieldDecl>& flds)
+	    : TypeDecl(TK_Variant, Variant), fields(flds) { };
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Variant; }
+    private:
+	std::vector<FieldDecl> fields;
+    };
+
     class RecordDecl : public TypeDecl
     {
     public:
-	RecordDecl(const std::vector<FieldDecl>& flds)
-	    : TypeDecl(TK_Record, Record), fields(flds) { };
+	RecordDecl(const std::vector<FieldDecl>& flds, VariantDecl* v)
+	    : TypeDecl(TK_Record, Record), fields(flds), variant(v) { };
 	virtual bool isIntegral() const { return false; }
 	virtual void dump() const;
 	int Element(const std::string& name) const;
@@ -246,6 +258,7 @@ public:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::vector<FieldDecl> fields;
+	VariantDecl* variant;
     };
 
     class FuncPtrDecl : public TypeDecl

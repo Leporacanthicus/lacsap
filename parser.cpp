@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cassert>
 #include <limits>
+#include <vector>
+#include <algorithm>
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
@@ -220,7 +222,7 @@ Types::TypeDecl* Parser::ParseSimpleType()
     return ty;
 }
 
-Types::Range* Parser::ParseRange()
+int Parser::ParseConstantValue(Token::TokenType& tt)
 {
     Token token = CurrentToken();
     if (token.GetToken() == Token::Identifier)
@@ -232,63 +234,66 @@ Types::Range* Parser::ParseRange()
 	}
     }
 
-    Token::TokenType tt = token.GetToken();
+    if (tt != Token::Unknown && token.GetToken() != tt)
+    {
+	Error("Expected token to match type"); 
+	tt = Token::Unknown;
+	return 0;
+    }
+
+    tt = token.GetToken();
     
     if (tt == Token::Integer || tt == Token::Char)
     {
-	int start = token.GetIntVal();
 	NextToken();
-        if (!Expect(Token::DotDot, true))
-	{
-	    return 0;
-	}
-
-	if (CurrentToken().GetToken() == Token::Identifier)
-	{
-	    Constants::ConstDecl* cd = GetConstDecl(CurrentToken().GetIdentName());
-	    if (cd)
-	    {
-		token = cd->Translate();
-	    }
-	}
-	else
-	{
-	    if (!Expect(tt, false))
-	    {
-		return 0;
-	    }	
-	    token = CurrentToken();
-	}
-	int end = token.GetIntVal();
-	NextToken();
-
-	return new Types::Range(start, end);
+	return token.GetIntVal();
     }
     else if (tt == Token::Identifier)
     {
-	EnumDef* start = GetEnumValue(CurrentToken().GetIdentName()); 
-	if (!start)
+	tt = Token::Unknown;
+	EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()); 
+	if (!ed)
 	{
-	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
-	}
-	NextToken();
-        if (!Expect(Token::DotDot, true))
-	{
+	    Error("Invalid range specification, expected identifier for enumerated type");
 	    return 0;
 	}
-	EnumDef* end;
-	if (CurrentToken().GetToken() != Token::Identifier ||
-	    !(end = GetEnumValue(CurrentToken().GetIdentName())))
-	{
-	    return ErrorR("Invalid range specification, expected identifier for enumerated type");
-	}
+	tt = CurrentToken().GetToken();
 	NextToken();
-	return new Types::Range(start->Value(), end->Value());
+	return ed->Value();
     }
     else
     {
+	tt = Token::Unknown;
+	Error("Invalid constant value, expected char, integer or enum value");
+	return 0;
+    }	
+}
+
+Types::Range* Parser::ParseRange()
+{
+    Token::TokenType tt = Token::Unknown;
+    int start = ParseConstantValue(tt);
+    if (tt == Token::Unknown)
+    {
+	return 0;
+    }
+    if (!Expect(Token::DotDot, true))
+    {
+	return 0;
+    }
+    
+    int end = ParseConstantValue(tt);
+
+    if (tt == Token::Unknown)
+    {
+	return 0;
+    }
+
+    if (end <= start)
+    {
 	return ErrorR("Invalid range specification");
     }
+    return new Types::Range(start, end);
 }
 
 Types::Range* Parser::ParseRangeOrTypeRange()
@@ -527,24 +532,27 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     return new Types::ArrayDecl(ty, rv);
 }
 
-Types::RecordDecl* Parser::ParseRecordDecl()
+
+Types::VariantDecl* Parser::ParseVariantDecl()
 {
-    if (!Expect(Token::Record, true))
-    {
-	return 0;
-    }
-    std::vector<Types::FieldDecl> fields;
+    Token::TokenType tt = Token::Unknown;
+    std::vector<int> variants;
+    std::vector<Types::FieldDecl> fields; 
     do
     {
-	std::vector<std::string> names;
 	do
 	{
-	    if (!Expect(Token::Identifier, false))
+	    int v = ParseConstantValue(tt);
+	    if (tt == Token::Unknown)
 	    {
 		return 0;
 	    }
-	    names.push_back(CurrentToken().GetIdentName());
-	    NextToken();
+	    if (std::find(variants.begin(), variants.end(), v) != variants.end())
+	    {
+		Error(std::string("Value already used: ") + std::to_string(v) + " in variant declaration");
+		return 0;
+	    }
+	    variants.push_back(v);
 	    if (CurrentToken().GetToken() != Token::Colon)
 	    {
 		if (!Expect(Token::Comma, true))
@@ -552,10 +560,136 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 		    return 0;
 		}
 	    }
-	} while(CurrentToken().GetToken() != Token::Colon);
+	} while (CurrentToken().GetToken() != Token::Colon);
 	if (!Expect(Token::Colon, true))
 	{
 	    return 0;
+	}
+	if (!Expect(Token::LeftParen, true))
+	{
+	    return 0;
+	}
+	do 
+	{
+	    std::vector<std::string> names;
+	    do 
+	    {
+		// TODO: Fix up to reduce duplication of this code. It's in several places now.
+		if (!Expect(Token::Identifier, false))
+		{
+		    return 0;
+		}
+		names.push_back(CurrentToken().GetIdentName());
+		NextToken();
+		if (CurrentToken().GetToken() != Token::Colon)
+		{
+		    if (!Expect(Token::Comma, true))
+		    {
+			return 0;
+		    }
+		}
+	    } while(CurrentToken().GetToken() != Token::Colon);
+	    if (!Expect(Token::Colon, true))
+	    {
+		return 0;
+	    }
+	    Types::TypeDecl* ty = ParseType();
+	    if (!ty)
+	    {
+	    return 0;
+	    }
+	    for(auto n : names)
+	    {
+		for(auto f : fields)
+		{
+		    if (n == f.Name())
+		    {
+			Error(std::string("Duplicate field name '") + n + "' in record");
+			return 0;
+		    }
+		}
+		fields.push_back(Types::FieldDecl(n, ty));
+	    }
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return 0;
+	    }
+	} while(CurrentToken().GetToken() != Token::RightParen);
+	if (!Expect(Token::RightParen, true))
+	{
+	}
+	if (!ExpectSemicolonOrEnd())
+	{
+	    return 0;
+	}
+    } while (CurrentToken().GetToken() != Token::End);
+    return new Types::VariantDecl(fields);
+}
+
+Types::RecordDecl* Parser::ParseRecordDecl()
+{
+    if (!Expect(Token::Record, true))
+    {
+	return 0;
+    }
+    Types::VariantDecl* variant = 0;
+    std::vector<Types::FieldDecl> fields;
+    do
+    {
+	std::vector<std::string> names;
+	if (CurrentToken().GetToken() == Token::Case)
+	{
+	    NextToken();
+	    std::string marker = "";
+	    Types::TypeDecl* markerTy;
+	    if (CurrentToken().GetToken() == Token::Identifier && PeekToken().GetToken() == Token::Colon)
+	    {
+		marker = CurrentToken().GetIdentName();
+		NextToken();
+		if (!Expect(Token::Colon, true))
+		{
+		    return 0;
+		}
+	    }
+	    markerTy = ParseType();
+	    if (!markerTy->isIntegral())
+	    {
+		Error("Expect variant selector to be integral type");
+		return 0;
+	    }
+	    if (marker != "")
+	    {
+		fields.push_back(Types::FieldDecl(marker, markerTy));
+	    }
+	    if (!Expect(Token::Of, true))
+	    {
+		return 0;
+	    }
+	    variant =  ParseVariantDecl();
+	    assert(variant);
+	}
+	else
+	{
+	    do
+	    {
+		if (!Expect(Token::Identifier, false))
+		{
+		    return 0;
+		}
+		names.push_back(CurrentToken().GetIdentName());
+		NextToken();
+		if (CurrentToken().GetToken() != Token::Colon)
+		{
+		    if (!Expect(Token::Comma, true))
+		    {
+			return 0;
+		    }
+		}
+	    } while(CurrentToken().GetToken() != Token::Colon);
+	    if (!Expect(Token::Colon, true))
+	    {
+		return 0;
+	    }
 	}
 	if (names.size() == 0)
 	{
@@ -589,7 +723,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     {
 	return 0;
     }
-    return new Types::RecordDecl(fields);
+    return new Types::RecordDecl(fields, variant);
 }
 
 Types::FileDecl* Parser::ParseFileDecl()
@@ -671,6 +805,10 @@ Types::StringDecl* Parser::ParseStringDecl()
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetToken();
+    if (tt == Token::Packed)
+    {
+	tt = NextToken().GetToken();
+    }
 
     switch(tt)
     {
@@ -1931,20 +2069,48 @@ ExprAST* Parser::ParsePrimary()
     }
 }
 
+bool Parser::ParseProgram()
+{
+    if (!Expect(Token::Program, true))
+    {
+	return false;
+    }
+    if (!Expect(Token::Identifier, false))
+    {
+	return false;
+    }
+    moduleName = CurrentToken().GetIdentName();
+    NextToken();
+    if (CurrentToken().GetToken() == Token::LeftParen)
+    {
+	NextToken();
+	do
+	{
+	    if (!Expect(Token::Identifier, true))
+	    {
+		return false;
+	    }
+	    if (CurrentToken().GetToken() != Token::RightParen)
+	    {
+		if (!Expect(Token::Comma, true))
+		{
+		    return false;
+		}
+	    }
+	} while(CurrentToken().GetToken() != Token::RightParen);
+	NextToken();
+    }
+    return true;
+}
+
 std::vector<ExprAST*> Parser::Parse()
 {
     std::vector<ExprAST*> v;
     NextToken();
-    if (!Expect(Token::Program, true))
+    if(!ParseProgram())
     {
 	return v;
     }
-    if (!Expect(Token::Identifier, false))
-    {
-	return v;
-    }
-    moduleName = CurrentToken().GetIdentName();
-    NextToken();
     for(;;)
     {
 	ExprAST* curAst = 0;

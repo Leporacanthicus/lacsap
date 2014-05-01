@@ -56,6 +56,7 @@ private:
     BlockAST*     ParseBlock();
     FunctionAST*  ParseDefinition();
     PrototypeAST* ParsePrototype(bool isFunction);
+    bool          ParseProgram();
 
     /* Type declarations and defintitions */
     void                ParseTypeDef();
@@ -71,6 +72,8 @@ private:
     Types::FileDecl*    ParseFileDecl();
     Types::SetDecl*     ParseSetDecl();
     Types::StringDecl*  ParseStringDecl();
+    Types::VariantDecl* ParseVariantDecl();
+    int                 ParseConstantValue(Token::TokenType& tt);
 
     /* Helper for syntax checking */
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

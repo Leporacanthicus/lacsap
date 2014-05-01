@@ -14,14 +14,13 @@ type
 		 true  : (birthplace: str);
 		 false : (countryofbirth: string;
 			  naturalized: date);
-	       end; { case }
 	    end;
 
 var
    p1, p2 : person;
 
 
-procedure PrintPerson(var p : person)
+procedure PrintPerson(var p : person);
 begin
    write(p.name);
    case p.native of
@@ -50,4 +49,4 @@ begin
 
    PrintPerson(p1);
    PrintPerson(p2);
-end;
+end.

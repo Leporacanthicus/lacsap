@@ -252,7 +252,11 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual void dump() const;
 	int Element(const std::string& name) const;
-	const FieldDecl& GetElement(int n) { return fields[n]; }
+	const FieldDecl& GetElement(unsigned int n) 
+	{ 
+	    assert(n < fields.size() && "Out of range field"); 
+	    return fields[n]; 
+	}
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Record; }
     private:
 	virtual llvm::Type* GetLlvmType() const;

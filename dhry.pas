@@ -462,7 +462,7 @@ function Func3  (    EnumParVal:    Enumeration):
                                             boolean;      forward;
 
 
-procedure Proc1; (* (PointerParVal: RecordPointer) *)
+procedure Proc1(PointerParVal: RecordPointer);
     (* executed once *)
 begin
   with PointerParVal^.PointerComp^ (* = PointerGlobNext *) do
@@ -487,7 +487,7 @@ begin
 end; (* Proc1 *)
 
 
-procedure Proc2; (* (var IntParRef: OneToFifty) *)
+procedure Proc2(var IntParRef: OneToFifty);
     (* executed once *)
     (* InParRef = 3, becomes 7 *)
 var
@@ -507,7 +507,7 @@ begin
 end; (* Proc2 *)
 
 
-procedure Proc3; (* (var PointerParRef: RecordPointer) *)
+procedure Proc3(var PointerParRef: RecordPointer);
     (* executed once *)
     (* PointerParRef becomes PointerGlob *)
 begin
@@ -537,8 +537,8 @@ begin
 end; (* Proc5 *)
 
 
-procedure Proc6; (* (    EnumParVal:     Enumeration;
-                     var EnumParRef:     Enumeration) *)
+procedure Proc6(    EnumParVal : Enumeration;
+		var EnumParRef : Enumeration);
     (* executed once *)
     (* EnumParVal = Ident3, EnumParRef becomes Ident2 *)
 begin
@@ -558,9 +558,9 @@ begin
 end; (* Proc6 *)
 
 
-procedure Proc7; (* (    Int1ParVal,
-                         Int2ParVal:    OneToFifty;
-                     var IntParRef:     OneToFifty) *)
+procedure Proc7(    Int1ParVal,
+		    Int2ParVal : OneToFifty;
+		var IntParRef  : OneToFifty);
     (* executed three times                               *)
     (* first call:      Int1ParVal = 2, Int2ParVal = 3,   *)
     (*                  IntParRef becomes 7               *)
@@ -576,10 +576,10 @@ begin
 end; (* Proc7 *)
 
 
-procedure Proc8; (* (var Array1ParRef: Array1DimInteger;
-                     var Array2ParRef: Array2DimInteger;
-                         Int1ParVal,
-                         Int2ParVal:    integer)          *)
+procedure Proc8(var Array1ParRef : Array1DimInteger;
+		var Array2ParRef : Array2DimInteger;
+		    Int1ParVal,
+		    Int2ParVal:    integer);
     (* executed once  *)
     (* Int1ParVal = 3 *)
     (* Int2ParVal = 7 *)
@@ -599,8 +599,8 @@ begin
 end; (* Proc8 *)
 
 
-function Func1; (* (Char1ParVal,
-                    Char2ParVal: CapitalLetter): Enumeration *)
+function Func1(Char1ParVal,
+	       Char2ParVal : CapitalLetter): Enumeration;
     (* executed three times, returns always Ident1              *)
     (* first call:      Char1ParVal = 'H', Char2ParVal = 'R'    *)
     (* second call:     Char1ParVal = 'A', Char2ParVal = 'C'    *)
@@ -621,8 +621,8 @@ begin
 end; (* Func1 *)
 
 
-function Func2; (* (var String1ParRef,
-                        String2ParRef: String30): boolean *)
+function Func2(var String1ParRef,
+		   String2ParRef : String30): boolean;
     (* executed once, returns false              *)
     (* String1ParRef = 'DHRYSTONE PROGRAM, 1''ST STRING' *)
     (* String2ParRef = 'DHRYSTONE PROGRAM, 2''ND STRING' *)
@@ -660,7 +660,7 @@ begin
 end; (* Func2 *)
 
 
-function Func3; (* (EnumParVal: Enumeration): boolean *)
+function Func3(EnumParVal: Enumeration): boolean;
     (* executed once, returns true      *)
     (* EnumParVal = Ident3              *)
 var

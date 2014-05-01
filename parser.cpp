@@ -266,7 +266,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt)
 	tt = Token::Unknown;
 	Error("Invalid constant value, expected char, integer or enum value");
 	return 0;
-    }	
+    }
 }
 
 Types::Range* Parser::ParseRange()
@@ -536,8 +536,8 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 Types::VariantDecl* Parser::ParseVariantDecl()
 {
     Token::TokenType tt = Token::Unknown;
-    std::vector<int> variants;
-    std::vector<Types::FieldDecl> fields; 
+    std::vector<int> variantsSeen;
+    std::vector<Types::FieldDecl> variants; 
     do
     {
 	do
@@ -547,12 +547,12 @@ Types::VariantDecl* Parser::ParseVariantDecl()
 	    {
 		return 0;
 	    }
-	    if (std::find(variants.begin(), variants.end(), v) != variants.end())
+	    if (std::find(variantsSeen.begin(), variantsSeen.end(), v) != variantsSeen.end())
 	    {
 		Error(std::string("Value already used: ") + std::to_string(v) + " in variant declaration");
 		return 0;
 	    }
-	    variants.push_back(v);
+	    variantsSeen.push_back(v);
 	    if (CurrentToken().GetToken() != Token::Colon)
 	    {
 		if (!Expect(Token::Comma, true))
@@ -569,6 +569,7 @@ Types::VariantDecl* Parser::ParseVariantDecl()
 	{
 	    return 0;
 	}
+	std::vector<Types::FieldDecl> fields; 
 	do 
 	{
 	    std::vector<std::string> names;
@@ -610,9 +611,12 @@ Types::VariantDecl* Parser::ParseVariantDecl()
 		}
 		fields.push_back(Types::FieldDecl(n, ty));
 	    }
-	    if (!Expect(Token::Semicolon, true))
+	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
-		return 0;
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return 0;
+		}
 	    }
 	} while(CurrentToken().GetToken() != Token::RightParen);
 	if (!Expect(Token::RightParen, true))
@@ -622,8 +626,16 @@ Types::VariantDecl* Parser::ParseVariantDecl()
 	{
 	    return 0;
 	}
+	if (fields.size() == 1)
+	{
+	    variants.push_back(fields[0]);
+	}
+	else
+	{
+	    variants.push_back(Types::FieldDecl("#", new Types::RecordDecl(fields, 0)));
+	}
     } while (CurrentToken().GetToken() != Token::End);
-    return new Types::VariantDecl(fields);
+    return new Types::VariantDecl(variants);
 }
 
 Types::RecordDecl* Parser::ParseRecordDecl()
@@ -637,6 +649,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     do
     {
 	std::vector<std::string> names;
+	// Parse Variant part if we have a "case". 
 	if (CurrentToken().GetToken() == Token::Case)
 	{
 	    NextToken();
@@ -690,28 +703,28 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    {
 		return 0;
 	    }
-	}
-	if (names.size() == 0)
-	{
-	    assert(0 && "Should have at least one name declared?");
-	    return 0;
-	}
-	Types::TypeDecl* ty = ParseType();
-	if (!ty)
-	{
-	    return 0;
-	}
-	for(auto n : names)
-	{
-	    for(auto f : fields)
+	    if (names.size() == 0)
 	    {
-		if (n == f.Name())
-		{
-		    Error(std::string("Duplicate field name '") + n + "' in record");
-		    return 0;
-		}
+		assert(0 && "Should have at least one name declared?");
+		return 0;
 	    }
-	    fields.push_back(Types::FieldDecl(n, ty));
+	    Types::TypeDecl* ty = ParseType();
+	    if (!ty)
+	    {
+		return 0;
+	    }
+	    for(auto n : names)
+	    {
+		for(auto f : fields)
+		{
+		    if (n == f.Name())
+		    {
+			Error(std::string("Duplicate field name '") + n + "' in record");
+			return 0;
+		    }
+		}
+		fields.push_back(Types::FieldDecl(n, ty));
+	    }
 	}
 	if (!ExpectSemicolonOrEnd())
 	{

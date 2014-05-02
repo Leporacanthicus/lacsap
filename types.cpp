@@ -241,12 +241,27 @@ llvm::Type* Types::FieldDecl::GetLlvmType() const
     return baseType->LlvmType();
 }
 
+void Types::VariantDecl::dump() const
+{
+    std::cerr << "Variant ";
+    for(auto f : fields)
+    {
+	f.dump();
+	std::cerr << std::endl;
+    }
+}
+
 void Types::RecordDecl::dump() const
 {
     std::cerr << "Record ";
     for(auto f : fields)
     {
 	f.dump();
+	std::cerr << std::endl;
+    }
+    if (variant)
+    {
+	variant->dump();
     }
 }
 

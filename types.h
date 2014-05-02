@@ -240,6 +240,7 @@ public:
 	VariantDecl(const std::vector<FieldDecl>& flds)
 	    : TypeDecl(TK_Variant, Variant), fields(flds) { };
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Variant; }
+	virtual void dump() const;
     private:
 	std::vector<FieldDecl> fields;
     };

@@ -736,7 +736,12 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     {
 	return 0;
     }
-    return new Types::RecordDecl(fields, variant);
+    Types::RecordDecl* r = new Types::RecordDecl(fields, variant);
+    if (variant)
+    {
+	r->dump();
+    }
+    return r;
 }
 
 Types::FileDecl* Parser::ParseFileDecl()

@@ -12,7 +12,7 @@ type
 	       dob   : date;
 	       case native: boolean of
 		 true  : (birthplace: str);
-		 false : (countryofbirth: string;
+		 false : (countryofbirth: str;
 			  naturalized: date);
 	    end;
 

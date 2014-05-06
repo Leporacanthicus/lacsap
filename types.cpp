@@ -7,6 +7,7 @@
 
 #define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
+extern llvm::Module* theModule;
 
 /* Static variables in Types. */
 
@@ -131,7 +132,7 @@ void Types::TypeDecl::dump() const
     std::cerr << "Type: " << TypeToStr(type);
 }
 
-llvm::Type* Types::TypeDecl::LlvmType()
+llvm::Type* Types::TypeDecl::LlvmType() const
 {
     if (ltype)
     {
@@ -251,6 +252,72 @@ void Types::VariantDecl::dump() const
     }
 }
 
+llvm::Type* Types::VariantDecl::GetLlvmType() const
+{
+    const llvm::DataLayout dl(theModule);
+    size_t maxSize = 0;
+    size_t maxSizeElt = 0;
+    size_t maxAlign = 0;
+    size_t maxAlignElt = 0;
+    size_t maxAlignSize = 0;
+    size_t elt = 0;
+    for(auto f : fields)
+    {
+	llvm::Type* ty = f.LlvmType();
+	size_t sz = dl.getTypeAllocSize(ty);
+	size_t al = dl.getPrefTypeAlignment(ty);
+	if (sz > maxSize)
+	{
+	    maxSize = sz;
+	    maxSizeElt = elt;
+	}
+	if (al > maxAlign || (al == maxAlign && sz > maxAlignSize))
+	{
+	    maxAlign = al;
+	    maxAlignSize = sz;
+	    maxAlignElt = elt;
+	}
+	elt++;
+    }
+
+    std::vector<llvm::Type*> fv;
+    llvm::Type* ty = fields[maxAlignElt].LlvmType();
+    fv.push_back(ty);
+    if (maxAlignElt != maxSizeElt)
+    {
+	size_t nelems = maxSize - maxAlignSize;
+	llvm::Type* ty = llvm::ArrayType::get(Types::GetType(Types::Char), nelems);
+	fv.push_back(ty);
+    }
+    return llvm::StructType::create(fv);
+}
+
+// This is a very basic algorithm, but I think it's good enough for 
+// most structures - there's unlikely to be a HUGE number of them. 
+int Types::VariantDecl::Element(const std::string& name) const
+{
+    int i = 0;
+    for(auto f : fields)
+    {
+	// Check for special record type 
+	if (f.Name() == "")
+	{
+	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(f.FieldType());
+	    assert(rd && "Expected record declarataion here!");
+	    if (rd->Element(name) >= 0)
+	    {
+		return i;
+	    }
+	}
+	if (f.Name() == name)
+	{
+	    return i;
+	}
+	i++;
+    }
+    return -1;
+}
+
 void Types::RecordDecl::dump() const
 {
     std::cerr << "Record ";
@@ -271,6 +338,10 @@ llvm::Type* Types::RecordDecl::GetLlvmType() const
     for(auto f : fields)
     {
 	fv.push_back(f.LlvmType());
+    }
+    if (variant)
+    {
+	fv.push_back(variant->LlvmType());
     }
     return llvm::StructType::create(fv);
 }

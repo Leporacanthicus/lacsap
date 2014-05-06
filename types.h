@@ -88,7 +88,7 @@ public:
 	virtual bool isIntegral() const;
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
-	llvm::Type* LlvmType();
+	llvm::Type* LlvmType() const;
 	virtual void dump() const;
 	TypeKind getKind() const { return kind; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Type; }
@@ -97,8 +97,7 @@ public:
     protected:
 	const TypeKind kind;
 	SimpleTypes type;
-	llvm::Type* ltype;
-
+	mutable llvm::Type* ltype;
     };
 
     class ArrayDecl : public TypeDecl
@@ -222,7 +221,7 @@ public:
 	FieldDecl(const std::string& nm, TypeDecl* ty)
 	    : TypeDecl(TK_Field, Field), name(nm), baseType(ty) {}
     public:
-	const std::string& Name() { return name; }
+	const std::string& Name() const { return name; }
 	TypeDecl* FieldType() const { return baseType; } 
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
@@ -239,8 +238,16 @@ public:
     public:
 	VariantDecl(const std::vector<FieldDecl>& flds)
 	    : TypeDecl(TK_Variant, Variant), fields(flds) { };
-	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Variant; }
 	virtual void dump() const;
+	int Element(const std::string& name) const;
+	const FieldDecl& GetElement(unsigned int n) const
+	{ 
+	    assert(n < fields.size() && "Out of range field"); 
+	    return fields[n]; 
+	}
+	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Variant; }
+    private:
+	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::vector<FieldDecl> fields;
     };
@@ -253,11 +260,13 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual void dump() const;
 	int Element(const std::string& name) const;
-	const FieldDecl& GetElement(unsigned int n) 
+	const FieldDecl& GetElement(unsigned int n) const
 	{ 
 	    assert(n < fields.size() && "Out of range field"); 
 	    return fields[n]; 
 	}
+	int FieldCount() const { return fields.size() + (variant != 0); }
+	VariantDecl* Variant() { return variant; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Record; }
     private:
 	virtual llvm::Type* GetLlvmType() const;

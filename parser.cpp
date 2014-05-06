@@ -632,7 +632,7 @@ Types::VariantDecl* Parser::ParseVariantDecl()
 	}
 	else
 	{
-	    variants.push_back(Types::FieldDecl("#", new Types::RecordDecl(fields, 0)));
+	    variants.push_back(Types::FieldDecl("", new Types::RecordDecl(fields, 0)));
 	}
     } while (CurrentToken().GetToken() != Token::End);
     return new Types::VariantDecl(variants);
@@ -737,10 +737,6 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	return 0;
     }
     Types::RecordDecl* r = new Types::RecordDecl(fields, variant);
-    if (variant)
-    {
-	r->dump();
-    }
     return r;
 }
 
@@ -1042,16 +1038,59 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     {
 	return 0;
     }
+
     Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type);
+    if (!rd)
+    {
+	return ErrorV("Attempt to use field of varaible that hasn't got fields");
+    }
+    
     std::string name = CurrentToken().GetIdentName();
     int elem = rd->Element(name);
-    if (elem < 0)
+    VariableExprAST* e = 0;
+    
+    if (elem >= 0)
+    {
+	type = rd->GetElement(elem).FieldType();
+	e = new FieldExprAST(expr, elem, type);
+    }
+    else
+    {
+	// If the main structure doesn't have it, it may be a variant?
+	Types::VariantDecl* v = rd->Variant();
+	if (v)
+	{
+	    elem = v->Element(name);
+	    if (elem >= 0)
+	    {
+		const Types::FieldDecl* fd = &v->GetElement(elem);
+		type = fd->FieldType();
+		e = new VariantFieldExprAST(expr, rd->FieldCount()-1, type);
+		// If name is empty, we have a made up struct. Dig another level down. 
+		if (fd->Name() == "")
+		{
+		    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType()); 
+		    assert(r && "Expect record declarataion");
+		    elem = r->Element(name);
+		    if (elem >= 0)
+		    {
+			type = r->GetElement(elem).FieldType();
+			e = new FieldExprAST(e, elem, type);
+		    }
+		    else
+		    {
+			e = 0;
+		    }
+		}
+	    }
+	}
+    }
+    if (!e)
     {
 	return ErrorV(std::string("Can't find element ") + name + " in record");
     }
-    type = rd->GetElement(elem).FieldType();
     NextToken();
-    return new FieldExprAST(expr, elem, type);
+    return e;
 }
 
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)

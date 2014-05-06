@@ -44,12 +44,7 @@ MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
-#if 1
 #define TRACE() do { if (verbosity) trace(__FILE__, __LINE__, __PRETTY_FUNCTION__); } while(0)
-#else
-#define TRACE()
-#endif
-
 
 void trace(const char *file, int line, const char *func)
 {
@@ -194,6 +189,28 @@ static llvm::Value* MakeCharConstant(int val)
     return MakeConstant(val, Types::GetType(Types::Char));
 }
 
+
+static llvm::Constant* GetMemCpyFn()
+{
+    static llvm::Constant* fnmemcpy;
+    if (!fnmemcpy)
+    {
+	std::string func = "llvm.memcpy.p0i8.p0i8.i32";
+	std::vector<llvm::Type*> argTypes;
+	llvm::Type* ty = Types::GetVoidPtrType();
+	llvm::Type* resTy = Types::GetType(Types::Void);
+	argTypes.push_back(ty);
+	argTypes.push_back(ty);
+	argTypes.push_back(Types::GetType(Types::Integer));
+	argTypes.push_back(Types::GetType(Types::Integer));
+	argTypes.push_back(Types::GetType(Types::Boolean));
+	
+	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+	fnmemcpy = theModule->getOrInsertFunction(func, ft);
+    }
+    return fnmemcpy;
+}
+
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
     TRACE();
@@ -205,19 +222,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
     ind[1] = MakeIntegerConstant(1);
     llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
 
-    std::string func = "llvm.memcpy.p0i8.p0i8.i32";
-    std::vector<llvm::Type*> argTypes;
-    llvm::Type* ty = Types::GetVoidPtrType();
-    llvm::Type* resTy = Types::GetType(Types::Void);
-    argTypes.push_back(ty);
-    argTypes.push_back(ty);
-    argTypes.push_back(Types::GetType(Types::Integer));
-    argTypes.push_back(Types::GetType(Types::Integer));
-    argTypes.push_back(Types::GetType(Types::Boolean));
-    
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* fnmemcpy = theModule->getOrInsertFunction(func, ft);
-    
+    llvm::Constant* fnmemcpy = GetMemCpyFn();
     llvm::Value* v = rhs->CodeGen();
     builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
     
@@ -375,6 +380,27 @@ llvm::Value* FieldExprAST::Address()
     ind.push_back(MakeIntegerConstant(0));
     ind.push_back(MakeIntegerConstant(element));
     v = builder.CreateGEP(v, ind, "valueindex");
+    return v;
+}
+
+
+void VariantFieldExprAST::DoDump(std::ostream& out) const
+{
+    out << "Field " << element << std::endl;
+    expr->DoDump(out);
+}
+
+llvm::Value* VariantFieldExprAST::Address()
+{
+    TRACE();
+    //TODO: This needs fixing up.
+    llvm::Value* v = expr->Address();
+    std::vector<llvm::Value*> ind;
+    ind.push_back(MakeIntegerConstant(0));
+    ind.push_back(MakeIntegerConstant(element));
+    v = builder.CreateGEP(v, ind, "valueindex");
+    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
+
     return v;
 }
 
@@ -1391,6 +1417,27 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	return AssignStr();
     }
+
+    if (llvm::isa<StringExprAST>(rhs) && 
+	lhs->Type()->Type() == Types::Array)
+    {
+	Types::ArrayDecl* arr = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
+	if (arr->SubType()->Type() == Types::Char)
+	{
+	    StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
+	    assert(rhs && "Expected string to convert correctly");
+	    llvm::Value* dest = lhsv->Address();
+	    std::vector<llvm::Value*> ind;
+	    ind.push_back(MakeIntegerConstant(0));
+	    ind.push_back(MakeIntegerConstant(0));
+	    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
+	    llvm::Value* v = rhs->CodeGen();
+	    llvm::Constant* fnmemcpy = GetMemCpyFn();
+	    
+	    return builder.CreateCall5(fnmemcpy, dest1, v, MakeIntegerConstant(str->Str().size()), 
+				       MakeIntegerConstant(1), MakeBooleanConstant(false));
+	}
+   }
     
     llvm::Value* v = rhs->CodeGen();
     llvm::Value* dest = lhsv->Address();
@@ -1836,6 +1883,10 @@ llvm::Value* WriteAST::CodeGen()
 		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
 		assert(a && "Expected addressable value");
 		v = a->Address();
+		std::vector<llvm::Value*> ind;
+		ind.push_back(MakeIntegerConstant(0));
+		ind.push_back(MakeIntegerConstant(0));
+		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
 	    else
 	    {

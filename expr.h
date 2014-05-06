@@ -32,6 +32,7 @@ public:
 	EK_PointerExpr,
 	EK_FilePointerExpr,
 	EK_FieldExpr,
+	EK_VariantFieldExpr,
 	EK_FunctionExpr,
 	EK_SetExpr,
 	EK_LastAddressable,
@@ -222,6 +223,19 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* Address();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_FieldExpr; }
+private:
+    VariableExprAST* expr;
+    int element;
+};
+
+class VariantFieldExprAST : public VariableExprAST
+{
+public:
+    VariantFieldExprAST(VariableExprAST* base, int elem, Types::TypeDecl* ty)
+	: VariableExprAST(EK_VariantFieldExpr, base, ty), expr(base), element(elem) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* Address();
+    static bool classof(const ExprAST *e) { return e->getKind() == EK_VariantFieldExpr; }
 private:
     VariableExprAST* expr;
     int element;

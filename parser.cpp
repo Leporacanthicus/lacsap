@@ -1902,6 +1902,53 @@ ExprAST* Parser::ParseCaseExpr()
     return new CaseExprAST(expr, labels, otherwise);
 }
 
+ExprAST* Parser::ParseWithBlock()
+{
+    if (!Expect(Token::With, true))
+    {
+	return 0;
+    }
+    std::vector<VariableExprAST*> vars;
+    do
+    {
+	ExprAST* e = ParseIdentifierExpr();
+	VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(e);
+	if (!v)
+	{
+	    return Error("With statement must contain only variable expression");
+	}
+	vars.push_back(v);
+	if (CurrentToken().GetToken() != Token::Do)
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return 0;
+	    }
+	}
+    } while(CurrentToken().GetToken() != Token::Do);
+    if (!Expect(Token::Do, true))
+    {
+	return 0;
+    }
+    
+    NameWrapper wrapper(nameStack);
+    for(auto v : vars)
+    {
+	Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type());
+	if(!rd)
+	{
+	    return Error("Type for with statement should be a record type");
+	}
+	for(int i = 0; i < rd->FieldCount(); i++)
+	{
+	    const Types::FieldDecl f = rd->GetElement(i);
+	    nameStack.Add(f.Name(), new WithDef(f.Name(), v, f.FieldType()));
+	}
+    }
+    ExprAST* body = ParseStmtOrBlock();
+    return new WithExprAST(body);
+}
+
 ExprAST* Parser::ParseWrite()
 {
     bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
@@ -2105,6 +2152,9 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::Case:
 	return ParseCaseExpr();
+
+    case Token::With:
+	return ParseWithBlock();
 
     case Token::Write:
     case Token::Writeln:

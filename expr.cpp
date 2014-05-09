@@ -2348,6 +2348,16 @@ llvm::Value* SetExprAST::CodeGen()
     return builder.CreateLoad(v);
 }
 
+void WithExprAST::DoDump(std::ostream& out) const
+{
+    out << "With ... do " << std::endl;
+}
+
+llvm::Value* WithExprAST::CodeGen()
+{
+    return body->CodeGen();
+}
+
 
 int GetErrors(void)
 {

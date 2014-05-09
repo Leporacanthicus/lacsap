@@ -2,6 +2,7 @@
 #include "options.h"
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/TargetRegistry.h>
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/FormattedStream.h"

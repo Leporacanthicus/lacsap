@@ -55,6 +55,7 @@ public:
 	EK_Read,
 	EK_LabelExpr,
 	EK_CaseExpr,
+	EK_WithExpr,
     };
     ExprAST(ExprKind k) : kind(k) { type = 0; }
     ExprAST(ExprKind k, Types::TypeDecl* ty) : type(ty), kind(k) {}
@@ -545,7 +546,6 @@ private:
     bool                  isReadln;
 };
 
-
 class LabelExprAST : public ExprAST
 {
 public:
@@ -572,6 +572,18 @@ private:
     ExprAST* expr;
     std::vector<LabelExprAST*> labels;
     ExprAST* otherwise;
+};
+
+class WithExprAST : public ExprAST
+{
+public:
+    WithExprAST(ExprAST *b) 
+	: ExprAST(EK_WithExpr), body(b) {};
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    static bool classof(const ExprAST *e) { return e->getKind() == EK_WithExpr; }
+private:
+    ExprAST* body;
 };
 
 /* Useful global functions */

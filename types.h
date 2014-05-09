@@ -4,7 +4,6 @@
 #include <llvm/IR/Type.h>
 #include <string>
 
-
 class PrototypeAST;
 
 class Types

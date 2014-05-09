@@ -6,6 +6,8 @@
 #include <llvm/Support/Casting.h>
 #include <iostream>
 
+class ExprAST;
+class PrototypeAST;
 
 class NamedObject
 {
@@ -18,11 +20,13 @@ public:
 	NK_Const,
 	NK_Enum,
 	NK_Builtin,
+	NK_With,
     };
     NamedObject(NamedKind k, const std::string& nm) 
 	: kind(k), name(nm) 
     {
     }
+    virtual ~NamedObject() {}
     virtual Types::TypeDecl* Type() const = 0;
     const std::string& Name() const { return name; }
     virtual void dump() { std::cerr << "Name: " << name << std::endl; }
@@ -119,6 +123,22 @@ public:
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
 private:
     int              enumValue;
+    Types::TypeDecl* type;
+};
+
+class WithDef : public NamedObject
+{
+public:
+    WithDef(const std::string& nm, ExprAST* act, Types::TypeDecl* ty) 
+	: NamedObject(NK_With, nm), actual(act)
+    {
+    }
+    Types::TypeDecl* Type() const { return type; }
+    ExprAST* Actual() const { return actual; }
+    void dump();
+    static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
+private:
+    ExprAST*         actual;
     Types::TypeDecl* type;
 };
 

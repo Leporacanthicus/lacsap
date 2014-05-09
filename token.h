@@ -102,6 +102,7 @@ public:
 	Not,
 	Case,
 	Otherwise,
+	With,
 
 	EndOfFile  = -1, 
 	Unknown    = -1000,

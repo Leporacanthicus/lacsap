@@ -8,3 +8,14 @@ void FuncDef::dump()
     std::cerr << std::endl;
 }
 
+
+void WithDef::dump() 
+{ 
+    std::cerr << "With: " << Name() << " Actual: "; 
+    actual->dump();
+    std::cerr << " Type: ";
+    type->dump();
+    std::cerr << std::endl; 
+}
+
+

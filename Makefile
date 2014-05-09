@@ -10,7 +10,7 @@ LLVM_DIR = /usr/local/llvm-debug
 
 CFLAGS    = -g -Wall -Werror -Wextra -std=c99
 INCLUDES  = `${LLVM_DIR}/bin/llvm-config --includedir`
-CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0 -fstandalone-debug
+CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0 -fstandalone-debug -fno-exceptions -fno-rtti
 CXXFLAGS += -I ${INCLUDES}
 CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 #CXX_EXTRA = --analyze

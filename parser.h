@@ -44,6 +44,7 @@ private:
     ExprAST* ParseForExpr();
     ExprAST* ParseWhile();
     ExprAST* ParseCaseExpr();
+    ExprAST* ParseWithBlock();
 
     /* I/O functions */
     ExprAST*      ParseWrite();
@@ -61,6 +62,7 @@ private:
     /* Type declarations and defintitions */
     void                ParseTypeDef();
     void                ParseConstDef();
+
     Types::Range*       ParseRange();
     Types::Range*       ParseRangeOrTypeRange();
     Types::TypeDecl*    ParseSimpleType();

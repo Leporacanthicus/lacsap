@@ -498,14 +498,17 @@ const static BuiltinFunction bifs[] =
     { "put",     PutCodeGen,     RF_Void },
     { "copy",    CopyCodeGen,    RF_String },
     { "length",  LengthCodeGen,  RF_Integer },
-    { "clock",   ClockCodeGen,  RF_LongInt },
+    { "clock",   ClockCodeGen,   RF_LongInt },
 };
 
 static const BuiltinFunction* find(const std::string& name)
 {
+    std::string nmlower = name;
+    std::transform(nmlower.begin(), nmlower.end(), nmlower.begin(), ::tolower);
+    
     for(size_t i = 0; i < sizeof(bifs)/sizeof(bifs[0]); i++)
     {
-	if (name == bifs[i].name)
+	if (nmlower == bifs[i].name)
 	{
 	    return &bifs[i];
 	}

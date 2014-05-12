@@ -208,8 +208,9 @@ struct
     { "Basic", "Test 23",       "test23.pas",      "" },
     { "Basic", "C func name",   "cfuncname.pas",   "" },
     { "Basic", "MT 19937",      "mt.pas",          "" },
-    { "Basic", "string",        "str.pas",         "" },
-    { "Basic", "linked list",   "list.pas",        "" },
+    { "Basic", "String",        "str.pas",         "" },
+    { "Basic", "Linked List",   "list.pas",        "" },
+    { "Basic", "Whetstone",     "whet.pas",        "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

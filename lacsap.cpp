@@ -83,7 +83,7 @@ void OptimizerInit()
 	// Simplify the control flow graph (deleting unreachable blocks, etc).
 	fpm->add(llvm::createCFGSimplificationPass());
         // Memory copying opts. 
-	fpm->add(llvm::createMemCpyOptPass());
+//	fpm->add(llvm::createMemCpyOptPass());
 	// Merge constants.
 	mpm->add(llvm::createConstantMergePass());
 	// dead code removal:

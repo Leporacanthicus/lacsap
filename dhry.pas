@@ -347,8 +347,8 @@ program Dhrystone (input, output);
 
 const (* for measurement *)
 
-  MicrosecondsPerClock  = 1000;
-  ClocksPerSecond       = 1000;
+  MicrosecondsPerClock  = 1;
+  ClocksPerSecond       = 1000000;
         (* In Berkeley UNIX Pascal, the function "clock"        *)
         (* returns milliseconds                                 *)
   TooSmallTime          = 2000;
@@ -416,10 +416,10 @@ var
   (* Variables for measurement *)
 
   RunIndex,
-  NumberOfRuns,
+  NumberOfRuns:         integer;
   BeginClock,
   EndClock,
-  SumClocks:            integer;
+  SumClocks:            longint;
   Microseconds,         
   DhrystonesPerSecond:  real;
   I:                    integer;

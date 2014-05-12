@@ -689,6 +689,40 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
 }
 
+
+llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
+{
+    std::string func = std::string("__Arr") + name;
+    std::vector<llvm::Type*> argTypes;
+
+    llvm::Value* rV;
+    llvm::Value* lV;
+
+    rV = MakeAddressable(rhs, rhs->Type());
+    lV = MakeAddressable(rhs, rhs->Type());
+
+    if (!rV || !lV)
+    {
+	return 0;
+    }
+    // Result is integer.
+    llvm::Type* resTy = Types::GetType(Types::Integer);
+
+    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+    argTypes.push_back(pty);
+    argTypes.push_back(pty);
+    // Reuse result for size.
+    argTypes.push_back(resTy);
+
+    lV = builder.CreateBitCast(lV, pty);
+    rV = builder.CreateBitCast(rV, pty);
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+    return builder.CreateCall3(f, lV, rV, MakeIntegerConstant(size), "calltmp");
+}
+
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
     Token::TokenType tt = oper.GetToken();
@@ -748,7 +782,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	case Token::Plus:
 	    return CallStrFunc("Concat", true);
 
-	case Token::Equal:
+ 	case Token::Equal:
 	    tmp = CallStrFunc("Compare", false);
 	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
 	    
@@ -774,6 +808,51 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	default:
 	    return ErrorV("Invalid operand for strings");
+	}
+    }
+    else if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
+    {
+	// Comparison operators are allowed for old style Pascal strings (char arrays)
+	// But only if they are the same size.
+	if (lhs->Type()->SubType()->Type() == Types::Char &&
+	    rhs->Type()->SubType()->Type() == Types::Char)
+	{
+	    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
+	    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
+
+	    std::vector<Types::Range*> rr = ar->Ranges();
+	    std::vector<Types::Range*> rl = al->Ranges();
+
+	    if (rr.size() == 1 && 
+                rl.size() == 1 && 
+		rr[0]->Size() == rl[0]->Size())
+	    {
+		size_t size = rr[0]->Size();
+		tmp = CallArrFunc("Compare", size);
+		switch (oper.GetToken())
+		{
+		case Token::Equal:
+		    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
+		    
+		case Token::NotEqual:
+		    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
+		    
+		case Token::GreaterOrEqual:
+		    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
+		    
+		case Token::LessOrEqual:
+		    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
+		    
+		case Token::GreaterThan:
+		    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
+		    
+		case Token::LessThan:
+		    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
+		    
+		default:
+		    return ErrorV("Invalid operand for char arrays");
+		}
+	    }
 	}
     }
     else if (llvm::isa<Types::SetDecl>(rhs->Type()))

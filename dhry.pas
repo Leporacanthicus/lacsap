@@ -830,6 +830,7 @@ begin (* main program, corresponds to procedures        *)
     begin
       writeln ('Measured time too small to obtain meaningful results');
       writeln ('Please increase number of runs');
+      writeln ('Sumclocks=', SumClocks:2);
       writeln;
     end
     else

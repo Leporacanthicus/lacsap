@@ -625,6 +625,23 @@ String __StrCopy(String* str, int start, int len)
     return result;
 }
 
+/* Return >0 if a is greater than b, 
+ * Return <0 if a is less than b. 
+ * Return 0 if a == b. 
+ */ 
+int __ArrCompare(char* a, char* b, int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+	if (a[i] != b[i])
+	{
+	    return a[i] - b[i];
+	}
+    }
+    return 0;
+}
+
+
 long __Clock(void)
 {
     return clock();

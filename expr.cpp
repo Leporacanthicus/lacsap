@@ -937,6 +937,25 @@ llvm::Value* BinaryExprAST::CodeGen()
     bool rToFloat = false;
     bool lToFloat = false;
 
+    if (rty->isIntegerTy() && lty->isIntegerTy())
+    {
+	unsigned lsize = lty->getPrimitiveSizeInBits();
+	unsigned rsize = rty->getPrimitiveSizeInBits();
+	if (lsize > 1 && rsize > 1 && lsize != rsize)
+	{
+	    if (rsize > lsize)
+	    {
+		l = builder.CreateSExt(l, rty);
+		lty = rty;
+	    }
+	    else
+	    {
+		r = builder.CreateSExt(r, lty);
+		rty = lty;
+	    }
+	}
+    }
+
     /* Convert right hand side to double if left is double, and right is integer */
     if (rty->isIntegerTy())
     {

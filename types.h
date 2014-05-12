@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <llvm/IR/Type.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <string>
 
 class PrototypeAST;
@@ -19,7 +20,10 @@ public:
 	Array,
 	Function,
 	Procedure,
+	
+	Variant,
 	Record,
+
         Set,
 	SubRange,
 	Enum,
@@ -29,7 +33,6 @@ public:
 	Field,
 	File,
 	String,
-	Variant,
     };
 
     /* Range is either created by the user, or calculated on basetype */
@@ -80,7 +83,6 @@ public:
 	{
 	}
 
-
 	virtual SimpleTypes Type() const { return type; }
 	virtual ~TypeDecl() { }
 	virtual std::string to_string() const;
@@ -88,10 +90,12 @@ public:
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
 	llvm::Type* LlvmType() const;
+	bool hasLlvmType() { return !!ltype; }
 	virtual void dump() const;
 	TypeKind getKind() const { return kind; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Type; }
-    private:
+	virtual size_t Size() const;
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     protected:
 	const TypeKind kind;
@@ -121,6 +125,7 @@ public:
 	{ 
 	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray; 
 	}
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	TypeDecl* baseType;
@@ -141,7 +146,7 @@ public:
 	virtual Range* GetRange() const { return range; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Range; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	Range* range;
@@ -178,7 +183,7 @@ public:
 	const EnumValues& Values() const { return values; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Enum; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	EnumValues  values;
@@ -207,7 +212,7 @@ public:
 	virtual bool isIntegral() const { return false; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Pointer; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::string name;
@@ -225,52 +230,59 @@ public:
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Field; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	std::string name;
 	TypeDecl*   baseType;
     };
 
-    class VariantDecl : public TypeDecl
+    class FieldCollection : public TypeDecl
+    {
+    public:
+	FieldCollection(TypeKind k, SimpleTypes t, const std::vector<FieldDecl>& flds)
+	    : TypeDecl(k, t), fields(flds), opaqueType(0) { }
+	int Element(const std::string& name) const;
+	const FieldDecl& GetElement(unsigned int n) const
+	{ 
+	    assert(n < fields.size() && "Out of range field"); 
+	    return fields[n]; 
+	}
+	virtual void EnsureSized() const;
+	int FieldCount() const { return fields.size(); }
+	static bool classof(const TypeDecl *e) 
+	{ 
+	    return e->getKind() == TK_Variant || e->getKind() == TK_Record; 
+	}
+    protected:
+	std::vector<FieldDecl> fields;
+	mutable llvm::StructType* opaqueType;
+    };
+
+    class VariantDecl : public FieldCollection
     {
     public:
 	VariantDecl(const std::vector<FieldDecl>& flds)
-	    : TypeDecl(TK_Variant, Variant), fields(flds) { };
+	    : FieldCollection(TK_Variant, Variant, flds) { };
 	virtual void dump() const;
-	int Element(const std::string& name) const;
-	const FieldDecl& GetElement(unsigned int n) const
-	{ 
-	    assert(n < fields.size() && "Out of range field"); 
-	    return fields[n]; 
-	}
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Variant; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
-    private:
-	std::vector<FieldDecl> fields;
     };
 
-    class RecordDecl : public TypeDecl
+    class RecordDecl : public FieldCollection
     {
     public:
 	RecordDecl(const std::vector<FieldDecl>& flds, VariantDecl* v)
-	    : TypeDecl(TK_Record, Record), fields(flds), variant(v) { };
+	    : FieldCollection(TK_Record, Record, flds), variant(v) { };
 	virtual bool isIntegral() const { return false; }
 	virtual void dump() const;
-	int Element(const std::string& name) const;
-	const FieldDecl& GetElement(unsigned int n) const
-	{ 
-	    assert(n < fields.size() && "Out of range field"); 
-	    return fields[n]; 
-	}
-	int FieldCount() const { return fields.size() + (variant != 0); }
+	virtual size_t Size() const;
 	VariantDecl* Variant() { return variant; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Record; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
-	std::vector<FieldDecl> fields;
 	VariantDecl* variant;
     };
 
@@ -283,7 +295,7 @@ public:
 	virtual void dump() const;
 	PrototypeAST* Proto() const { return proto; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_FuncPtr; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	PrototypeAST* proto;
@@ -303,7 +315,7 @@ public:
 	virtual TypeDecl* SubType() const { return baseType; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_File; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     protected:
 	TypeDecl *baseType;
@@ -315,7 +327,7 @@ public:
 	TextDecl()
 	    : FileDecl(new TypeDecl(TK_Type, Char)) {}
 	virtual void dump() const;
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
 
     };
@@ -329,7 +341,7 @@ public:
 	    : TypeDecl(TK_Set, Set), range(r) {}
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
-    private:
+    protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:
 	Range *range;

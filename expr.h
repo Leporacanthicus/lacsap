@@ -24,6 +24,7 @@ public:
 	EK_IntegerExpr,
 	EK_CharExpr,
 	EK_StringExpr,
+	EK_NilExpr,
 
 	// Addressable types
 	EK_AddressableExpr,
@@ -71,6 +72,7 @@ public:
     ExprKind getKind() const { return kind; }
     void SetType(Types::TypeDecl* ty) { type = ty; }
     virtual Types::TypeDecl* Type() const { return type; }
+    void EnsureSized() const;
 protected:
     Types::TypeDecl* type;
 private:
@@ -126,6 +128,15 @@ private:
     std::string val;
 };
 
+class NilExprAST : public ExprAST
+{
+public:
+    NilExprAST() 
+	: ExprAST(EK_NilExpr, new Types::PointerDecl(new Types::TypeDecl(Types::Void))) {}
+    virtual void DoDump(std::ostream& out) const;
+    virtual llvm::Value* CodeGen();
+    static bool classof(const ExprAST *e) { return e->getKind() == EK_NilExpr; }
+};
 
 class AddressableAST : public ExprAST
 {

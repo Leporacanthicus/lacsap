@@ -51,7 +51,7 @@ void trace(const char *file, int line, const char *func)
     std::cerr << file << ":" << line << "::" << func << std::endl;
 }
 
-bool FileInfo(llvm::Value*f, int& recSize, bool& isText)
+bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 {
     if (!f->getType()->isPointerTy())
     {
@@ -92,7 +92,13 @@ bool FileIsText(llvm::Value* f)
 
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 {
+    TRACE();
     llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
+    Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type());
+    if (fc)
+    {
+	fc->EnsureSized();
+    }
     llvm::Type* ty = var.Type()->LlvmType();
     if (!ty)
     {
@@ -189,7 +195,6 @@ static llvm::Value* MakeCharConstant(int val)
     return MakeConstant(val, Types::GetType(Types::Char));
 }
 
-
 static llvm::Constant* GetMemCpyFn()
 {
     static llvm::Constant* fnmemcpy;
@@ -256,6 +261,19 @@ std::string ExprAST::ToString()
     return ss.str();
 }
 
+void ExprAST::EnsureSized() const
+{
+    TRACE();
+    if (Type())
+    {
+	Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(Type());
+	if (fc)
+	{
+	    fc->EnsureSized();
+	}
+    }
+}
+
 void RealExprAST::DoDump(std::ostream& out) const
 { 
     out << "Real: " << val;
@@ -276,6 +294,17 @@ llvm::Value* IntegerExprAST::CodeGen()
 {
     TRACE();
     return MakeConstant(val, type->LlvmType());
+}
+
+void NilExprAST::DoDump(std::ostream& out) const
+{ 
+    out << "Nil: '" << "'";
+}
+
+llvm::Value* NilExprAST::CodeGen()
+{
+    TRACE();
+    return llvm::ConstantPointerNull::get(llvm::dyn_cast<llvm::PointerType>(Types::GetVoidPtrType()));
 }
 
 void CharExprAST::DoDump(std::ostream& out) const
@@ -311,6 +340,7 @@ llvm::Value* VariableExprAST::Address()
 {
     TRACE();
     llvm::Value* v = variables.Find(name);
+    EnsureSized();
     if (!v)
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
@@ -338,6 +368,7 @@ llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
     llvm::Value* v = expr->Address();
+    EnsureSized();
     if (!v)
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
@@ -375,7 +406,12 @@ void FieldExprAST::DoDump(std::ostream& out) const
 llvm::Value* FieldExprAST::Address()
 {
     TRACE();
+    EnsureSized();
     llvm::Value* v = expr->Address();
+    if (!v) 
+    {
+	return ErrorV("Expression did not form an address");
+    }
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
     ind.push_back(MakeIntegerConstant(element));
@@ -386,13 +422,14 @@ llvm::Value* FieldExprAST::Address()
 
 void VariantFieldExprAST::DoDump(std::ostream& out) const
 {
-    out << "Field " << element << std::endl;
+    out << "Variant " << element << std::endl;
     expr->DoDump(out);
 }
 
 llvm::Value* VariantFieldExprAST::Address()
 {
     TRACE();
+    EnsureSized();
     //TODO: This needs fixing up.
     llvm::Value* v = expr->Address();
     std::vector<llvm::Value*> ind;
@@ -429,6 +466,7 @@ llvm::Value* PointerExprAST::CodeGen()
 llvm::Value* PointerExprAST::Address()
 {
     TRACE();
+    EnsureSized();
     llvm::Value* v = pointer->CodeGen();
     if (!v)
     {
@@ -849,6 +887,14 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
 
 
+    if (lty->getTypeID() == llvm::Type::PointerTyID && llvm::isa<NilExprAST>(rhs))
+    {
+	r = builder.CreateBitCast(r, lty);
+	rty = lty;
+    }
+
+
+
     if (rty != lty)
     {
 	std::cout << "Different types..." << std::endl;
@@ -856,6 +902,20 @@ llvm::Value* BinaryExprAST::CodeGen()
 	r->dump();
 	assert(0 && "Different types...");
 	return 0;
+    }
+
+    // Can compare for (un)equality with pointers and integers
+    if (rty->isIntegerTy() || rty->isPointerTy())
+    {
+	switch(oper.GetToken())
+	{
+	case Token::Equal:
+	    return builder.CreateICmpEQ(l, r, "eq");
+	case Token::NotEqual:
+	    return builder.CreateICmpNE(l, r, "ne");
+	default:
+	    break;
+	}
     }
 
     if (rty->isIntegerTy())
@@ -883,10 +943,6 @@ llvm::Value* BinaryExprAST::CodeGen()
 	case Token::Xor:
 	    return builder.CreateXor(l, r, "xortmp");
 
-	case Token::Equal:
-	    return builder.CreateICmpEQ(l, r, "eq");
-	case Token::NotEqual:
-	    return builder.CreateICmpNE(l, r, "ne");
 	case Token::LessThan:
 	    if (isUnsigned)
 	    {
@@ -1437,10 +1493,11 @@ llvm::Value* AssignExprAST::CodeGen()
 	    return builder.CreateCall5(fnmemcpy, dest1, v, MakeIntegerConstant(str->Str().size()), 
 				       MakeIntegerConstant(1), MakeBooleanConstant(false));
 	}
-   }
-    
+    }
+
     llvm::Value* v = rhs->CodeGen();
     llvm::Value* dest = lhsv->Address();
+
     if (!dest)
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
@@ -1457,6 +1514,11 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
 	rty = v->getType()->getTypeID();
+    }
+
+    if (lty == llvm::Type::PointerTyID && llvm::isa<NilExprAST>(rhs))
+    {
+	v = builder.CreateBitCast(v, dest->getType()->getContainedType(0));
     }
 
     assert(rty == lty && 
@@ -2125,7 +2187,7 @@ llvm::Value* VarDeclAST::CodeGen()
     {
 	if (!func)
 	{
-	    llvm::Type     *ty = var.Type()->LlvmType();
+	    llvm::Type *ty = var.Type()->LlvmType();
 	    assert(ty && "Type should have a value");
 	    llvm::Constant *init = llvm::Constant::getNullValue(ty);
 	    v = new llvm::GlobalVariable(*theModule, ty, false, 

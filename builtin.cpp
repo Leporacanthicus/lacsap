@@ -219,23 +219,20 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 {
     assert(args.size() == 1 && "Expect 1 argument to 'new'");
 
-    llvm::Value* a = args[0]->CodeGen();
-    if (a->getType()->isPointerTy())
+    Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
+    if (pd)
     {
+	size_t size = pd->SubType()->Size();
 	llvm::Type* ty = Types::GetType(Types::Integer);
 	std::vector<llvm::Type*> argTypes;
 	argTypes.push_back(ty);
 
-	std::string name = "__new";
-
 	// Result is "void *"
 	llvm::Type* resTy = Types::GetVoidPtrType();
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+	llvm::Constant* f = theModule->getOrInsertFunction("__new", ft);
 	
-	ty = a->getType()->getContainedType(0);
-	const llvm::DataLayout dl(theModule);
-	llvm::Value* aSize = MakeIntegerConstant(dl.getTypeAllocSize(ty));
+	llvm::Value* aSize = MakeIntegerConstant(size);
 	
 	llvm::Value* retVal = builder.CreateCall(f, aSize, "new");
 	
@@ -244,7 +241,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	{
 	    return ErrorV("Expected a variable expression");
 	}
-	retVal = builder.CreateBitCast(retVal, a->getType(), "cast");
+	retVal = builder.CreateBitCast(retVal, pd->LlvmType(), "cast");
 	llvm::Value* pA = var->Address();
 	return builder.CreateStore(retVal, pA);
     }
@@ -441,11 +438,22 @@ static llvm::Value* LengthCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     return builder.CreateZExt(v2, Types::GetType(Types::Integer), "extend");
 }
 
+static llvm::Value* ClockCodeGen(llvm::IRBuilder<>& builder,  const std::vector<ExprAST*>& args)
+{
+    std::vector<llvm::Type*> argTypes;
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction("__Clock", ft);
+
+    return builder.CreateCall(f, "clock");
+}
+
 enum ResultForm
 {
     RF_Input,
     RF_Boolean,
     RF_Integer,
+    RF_LongInt,
     RF_Real,
     RF_Char,
     RF_Void,
@@ -490,6 +498,7 @@ const static BuiltinFunction bifs[] =
     { "put",     PutCodeGen,     RF_Void },
     { "copy",    CopyCodeGen,    RF_String },
     { "length",  LengthCodeGen,  RF_Integer },
+    { "clock",   ClockCodeGen,  RF_LongInt },
 };
 
 static const BuiltinFunction* find(const std::string& name)
@@ -542,6 +551,10 @@ Types::TypeDecl* Builtin::Type(Stack<NamedObject*>& ns,
 
     case RF_Integer:
 	type = "integer";
+	break;
+
+    case RF_LongInt:
+	type = "longint";
 	break;
 
     case RF_Char:

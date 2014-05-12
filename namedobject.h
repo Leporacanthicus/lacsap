@@ -130,13 +130,13 @@ class WithDef : public NamedObject
 {
 public:
     WithDef(const std::string& nm, ExprAST* act, Types::TypeDecl* ty) 
-	: NamedObject(NK_With, nm), actual(act)
+	: NamedObject(NK_With, nm), actual(act), type(ty)
     {
     }
     Types::TypeDecl* Type() const { return type; }
     ExprAST* Actual() const { return actual; }
     void dump();
-    static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
+    static bool classof(const NamedObject* e) { return e->getKind() == NK_With; }
 private:
     ExprAST*         actual;
     Types::TypeDecl* type;

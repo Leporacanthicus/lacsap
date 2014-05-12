@@ -1,7 +1,6 @@
 #include "types.h"
 #include "expr.h"
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/DerivedTypes.h>
 #include <sstream>
 #include <climits>
 
@@ -66,6 +65,13 @@ bool Types::TypeDecl::isIntegral() const
     default:
 	return true;
     }
+}
+
+size_t Types::TypeDecl::Size() const
+{
+    const llvm::DataLayout dl(theModule);
+    llvm::Type* ty = LlvmType();
+    return dl.getTypeAllocSize(ty);
 }
 
 Types::Range* Types::TypeDecl::GetRange() const
@@ -134,11 +140,10 @@ void Types::TypeDecl::dump() const
 
 llvm::Type* Types::TypeDecl::LlvmType() const
 {
-    if (ltype)
+    if (!ltype)
     {
-	return ltype;
+	ltype = GetLlvmType();
     }
-    ltype = GetLlvmType();
     return ltype;
 }
 
@@ -264,6 +269,14 @@ llvm::Type* Types::VariantDecl::GetLlvmType() const
     for(auto f : fields)
     {
 	llvm::Type* ty = f.LlvmType();
+	if (llvm::isa<PointerDecl>(f.FieldType()) && !f.hasLlvmType())
+	{
+	    if (!opaqueType)
+	    {
+		opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+	    }
+	    return opaqueType;
+	}
 	size_t sz = dl.getTypeAllocSize(ty);
 	size_t al = dl.getPrefTypeAlignment(ty);
 	if (sz > maxSize)
@@ -292,9 +305,19 @@ llvm::Type* Types::VariantDecl::GetLlvmType() const
     return llvm::StructType::create(fv);
 }
 
+void Types::FieldCollection::EnsureSized() const
+{
+    if (opaqueType && opaqueType->isOpaque())
+    {
+	llvm::Type* ty = GetLlvmType();
+	assert(ty == opaqueType && "Expect opaqueType to be returned");
+	assert(!opaqueType->isOpaque() && "Expect opaqueness to have gone away");
+    }
+}
+
 // This is a very basic algorithm, but I think it's good enough for 
 // most structures - there's unlikely to be a HUGE number of them. 
-int Types::VariantDecl::Element(const std::string& name) const
+int Types::FieldCollection::Element(const std::string& name) const
 {
     int i = 0;
     for(auto f : fields)
@@ -318,6 +341,12 @@ int Types::VariantDecl::Element(const std::string& name) const
     return -1;
 }
 
+size_t Types::RecordDecl::Size() const
+{
+    EnsureSized();
+    return TypeDecl::Size();
+}
+
 void Types::RecordDecl::dump() const
 {
     std::cerr << "Record ";
@@ -337,29 +366,26 @@ llvm::Type* Types::RecordDecl::GetLlvmType() const
     std::vector<llvm::Type*> fv;
     for(auto f : fields)
     {
+	if (llvm::isa<PointerDecl>(f.FieldType()) && !f.FieldType()->hasLlvmType())
+	{
+	    if (!opaqueType)
+	    {
+		opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+	    }
+	    return opaqueType;
+	}
 	fv.push_back(f.LlvmType());
     }
     if (variant)
     {
 	fv.push_back(variant->LlvmType());
     }
-    return llvm::StructType::create(fv);
-}
-
-// This is a very basic algorithm, but I think it's good enough for 
-// most structures - there's unlikely to be a HUGE number of them. 
-int Types::RecordDecl::Element(const std::string& name) const
-{
-    int i = 0;
-    for(auto f : fields)
+    if (opaqueType)
     {
-	if (f.Name() == name)
-	{
-	    return i;
-	}
-	i++;
+	opaqueType->setBody(fv);
+	return opaqueType;
     }
-    return -1;
+    return llvm::StructType::create(fv);
 }
 
 void Types::FuncPtrDecl::dump() const

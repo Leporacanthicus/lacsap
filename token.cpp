@@ -133,6 +133,7 @@ const TokenEntry tokenTable[] =
     { Token::Set,           true,  -1, "set" },
     { Token::Forward,       true,  -1, "forward" },
     { Token::Const,         true,  -1, "const" },
+    { Token::Nil,           true,  -1, "nil" },
     { Token::And,           true,  40, "and" },
     { Token::Or,            true,  10, "or" },
     { Token::Not,           true,  60, "not" },

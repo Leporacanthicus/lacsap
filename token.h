@@ -41,6 +41,7 @@ public:
 	File,
 	Set,
 	String,
+	Nil,
 
 	// Symbols and such
 	LeftParen,

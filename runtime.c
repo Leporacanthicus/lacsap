@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
+#include <time.h>
 
 enum
 {
@@ -622,6 +623,11 @@ String __StrCopy(String* str, int start, int len)
     result.len = len;
     memcpy(result.str, &str->str[start], len);
     return result;
+}
+
+long __Clock(void)
+{
+    return clock();
 }
 
 int main()

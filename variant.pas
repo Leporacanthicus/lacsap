@@ -37,15 +37,18 @@ begin
    p1.native :=     true;
    p1.birthplace := 'Stockholm';
 
-   p2.name :=           'Adam Jacobson  ';
-   p2.dob.year :=       1964;
-   p2.dob.month :=      9;
-   p2.dob.day :=        22;
-   p2.native :=         false;
-   p2.countryofbirth := 'USA';
-   p2.naturalized.year := 1982;     
-   p2.naturalized.month := 12;
-   p2.naturalized.day := 13;
+   with p2 do
+   begin
+      name :=           'Adam Jacobson  ';
+      dob.year :=       1964;
+      dob.month :=      9;
+      dob.day :=        22;
+      native :=         false;
+      countryofbirth := 'USA';
+      naturalized.year := 1982;     
+      naturalized.month := 12;
+      naturalized.day := 13;
+   end;
 
    PrintPerson(p1);
    PrintPerson(p2);

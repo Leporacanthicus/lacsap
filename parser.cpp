@@ -160,6 +160,15 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     return typeDef->Type();
 }
 
+ExprAST* Parser::ParseNilExpr()
+{
+    if (!Expect(Token::Nil, true))
+    {
+	return 0;
+    }
+    return new NilExprAST();
+}
+
 Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
     NamedObject* def = nameStack.Find(name);
@@ -1065,7 +1074,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    {
 		const Types::FieldDecl* fd = &v->GetElement(elem);
 		type = fd->FieldType();
-		e = new VariantFieldExprAST(expr, rd->FieldCount()-1, type);
+		e = new VariantFieldExprAST(expr, rd->FieldCount(), type);
 		// If name is empty, we have a made up struct. Dig another level down. 
 		if (fd->Name() == "")
 		{
@@ -1151,7 +1160,17 @@ ExprAST* Parser::ParseIdentifierExpr()
 	 
 	if (!IsCall(type))
 	{
-	    VariableExprAST* expr = new VariableExprAST(idName, type);
+
+	    VariableExprAST* expr;
+	    if (WithDef *w = llvm::dyn_cast<WithDef>(def))
+	    {
+		expr = llvm::dyn_cast<VariableExprAST>(w->Actual());
+	    }
+	    else
+	    {
+		expr = new VariableExprAST(idName, type);
+	    }
+	    assert(expr && "Expected expression here");
 	    // Ignore result - we may be adding the same variable 
 	    // several times, but we don't really care.
 	    usedVariables.Add(idName, def);
@@ -1662,11 +1681,19 @@ FunctionAST* Parser::ParseDefinition()
 
 ExprAST* Parser::ParseStmtOrBlock()
 {
-    if (CurrentToken().GetToken() == Token::Begin)
+    switch(CurrentToken().GetToken())
     {
+    case Token::Begin:
 	return ParseBlock();
+
+    case Token::Semicolon:
+    case Token::End:
+	// Empty block.
+	return new BlockAST(std::vector<ExprAST*>());
+
+    default:
+	return ParseStatement();
     }
-    return ParseStatement();
 }
 
 ExprAST* Parser::ParseIfExpr()
@@ -1692,7 +1719,7 @@ ExprAST* Parser::ParseIfExpr()
     }
 
     ExprAST* elseExpr = 0;
-    if (CurrentToken().GetToken() != Token::Semicolon && CurrentToken().GetToken() != Token::End)
+    if (CurrentToken().GetToken() == Token::Else)
     {
 	if (Expect(Token::Else, true))
 	{
@@ -1701,10 +1728,6 @@ ExprAST* Parser::ParseIfExpr()
 	    {
 		return 0;
 	    }
-	}
-	else
-	{
-	    return 0;
 	}
     }
     return new IfExprAST(cond, then, elseExpr);
@@ -1902,6 +1925,35 @@ ExprAST* Parser::ParseCaseExpr()
     return new CaseExprAST(expr, labels, otherwise);
 }
 
+void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
+{
+    int count = fields->FieldCount();
+    for(int i = 0; i < count; i++)
+    {
+	const Types::FieldDecl f = fields->GetElement(i);
+	Types::TypeDecl* ty = f.FieldType();
+	if (f.Name() == "")
+	{
+	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
+	    assert(rd && "Expected record declarataion here!");
+	    ExpandWithNames(rd, new VariantFieldExprAST(v, parentCount, ty), 0);
+	}
+	else
+	{
+	    ExprAST* e;
+	    if (llvm::isa<Types::RecordDecl>(fields))
+	    {
+		e = new FieldExprAST(v, i, ty);
+	    }
+	    else
+	    {
+		e = new VariantFieldExprAST(v, parentCount, ty);
+	    }
+	    nameStack.Add(f.Name(), new WithDef(f.Name(), e, f.FieldType()));
+	}
+    }
+}
+
 ExprAST* Parser::ParseWithBlock()
 {
     if (!Expect(Token::With, true))
@@ -1939,10 +1991,11 @@ ExprAST* Parser::ParseWithBlock()
 	{
 	    return Error("Type for with statement should be a record type");
 	}
-	for(int i = 0; i < rd->FieldCount(); i++)
+	ExpandWithNames(rd, v, 0);
+	Types::VariantDecl* variant = rd->Variant();
+	if (variant)
 	{
-	    const Types::FieldDecl f = rd->GetElement(i);
-	    nameStack.Add(f.Name(), new WithDef(f.Name(), v, f.FieldType()));
+	    ExpandWithNames(variant, v, rd->FieldCount());
 	}
     }
     ExprAST* body = ParseStmtOrBlock();
@@ -2117,6 +2170,9 @@ ExprAST* Parser::ParsePrimary()
 
     switch(token.GetToken())
     {
+    case Token::Nil:
+	return ParseNilExpr();
+
     case Token::Real:
 	return ParseRealExpr(token);
 

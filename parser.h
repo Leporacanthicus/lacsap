@@ -16,12 +16,12 @@ public:
     int GetErrors() { return errCnt; } 
 
 private:
-    /* Token handling functions */
+    // Token handling functions
     const Token& CurrentToken() const;
     const Token& NextToken(const char* file, int line);
     const Token& PeekToken(const char* file, int line);
 
-    /* Simple expression parsing */
+    // Simple expression parsing
     ExprAST* ParseExpression();
     ExprAST* ParseIdentifierExpr();
     ExprAST* ParseRealExpr(Token token);
@@ -33,12 +33,13 @@ private:
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseUnaryOp();
     ExprAST* ParseSetExpr();
+    ExprAST* ParseNilExpr();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
 
-    /* Control flow functionality */
+    // Control flow functionality
     ExprAST* ParseRepeat();
     ExprAST* ParseIfExpr();
     ExprAST* ParseForExpr();
@@ -46,11 +47,11 @@ private:
     ExprAST* ParseCaseExpr();
     ExprAST* ParseWithBlock();
 
-    /* I/O functions */
+    // I/O functions
     ExprAST*      ParseWrite();
     ExprAST*      ParseRead();
 
-    /* Statements, blocks and calls. */
+    // Statements, blocks and calls
     ExprAST*      ParseStatement();
     ExprAST*      ParseStmtOrBlock();
     VarDeclAST*   ParseVarDecls();
@@ -59,7 +60,7 @@ private:
     PrototypeAST* ParsePrototype(bool isFunction);
     bool          ParseProgram();
 
-    /* Type declarations and defintitions */
+    // Type declarations and defintitions
     void                ParseTypeDef();
     void                ParseConstDef();
 
@@ -77,9 +78,12 @@ private:
     Types::VariantDecl* ParseVariantDecl();
     int                 ParseConstantValue(Token::TokenType& tt);
 
-    /* Helper for syntax checking */
+    // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
     bool ExpectSemicolonOrEnd(const char* file, int line);
+
+    // General helper functions
+    void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
 
     /* Error functions - all the same except for the return type */
     ExprAST*         Error(const std::string& msg, const char* file = 0, int line = 0);

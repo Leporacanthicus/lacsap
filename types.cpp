@@ -154,8 +154,7 @@ llvm::Type* Types::TypeDecl::GetLlvmType() const
 
 void Types::PointerDecl::dump() const
 {
-    std::cerr << "Pointer to: ";
-    baseType->dump();
+    std::cerr << "Pointer to: " << name << " (" << baseType << ")" << std::endl;
 }
 
 llvm::Type* Types::PointerDecl::GetLlvmType() const

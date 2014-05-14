@@ -723,6 +723,30 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     return builder.CreateCall3(f, lV, rV, MakeIntegerConstant(size), "calltmp");
 }
 
+static llvm::Value* TypeConvert(llvm::Value* v, llvm::Type* ty, bool isNil = false)
+{
+    llvm::Type* currentTy = v->getType();
+    if (ty->isDoubleTy() && currentTy->isIntegerTy())
+    {
+	return builder.CreateSIToFP(v, ty, "tofp");
+    }
+    if (currentTy->isIntegerTy() && ty->isIntegerTy())
+    {
+	unsigned size = ty->getPrimitiveSizeInBits();
+	unsigned curSize = currentTy->getPrimitiveSizeInBits();
+	if (curSize > 1 && size > curSize)
+	{
+	    v = builder.CreateSExt(v, ty);
+	}
+    }
+
+    if (ty->isPointerTy() && isNil)
+    {
+	return builder.CreateBitCast(v, ty);
+    }
+    return v;
+}
+
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
     Token::TokenType tt = oper.GetToken();
@@ -931,67 +955,19 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return 0;
     }
 
-    llvm::Type* rty = r->getType();
+    bool isRhsNil = llvm::isa<NilExprAST>(rhs);
+
     llvm::Type* lty = l->getType();
-
-    bool rToFloat = false;
-    bool lToFloat = false;
-
-    if (rty->isIntegerTy() && lty->isIntegerTy())
+    // If it's a divide operation, result is float, so convert to float. 
+    if (oper.GetToken() == Token::Divide)
     {
-	unsigned lsize = lty->getPrimitiveSizeInBits();
-	unsigned rsize = rty->getPrimitiveSizeInBits();
-	if (lsize > 1 && rsize > 1 && lsize != rsize)
-	{
-	    if (rsize > lsize)
-	    {
-		l = builder.CreateSExt(l, rty);
-		lty = rty;
-	    }
-	    else
-	    {
-		r = builder.CreateSExt(r, lty);
-		rty = lty;
-	    }
-	}
+	lty = Types::GetType(Types::Real);
     }
 
-    /* Convert right hand side to double if left is double, and right is integer */
-    if (rty->isIntegerTy())
-    {
-	if (lty->isDoubleTy() || oper.GetToken() == Token::Divide)
-	{
-	    rToFloat = true;
-	}
-    }
-    if (lty->isIntegerTy())
-    {
-	if (rty->isDoubleTy() || oper.GetToken() == Token::Divide)
-	{
-	    lToFloat = true;
-	}
-    }
-
-    if (rToFloat)
-    {
-	r = builder.CreateSIToFP(r, Types::GetType(Types::Real), "tofp");
-	rty = r->getType();
-    }
-
-    if (lToFloat)
-    {
-	l = builder.CreateSIToFP(l, Types::GetType(Types::Real), "tofp");
-	lty = r->getType();
-    }
-
-
-    if (lty->getTypeID() == llvm::Type::PointerTyID && llvm::isa<NilExprAST>(rhs))
-    {
-	r = builder.CreateBitCast(r, lty);
-	rty = lty;
-    }
-
-
+    r = TypeConvert(r, lty, isRhsNil);
+    llvm::Type* rty = r->getType();
+    l = TypeConvert(l, rty);
+    lty = l->getType();
 
     if (rty != lty)
     {
@@ -1604,6 +1580,8 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	return ErrorV("Could not produce expression for assignment");
     }
+
+    llvm::Type* leftType = dest->getType()->getContainedType(0);
     llvm::Type::TypeID lty = dest->getType()->getContainedType(0)->getTypeID();
     llvm::Type::TypeID rty = v->getType()->getTypeID();
 
@@ -1619,9 +1597,19 @@ llvm::Value* AssignExprAST::CodeGen()
 	v = builder.CreateBitCast(v, dest->getType()->getContainedType(0));
     }
 
+    if (rty == llvm::Type::IntegerTyID && lty == llvm::Type::IntegerTyID)
+    {
+	unsigned lsize = leftType->getPrimitiveSizeInBits();
+	unsigned rsize = v->getType()->getPrimitiveSizeInBits();
+	if (lsize > 1 && rsize > 1 && lsize > rsize)
+	{
+	    v = builder.CreateSExt(v, leftType);
+	}
+    }
+
     assert(rty == lty && 
 	   "Types must be the same in assignment.");
-    
+
     builder.CreateStore(v, dest);
     
     return v;
@@ -1732,7 +1720,8 @@ llvm::Value* ForExprAST::CodeGen()
 	return 0;
     }
 
-    llvm::Value* stepVal =MakeConstant((stepDown)?-1:1, startV->getType());
+    startV = TypeConvert(startV, var->getType()->getContainedType(0));
+    llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
 
     builder.CreateStore(startV, var, "loopvar"); 
 

@@ -741,8 +741,9 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	}
     } while(CurrentToken().GetToken() != Token::End);
     NextToken();
-    if (fields.size() == 0)
+    if (fields.size() == 0 && !variant)
     {
+	Error("No elements in record declaration");
 	return 0;
     }
     Types::RecordDecl* r = new Types::RecordDecl(fields, variant);

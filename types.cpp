@@ -60,10 +60,11 @@ bool Types::TypeDecl::isIntegral() const
     switch(type)
     {
     case Integer:
+    case Int64:
     case Char:
 	return true;
     default:
-	return true;
+	return false;
     }
 }
 

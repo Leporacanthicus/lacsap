@@ -254,6 +254,26 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
     return builder.CreateStore(rhs->CodeGen(), dest2);
 }
 
+static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
+{
+    llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
+    size_t size = ty->Size();
+    if (size > 32)
+    {
+	
+	builder.CreateMemCpy(dest, src, size, 1);
+	return dest;
+    }
+    else
+    {
+	llvm::Value* v = builder.CreateLoad(src);
+	builder.CreateStore(v, dest);
+	return dest;
+    }
+    assert(0 && "We don't want to get here!");
+    return 0;
+}
+
 std::string ExprAST::ToString()
 {
     std::stringstream ss;
@@ -1160,12 +1180,15 @@ llvm::Value* CallExprAST::CodeGen()
 
     std::vector<llvm::Value*> argsV;
     std::vector<VarDef>::const_iterator viter = vdef.begin();
+    std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
+    unsigned index = 0;
     for(auto i : args)
     {
+	index++;
 	llvm::Value* v;
+	VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
 	if (viter->IsRef())
 	{
-	    VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
 	    if (!vi)
 	    {
 		return ErrorV("Args declared with 'var' must be a variable!");
@@ -1174,15 +1197,19 @@ llvm::Value* CallExprAST::CodeGen()
 	}
 	else
 	{
-	    v = i->CodeGen();
-	    if (!v)
+	    if (vi && vi->Type()->isCompound())
 	    {
-		return 0;
+		v = LoadOrMemcpy(vi->Address(), vi->Type());
+		argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
 	    }
-	    /* Do we need to convert to float? */
-	    if (v->getType()->isIntegerTy() && viter->Type()->Type() == Types::Real)
+	    else
 	    {
-		v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
+		v = i->CodeGen();
+		if (!v)
+		{
+		    return 0;
+		}
+		v = TypeConvert(v, viter->Type()->LlvmType());
 	    }
 	}
 	if (!v)
@@ -1193,11 +1220,20 @@ llvm::Value* CallExprAST::CodeGen()
 	argsV.push_back(v);
 	viter++;
     }
+    llvm::CallInst* inst = 0;
     if (proto->Type()->Type() == Types::Void) 
     {
-	return builder.CreateCall(calleF, argsV, "");
+	inst = builder.CreateCall(calleF, argsV, "");
     }
-    return builder.CreateCall(calleF, argsV, "calltmp");
+    else
+    {
+	inst = builder.CreateCall(calleF, argsV, "calltmp");
+    }
+    for(auto v : argAttr)
+    {
+	inst->addAttribute(v.first, v.second);
+    }
+    return inst;
 }
 
 void BuiltinExprAST::DoDump(std::ostream& out) const
@@ -1252,19 +1288,30 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
     assert(namePrefix != "" && "Prefix should never be empty");
+    std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
     std::vector<llvm::Type*> argTypes;
+    unsigned index = 0;
     for(auto i : args)
     {
-	llvm::Type* ty = i.Type()->LlvmType();
+	llvm::AttrBuilder attrs;
+	Types::TypeDecl* ty = i.Type();
+	llvm::Type* argTy = ty->LlvmType();
+	index++;
 	if (!ty)
 	{
 	    return ErrorF(std::string("Invalid type for argument") + i.Name() + "...");
 	}
-	if (i.IsRef())
+	
+	if (i.IsRef() || ty->isCompound() )
 	{
-	    ty = llvm::PointerType::getUnqual(ty);
+	    argTy = llvm::PointerType::getUnqual(ty->LlvmType());
+	    if (!i.IsRef())
+	    {
+		argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
+	    }
 	}
-	argTypes.push_back(ty);
+
+	argTypes.push_back(argTy);
     }
     llvm::Type* resTy = resultType->LlvmType();
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
@@ -1293,11 +1340,16 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     {
 	return ErrorF(std::string("redefinition of function: ") + name);
     }
-    
+
     if (f->arg_size() != args.size())
     {
 	return ErrorF(std::string("Change in number of arguemts for function: ") + name);
-    }	    
+    }
+
+    for(auto v : argAttr)
+    {
+	f->addAttribute(v.first, v.second);
+    }
 
     return f;
 }
@@ -1315,13 +1367,13 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	idx++, ai++)
     {
 	llvm::Value* a;
-	if (args[idx].IsRef())
+	if (args[idx].IsRef() || args[idx].Type()->isCompound())
 	{
 	    a = ai; 
 	}
 	else
 	{
-	    a=CreateAlloca(fn, args[idx]);
+	    a = CreateAlloca(fn, args[idx]);
 	    builder.CreateStore(ai, a);
 	}
 	if (!variables.Add(args[idx].Name(), a))

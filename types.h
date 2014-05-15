@@ -87,6 +87,7 @@ public:
 	virtual ~TypeDecl() { }
 	virtual std::string to_string() const;
 	virtual bool isIntegral() const;
+	virtual bool isCompound() const { return false; }
 	virtual Range *GetRange() const;
 	virtual TypeDecl *SubType() const { return 0; }
 	llvm::Type* LlvmType() const;
@@ -120,6 +121,7 @@ public:
 	const std::vector<Range*>& Ranges() const { return ranges; }
 	TypeDecl* SubType() const { return baseType; }
 	virtual bool isIntegral() const { return false; }
+	virtual bool isCompound() const { return true; }
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) 
 	{ 
@@ -229,6 +231,7 @@ public:
 	TypeDecl* FieldType() const { return baseType; } 
 	virtual void dump() const;
 	virtual bool isIntegral() const { return baseType->isIntegral(); }
+	virtual bool isCompound() const { return baseType->isCompound(); }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Field; }
     protected:
 	virtual llvm::Type* GetLlvmType() const;
@@ -250,6 +253,8 @@ public:
 	}
 	virtual void EnsureSized() const;
 	int FieldCount() const { return fields.size(); }
+	virtual bool isIntegral() const { return false; }
+	virtual bool isCompound() const { return true; }
 	static bool classof(const TypeDecl *e) 
 	{ 
 	    return e->getKind() == TK_Variant || e->getKind() == TK_Record; 
@@ -314,6 +319,7 @@ public:
 	    : TypeDecl(TK_File, File), baseType(ty) {}
 	virtual TypeDecl* SubType() const { return baseType; }
 	virtual void dump() const;
+	virtual bool isCompound() const { return true; }
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_File; }
     protected:
 	virtual llvm::Type* GetLlvmType() const;
@@ -341,6 +347,8 @@ public:
 	    : TypeDecl(TK_Set, Set), range(r) {}
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
+	virtual bool isIntegral() const { return false; }
+	virtual bool isCompound() const { return true; }
     protected:
 	virtual llvm::Type* GetLlvmType() const;
     private:

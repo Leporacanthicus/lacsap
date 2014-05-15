@@ -258,9 +258,8 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 {
     llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
     size_t size = ty->Size();
-    if (size > 32)
+    if (size > 64)
     {
-	
 	builder.CreateMemCpy(dest, src, size, 1);
 	return dest;
     }

@@ -839,7 +839,7 @@ begin (* main program, corresponds to procedures        *)
                                 (* Brackets to prevent integer overflow *)
       DhrystonesPerSecond := NumberOfRuns * (ClocksPerSecond / SumClocks);
       write ('Microseconds for one run through Dhrystone: ');
-      writeln (Microseconds : 8 : 1);
+      writeln (Microseconds : 8 : 3);
       write ('Dhrystones per Second:                      ');
       writeln (DhrystonesPerSecond : 8 : 1);
       writeln;

@@ -1774,13 +1774,13 @@ llvm::Value* ForExprAST::CodeGen()
     startV = TypeConvert(startV, var->getType()->getContainedType(0));
     llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
 
-    builder.CreateStore(startV, var, "loopvar"); 
+    builder.CreateStore(startV, var); 
 
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);    
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", 
 							 theFunction);
     
-    llvm::Value* curVar = builder.CreateLoad(var, varName.c_str(), "temp");
+    llvm::Value* curVar = builder.CreateLoad(var, varName.c_str());
     llvm::Value* endV = end->CodeGen();
     llvm::Value* endCond;
 
@@ -1801,7 +1801,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    curVar = builder.CreateLoad(var, varName.c_str(), "temp");
+    curVar = builder.CreateLoad(var, varName.c_str());
     curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 
     builder.CreateStore(curVar, var);

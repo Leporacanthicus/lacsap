@@ -15,6 +15,7 @@
 #include <iostream>
 #include <sstream>
 #include <map>
+#include <algorithm>
 
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
@@ -2325,11 +2326,17 @@ llvm::Value* VarDeclAST::CodeGen()
     {
 	if (!func)
 	{
-	    llvm::Type *ty = var.Type()->LlvmType();
+	    llvm::Type* ty = var.Type()->LlvmType();
 	    assert(ty && "Type should have a value");
-	    llvm::Constant *init = llvm::Constant::getNullValue(ty);
-	    v = new llvm::GlobalVariable(*theModule, ty, false, 
-					 llvm::Function::InternalLinkage, init, var.Name().c_str());
+	    llvm::Constant* init = llvm::Constant::getNullValue(ty);
+	    llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, 
+							       llvm::Function::InternalLinkage, 
+							       init, var.Name().c_str());
+	    const llvm::DataLayout dl(theModule);
+	    size_t al = dl.getPrefTypeAlignment(ty);
+	    al = std::max(4ul, al);
+	    gv->setAlignment(al);
+	    v = gv;
 	}
 	else
 	{

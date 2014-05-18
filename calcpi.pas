@@ -3,7 +3,7 @@ PROGRAM calcpi(input, output);
 (* Variable length fixed point real calculation                 *)
 
 CONST
-   longmax  = 16;
+   longmax  = 32767;
    w_dig    = 4.81647993;  { 16 * log(2) Number of digits per word }
    max_word = 65535;
 	    

@@ -30,7 +30,6 @@ static llvm::tool_output_file *GetOutputStream(const std::string& filename)
     return FDOut;
 }
 
-
 static void CreateObject(llvm::Module *module, const std::string& objname)
 {
     llvm::InitializeAllTargets();
@@ -88,13 +87,43 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 }
 
 
-void CreateBinary(llvm::Module *module, const std::string& objname, const std::string& exename)
+std::string replace_ext(const std::string &origName, 
+			const std::string& expectedExt, 
+			const std::string& newExt)
 {
-    CreateObject(module, objname);
-    std::string cmd = std::string("clang ") + objname + " runtime.o -lm -o " + exename; 
-    if (verbosity)
+    if (origName.substr(origName.size() - expectedExt.size()) != expectedExt)
     {
-	std::cerr << "Executing final link command: " << cmd << std::endl;
+	std::cerr << "Could not find extension..." << std::endl;
+	exit(1);
     }
-    system(cmd.c_str());
+    return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
+}
+
+
+void CreateBinary(llvm::Module *module, const std::string& filename, EmitType emit)
+{
+    if (emit == Exe)
+    {
+	std::string objname = replace_ext(filename, ".pas", ".o");
+	std::string exename = replace_ext(filename, ".pas", "");
+	CreateObject(module, objname);
+	std::string cmd = std::string("clang ") + objname + " runtime.o -lm -o " + exename; 
+	if (verbosity)
+	{
+	    std::cerr << "Executing final link command: " << cmd << std::endl;
+	}
+	system(cmd.c_str());
+	return;
+    }
+    if (emit == LlvmIr)
+    {
+	std::string irName = replace_ext(filename, ".pas", ".ll");
+	std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(irName));
+	llvm::formatted_raw_ostream FOS(Out->os());
+	module->print(FOS, 0);
+	Out->keep();
+	return;
+    }
+
+    assert(0 && "Unknown emit type");
 }

@@ -1,6 +1,7 @@
 all: lacsap .depends runtime.o tests
 
-OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o namedobject.o
+OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o namedobject.o \
+	loadstoretomemcpy.o
 
 CXX = clang++
 CC  = clang

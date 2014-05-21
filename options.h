@@ -7,7 +7,19 @@ enum EmitType
     LlvmIr,
 };
 
+enum OptLevel
+{
+    O0,
+    O1,
+    O2,
+};
+
+enum OptFlags
+{
+    Fmemcpy,
+};
+
 extern int verbosity;
-extern EmitType emitType;
+extern bool disableMemcpyGen;
 
 #endif

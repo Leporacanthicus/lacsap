@@ -3,6 +3,7 @@
 #include "binary.h"
 #include "constants.h"
 #include "options.h"
+#include "loadstoretomemcpy.h"
 #include <iostream>
 #include <fstream>
 #include <llvm/PassManager.h>
@@ -21,13 +22,7 @@ llvm::FunctionPassManager* fpm;
 llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 int verbosity;
-
-enum OptLevel
-{
-    O0,
-    O1,
-    O2,
-};
+bool disableMemcpyGen;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -45,6 +40,10 @@ static llvm::cl::opt<EmitType>    EmitSelection("emit", llvm::cl::desc("Choose o
 						    clEnumValN(Exe, "exe", "Executable file"),
 						    clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
 						    clEnumValEnd));
+
+static llvm::cl::opt<bool, true>  DisableMemCpyGen("disable-memcpy-generation", 
+						   llvm::cl::desc("Disable use of memcpy for large data structs"),
+						   llvm::cl::location(disableMemcpyGen));
 
 void DumpModule(llvm::Module* module)
 {
@@ -89,6 +88,8 @@ void OptimizerInit()
 	fpm->add(llvm::createCFGSimplificationPass());
         // Memory copying opts. 
 	fpm->add(llvm::createMemCpyOptPass());
+        // Memory copying opts. 
+	fpm->add(llvm::createLdSt2MemCpyOptPass());
 	// Merge constants.
 	mpm->add(llvm::createConstantMergePass());
 	// dead code removal:

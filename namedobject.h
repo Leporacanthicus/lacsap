@@ -39,12 +39,13 @@ private:
 class VarDef : public NamedObject
 {
 public:
-    VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false) 
-	: NamedObject(NK_Var, nm), type(ty), isRef(ref) 
+    VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false, bool external = false) 
+	: NamedObject(NK_Var, nm), type(ty), isRef(ref), isExt(external) 
     {
     }
     Types::TypeDecl* Type() const { return type; }
     bool IsRef() const { return isRef; }
+    bool IsExternal() const { return isExt; }
     void dump() 
     { 
 	std::cerr << "Name: " << Name() << " Type: ";
@@ -55,6 +56,7 @@ public:
 private:
     Types::TypeDecl* type;
     bool             isRef;   /* "var" arguments are "references" */
+    bool             isExt;   /* global variable defined outside this module */
 };
 
 class FuncDef : public NamedObject

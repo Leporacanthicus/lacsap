@@ -2270,11 +2270,24 @@ bool Parser::ParseProgram()
 std::vector<ExprAST*> Parser::Parse()
 {
     std::vector<ExprAST*> v;
+
     NextToken();
     if(!ParseProgram())
     {
 	return v;
     }
+    std::vector<VarDef> varList;
+
+    VarDef input("input", GetTypeDecl("text"), false, true);
+    varList.push_back(input);
+    VarDef output("output", GetTypeDecl("text"), false, true);
+    varList.push_back(output);
+
+    nameStack.Add("input", new VarDef(input));
+    nameStack.Add("output", new VarDef(output));
+
+    v.push_back(new VarDeclAST(varList));
+
     for(;;)
     {
 	ExprAST* curAst = 0;

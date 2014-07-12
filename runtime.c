@@ -43,8 +43,8 @@ typedef struct
 
 
 static struct FileEntry files[MaxPascalFiles];
-static File input;
-static File output;
+extern File input;
+extern File output;
 
 extern void __PascalMain(void);
 
@@ -246,16 +246,16 @@ void __write_chars(File* file, const char* v, int width)
 void __write_str(File* file, const String* v, int width)
 {
     FILE* f = getFile(file, &output);
-    if (width > v->len)
+    char s[256];
+    memcpy(s, v->str, v->len);
+    s[v->len] = 0;
+    if (width < v->len)
     {
-	char s[256];
-	memcpy(s, v->str, v->len);
-	s[v->len] = 0;
-	fprintf(f, "%*s", width, v->str);
+	fprintf(f, "%*s", width, s);
     }
     else
     {
-	fprintf(f, "%*s", v->len, v->str);
+	fprintf(f, "%s",s);
     }
 }
 

@@ -2329,9 +2329,12 @@ llvm::Value* VarDeclAST::CodeGen()
 	    llvm::Type* ty = var.Type()->LlvmType();
 	    assert(ty && "Type should have a value");
 	    llvm::Constant* init = llvm::Constant::getNullValue(ty);
-	    llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, 
-							       llvm::Function::InternalLinkage, 
-							       init, var.Name().c_str());
+	    llvm::GlobalValue::LinkageTypes linkage = (var.IsExternal()?
+						       llvm::GlobalValue::ExternalLinkage:
+						       llvm::Function::InternalLinkage);
+
+	    llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, linkage,
+								init, var.Name().c_str());
 	    const llvm::DataLayout dl(theModule);
 	    size_t al = dl.getPrefTypeAlignment(ty);
 	    al = std::max(4ul, al);
@@ -2495,6 +2498,7 @@ llvm::Value* SetExprAST::Address()
 
 	    if (!low || !high)
 	    {
+		assert(0 && "Expected expressions to evalueate");
 		return 0;
 	    }
 

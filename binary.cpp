@@ -12,15 +12,16 @@
 #include "llvm/Pass.h"
 #include "llvm/PassManager.h"
 #include <iostream>
+#include <system_error>
 
 static llvm::tool_output_file *GetOutputStream(const std::string& filename) 
 {
     // Open the file.
-    std::string error;
+    std::error_code error;
     llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
-    llvm::tool_output_file *FDOut = new llvm::tool_output_file(filename.c_str(), error,
+    llvm::tool_output_file *FDOut = new llvm::tool_output_file(filename, error,
 							       OpenFlags);
-    if (!error.empty()) 
+    if (error) 
     {
 	std::cerr << error << '\n';
 	delete FDOut;

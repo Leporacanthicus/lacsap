@@ -60,8 +60,6 @@ namespace {
 
 bool LdSt2MemCpyOpt::runOnFunction(Function &F)
 {
-    std::cerr << "I'm here" << std::endl;
-
     return false;
 }
 

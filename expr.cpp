@@ -2496,22 +2496,30 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* high = r->High();
 	    llvm::Function *fn = builder.GetInsertBlock()->getParent();
 
+	    llvm::Type*  ty = Types::GetType(Types::Integer);
+	    llvm::Value* loopVar = CreateTempAlloca(ty);
+
 	    if (!low || !high)
 	    {
 		assert(0 && "Expected expressions to evalueate");
 		return 0;
 	    }
 
+	    // Todo: What about negative range?
 	    low  = builder.CreateZExt(low, Types::GetType(Types::Integer), "zext.low");
 	    high = builder.CreateZExt(high, Types::GetType(Types::Integer), "zext.high");
+
+	    builder.CreateStore(low, loopVar);
 
 	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", fn);    
 	    builder.CreateBr(loopBB);
 	    builder.SetInsertPoint(loopBB);
 
-	    // Set bit "low" in set. 
-	    llvm::Value* index = builder.CreateLShr(low, MakeIntegerConstant(5));
-	    llvm::Value* offset = builder.CreateAnd(low, MakeIntegerConstant(31));
+	    llvm::Value* loop = builder.CreateLoad(loopVar, "loopVar");
+
+	    // Set bit "loop" in set. 
+	    llvm::Value* index = builder.CreateLShr(loop, MakeIntegerConstant(5));
+	    llvm::Value* offset = builder.CreateAnd(loop, MakeIntegerConstant(31));
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
 	    ind.push_back(MakeIntegerConstant(0));
 	    ind.push_back(index);
@@ -2520,9 +2528,10 @@ llvm::Value* SetExprAST::Address()
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	    
-	    low = builder.CreateAdd(low, MakeConstant(1, low->getType()), "update");
-
-	    llvm::Value* endCond = builder.CreateICmpSGE(low, high, "loopcond");
+	    loop = builder.CreateAdd(loop, MakeConstant(1, loop->getType()), "update");
+	    builder.CreateStore(loop, loopVar);
+	    
+	    llvm::Value* endCond = builder.CreateICmpSLE(loop, high, "loopcond");
 
 	    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", fn);
 	    builder.CreateCondBr(endCond, loopBB, afterBB);
@@ -2549,7 +2558,7 @@ llvm::Value* SetExprAST::Address()
 	    builder.CreateStore(bitset, bitsetAddr);
 	}
     }
-    
+
     return setV;
 }
 

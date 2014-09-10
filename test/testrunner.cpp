@@ -39,6 +39,7 @@ class TestCase
 public:
     TestCase(const std::string& nm, const std::string& src, const std::string& arg);
     // Compile, Run and Result functions return false on "failure", true on "good"
+    virtual void Clean();
     virtual bool Compile(const std::string& options);
     virtual bool Run();
     virtual bool Result();
@@ -53,6 +54,12 @@ TestCase::TestCase(const std::string& nm, const std::string& src, const std::str
     : name(nm), source(src), args(arg)
 {
 }
+
+void TestCase::Clean()
+{
+    std::string resname = replace_ext(source, ".pas", ".res");
+    remove(resname.c_str());
+}    
 
 bool TestCase::Compile(const std::string& options)
 {
@@ -189,6 +196,7 @@ struct
     { "Basic", "Case",          "case.pas",        "" },
     { "Basic", "Set",           "testset.pas",     "" },
     { "Basic", "Set 2",         "testset2.pas",    "" },
+    { "Basic", "Set 3",         "set_test.pas",    "" },
     { "Basic", "Record Pass",   "recpass.pas",     "" },
     { "Basic", "Random Number", "randtest.pas",    "" },
     { "Basic", "Fact Bignum",   "fact-bignum.pas", "" },
@@ -211,6 +219,7 @@ struct
     { "Basic", "String",        "str.pas",         "" },
     { "Basic", "Linked List",   "list.pas",        "" },
     { "Basic", "Whetstone",     "whet.pas",        "" },
+    { "Basic", "Variant Record","variant.pas",     "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
@@ -226,6 +235,7 @@ void runTestCases(const std::vector<TestCase*>& tc,
     for(auto t : tc)
     {
 	res.RegisterCase(t);
+	t->Clean();
 	if (!t->Compile(options))
 	{
 	    res.RegisterFail(t, "compile");

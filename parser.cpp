@@ -368,6 +368,14 @@ void Parser::ParseConstDef()
 	    {
 		cd = new Constants:: IntConstDecl(loc, ed->Value());
 	    }
+	    else 
+	    {
+		Constants::ConstDecl* cv = GetConstDecl(CurrentToken().GetIdentName());
+		if (cv)
+		{
+		    cd = cv->Copy(loc);
+		}
+	    }
 	    break;
 	}
 	 

@@ -64,6 +64,8 @@ private:
     void                ParseTypeDef();
     void                ParseConstDef();
 
+    Constants::ConstDecl* ParseConstValue();
+
     Types::Range*       ParseRange();
     Types::Range*       ParseRangeOrTypeRange();
     Types::TypeDecl*    ParseSimpleType();

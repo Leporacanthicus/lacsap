@@ -323,6 +323,54 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     }
 }
 
+
+Constants::ConstDecl* Parser::ParseConstValue()
+{
+    Location loc = CurrentToken().Loc();
+    Constants::ConstDecl* cd;
+    do
+    {
+	switch(CurrentToken().GetToken())
+	{
+	case Token::StringLiteral:
+	    cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
+	    break;
+	    
+	case Token::Integer:
+	    cd = new Constants::IntConstDecl(loc, CurrentToken().GetIntVal());
+	    break;
+	    
+	case Token::Real:
+	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal());
+	    break;
+	    
+	case Token::Char:
+	    cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
+	    break;
+	    
+	case Token::Identifier:
+	{
+	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
+	    if (ed)
+	    {
+		cd = new Constants::IntConstDecl(loc, ed->Value());
+	    }
+	    else 
+	    {
+		cd = GetConstDecl(CurrentToken().GetIdentName());
+	    }
+	    break;
+	}
+	
+	default:
+	    return 0;
+	}
+	NextToken();
+    } while(CurrentToken().GetToken() != Token::Semicolon); 
+    return cd;
+}
+
+
 void Parser::ParseConstDef()
 {
     if (!Expect(Token::Const, true))
@@ -341,52 +389,11 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-	Constants::ConstDecl *cd = 0;
-	Location loc = CurrentToken().Loc();
-	switch(CurrentToken().GetToken())
-	{
-	case Token::StringLiteral:
-	    cd = new Constants:: StringConstDecl(loc, CurrentToken().GetStrVal());
-	    break;
-
-	case Token::Integer:
-	    cd = new Constants:: IntConstDecl(loc, CurrentToken().GetIntVal());
-	    break;
-
-	case Token::Real:
-	    cd = new Constants:: RealConstDecl(loc, CurrentToken().GetRealVal());
-	    break;
-
-	case Token::Char:
-	    cd = new Constants:: CharConstDecl(loc, (char) CurrentToken().GetIntVal());
-	    break;
-
-	case Token::Identifier:
-	{
-	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
-	    if (ed)
-	    {
-		cd = new Constants:: IntConstDecl(loc, ed->Value());
-	    }
-	    else 
-	    {
-		Constants::ConstDecl* cv = GetConstDecl(CurrentToken().GetIdentName());
-		if (cv)
-		{
-		    cd = cv->Copy(loc);
-		}
-	    }
-	    break;
-	}
-	 
-	default:
-	    break;
-	}
+	Constants::ConstDecl *cd = ParseConstValue();
 	if (!cd) 
 	{
 	    Error("Invalid constant value");
 	}
-	NextToken();
 	if (!nameStack.Add(nm, new ConstDef(nm, cd)))
 	{
 	    Error(std::string("Name ") + nm + " is already declared as a constant");

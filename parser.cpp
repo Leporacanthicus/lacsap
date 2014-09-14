@@ -323,7 +323,6 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     }
 }
 
-
 Constants::ConstDecl* Parser::ParseConstValue()
 {
     Location loc = CurrentToken().Loc();
@@ -555,7 +554,6 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     }
     return new Types::ArrayDecl(ty, rv);
 }
-
 
 Types::VariantDecl* Parser::ParseVariantDecl()
 {
@@ -1436,13 +1434,16 @@ VarDeclAST* Parser::ParseVarDecls()
 // if isFunction:
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
 // if !isFunction:
-// procedure name ( { [var] name1 [,name2 ...]: type [; ...] } ) : type
-PrototypeAST* Parser::ParsePrototype(bool isFunction)
+// procedure name ( { [var] name1 [,name2 ...]: type [; ...] } )
+PrototypeAST* Parser::ParsePrototype()
 {
     // Consume "function" or "procedure"
     assert(CurrentToken().GetToken() == Token::Procedure ||
 	   CurrentToken().GetToken() == Token::Function && 
 	   "Expected function or procedure token");
+
+    bool isFunction = CurrentToken().GetToken() == Token::Function;
+
     NextToken();
     std::string funcName = CurrentToken().GetIdentName();
     // Get function name.
@@ -1461,7 +1462,7 @@ PrototypeAST* Parser::ParsePrototype(bool isFunction)
 	    if (CurrentToken().GetToken() == Token::Function ||
 		CurrentToken().GetToken() == Token::Procedure)
 	    {
-		PrototypeAST* proto = ParsePrototype(CurrentToken().GetToken() == Token::Function);
+		PrototypeAST* proto = ParsePrototype();
 		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
 		VarDef v(proto->Name(), type, false);
 		args.push_back(v);
@@ -1578,7 +1579,7 @@ BlockAST* Parser::ParseBlock()
 FunctionAST* Parser::ParseDefinition()
 {
     bool isFunction = CurrentToken().GetToken() == Token::Function;
-    PrototypeAST* proto = ParsePrototype(isFunction);
+    PrototypeAST* proto = ParsePrototype();
     if (!proto) 
     {
 	return 0;

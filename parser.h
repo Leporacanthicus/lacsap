@@ -57,7 +57,7 @@ private:
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
     FunctionAST*  ParseDefinition();
-    PrototypeAST* ParsePrototype(bool isFunction);
+    PrototypeAST* ParsePrototype();
     bool          ParseProgram();
 
     // Type declarations and defintitions

@@ -192,10 +192,6 @@ EnumDef* Parser::GetEnumValue(const std::string& name)
 	return 0;
     }
     EnumDef *enumDef = llvm::dyn_cast<EnumDef>(def);
-    if (!enumDef)
-    {
-	return 0;
-    }
     return enumDef;
 }
 
@@ -231,9 +227,8 @@ Types::TypeDecl* Parser::ParseSimpleType()
     return ty;
 }
 
-int Parser::ParseConstantValue(Token::TokenType& tt)
+void Parser::TranslateToken(Token& token)
 {
-    Token token = CurrentToken();
     if (token.GetToken() == Token::Identifier)
     {
 	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
@@ -242,6 +237,12 @@ int Parser::ParseConstantValue(Token::TokenType& tt)
 	    token = cd->Translate();
 	}
     }
+}
+
+int Parser::ParseConstantValue(Token::TokenType& tt)
+{
+    Token token = CurrentToken();
+    TranslateToken(token);
 
     if (tt != Token::Unknown && token.GetToken() != tt)
     {
@@ -325,7 +326,7 @@ Types::Range* Parser::ParseRangeOrTypeRange()
 
 Constants::ConstDecl* Parser::ParseConstExpr()
 {
-    Token::TokenType unaryToken;
+    Token::TokenType unaryToken = Token::Unknown;
     Location loc = CurrentToken().Loc();
     Constants::ConstDecl* cd;
     int mul = 1;
@@ -370,8 +371,14 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
 	    if (ed)
 	    {
-		// TODO: Make boolean have BoolConstDecl.
-		cd = new Constants::IntConstDecl(loc, ed->Value());
+		if (ed->Type()->Type() == Types::Boolean)
+		{
+		    cd = new Constants::BoolConstDecl(loc, ed->Value());
+		}
+		else
+		{
+		    cd = new Constants::IntConstDecl(loc, ed->Value());
+		}
 	    }
 	    else 
 	    {
@@ -851,14 +858,7 @@ Types::StringDecl* Parser::ParseStringDecl()
     {
 	NextToken();
 	Token token = CurrentToken();
-	if (token.GetToken() == Token::Identifier)
-	{
-	    Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
-	    if (cd)
-	    {
-		token = cd->Translate();
-	    }
-	}
+	TranslateToken(token);
 
 	if (token.GetToken() != Token::Integer)
 	{
@@ -1189,7 +1189,9 @@ bool Parser::IsCall(Types::TypeDecl* type)
 
 ExprAST* Parser::ParseIdentifierExpr()
 {
-    std::string idName = CurrentToken().GetIdentName();
+    Token token = CurrentToken();
+    TranslateToken(token) ;
+    std::string idName = token.GetIdentName();
     NextToken();
     NamedObject* def = nameStack.Find(idName);
     EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def);
@@ -2214,14 +2216,7 @@ ExprAST* Parser::ParseRead()
 ExprAST* Parser::ParsePrimary()
 {
     Token token = CurrentToken();
-    if (token.GetToken() == Token::Identifier)
-    {
-	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
-	if (cd)
-	{
-	    token = cd->Translate();
-	}
-    }
+    TranslateToken(token);
 
     switch(token.GetToken())
     {

@@ -17,7 +17,8 @@ Token Constants::CharConstDecl::Translate()
 
 Token Constants::BoolConstDecl::Translate()
 {
-    return Token(Token::Boolean, loc, (long)value);
+    std::string s = (value)?"true":"false";
+    return Token(Token::Identifier, loc, s);
 }
 
 Token Constants::StringConstDecl::Translate()

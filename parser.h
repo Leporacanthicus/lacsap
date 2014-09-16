@@ -64,6 +64,8 @@ private:
     void                ParseTypeDef();
     void                ParseConstDef();
 
+    void TranslateToken(Token& token);
+
     Constants::ConstDecl* ParseConstExpr();
 
     Types::Range*       ParseRange();

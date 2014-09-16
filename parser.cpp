@@ -323,40 +323,78 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     }
 }
 
-Constants::ConstDecl* Parser::ParseConstValue()
+Constants::ConstDecl* Parser::ParseConstExpr()
 {
+    Token::TokenType unaryToken;
     Location loc = CurrentToken().Loc();
     Constants::ConstDecl* cd;
+    int mul = 1;
     do
     {
 	switch(CurrentToken().GetToken())
 	{
+	case Token::Minus:
+	    mul = -1;
+	case Token::Plus:
+	    unaryToken = CurrentToken().GetToken();
+	    break;
+
 	case Token::StringLiteral:
+	    if (unaryToken != Token::Unknown)
+	    {
+		Error("Unary + or - not allowed for string constants");
+		return 0;
+	    }
 	    cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
 	    break;
 	    
 	case Token::Integer:
-	    cd = new Constants::IntConstDecl(loc, CurrentToken().GetIntVal());
+	    cd = new Constants::IntConstDecl(loc, CurrentToken().GetIntVal() * mul);
 	    break;
 	    
 	case Token::Real:
-	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal());
+	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
 	    break;
 	    
 	case Token::Char:
+	    if (unaryToken != Token::Unknown)
+	    {
+		Error("Unary + or - not allowed for char constants");
+		return 0;
+	    }
 	    cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
 	    break;
-	    
+
 	case Token::Identifier:
 	{
 	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
 	    if (ed)
 	    {
+		// TODO: Make boolean have BoolConstDecl.
 		cd = new Constants::IntConstDecl(loc, ed->Value());
 	    }
 	    else 
 	    {
 		cd = GetConstDecl(CurrentToken().GetIdentName());
+		if (mul == -1)
+		{
+		    if(llvm::isa<Constants::RealConstDecl>(cd))
+		    {
+			Constants::RealConstDecl* rd = llvm::dyn_cast<Constants::RealConstDecl>(cd);
+			cd = new Constants::RealConstDecl(loc, -rd->Value());
+		    }
+		    else if (llvm::isa<Constants::IntConstDecl>(cd))
+		    {
+			Constants::IntConstDecl* id = llvm::dyn_cast<Constants::IntConstDecl>(cd);
+			cd = new Constants::IntConstDecl(loc, -id->Value());
+		    }
+		    else
+		    {
+			Error("Can't negate the type of " + CurrentToken().GetIdentName() + 
+			      " only integer and real types can be negated");
+			return 0;
+		    }
+		}
 	    }
 	    break;
 	}
@@ -388,7 +426,7 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-	Constants::ConstDecl *cd = ParseConstValue();
+	Constants::ConstDecl *cd = ParseConstExpr();
 	if (!cd) 
 	{
 	    Error("Invalid constant value");

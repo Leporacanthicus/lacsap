@@ -7,14 +7,26 @@
 class Constants
 {
 public:
+    enum ConstKind
+    {
+	CK_ConstDecl,
+	CK_IntConstDecl,
+	CK_RealConstDecl,
+	CK_CharConstDecl,
+	CK_BoolConstDecl, 
+	CK_StringConstDecl,
+    };
+
     class ConstDecl
     {
     public:
-	ConstDecl(const Location& w)
-	    : loc(w) {}
+	ConstDecl(ConstKind k, const Location& w)
+	    : kind(k), loc(w) {}
 	virtual ~ConstDecl() {}
 	virtual Token Translate() = 0;
+	ConstKind getKind() const { return kind; }
     protected:
+	const ConstKind kind;
 	Location loc;
     };
 
@@ -22,8 +34,10 @@ public:
     {
     public:
 	IntConstDecl(const Location& w, long v) 
-	    : ConstDecl(w), value(v) {}
+	    : ConstDecl(CK_IntConstDecl, w), value(v) {}
 	virtual Token Translate();
+	long Value() { return value; }
+	static bool classof(const ConstDecl *e) { return e->getKind() == CK_IntConstDecl; }
     private:
 	long value;
     };
@@ -32,8 +46,10 @@ public:
     {
     public:
 	RealConstDecl(const Location& w, double v) 
-	    : ConstDecl(w), value(v) {}
+	    : ConstDecl(CK_RealConstDecl, w), value(v) {}
 	virtual Token Translate();
+	double Value() { return value; }
+	static bool classof(const ConstDecl *e) { return e->getKind() == CK_RealConstDecl; }
     private:
 	double value;
     };
@@ -42,8 +58,9 @@ public:
     {
     public:
 	CharConstDecl(const Location& w, char v) 
-	    : ConstDecl(w), value(v) {}
+	    : ConstDecl(CK_CharConstDecl, w), value(v) {}
 	virtual Token Translate();
+	static bool classof(const ConstDecl *e) { return e->getKind() == CK_CharConstDecl; }
     private:
 	char value;
     };
@@ -52,8 +69,9 @@ public:
     {
     public:
 	BoolConstDecl(const Location& w, bool v) 
-	    : ConstDecl(w), value(v) {}
+	    : ConstDecl(CK_BoolConstDecl, w), value(v) {}
 	virtual Token Translate();
+	static bool classof(const ConstDecl *e) { return e->getKind() == CK_BoolConstDecl; }
     private:
 	bool value;
     };
@@ -62,8 +80,9 @@ public:
     {
     public:
 	StringConstDecl(const Location& w, const std::string &v) 
-	    : ConstDecl(w), value(v) {}
+	    : ConstDecl(CK_StringConstDecl, w), value(v) {}
 	virtual Token Translate();
+	static bool classof(const ConstDecl *e) { return e->getKind() == CK_StringConstDecl; }
     private:
 	std::string value;
     };

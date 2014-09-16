@@ -6,10 +6,9 @@ const
    c  = -42;
    aa = 'a';
    bb = true;
-   cc = -true;
-   
+   cc = not bb;
       
 begin
-   writeln('a=', a:3, ' b=', b:3, ' c=', c:3, ' bb=', bb);
+   writeln('a=', a:3, ' b=', b:3, ' c=', c:3, ' bb=', bb, ' cc=', cc);
    writeln('aa=', aa:3);
 end.

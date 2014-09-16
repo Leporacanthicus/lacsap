@@ -71,6 +71,7 @@ public:
 	BoolConstDecl(const Location& w, bool v) 
 	    : ConstDecl(CK_BoolConstDecl, w), value(v) {}
 	virtual Token Translate();
+	bool Value() { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_BoolConstDecl; }
     private:
 	bool value;

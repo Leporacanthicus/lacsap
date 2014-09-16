@@ -337,6 +337,7 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	case Token::Minus:
 	    mul = -1;
 	case Token::Plus:
+	case Token::Not:
 	    unaryToken = CurrentToken().GetToken();
 	    break;
 
@@ -350,10 +351,22 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    break;
 	    
 	case Token::Integer:
-	    cd = new Constants::IntConstDecl(loc, CurrentToken().GetIntVal() * mul);
+	{
+	    long v = CurrentToken().GetIntVal();
+	    if (unaryToken == Token::Not)
+	    {
+		v = ~v;
+	    }
+	    cd = new Constants::IntConstDecl(loc,  v * mul);
 	    break;
+	}
 	    
 	case Token::Real:
+	    if (unaryToken == Token::Not)
+	    {
+		Error("Unary 'not' is not allowed for real constants");
+		return 0;
+	    }
 	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
 	    break;
 	    
@@ -373,16 +386,37 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    {
 		if (ed->Type()->Type() == Types::Boolean)
 		{
-		    cd = new Constants::BoolConstDecl(loc, ed->Value());
+		    long v = ed->Value();
+		    if (unaryToken == Token::Not)
+		    {
+			v = !v;
+		    }
+		    else if (unaryToken != Token::Unknown)
+		    {
+			Error("Unary + or - not allowed for bool constants");
+			return 0;
+		    }
+		    cd = new Constants::BoolConstDecl(loc, v);
 		}
 		else
 		{
+		    if (unaryToken != Token::Unknown)
+		    {
+			Error("Unary + or - not allowed for enum constants");
+			return 0;
+		    }
 		    cd = new Constants::IntConstDecl(loc, ed->Value());
 		}
 	    }
 	    else 
 	    {
 		cd = GetConstDecl(CurrentToken().GetIdentName());
+		if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
+		{
+		    Constants::BoolConstDecl* bd = llvm::dyn_cast<Constants::BoolConstDecl>(cd);
+		    cd = new Constants::BoolConstDecl(loc, !bd->Value());
+		}
+		
 		if (mul == -1)
 		{
 		    if(llvm::isa<Constants::RealConstDecl>(cd))

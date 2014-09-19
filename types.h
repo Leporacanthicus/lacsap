@@ -364,6 +364,7 @@ public:
 	    assert(size > 0 && "Zero size not allowed");
 	}
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_String; }
+	virtual void dump() const;
     };
 
     static llvm::Type* GetType(SimpleTypes type);

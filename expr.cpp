@@ -138,10 +138,10 @@ llvm::Value* MakeAddressable(ExprAST* e, Types::TypeDecl* type)
     }
     else
     {
-	llvm::Type* ty = type->LlvmType();
-	v = CreateTempAlloca(ty);
-	builder.CreateStore(e->CodeGen(), v);
+	llvm::Value* store = e->CodeGen();
+	v = CreateTempAlloca(store->getType());
 	assert(v && "Expect address to be non-zero");
+	builder.CreateStore(store, v);
     }
     return v;
 }
@@ -641,6 +641,8 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* rV;
     llvm::Value* lV;
     llvm::Type* ty;
+    llvm::Type* strTy = Types::GetStringType()->LlvmType();
+
     if (rhs->Type()->Type() == Types::Char)
     {
 	Types::StringDecl* sd = Types::GetStringType();
@@ -659,6 +661,10 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     {
 	ty = rhs->Type()->LlvmType();
 	rV = MakeAddressable(rhs, rhs->Type());
+	if (ty != strTy)
+	{
+	    rV = builder.CreateBitCast(rV, llvm::PointerType::getUnqual(strTy));
+	}
     }
 
     if (lhs->Type()->Type() == Types::Char)
@@ -674,6 +680,10 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     else
     {
 	lV = MakeAddressable(lhs, lhs->Type());
+	if (lhs->Type()->LlvmType() != strTy)
+	{
+	    lV = builder.CreateBitCast(lV, llvm::PointerType::getUnqual(strTy));
+	}
     }
 	
     if (!rV || !lV)
@@ -681,7 +691,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
 	return 0;
     }
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(ty);
+    llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
     argTypes.push_back(pty);
     argTypes.push_back(pty);
 
@@ -698,8 +708,7 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr
     llvm::Type* resTy;
     if (resTyIsStr)
     {
-	Types::StringDecl* sd = Types::GetStringType();
-	resTy = sd->LlvmType();
+	resTy = Types::GetStringType()->LlvmType();
     }
     else
     {
@@ -1594,8 +1603,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	return ErrorV("Left hand side of assignment must be a variable");
     }
 
-    const Types::StringDecl* sty = llvm::dyn_cast<const Types::StringDecl>(lhsv->Type()); 
-    if (sty)
+    if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
     {
 	return AssignStr();
     }

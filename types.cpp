@@ -469,6 +469,13 @@ void Types::SetDecl::dump() const
     range->dump();
 }
 
+void Types::StringDecl::dump() const
+{
+    std::cerr << "String[";
+    Ranges()[0]->dump();
+    std::cerr << "]";
+}
+
 Types::TypeDecl* Types::TypeForSet()
 {
     if (!setType)

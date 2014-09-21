@@ -1194,7 +1194,7 @@ llvm::Value* CallExprAST::CodeGen()
     for(auto i : args)
     {
 	index++;
-	llvm::Value* v;
+	llvm::Value* v = 0;
 	VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
 	if (viter->IsRef())
 	{
@@ -1206,20 +1206,40 @@ llvm::Value* CallExprAST::CodeGen()
 	}
 	else
 	{
-	    if (vi && vi->Type()->isCompound())
+	    StringExprAST* sv = llvm::dyn_cast<StringExprAST>(i);
+	    if (llvm::isa<Types::StringDecl>(viter->Type()) &&
+		sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
 	    {
-		v = LoadOrMemcpy(vi->Address(), vi->Type());
-		argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
-	    }
-	    else
-	    {
-		v = i->CodeGen();
-		if (!v)
+		if (sv && sv->Type()->SubType()->Type() == Types::Char)
 		{
-		    return 0;
+		    v = CreateTempAlloca(viter->Type()->LlvmType());
+		    TempStringFromStringExpr(v, sv);
 		}
-		v = TypeConvert(v, viter->Type()->LlvmType());
 	    }
+
+	    if (!v)
+	    {
+		if (vi && vi->Type()->isCompound())
+		{
+		    v = LoadOrMemcpy(vi->Address(), vi->Type());
+		    argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
+		}
+		else
+		{
+		    v = i->CodeGen();
+		    if (!v)
+		    {
+			return 0;
+		    }
+		    v = TypeConvert(v, viter->Type()->LlvmType());
+		}
+	    }
+	}
+	if (vi && llvm::isa<Types::StringDecl>(vi->Type()) &&
+	    llvm::isa<Types::StringDecl>(viter->Type()))
+	{
+	    llvm::Type* strTy = viter->Type()->LlvmType();
+	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
 	}
 	if (!v)
 	{
@@ -2197,44 +2217,45 @@ void ReadAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
+static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
     std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
     argTypes.push_back(fty);
-    if (ty)
+    // ty is NULL if we're doing readln. 
+    if (!ty)
     {
-	if (!ty->isPointerTy())
-	{
-	    return ErrorF("Read argument is not a variable type!");
-	}
-	llvm::Type* innerTy = ty->getContainedType(0);
-	if (innerTy == Types::GetType(Types::Char))
-	{
-	    argTypes.push_back(ty);
-	    suffix = "chr";
-	}
-	else if (innerTy->isIntegerTy())
-	{
-	    // Make args of two integers. 
-	    argTypes.push_back(ty);
-	    suffix = "int";
-	}
-	else if (innerTy->isDoubleTy())
-	{
-	    // Args: double, int, int
-	    argTypes.push_back(ty);
-	    suffix = "real";
-	}
-	else
-	{
-	    return ErrorF("Invalid type argument for read");
-	}
+	suffix = "nl";
     }
     else
     {
-	suffix = "nl";
+	llvm::Type* lty = llvm::PointerType::getUnqual(ty->LlvmType());
+	switch(ty->Type())
+	{
+	case Types::Char:
+	    argTypes.push_back(lty);
+	    suffix = "chr";
+	    break;
+
+	case Types::Integer:
+	    argTypes.push_back(lty);
+	    suffix = "int";
+	    break;
+
+	case Types::Real:
+	    argTypes.push_back(lty);
+	    suffix = "real";
+	    break;
+
+	case Types::String:
+	    argTypes.push_back(lty);
+	    suffix = "str";
+	    break;
+	    
+	default:
+	    return ErrorF("Invalid type argument for read");
+	}
     }
     std::string name = std::string("__read_") + suffix;
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
@@ -2243,16 +2264,13 @@ static llvm::Constant *CreateReadFunc(llvm::Type* ty, llvm::Type* fty)
     return f;
 }
 
-static llvm::Constant *CreateReadBinFunc(llvm::Type* ty, llvm::Type* fty)
+static llvm::Constant *CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
     argTypes.push_back(fty);
-    assert(ty && "Type should not be NULL!");
-    if (!ty->isPointerTy())
-    {
-	return ErrorF("Read argument is not a variable type!");
-    }
+    assert(vTy && "Type should not be NULL!");
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     argTypes.push_back(voidPtrTy);
 
@@ -2270,6 +2288,7 @@ llvm::Value* ReadAST::CodeGen()
     llvm::Value* f = FileOrNull(file);
 
     bool isText = FileIsText(f);
+    llvm::Type* fTy =  f->getType();
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
@@ -2280,9 +2299,11 @@ llvm::Value* ReadAST::CodeGen()
 	    return ErrorV("Argument for read/readln should be a variable");
 	}
 	
+	Types::TypeDecl* ty = vexpr->Type();
 	llvm::Value* v = vexpr->Address();
 	if (!v)
 	{
+	    assert(0 && "Could not evaluate address of expression for read");
 	    return 0;
 	}
 	if (!isText)
@@ -2290,15 +2311,14 @@ llvm::Value* ReadAST::CodeGen()
 	    v = builder.CreateBitCast(v, voidPtrTy);
 	}
 	argsV.push_back(v);
-	llvm::Type *ty = v->getType();
 	llvm::Constant* fn;
 	if (isText)
 	{
-	    fn = CreateReadFunc(ty, f->getType());
+	    fn = CreateReadFunc(ty, fTy);
 	}
 	else
 	{
-	    fn = CreateReadBinFunc(ty, f->getType());
+	    fn = CreateReadBinFunc(ty, fTy);
 	}
 	
 	builder.CreateCall(fn, argsV, "");
@@ -2309,7 +2329,7 @@ llvm::Value* ReadAST::CodeGen()
 	{
 	    return ErrorV("File is not text for readln");
 	}
-	llvm::Constant* fn = CreateReadFunc(0, f->getType());
+	llvm::Constant* fn = CreateReadFunc(0, fTy);
 	builder.CreateCall(fn, f, "");
     }
     return MakeIntegerConstant(0);

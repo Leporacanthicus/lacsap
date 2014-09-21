@@ -340,6 +340,7 @@ void __read_int(File* file, int* v)
 {
     int n = 0;
     int sign;
+
     if (!file)
     {
 	file = &input;
@@ -472,6 +473,31 @@ void __read_bin(File* file, void *val)
     }
     memcpy(val, file->buffer, f->recordSize);
     __get(file);
+}
+
+void __read_str(File* file, String* val)
+{
+    char buffer[256];
+    size_t count = 0;
+    if (!file)
+    {
+	file = &input;
+    }
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
+    while(!__eoln(file) && count < sizeof(buffer))
+    {
+	buffer[count++] = *file->buffer;
+	__get(file);
+    }
+    val->len = count;
+    memcpy(val->str, buffer, count);
 }
 
 static void InitFiles()

@@ -448,6 +448,26 @@ static llvm::Value* ClockCodeGen(llvm::IRBuilder<>& builder,  const std::vector<
     return builder.CreateCall(f, "clock");
 }
 
+static llvm::Value* PanicCodeGen(llvm::IRBuilder<>& builder,  const std::vector<ExprAST*>& args)
+{
+    std::vector<llvm::Type*> argTypes;
+
+    llvm::Value* message = args[0]->CodeGen();
+    llvm::Type* ty = message->getType();
+    if (ty->isPointerTy() && ty->getContainedType(0) != Types::GetType(Types::Char))
+    {
+	return ErrorV("Argument for panic message should be string type.");
+    }
+    argTypes.push_back(ty);
+    std::vector<llvm::Value*> argsV;
+    argsV.push_back(message);
+
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction("__Panic", ft);
+
+    return builder.CreateCall(f,  argsV);
+}
+
 enum ResultForm
 {
     RF_Input,
@@ -499,6 +519,7 @@ const static BuiltinFunction bifs[] =
     { "copy",    CopyCodeGen,    RF_String },
     { "length",  LengthCodeGen,  RF_Integer },
     { "clock",   ClockCodeGen,   RF_LongInt },
+    { "panic",   PanicCodeGen,   RF_Void },
 };
 
 static const BuiltinFunction* find(const std::string& name)

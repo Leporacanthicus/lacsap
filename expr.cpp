@@ -1200,6 +1200,7 @@ llvm::Value* CallExprAST::CodeGen()
 	{
 	    if (!vi)
 	    {
+		// TODO: Need to detect this better.
 		return ErrorV("Args declared with 'var' must be a variable!");
 	    }
 	    v = vi->Address();

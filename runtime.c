@@ -671,10 +671,15 @@ int __ArrCompare(char* a, char* b, int size)
     return 0;
 }
 
-
 long __Clock(void)
 {
     return clock();
+}
+
+long __Panic(const char* msg)
+{
+    fprintf(stderr, "%s\n", msg);
+    exit(11);
 }
 
 int main()

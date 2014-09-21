@@ -1530,9 +1530,9 @@ PrototypeAST* Parser::ParsePrototype()
     {
 	std::vector<std::string> names;
 	NextToken();
+	bool isRef = false;
 	while(CurrentToken().GetToken() != Token::RightParen)
 	{
-	    bool isRef = false;
 	    if (CurrentToken().GetToken() == Token::Function ||
 		CurrentToken().GetToken() == Token::Procedure)
 	    {
@@ -1565,6 +1565,7 @@ PrototypeAST* Parser::ParsePrototype()
 			VarDef v(n, type, isRef);
 			args.push_back(v);
 		    }
+		    isRef = false;
 		    names.clear();
 		    if (CurrentToken().GetToken() != Token::RightParen)
 		    {

@@ -103,6 +103,10 @@ int __eoln(File* file)
     {
 	file = &input;
     }
+    if (!files[file->handle].readAhead)
+    {
+	__get(file);
+    }
     return !!(*file->buffer == '\n' || __eof(file));
 }
 

@@ -393,9 +393,10 @@ llvm::Value* ArrayExprAST::Address()
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
     }
-    llvm::Value* index; 
+    llvm::Value* totalIndex = MakeIntegerConstant(0);
     for(size_t i = 0; i < indices.size(); i++)
     {
+	llvm::Value* index;
 	/* TODO: Add range checking? */
 	index = indices[i]->CodeGen();
 	if (!index)
@@ -407,12 +408,17 @@ llvm::Value* ArrayExprAST::Address()
 	    return ErrorV("Index is supposed to be integral type");
 	}
 	llvm::Type* ty = index->getType();
-	index = builder.CreateSub(index, MakeConstant(ranges[i]->GetStart(), ty));
+	int start = ranges[i]->GetStart();
+	if (start)
+	{
+	    index = builder.CreateSub(index, MakeConstant(start, ty));
+	}
 	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
+	totalIndex = builder.CreateAdd(totalIndex, index);
     }
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(index);
+    ind.push_back(totalIndex);
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
 }

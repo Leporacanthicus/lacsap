@@ -3,8 +3,7 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-* Bug: Strings with length don't work right in for example concatenation.
-- Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
+* Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - Proper type checking. 
 - Goto statement.
 - Usage of "text" files creates many type declarations - should only be one.

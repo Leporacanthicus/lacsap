@@ -393,7 +393,7 @@ llvm::Value* ArrayExprAST::Address()
     {
 	return ErrorV(std::string("Unknown variable name '") + name + "'");
     }
-    llvm::Value* totalIndex = MakeIntegerConstant(0);
+    llvm::Value* totalIndex = 0;
     for(size_t i = 0; i < indices.size(); i++)
     {
 	llvm::Value* index;
@@ -414,7 +414,14 @@ llvm::Value* ArrayExprAST::Address()
 	    index = builder.CreateSub(index, MakeConstant(start, ty));
 	}
 	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
-	totalIndex = builder.CreateAdd(totalIndex, index);
+	if (!totalIndex)
+	{
+	    totalIndex = index;
+	}
+	else
+	{
+	    totalIndex = builder.CreateAdd(totalIndex, index);
+	}
     }
     std::vector<llvm::Value*> ind;
     ind.push_back(MakeIntegerConstant(0));

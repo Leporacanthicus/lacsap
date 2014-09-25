@@ -1304,6 +1304,14 @@ void BlockAST::DoDump(std::ostream& out) const
     out << "Block End;" << std::endl;
 }
 
+void BlockAST::accept(Visitor& v)
+{
+    for(auto i : content)
+    {
+	i->accept(v);
+    }
+}
+
 llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
@@ -1450,6 +1458,17 @@ void FunctionAST::DoDump(std::ostream& out) const
     out << "Function body:" << std::endl;
     body->dump(out);
 }
+
+void FunctionAST::accept(Visitor& v)
+{
+    if (varDecls)
+    {
+	varDecls->accept(v);
+    }
+    body->accept(v);
+}
+
+
 
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
@@ -1724,6 +1743,20 @@ void IfExprAST::DoDump(std::ostream& out) const
 	other->dump(out);
     }
 }
+
+void IfExprAST::accept(Visitor& v)
+{
+    cond->accept(v);
+    if (then)
+    {
+	then->accept(v);
+    }
+    if (other)
+    {
+	other->accept(v);
+    }
+}
+
 
 llvm::Value* IfExprAST::CodeGen()
 {

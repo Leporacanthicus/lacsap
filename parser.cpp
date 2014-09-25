@@ -1760,6 +1760,8 @@ FunctionAST* Parser::ParseDefinition()
 			    nameStack.GetLevel(),
 			    nameStack.GetLevel(0));
 	    proto->AddExtraArgs(fn->UsedVars()); 
+	    UpdateCallVisitor updater(proto);
+	    fn->accept(updater);
 	    return fn;
 	}
 

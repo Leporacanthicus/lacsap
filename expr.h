@@ -4,6 +4,7 @@
 #include "token.h"
 #include "types.h"
 #include "namedobject.h"
+#include "astvisitor.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>
 #include <llvm/PassManager.h>
@@ -14,7 +15,7 @@
 #include <vector>
 #include <iostream>
 
-class ExprAST
+class ExprAST : public Visitable
 {
 public:
     enum ExprKind
@@ -67,6 +68,7 @@ public:
     { 
 	out << "Empty node";
     }
+    virtual void accept(Visitor& v) { v.visit(this); }
     std::string ToString();
     virtual llvm::Value* CodeGen() = 0;
     ExprKind getKind() const { return kind; }
@@ -333,6 +335,8 @@ public:
     virtual llvm::Value* CodeGen();
     bool IsEmpty() { return content.size() == 0; }
     static bool classof(const ExprAST *e) { return e->getKind() == EK_Block; }
+    std::vector<ExprAST*>& Content() { return content; }
+    virtual void accept(Visitor& v);
 private:
     std::vector<ExprAST*> content;
 };
@@ -423,6 +427,7 @@ public:
 		     const std::vector<NamedObject*>& globalVars);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
     static bool classof(const ExprAST *e) { return e->getKind() == EK_Function; }
+    virtual void accept(Visitor& v);
 private:
     PrototypeAST*              proto;
     VarDeclAST*                varDecls;
@@ -443,6 +448,8 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CallExpr; }
+    const PrototypeAST* Proto() { return proto; }
+    std::vector<ExprAST*>& Args() { return args; }
 private:
     const PrototypeAST*   proto;
     ExprAST*              callee;
@@ -473,6 +480,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_IfExpr; }
+    virtual void accept(Visitor& v);
 private:
     ExprAST* cond;
     ExprAST* then;

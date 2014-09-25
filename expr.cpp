@@ -1289,6 +1289,14 @@ void BuiltinExprAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
+void BuiltinExprAST::accept(Visitor& v)
+{
+    for(auto i : args) 
+    {
+	i->accept(v);
+    }
+}
+
 llvm::Value* BuiltinExprAST::CodeGen()
 {
     return Builtin::CodeGen(builder, name, args);
@@ -1829,6 +1837,13 @@ void ForExprAST::DoDump(std::ostream& out) const
     end->dump(out);
     out << " do ";
     body->dump(out);
+}
+
+void ForExprAST::accept(Visitor& v)
+{
+    start->accept(v);
+    end->accept(v);
+    body->accept(v);
 }
 
 llvm::Value* ForExprAST::CodeGen()

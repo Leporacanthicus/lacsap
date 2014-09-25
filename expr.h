@@ -349,6 +349,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_AssignExpr; }
+    virtual void accept(Visitor& v) { rhs->accept(v); lhs->accept(v); }
 private:
     llvm::Value* AssignStr();
     ExprAST* lhs, *rhs;
@@ -450,6 +451,7 @@ public:
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST* Proto() { return proto; }
     std::vector<ExprAST*>& Args() { return args; }
+    virtual void accept(Visitor& v) { callee->accept(v); }
 private:
     const PrototypeAST*   proto;
     ExprAST*              callee;
@@ -467,6 +469,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_BuiltinExpr; }
+    virtual void accept(Visitor& v);
 private:
     std::string           name;
     std::vector<ExprAST*> args;
@@ -495,6 +498,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_ForExpr; }
+    virtual void accept(Visitor& v);
 private:
     std::string varName;
     ExprAST* start;

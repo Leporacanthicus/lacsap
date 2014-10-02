@@ -5,6 +5,10 @@
 
 void UpdateCallVisitor::visit(ExprAST* expr)
 {
+    if (verbosity > 1)
+    {
+	expr->dump();
+    }
     CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr);
     if(call)
     {
@@ -13,7 +17,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	{
 	    if (verbosity)
 	    {
-		std::cerr << "Adding arguments for recursive function" << std::endl;
+		std::cerr << "Adding arguments for function" << std::endl;
 	    }
 	    auto& args = call->Args();
 	    for(auto u : proto->Function()->UsedVars())

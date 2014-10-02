@@ -1651,7 +1651,7 @@ BlockAST* Parser::ParseBlock()
     return new BlockAST(v);
 }
 
-FunctionAST* Parser::ParseDefinition()
+FunctionAST* Parser::ParseDefinition(int level)
 {
     bool isFunction = CurrentToken().GetToken() == Token::Function;
     PrototypeAST* proto = ParsePrototype();
@@ -1728,8 +1728,12 @@ FunctionAST* Parser::ParseDefinition()
 	case Token::Function:
 	case Token::Procedure:
 	{
-	    FunctionAST* fn = ParseDefinition();
-	    subFunctions.push_back(fn);
+	    FunctionAST* fn = ParseDefinition(level+1);
+	    assert(fn && "Expected to get a function definition");
+	    if (fn)
+	    {
+		subFunctions.push_back(fn);
+	    }
 	    break;
 	}
 	   
@@ -1756,9 +1760,7 @@ FunctionAST* Parser::ParseDefinition()
 	    }
 	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
-	    fn->SetUsedVars(usedVariables.GetLevel(), 
-			    nameStack.GetLevel(),
-			    nameStack.GetLevel(0));
+	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack);
 	    proto->AddExtraArgs(fn->UsedVars()); 
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
@@ -2389,7 +2391,7 @@ std::vector<ExprAST*> Parser::Parse()
 
 	case Token::Function:
 	case Token::Procedure:
-	    curAst = ParseDefinition();
+	    curAst = ParseDefinition(0);
 	    break;
 
 	case Token::Var:

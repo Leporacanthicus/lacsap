@@ -56,7 +56,7 @@ private:
     ExprAST*      ParseStmtOrBlock();
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
-    FunctionAST*  ParseDefinition();
+    FunctionAST*  ParseDefinition(int level);
     PrototypeAST* ParsePrototype();
     bool          ParseProgram();
 

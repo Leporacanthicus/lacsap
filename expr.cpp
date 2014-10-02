@@ -452,7 +452,6 @@ llvm::Value* FieldExprAST::Address()
     return v;
 }
 
-
 void VariantFieldExprAST::DoDump(std::ostream& out) const
 {
     out << "Variant " << element << std::endl;
@@ -1197,6 +1196,7 @@ llvm::Value* CallExprAST::CodeGen()
     const std::vector<VarDef>& vdef = proto->Args();
     if (vdef.size() != args.size())
     {
+	proto->dump();
 	return ErrorV(std::string("Incorrect number of arguments for ") + proto->Name() + ".");
     }
 
@@ -1445,7 +1445,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, resultType));
 	if(!variables.Add(name, a))
 	{
-	    ErrorF(std::string("Duplicate variable name ") + name);
+	    ErrorF(std::string("Duplicate function result name ") + name);
 	}
     }
 }
@@ -1475,8 +1475,6 @@ void FunctionAST::accept(Visitor& v)
     }
     body->accept(v);
 }
-
-
 
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
@@ -1563,34 +1561,51 @@ llvm::Function* FunctionAST::CodeGen()
     return CodeGen("P");
 }
 
-void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
-			      const std::vector<NamedObject*>& localVars,
-			      const std::vector<NamedObject*>& globalVars)
+void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
+			      const Stack<NamedObject*>& nameStack)
 {
     std::map<std::string, NamedObject*> nonLocal;
+    size_t level;
+    size_t maxLevel = nameStack.MaxLevel();
+
+    if (verbosity > 1)
+    {
+	nameStack.dump();
+    }
     for(auto v : varsUsed)
     {
-	nonLocal[v->Name()] = v;
+	if (!nameStack.Find(v->Name(), level))
+	{
+	    assert(0 && "Hhhm. Variable has gone missing!");
+	}
+	if (!(level == 0 || level == maxLevel))
+	{
+	    if (verbosity)
+	    {
+		std::cout << "Adding: " << v->Name() << " level=" << level << std::endl;
+	    }
+	    nonLocal[v->Name()] = v;
+	}
     }
+
     // Now add those of the subfunctions.
     for(auto fn : subFunctions)
     {
 	for(auto v : fn->UsedVars())
 	{
-	    nonLocal[v.Name()] = new VarDef(v);
+	    if (!nameStack.Find(v.Name(), level))
+	    {
+		assert(0 && "Hhhm. Variable has gone missing!");
+	    }
+	    if (!(level == 0 || level == maxLevel))
+	    {
+		if (verbosity)
+		{
+		    std::cout << "Adding" << v.Name() << " level=" << level << std::endl;
+		}
+		nonLocal[v.Name()] = new VarDef(v);
+	    }
 	}
-    }
-
-    // Remove variables inside the function.
-    for(auto l : localVars)
-    {
-	nonLocal.erase(l->Name());
-    }
-
-    // Remove variables that are global.
-    for(auto g : globalVars)
-    {
-	nonLocal.erase(g->Name());
     }
 
     for(auto n : nonLocal)

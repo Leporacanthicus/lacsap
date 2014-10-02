@@ -5,6 +5,7 @@
 #include "types.h"
 #include "namedobject.h"
 #include "astvisitor.h"
+#include "stack.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>
 #include <llvm/PassManager.h>
@@ -416,6 +417,7 @@ public:
 	{
 	    proto->SetFunction(this);
 	}
+	parent = 0;
     }
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Function* CodeGen();
@@ -424,8 +426,7 @@ public:
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
     void SetUsedVars(const std::vector<NamedObject*>& varsUsed, 
-		     const std::vector<NamedObject*>& localVars,
-		     const std::vector<NamedObject*>& globalVars);
+		     const Stack<NamedObject*>& nameStack);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
     static bool classof(const ExprAST *e) { return e->getKind() == EK_Function; }
     virtual void accept(Visitor& v);
@@ -451,7 +452,6 @@ public:
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST* Proto() { return proto; }
     std::vector<ExprAST*>& Args() { return args; }
-    virtual void accept(Visitor& v) { callee->accept(v); }
 private:
     const PrototypeAST*   proto;
     ExprAST*              callee;

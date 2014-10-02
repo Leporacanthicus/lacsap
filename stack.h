@@ -11,14 +11,19 @@ class Stack
 {
 private:
     typedef std::map<std::string, T> MapType;
-    typedef typename MapType::iterator MapIter;
+    typedef typename MapType::const_iterator MapIter;
     typedef std::deque<MapType> StackType;
-    typedef typename StackType::reverse_iterator StackRIter;
+    typedef typename StackType::const_reverse_iterator StackRIter;
 public:
     Stack() { NewLevel(); }
     void NewLevel() 
     { 
 	stack.push_back(MapType()); 
+    }
+
+    size_t MaxLevel() const
+    {
+	return stack.size()-1;
     }
 
     std::vector<T> GetLevel()
@@ -58,17 +63,25 @@ public:
 	return false;
     }
 
-    T Find(const std::string& name) 
+    T Find(const std::string& name, size_t& level) const
     {
-	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++)
+	int lvl = MaxLevel();
+	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
 	{
 	    MapIter it = s->find(name);
 	    if (it != s->end())
 	    {
+		level = lvl;
 		return it->second;
 	    }
 	}
 	return 0;
+    }
+
+    T Find(const std::string& name) 
+    {
+	size_t dummy;
+	return Find(name, dummy);
     }
 
     T FindTopLevel(const std::string& name)
@@ -91,8 +104,7 @@ public:
 	return 0;
     }
 
-
-    void dump()
+    void dump() const
     {
 	int n = 0;
 	for(auto s : stack)

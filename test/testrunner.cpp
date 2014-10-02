@@ -220,6 +220,7 @@ struct
     { "Basic", "Linked List",   "list.pas",        "" },
     { "Basic", "Whetstone",     "whet.pas",        "" },
     { "Basic", "Variant Record","variant.pas",     "" },
+    { "Basic", "Quicksort",     "qsort.pas",       "< numbers.txt" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

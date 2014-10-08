@@ -324,6 +324,59 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     }
 }
 
+Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, 
+					     const Token& binOp, 
+					     const Constants::ConstDecl* rhs)
+{
+    switch(binOp.GetToken())
+    {
+    case Token::Plus:
+	return *lhs + *rhs;
+	break;
+
+    case Token::Minus:
+	return *lhs - *rhs;
+	break;
+
+    default:
+	break;
+    }
+    return 0;
+}
+
+Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs)
+{
+    for(;;)
+    {
+	int tokPrec = CurrentToken().Precedence();
+	if (tokPrec < exprPrec)
+	{
+	    return lhs;
+	}
+	
+	Token binOp = CurrentToken();
+	NextToken();
+
+	Constants::ConstDecl* rhs = ParseConstExpr();
+	if (!rhs)
+	{
+	    return 0;
+	}
+	
+	int nextPrec = CurrentToken().Precedence();
+	if (tokPrec < nextPrec)
+	{
+	    rhs = ParseConstRHS(tokPrec + 1, rhs);
+	    if (!rhs)
+	    {
+		return 0;
+	    }
+	}
+
+	lhs = ParseConstEval(lhs, binOp, rhs);
+    }
+}
+
 Constants::ConstDecl* Parser::ParseConstExpr()
 {
     Token::TokenType unaryToken = Token::Unknown;
@@ -444,10 +497,13 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    return 0;
 	}
 	NextToken();
+	if (CurrentToken().GetToken() != Token::Semicolon)
+	{
+	    cd = ParseConstRHS(0, cd);
+	}
     } while(CurrentToken().GetToken() != Token::Semicolon); 
     return cd;
 }
-
 
 void Parser::ParseConstDef()
 {
@@ -756,7 +812,8 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    NextToken();
 	    std::string marker = "";
 	    Types::TypeDecl* markerTy;
-	    if (CurrentToken().GetToken() == Token::Identifier && PeekToken().GetToken() == Token::Colon)
+	    if (CurrentToken().GetToken() == Token::Identifier && 
+		PeekToken().GetToken() == Token::Colon)
 	    {
 		marker = CurrentToken().GetIdentName();
 		NextToken();
@@ -1293,6 +1350,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    return expr;	
 	}
     }
+
     const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::vector<ExprAST* > args;
     if (CurrentToken().GetToken() == Token::LeftParen)
@@ -1505,9 +1563,7 @@ VarDeclAST* Parser::ParseVarDecls()
     return new VarDeclAST(varList);
 }
 
-// if isFunction:
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
-// if !isFunction:
 // procedure name ( { [var] name1 [,name2 ...]: type [; ...] } )
 PrototypeAST* Parser::ParsePrototype()
 {
@@ -1585,7 +1641,10 @@ PrototypeAST* Parser::ParsePrototype()
 	    }
 	}
 	// Eat ')' at end of argument list.
-	NextToken();
+	if (!Expect(Token::RightParen, true))
+	{
+	    return 0;
+	}
     }
 
     // If we have a function, expect ": type".
@@ -2364,15 +2423,15 @@ std::vector<ExprAST*> Parser::Parse()
     {
 	return v;
     }
+
     std::vector<VarDef> varList;
 
     VarDef input("input", GetTypeDecl("text"), false, true);
-    varList.push_back(input);
     VarDef output("output", GetTypeDecl("text"), false, true);
-    varList.push_back(output);
-
     nameStack.Add("input", new VarDef(input));
     nameStack.Add("output", new VarDef(output));
+    varList.push_back(input);
+    varList.push_back(output);
 
     v.push_back(new VarDeclAST(varList));
 

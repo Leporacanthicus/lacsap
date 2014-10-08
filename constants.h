@@ -28,6 +28,7 @@ public:
     protected:
 	const ConstKind kind;
 	Location loc;
+
     };
 
     class IntConstDecl : public ConstDecl
@@ -36,7 +37,7 @@ public:
 	IntConstDecl(const Location& w, long v) 
 	    : ConstDecl(CK_IntConstDecl, w), value(v) {}
 	virtual Token Translate();
-	long Value() { return value; }
+	long Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_IntConstDecl; }
     private:
 	long value;
@@ -48,7 +49,7 @@ public:
 	RealConstDecl(const Location& w, double v) 
 	    : ConstDecl(CK_RealConstDecl, w), value(v) {}
 	virtual Token Translate();
-	double Value() { return value; }
+	double Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_RealConstDecl; }
     private:
 	double value;
@@ -71,7 +72,7 @@ public:
 	BoolConstDecl(const Location& w, bool v) 
 	    : ConstDecl(CK_BoolConstDecl, w), value(v) {}
 	virtual Token Translate();
-	bool Value() { return value; }
+	bool Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_BoolConstDecl; }
     private:
 	bool value;
@@ -87,7 +88,13 @@ public:
     private:
 	std::string value;
     };
-    
+
 };
+
+
+
+Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs); 
+Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs); 
+Constants::ConstDecl* ErrorConst(const std::string& msg);
 
 #endif

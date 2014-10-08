@@ -7,7 +7,9 @@ Among things NOT yet supported are:
 - Proper type checking. 
 - Goto statement.
 - Usage of "text" files creates many type declarations - should only be one.
-
+- Refactor AST dump functions to use visitors.
+- Better error handling.
+- Separate compile units.
 
 Lots of other small and large things that I can't think of right now.
 

@@ -61,12 +61,15 @@ private:
     bool          ParseProgram();
 
     // Type declarations and defintitions
-    void                ParseTypeDef();
-    void                ParseConstDef();
-
-    void TranslateToken(Token& token);
+    void          ParseTypeDef();
+    void          ParseConstDef();
+    void          TranslateToken(Token& token);
 
     Constants::ConstDecl* ParseConstExpr();
+    Constants::ConstDecl* ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs);
+    Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs, 
+					 const Token& token, 
+					 const Constants::ConstDecl* rhs);
 
     Types::Range*       ParseRange();
     Types::Range*       ParseRangeOrTypeRange();

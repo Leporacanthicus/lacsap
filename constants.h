@@ -84,6 +84,7 @@ public:
 	StringConstDecl(const Location& w, const std::string &v) 
 	    : ConstDecl(CK_StringConstDecl, w), value(v) {}
 	virtual Token Translate();
+	const std::string& Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_StringConstDecl; }
     private:
 	std::string value;

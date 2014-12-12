@@ -25,6 +25,7 @@ public:
 	virtual ~ConstDecl() {}
 	virtual Token Translate() = 0;
 	ConstKind getKind() const { return kind; }
+	virtual void dump() const = 0;
     protected:
 	const ConstKind kind;
 	Location loc;
@@ -39,6 +40,7 @@ public:
 	virtual Token Translate();
 	long Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_IntConstDecl; }
+	virtual void dump() const;
     private:
 	long value;
     };
@@ -51,6 +53,7 @@ public:
 	virtual Token Translate();
 	double Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_RealConstDecl; }
+	virtual void dump() const;
     private:
 	double value;
     };
@@ -61,7 +64,9 @@ public:
 	CharConstDecl(const Location& w, char v) 
 	    : ConstDecl(CK_CharConstDecl, w), value(v) {}
 	virtual Token Translate();
+	char Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_CharConstDecl; }
+	virtual void dump() const;
     private:
 	char value;
     };
@@ -74,6 +79,7 @@ public:
 	virtual Token Translate();
 	bool Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_BoolConstDecl; }
+	virtual void dump() const;
     private:
 	bool value;
     };
@@ -86,16 +92,16 @@ public:
 	virtual Token Translate();
 	const std::string& Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_StringConstDecl; }
+	virtual void dump() const;
     private:
 	std::string value;
     };
 
 };
 
-
-
+Constants::ConstDecl* ErrorConst(const std::string& msg);
 Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs); 
 Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs); 
-Constants::ConstDecl* ErrorConst(const std::string& msg);
+Constants::ConstDecl* operator*(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs); 
 
 #endif

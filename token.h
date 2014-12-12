@@ -149,6 +149,7 @@ public:
 
     // For debug purposes.
     void dump(std::ostream& out, const char* file = 0, int line = 0) const;
+    void dump() const;
     std::string ToString() const;
     const char* TypeStr() const;
 

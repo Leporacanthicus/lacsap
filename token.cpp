@@ -55,6 +55,11 @@ std::string Token::ToString() const
     return ss.str();
 }
 
+void Token::dump() const
+{
+    dump(std::cout);
+}
+
 void Token::dump(std::ostream& out, const char* file, int line) const
 {
     if (file)

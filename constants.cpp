@@ -8,14 +8,29 @@ Token Constants::IntConstDecl::Translate()
     return Token(Token::Integer, loc, value);
 }
 
+void Constants::IntConstDecl::dump() const
+{
+    std::cout << "IntConstDecl: " << Value();
+}
+
 Token Constants::RealConstDecl::Translate()
 {
     return Token(Token::Real, loc, value);
 }
 
+void Constants::RealConstDecl::dump() const
+{
+    std::cout << "RealConstDelc: " << Value();
+}
+
 Token Constants::CharConstDecl::Translate()
 {
     return Token(Token::Char, loc, (long)value);
+}
+
+void Constants::CharConstDecl::dump() const
+{
+    std::cout << "CharConstDecl: " << Value();
 }
 
 Token Constants::BoolConstDecl::Translate()
@@ -24,9 +39,19 @@ Token Constants::BoolConstDecl::Translate()
     return Token(Token::Identifier, loc, s);
 }
 
+void Constants::BoolConstDecl::dump() const
+{
+    std::cout << "BoolConstDecl: " << Value();
+}
+
 Token Constants::StringConstDecl::Translate()
 {
     return Token(Token::StringLiteral, loc, value);
+}
+
+void Constants::StringConstDecl::dump() const
+{
+    std::cout << "StringConstDecl: " << Value();
 }
 
 static bool GetAsReal(double& lValue, double& rValue, 
@@ -44,19 +69,60 @@ static bool GetAsReal(double& lValue, double& rValue,
     {
 	rValue = rhsR->Value();
     }
-    if (rhsI)
+    if (lhsR || rhsR)
     {
-	rValue = rhsI->Value();
-	ok = true;
-    }
-    if (lhsI)
-    {
-	lValue = lhsI->Value();
-	ok = true;
+	if (rhsI)
+	{
+	    rValue = rhsI->Value();
+	    ok = true;
+	}
+	if (lhsI)
+	{
+	    lValue = lhsI->Value();
+	    ok = true;
+	}
     }
     return ok;
 }
 
+static bool GetAsString(std::string& lValue, std::string& rValue,
+			const Constants::ConstDecl* lhs,
+			const Constants::ConstDecl* rhs)
+{
+    const Constants::StringConstDecl* lhsS = llvm::dyn_cast<Constants::StringConstDecl>(lhs);
+    const Constants::StringConstDecl* rhsS = llvm::dyn_cast<Constants::StringConstDecl>(rhs);
+    const Constants::CharConstDecl*   lhsC = llvm::dyn_cast<Constants::CharConstDecl>(lhs);
+    const Constants::CharConstDecl*   rhsC = llvm::dyn_cast<Constants::CharConstDecl>(rhs);
+    bool ok = lhsS && rhsS;
+    if (lhsS)
+    {
+	lValue = lhsS->Value();
+    }
+    if (rhsS)
+    {
+	rValue = rhsS->Value();
+    }
+    if (lhsS || rhsS)
+    {
+	if (lhsC)
+	{
+	    lValue = lhsC->Value();
+	    ok = true;
+	}
+	if (rhsC)
+	{
+	    rValue = rhsC->Value();
+	    ok = true;
+	}
+    }
+    return ok;
+}
+
+Constants::ConstDecl* ErrorConst(const std::string& msg)
+{
+    std::cerr << "Error: " << msg << std::endl;
+    return 0;
+}
 
 Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs)
 {
@@ -70,7 +136,7 @@ Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants
     {
 	double rValue;
 	double lValue;
-	if (!GetAsReal(rValue, lValue, lhsR, rhsR, lhsI, rhsI))
+	if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
 	{
 	    return ErrorConst(errMsg);
 	}
@@ -82,17 +148,15 @@ Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants
 	return new Constants::IntConstDecl(Location("", 0,0), lhsI->Value() + rhsI->Value());
     }
 
-    const Constants::StringConstDecl* lhsS = llvm::dyn_cast<Constants::StringConstDecl>(&lhs);
-    const Constants::StringConstDecl* rhsS = llvm::dyn_cast<Constants::StringConstDecl>(&rhs);
-
-    if (lhsS && rhsS)
+    std::string rValue;
+    std::string lValue;
+    if (GetAsString(lValue, rValue, &lhs, &rhs))
     {
-	return new Constants::StringConstDecl(Location("", 0, 0), lhsS->Value() + rhsS->Value());
+	return new Constants::StringConstDecl(Location("", 0, 0), lValue + rValue);
     }
-	
+
     return ErrorConst("Invalid operand for +");
 }
-
 
 Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs)
 {
@@ -105,7 +169,7 @@ Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants
     {
 	double rValue;
 	double lValue;
-	if (!GetAsReal(rValue, lValue, lhsR, rhsR, lhsI, rhsI))
+	if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
 	{
 	    return ErrorConst(errMsg);
 	}
@@ -116,12 +180,32 @@ Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants
     {
 	return new Constants::IntConstDecl(Location("", 0,0), lhsI->Value() - rhsI->Value());
     }
-	
+
     return ErrorConst(errMsg);
 }
 
-Constants::ConstDecl* ErrorConst(const std::string& msg)
+Constants::ConstDecl* operator*(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs)
 {
-    std::cerr << "Error: " << msg << std::endl; 
-    return 0;
+    const std::string errMsg = "Invalid operand for -";
+    const Constants::RealConstDecl* lhsR = llvm::dyn_cast<Constants::RealConstDecl>(&lhs);
+    const Constants::RealConstDecl* rhsR = llvm::dyn_cast<Constants::RealConstDecl>(&rhs);
+    const Constants::IntConstDecl* lhsI = llvm::dyn_cast<Constants::IntConstDecl>(&lhs);
+    const Constants::IntConstDecl* rhsI = llvm::dyn_cast<Constants::IntConstDecl>(&rhs);
+    if (lhsR || rhsR)
+    {
+	double rValue;
+	double lValue;
+	if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
+	{
+	    return ErrorConst(errMsg);
+	}
+	return new Constants::RealConstDecl(Location("", 0,0), lValue * rValue);
+    }
+
+    if (lhsI && rhsI)
+    {
+	return new Constants::IntConstDecl(Location("", 0,0), lhsI->Value() * rhsI->Value());
+    }
+
+    return ErrorConst(errMsg);
 }

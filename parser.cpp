@@ -338,6 +338,9 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
 	return *lhs - *rhs;
 	break;
 
+    case Token::Multiply:
+	return *lhs * *rhs;
+
     default:
 	break;
     }
@@ -364,15 +367,27 @@ Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, Constants::ConstDecl* 
 	}
 	
 	int nextPrec = CurrentToken().Precedence();
+	if (verbosity)
+	{
+	    CurrentToken().dump(std::cerr);
+	    std::cerr << " tokprec=" << tokPrec << " nextPrec="  << nextPrec << std::endl;
+	}
 	if (tokPrec < nextPrec)
 	{
+	    std::cout << "Going deeper!";
+	    std::cout << " lhs="; lhs->dump();
+	    std::cout << " "; binOp.dump();
+	    std::cout << " rhs="; rhs->dump();
 	    rhs = ParseConstRHS(tokPrec + 1, rhs);
 	    if (!rhs)
 	    {
 		return 0;
 	    }
 	}
-
+	lhs->dump();
+	binOp.dump();
+	rhs->dump();
+	std::cout << std::endl;
 	lhs = ParseConstEval(lhs, binOp, rhs);
     }
 }
@@ -385,6 +400,12 @@ Constants::ConstDecl* Parser::ParseConstExpr()
     int mul = 1;
     do
     {
+	if (verbosity)
+	{
+	    std::cerr << __FILE__ << ":" << __LINE__ << ": ";
+	    CurrentToken().dump(std::cerr);
+	}
+
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Minus:
@@ -392,6 +413,16 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	case Token::Plus:
 	case Token::Not:
 	    unaryToken = CurrentToken().GetToken();
+	    break;
+
+	case Token::LeftParen:
+	    NextToken();
+	    cd = ParseConstExpr();
+	    // We don't eat the right paren here, it gets eaten later.
+	    if (!Expect(Token::RightParen, false))
+	    {
+		return 0;
+	    }
 	    break;
 
 	case Token::StringLiteral:
@@ -464,6 +495,7 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    else 
 	    {
 		cd = GetConstDecl(CurrentToken().GetIdentName());
+		assert(cd && "Expected to get an identifier!");
 		if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 		{
 		    Constants::BoolConstDecl* bd = llvm::dyn_cast<Constants::BoolConstDecl>(cd);
@@ -497,11 +529,13 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 	    return 0;
 	}
 	NextToken();
-	if (CurrentToken().GetToken() != Token::Semicolon)
+	if (CurrentToken().GetToken() != Token::Semicolon &&
+	    CurrentToken().GetToken() != Token::RightParen)
 	{
 	    cd = ParseConstRHS(0, cd);
 	}
-    } while(CurrentToken().GetToken() != Token::Semicolon); 
+    } while(CurrentToken().GetToken() != Token::Semicolon &&
+	    CurrentToken().GetToken() != Token::RightParen);
     return cd;
 }
 

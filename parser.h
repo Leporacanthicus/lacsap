@@ -68,7 +68,7 @@ private:
     Constants::ConstDecl* ParseConstExpr();
     Constants::ConstDecl* ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs);
     Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs, 
-					 const Token& token, 
+					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
 
     Types::Range*       ParseRange();

@@ -5,13 +5,22 @@
 #include <ctype.h>
 #include <time.h>
 
+/*******************************************
+ * Enum declarations
+ *******************************************
+ */
+/* Max number/size values */
 enum
 {
     MaxPascalFiles =  1000,
-    MaxSetWords    =  16,
+    MaxSetWords    =  16,	/* Must match compiler definition */
     MaxStringLen   =  255,
 };
 
+/*******************************************
+ * Structure declarations
+ *******************************************
+ */
 /* Note: This should match the definition in the compiler, or weirdness happens! */
 typedef struct File
 {
@@ -42,12 +51,29 @@ typedef struct
 } String;
 
 
+/*******************************************
+ * Local variables
+ *******************************************
+ */
 static struct FileEntry files[MaxPascalFiles];
+
+/*******************************************
+ * External variables
+ *******************************************
+ */
 extern File input;
 extern File output;
 
+/*******************************************
+ * Pascal Starting point
+ *******************************************
+ */
 extern void __PascalMain(void);
 
+/*******************************************
+ * File Basics, low level I/O.
+ *******************************************
+ */
 static FILE* getFile(File* f, File* deflt)
 {
     if (!f)
@@ -83,6 +109,10 @@ void __get(File *file)
     f->readAhead = 1;
 }
 
+/*******************************************
+ * File End of {line,file}
+ *******************************************
+ */
 int __eof(File* file)
 {
     if (!file)
@@ -110,6 +140,10 @@ int __eoln(File* file)
     return !!(*file->buffer == '\n' || __eof(file));
 }
 
+/*******************************************
+ * File Create/Open/Close functions
+ *******************************************
+ */
 void __assign(File* f, char* name, int recordSize, int isText)
 {
     int i;
@@ -182,6 +216,10 @@ void __close(File* f)
     fprintf(stderr, "Attempt to close file failed\n");
 }
 
+/*******************************************
+ * Read Functionality
+ *******************************************
+ */
 void __write_int(File* file, int v, int width)
 {
     FILE* f = getFile(file, &output);
@@ -287,6 +325,11 @@ void __write_bin(File* file, void *val)
 }
 
 
+
+/*******************************************
+ * Read Functionality
+ *******************************************
+ */
 static void skip_spaces(File* file)
 {
     while(isspace(*file->buffer) && !__eof(file))
@@ -504,6 +547,10 @@ void __read_str(File* file, String* val)
     memcpy(val->str, buffer, count);
 }
 
+/*******************************************
+ * InitFiles
+ *******************************************
+ */
 static void InitFiles()
 {
     for(int i = 0; i < MaxPascalFiles; i++)
@@ -518,7 +565,10 @@ static void InitFiles()
     files[output.handle].file = stdout;
 }
 
-/* Memory allocation functions */
+/*******************************************
+ * Memory allocation functions
+ *******************************************
+ */
 void* __new(int size)
 {
     return malloc(size);

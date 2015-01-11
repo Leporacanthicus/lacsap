@@ -3,16 +3,16 @@ all: lacsap .depends runtime.o tests
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o \
 	namedobject.o loadstoretomemcpy.o astvisitor.o
 
-CXX = clang++
+CXX  = /usr/local/bin/clang++
+#CXX  = clang++
 CC  = clang
-LD  = clang++
+LD  = ${CXX}
 
 LLVM_DIR = /usr/local/llvm-debug
 
 CFLAGS    = -g -Wall -Werror -Wextra -std=c99
-INCLUDES  = `${LLVM_DIR}/bin/llvm-config --includedir`
 CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0 -fstandalone-debug -fno-exceptions -fno-rtti
-CXXFLAGS += -I ${INCLUDES}
+#CXXFLAGS += -Qunused-arguments
 CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 #CXX_EXTRA = --analyze
 

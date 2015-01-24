@@ -196,27 +196,6 @@ static llvm::Value* MakeCharConstant(int val)
     return MakeConstant(val, Types::GetType(Types::Char));
 }
 
-static llvm::Constant* GetMemCpyFn()
-{
-    static llvm::Constant* fnmemcpy;
-    if (!fnmemcpy)
-    {
-	std::string func = "llvm.memcpy.p0i8.p0i8.i32";
-	std::vector<llvm::Type*> argTypes;
-	llvm::Type* ty = Types::GetVoidPtrType();
-	llvm::Type* resTy = Types::GetType(Types::Void);
-	argTypes.push_back(ty);
-	argTypes.push_back(ty);
-	argTypes.push_back(Types::GetType(Types::Integer));
-	argTypes.push_back(Types::GetType(Types::Integer));
-	argTypes.push_back(Types::GetType(Types::Boolean));
-	
-	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	fnmemcpy = theModule->getOrInsertFunction(func, ft);
-    }
-    return fnmemcpy;
-}
-
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
     TRACE();
@@ -228,12 +207,10 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
     ind[1] = MakeIntegerConstant(1);
     llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
 
-    llvm::Constant* fnmemcpy = GetMemCpyFn();
     llvm::Value* v = rhs->CodeGen();
     builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
     
-    return builder.CreateCall5(fnmemcpy, dest2, v, MakeIntegerConstant(rhs->Str().size()), 
-			       MakeIntegerConstant(1), MakeBooleanConstant(false));
+    return builder.CreateMemCpy(dest2, v, rhs->Str().size(), 1);
 }
 
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
@@ -1698,10 +1675,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	    ind.push_back(MakeIntegerConstant(0));
 	    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
 	    llvm::Value* v = rhs->CodeGen();
-	    llvm::Constant* fnmemcpy = GetMemCpyFn();
-	    
-	    return builder.CreateCall5(fnmemcpy, dest1, v, MakeIntegerConstant(str->Str().size()), 
-				       MakeIntegerConstant(1), MakeBooleanConstant(false));
+	    return builder.CreateMemCpy(dest1, v, str->Str().size(), 1);
 	}
     }
 

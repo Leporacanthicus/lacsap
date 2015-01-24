@@ -4,13 +4,13 @@
 #include <llvm/Support/Host.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/TargetRegistry.h>
-#include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Support/FormattedStream.h"
-#include "llvm/Target/TargetLibraryInfo.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Pass.h"
-#include "llvm/PassManager.h"
+#include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Pass.h>
+#include <llvm/PassManager.h>
 #include <iostream>
 #include <system_error>
 
@@ -61,7 +61,8 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     }
 
     llvm::PassManager PM;
-    llvm::TargetLibraryInfo *TLI = new llvm::TargetLibraryInfo(triple);
+    llvm::TargetLibraryInfoWrapperPass *TLI =
+	new llvm::TargetLibraryInfoWrapperPass(triple);
     PM.add(TLI);
     tm->setAsmVerbosityDefault(true);
 

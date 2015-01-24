@@ -20,6 +20,5 @@ enum OptFlags
 };
 
 extern int verbosity;
-extern bool disableMemcpyGen;
 
 #endif

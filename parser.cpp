@@ -91,7 +91,7 @@ const Token& Parser::NextToken(const char* file, int line)
     }
     if (verbosity)
     {
-	curToken.dump(std::cout, file, line);
+	curToken.dump(std::cerr, file, line);
     }
     return curToken;
 }

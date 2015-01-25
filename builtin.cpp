@@ -68,13 +68,12 @@ static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
 {
     llvm::Value* a = args[0]->CodeGen();
     assert(a && "Expected codegen to work for args[0]");
-    std::vector<llvm::Type*> argTypes;
     llvm::Type* ty = Types::GetType(Types::Real);
     if (!resTy)
     {
 	resTy = ty;
     }
-    argTypes.push_back(ty);
+    std::vector<llvm::Type*> argTypes{ty};
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
@@ -224,8 +223,7 @@ static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     {
 	size_t size = pd->SubType()->Size();
 	llvm::Type* ty = Types::GetType(Types::Integer);
-	std::vector<llvm::Type*> argTypes;
-	argTypes.push_back(ty);
+	std::vector<llvm::Type*> argTypes{ty};
 
 	// Result is "void *"
 	llvm::Type* resTy = Types::GetVoidPtrType();
@@ -256,8 +254,7 @@ static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector
     if (a->getType()->isPointerTy())
     {
 	llvm::Type* ty = a->getType();
-	std::vector<llvm::Type*> argTypes;
-	argTypes.push_back(ty);
+	std::vector<llvm::Type*> argTypes{ty};
 
 	std::string name = "__dispose";
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
@@ -282,8 +279,6 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
 	return ErrorV("Expected a variable expression");
     }
     llvm::Value* faddr = fvar->Address();
-    std::vector<llvm::Type*> argTypes;
-    argTypes.push_back(faddr->getType());
 
     llvm::Value* filename = args[1]->CodeGen();
     llvm::Type* ty = filename->getType();
@@ -291,9 +286,8 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     {
 	return ErrorV("Argument for filename should be string type.");
     }
-    argTypes.push_back(ty);
-    argTypes.push_back(Types::GetType(Types::Integer));
-    argTypes.push_back(Types::GetType(Types::Integer));
+    llvm::Type* intTy = Types::GetType(Types::Integer);
+    std::vector<llvm::Type*> argTypes{faddr->getType(), ty, intTy, intTy};
 
     bool textFile;    
     int  recSize;
@@ -302,15 +296,9 @@ static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<
 	return ErrorV("Expected first argument to be of filetype for 'assign'");	
     }
     llvm::Value* isText = MakeIntegerConstant(textFile);
-
-
     llvm::Value* aSize = MakeIntegerConstant(recSize); 
 
-    std::vector<llvm::Value*> argsV;
-    argsV.push_back(faddr);
-    argsV.push_back(filename);
-    argsV.push_back(aSize);
-    argsV.push_back(isText);
+    std::vector<llvm::Value*> argsV{faddr, filename, aSize, isText};
 
     std::string name = "__assign";
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
@@ -339,8 +327,7 @@ static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder,
 	fvar = 0;
     }
     llvm::Value* faddr = FileOrNull(fvar);
-    std::vector<llvm::Type*> argTypes;
-    argTypes.push_back(faddr->getType());
+    std::vector<llvm::Type*> argTypes{faddr->getType()};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(resTy), argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
@@ -411,10 +398,7 @@ static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
     llvm::Value* start = args[1]->CodeGen();
     llvm::Value* len   = args[2]->CodeGen();
 
-    std::vector<llvm::Type*> argTypes;
-    argTypes.push_back(str->getType());
-    argTypes.push_back(start->getType());
-    argTypes.push_back(len->getType());
+    std::vector<llvm::Type*> argTypes{str->getType(), start->getType(), len->getType()};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
@@ -429,9 +413,7 @@ static llvm::Value* LengthCodeGen(llvm::IRBuilder<>& builder, const std::vector<
 	return ErrorV("Incorrect argument type - needs to be a string");
     }
     llvm::Value* v = MakeAddressable(args[0], args[0]->Type());
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(0));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
     llvm::Value* v1 = builder.CreateGEP(v, ind, "str_0");
     llvm::Value* v2 = builder.CreateLoad(v1, "len");
 
@@ -450,7 +432,6 @@ static llvm::Value* ClockCodeGen(llvm::IRBuilder<>& builder,  const std::vector<
 
 static llvm::Value* PanicCodeGen(llvm::IRBuilder<>& builder,  const std::vector<ExprAST*>& args)
 {
-    std::vector<llvm::Type*> argTypes;
 
     llvm::Value* message = args[0]->CodeGen();
     llvm::Type* ty = message->getType();
@@ -458,9 +439,8 @@ static llvm::Value* PanicCodeGen(llvm::IRBuilder<>& builder,  const std::vector<
     {
 	return ErrorV("Argument for panic message should be string type.");
     }
-    argTypes.push_back(ty);
-    std::vector<llvm::Value*> argsV;
-    argsV.push_back(message);
+    std::vector<llvm::Type*> argTypes{ty};
+    std::vector<llvm::Value*> argsV{message};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__Panic", ft);

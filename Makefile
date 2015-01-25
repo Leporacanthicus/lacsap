@@ -11,7 +11,7 @@ LD  = ${CXX}
 
 
 CFLAGS    = -g -Wall -Werror -Wextra -std=c99
-CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O2
+CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0
 CXXFLAGS += -fstandalone-debug -fno-exceptions -fno-rtti
 CXXFLAGS += -Qunused-arguments
 CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`

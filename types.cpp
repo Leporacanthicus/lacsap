@@ -43,6 +43,7 @@ llvm::Type* Types::GetType(Types::SimpleTypes type)
 	return llvm::Type::getVoidTy(llvm::getGlobalContext());
 	
     default:
+	assert(0 && "Not a known type...");
 	break;
     }
     return 0;

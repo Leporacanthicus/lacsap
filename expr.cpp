@@ -17,6 +17,9 @@
 #include <map>
 #include <algorithm>
 
+
+const size_t MEMCPY_THRESHOLD=64;
+
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
 
@@ -139,6 +142,11 @@ llvm::Value* MakeAddressable(ExprAST* e, Types::TypeDecl* type)
     else
     {
 	llvm::Value* store = e->CodeGen();
+	if (store->getType()->isPointerTy())
+	{
+	    return store;
+	}
+
 	v = CreateTempAlloca(store->getType());
 	assert(v && "Expect address to be non-zero");
 	builder.CreateStore(store, v);
@@ -236,7 +244,7 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 {
     llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
     size_t size = ty->Size();
-    if (size > 64)
+    if (size > MEMCPY_THRESHOLD)
     {
 	builder.CreateMemCpy(dest, src, size, 1);
 	return dest;
@@ -620,104 +628,106 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 }
 
 
+static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
+{
+    TRACE();
+    llvm::Value* v;
+    llvm::Type* strTy = Types::GetStringType()->LlvmType();
+    if (e->Type()->Type() == Types::Char)
+    {
+	Types::StringDecl* sd = Types::GetStringType();
+	if (!ty)
+	{
+	    ty = sd->LlvmType();
+	}
+	v = CreateTempAlloca(ty);
+	TempStringFromChar(v, e);
+    }
+    else if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
+    {
+	Types::StringDecl* sd = Types::GetStringType();
+	if (!ty)
+	{
+	    ty = sd->LlvmType();
+	}
+	v = CreateTempAlloca(sd->LlvmType());
+	TempStringFromStringExpr(v, se);
+    }
+    else
+    {
+	if (!ty)
+	{
+	    ty = e->Type()->LlvmType();
+	}
+	v = MakeAddressable(e, e->Type());
+	if (ty != strTy)
+	{
+	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
+	}
+    }
+    return v;
+}
+
 static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, llvm::Type* resTy, 
 				const std::string& twine)
 {
     TRACE();
-    std::string func = std::string("__Str") + name;
-    std::vector<llvm::Type*> argTypes;
+    llvm::Type* ty = NULL;
+    llvm::Value* rV = MakeStringFromExpr(rhs, ty);
+    llvm::Value* lV = MakeStringFromExpr(lhs, ty);
 
-    llvm::Value* rV;
-    llvm::Value* lV;
-    llvm::Type* ty;
-    llvm::Type* strTy = Types::GetStringType()->LlvmType();
-
-    if (rhs->Type()->Type() == Types::Char)
-    {
-	Types::StringDecl* sd = Types::GetStringType();
-	ty = sd->LlvmType();
-	rV = CreateTempAlloca(ty);
-	TempStringFromChar(rV, rhs);
-    }
-    else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
-    {
-	Types::StringDecl* sd = Types::GetStringType();
-	ty = sd->LlvmType();
-	rV = CreateTempAlloca(ty);
-	TempStringFromStringExpr(rV, srhs);
-    }
-    else 
-    {
-	ty = rhs->Type()->LlvmType();
-	rV = MakeAddressable(rhs, rhs->Type());
-	if (ty != strTy)
-	{
-	    rV = builder.CreateBitCast(rV, llvm::PointerType::getUnqual(strTy));
-	}
-    }
-
-    if (lhs->Type()->Type() == Types::Char)
-    {
-	lV = CreateTempAlloca(ty);
-	TempStringFromChar(lV, lhs);
-    }
-    else if (StringExprAST* slhs = llvm::dyn_cast<StringExprAST>(lhs))
-    {
-	lV = CreateTempAlloca(ty);
-	TempStringFromStringExpr(lV, slhs);
-    }
-    else
-    {
-	lV = MakeAddressable(lhs, lhs->Type());
-	if (lhs->Type()->LlvmType() != strTy)
-	{
-	    lV = builder.CreateBitCast(lV, llvm::PointerType::getUnqual(strTy));
-	}
-    }
-	
     if (!rV || !lV)
     {
 	return 0;
     }
 
+    llvm::Type* strTy = Types::GetStringType()->LlvmType();
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
-    argTypes.push_back(pty);
-    argTypes.push_back(pty);
+    std::vector<llvm::Type*> argTypes{pty, pty};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    std::string func = std::string("__Str") + name;
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 
     return builder.CreateCall2(f, lV, rV, twine);
 }
 
-llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name, bool resTyIsStr)
+static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 {
     TRACE();
+    llvm::Type* ty = NULL;
+    llvm::Value* rV = MakeStringFromExpr(rhs, ty);
+    llvm::Value* lV = MakeStringFromExpr(lhs, ty);
 
-    llvm::Type* resTy;
-    if (resTyIsStr)
-    {
-	resTy = Types::GetStringType()->LlvmType();
-    }
-    else
-    {
-	resTy = Types::GetType(Types::Integer);
-    }
+    llvm::Type* strTy = Types::GetStringType()->LlvmType();
 
+    llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
+    std::vector<llvm::Type*> argTypes{pty, pty, pty};
+
+    llvm::Value* v = CreateTempAlloca(strTy);
+
+    llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction("__StrConcat", ft);
+    builder.CreateCall3(f, v, lV, rV, "");
+    return v;
+}
+
+llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
+{
+    TRACE();
+    llvm::Type* resTy = Types::GetType(Types::Integer);
     return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
 }
 
 
 llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 {
+    TRACE();
     std::string func = std::string("__Arr") + name;
-    std::vector<llvm::Type*> argTypes;
 
-    llvm::Value* rV;
-    llvm::Value* lV;
-
-    rV = MakeAddressable(rhs, rhs->Type());
-    lV = MakeAddressable(rhs, rhs->Type());
+    llvm::Value* rV = MakeAddressable(rhs, rhs->Type());
+    llvm::Value* lV = MakeAddressable(rhs, rhs->Type());
 
     if (!rV || !lV)
     {
@@ -725,12 +735,8 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     }
     // Result is integer.
     llvm::Type* resTy = Types::GetType(Types::Integer);
-
     llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
-    argTypes.push_back(pty);
-    argTypes.push_back(pty);
-    // Reuse result for size.
-    argTypes.push_back(resTy);
+    std::vector<llvm::Type*> argTypes{pty, pty, resTy};
 
     lV = builder.CreateBitCast(lV, pty);
     rV = builder.CreateBitCast(rV, pty);
@@ -822,30 +828,31 @@ llvm::Value* BinaryExprAST::CodeGen()
 	switch(oper.GetToken())
 	{
 	case Token::Plus:
-	    return CallStrFunc("Concat", true);
+	    tmp = CallStrCat(lhs, rhs);
+	    return tmp;
 
  	case Token::Equal:
-	    tmp = CallStrFunc("Compare", false);
+	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
 	    
 	case Token::NotEqual:
- 	    tmp = CallStrFunc("Compare", false);
+ 	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
 
 	case Token::GreaterOrEqual:
- 	    tmp = CallStrFunc("Compare", false);
+ 	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
 	    
 	case Token::LessOrEqual:
- 	    tmp = CallStrFunc("Compare", false);
+ 	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
 
 	case Token::GreaterThan:
- 	    tmp = CallStrFunc("Compare", false);
+ 	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
 	    
 	case Token::LessThan:
- 	    tmp = CallStrFunc("Compare", false);
+ 	    tmp = CallStrFunc("Compare");
 	    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
 
 	default:
@@ -1624,7 +1631,7 @@ llvm::Value* AssignExprAST::AssignStr()
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     assert(lhsv && "Expect variable in lhs");
     Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
-    assert(sty && "Expect  string type in lhsv->Type()");
+    assert(sty && "Expect string type in lhsv->Type()");
 
     llvm::Value *dest = lhsv->Address();
 

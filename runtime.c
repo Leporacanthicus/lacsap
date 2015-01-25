@@ -638,9 +638,8 @@ int __SetContains(Set *a, Set *b)
  * String functions 
  *******************************************
  */
-String __StrConcat(String* a, String* b)
+void __StrConcat(String* res, String* a, String* b)
 {
-    String res;
     int blen = b->len;
     int total = a->len + blen;
     if (total > MaxStringLen)
@@ -648,11 +647,10 @@ String __StrConcat(String* a, String* b)
 	total = MaxStringLen;
 	blen = MaxStringLen-a->len;
     }
-    res.len = total;
+    res->len = total;
 
-    memcpy(res.str, a->str, a->len);
-    memcpy(&res.str[a->len], b->str, blen);
-    return res;
+    memcpy(res->str, a->str, a->len);
+    memcpy(&res->str[a->len], b->str, blen);
 }
 
 /* Assign string b to string a. */

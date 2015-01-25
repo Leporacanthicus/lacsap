@@ -207,9 +207,7 @@ static llvm::Value* MakeCharConstant(int val)
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
     TRACE();
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(0));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0),MakeIntegerConstant(0)};
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
     
     ind[1] = MakeIntegerConstant(1);
@@ -228,9 +226,7 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
     {
 	return ErrorV("Expected char value");
     }
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(0));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
     
     ind[1] = MakeIntegerConstant(1);
@@ -408,9 +404,7 @@ llvm::Value* ArrayExprAST::Address()
 	    totalIndex = builder.CreateAdd(totalIndex, index);
 	}
     }
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(totalIndex);
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), totalIndex};
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
 }
@@ -430,9 +424,7 @@ llvm::Value* FieldExprAST::Address()
     {
 	return ErrorV("Expression did not form an address");
     }
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(element));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
 }
@@ -449,9 +441,7 @@ llvm::Value* VariantFieldExprAST::Address()
     EnsureSized();
     //TODO: This needs fixing up.
     llvm::Value* v = expr->Address();
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(element));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
     v = builder.CreateGEP(v, ind, "valueindex");
     v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 
@@ -519,9 +509,7 @@ llvm::Value* FilePointerExprAST::Address()
     TRACE();
     VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
     llvm::Value* v = vptr->Address();
-    std::vector<llvm::Value*> ind;
-    ind.push_back(MakeIntegerConstant(0));
-    ind.push_back(MakeIntegerConstant(Types::FileDecl::Buffer));
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer)};
     v = builder.CreateGEP(v, ind, "bufptr");
     v = builder.CreateLoad(v, "buffer");
     if (!v)
@@ -594,7 +582,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 {
     TRACE();
     std::string func = std::string("__Set") + name;
-    std::vector<llvm::Type*> argTypes;
     Types::TypeDecl* type = Types::TypeForSet();
 
     assert(type && "Expect to get a type from Types::TypeForSet");
@@ -618,8 +605,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     }
 
     llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
-    argTypes.push_back(pty);
-    argTypes.push_back(pty);
+    std::vector<llvm::Type*> argTypes{pty, pty};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
@@ -910,7 +896,6 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    oper.GetToken() == Token::In)
 	{
 	    llvm::Value* l = lhs->CodeGen();
-	    std::vector<llvm::Value*> ind;
 	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
 	    if (!rhsA)
 	    {
@@ -920,8 +905,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
 	    llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(5));
 	    llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(31));
-	    ind.push_back(MakeIntegerConstant(0));
-	    ind.push_back(index);
+	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
 	    
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
@@ -1677,9 +1661,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	    StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
 	    assert(rhs && "Expected string to convert correctly");
 	    llvm::Value* dest = lhsv->Address();
-	    std::vector<llvm::Value*> ind;
-	    ind.push_back(MakeIntegerConstant(0));
-	    ind.push_back(MakeIntegerConstant(0));
+	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 	    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
 	    llvm::Value* v = rhs->CodeGen();
 	    return builder.CreateMemCpy(dest1, v, str->Str().size(), 1);
@@ -2118,16 +2100,14 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
 static llvm::Constant *CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 {
-    std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
-    argTypes.push_back(fty);
     assert(ty && "Type should not be NULL!");
     if (!ty->isPointerTy())
     {
 	return ErrorF("Write argument is not a variable type!");
     }
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    argTypes.push_back(voidPtrTy);
+    std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
 
     std::string name = std::string("__write_bin");
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
@@ -2278,9 +2258,8 @@ void ReadAST::DoDump(std::ostream& out) const
 static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
-    argTypes.push_back(fty);
+    std::vector<llvm::Type*> argTypes{fty};
     // ty is NULL if we're doing readln. 
     if (!ty)
     {
@@ -2289,25 +2268,22 @@ static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     else
     {
 	llvm::Type* lty = llvm::PointerType::getUnqual(ty->LlvmType());
+	argTypes.push_back(lty);
 	switch(ty->Type())
 	{
 	case Types::Char:
-	    argTypes.push_back(lty);
 	    suffix = "chr";
 	    break;
 
 	case Types::Integer:
-	    argTypes.push_back(lty);
 	    suffix = "int";
 	    break;
 
 	case Types::Real:
-	    argTypes.push_back(lty);
 	    suffix = "real";
 	    break;
 
 	case Types::String:
-	    argTypes.push_back(lty);
 	    suffix = "str";
 	    break;
 	    
@@ -2324,13 +2300,11 @@ static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
 static llvm::Constant *CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
-    std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
-    argTypes.push_back(fty);
     assert(vTy && "Type should not be NULL!");
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    argTypes.push_back(voidPtrTy);
+    std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
 
     std::string name = std::string("__read_bin");
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
@@ -2349,8 +2323,7 @@ llvm::Value* ReadAST::CodeGen()
     llvm::Type* fTy =  f->getType();
     for(auto arg: args)
     {
-	std::vector<llvm::Value*> argsV;
-	argsV.push_back(f);
+	std::vector<llvm::Value*> argsV{f};
 	VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg);
 	if (!vexpr)
 	{
@@ -2577,7 +2550,6 @@ llvm::Value* SetExprAST::Address()
 	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
 	if (r)
 	{
-	    std::vector<llvm::Value*> ind;
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();
 	    llvm::Function *fn = builder.GetInsertBlock()->getParent();
@@ -2607,8 +2579,7 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* index = builder.CreateLShr(loop, MakeIntegerConstant(5));
 	    llvm::Value* offset = builder.CreateAnd(loop, MakeIntegerConstant(31));
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
-	    ind.push_back(MakeIntegerConstant(0));
-	    ind.push_back(index);
+	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
 	    bitset = builder.CreateOr(bitset, bit);
@@ -2626,7 +2597,6 @@ llvm::Value* SetExprAST::Address()
 	}
 	else
 	{
-	    std::vector<llvm::Value*> ind;
 	    llvm::Value* x = v->CodeGen();
 	    if (!x)
 	    {
@@ -2636,8 +2606,7 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* index = builder.CreateLShr(x, MakeIntegerConstant(5));
 	    llvm::Value* offset = builder.CreateAnd(x, MakeIntegerConstant(31));
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
-	    ind.push_back(MakeIntegerConstant(0));
-	    ind.push_back(index);
+	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
 	    bitset = builder.CreateOr(bitset, bit);

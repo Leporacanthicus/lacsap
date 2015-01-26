@@ -1,10 +1,9 @@
 #include "types.h"
 #include "expr.h"
+#include "trace.h"
 #include <llvm/IR/LLVMContext.h>
 #include <sstream>
 #include <climits>
-
-#define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
 extern llvm::Module* theModule;
 
@@ -294,9 +293,8 @@ llvm::Type* Types::VariantDecl::GetLlvmType() const
 	elt++;
     }
 
-    std::vector<llvm::Type*> fv;
     llvm::Type* ty = fields[maxAlignElt].LlvmType();
-    fv.push_back(ty);
+    std::vector<llvm::Type*> fv{ty};
     if (maxAlignElt != maxSizeElt)
     {
 	size_t nelems = maxSize - maxAlignSize;
@@ -434,10 +432,8 @@ Types::FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
  */
 llvm::Type* Types::GetFileType(const std::string& name, Types::TypeDecl* baseType)
 {
-    std::vector<llvm::Type*> fv;
-    fv.push_back(Types::GetType(Types::Integer));
     llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-    fv.push_back(ty);
+    std::vector<llvm::Type*> fv{Types::GetType(Types::Integer), ty};
     llvm::StructType* st = llvm::StructType::create(fv);
     st->setName(name);
     return st;

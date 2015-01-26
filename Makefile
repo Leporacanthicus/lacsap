@@ -1,7 +1,7 @@
 all: lacsap .depends runtime.o tests
 
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o \
-	namedobject.o astvisitor.o
+	  namedobject.o astvisitor.o trace.o
 
 LLVM_DIR = /usr/local/llvm-debug
 

@@ -5,13 +5,12 @@
 #include "stack.h"
 #include "builtin.h"
 #include "options.h"
+#include "trace.h"
 #include <iostream>
 #include <cassert>
 #include <limits>
 #include <vector>
 #include <algorithm>
-
-#define TRACE() std::cerr << __FILE__ << ":" << __LINE__ << "::" << __PRETTY_FUNCTION__ << std::endl
 
 Parser::Parser(Lexer &l) 
     : lexer(l), nextTokenValid(false), errCnt(0)
@@ -109,8 +108,8 @@ const Token& Parser::PeekToken(const char* file, int line)
     }
     if (verbosity > 1)
     {
-	std::cout << "peeking: ";
-	nextToken.dump(std::cout, file, line);
+	std::cerr << "peeking: ";
+	nextToken.dump(std::cerr, file, line);
     }
     return nextToken;
 }
@@ -311,6 +310,10 @@ Types::Range* Parser::ParseRangeOrTypeRange()
     if (CurrentToken().GetToken() == Token::Identifier)
     {
 	Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
+	if (!ty)
+	{
+	    return ErrorR("Range specification needs to be type");
+	}
 	if (!ty->isIntegral())
 	{
 	    return ErrorR("Type used as index specification should be integral type");
@@ -1348,11 +1351,12 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    else
 	    {
 		expr = new VariableExprAST(idName, type);
+		// Only add defined variables.
+		// Ignore result - we may be adding the same variable 
+		// several times, but we don't really care.
+		usedVariables.Add(idName, def);
 	    }
 	    assert(expr && "Expected expression here");
-	    // Ignore result - we may be adding the same variable 
-	    // several times, but we don't really care.
-	    usedVariables.Add(idName, def);
 
 	    assert(type);
 
@@ -2116,6 +2120,7 @@ ExprAST* Parser::ParseCaseExpr()
 
 void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
 {
+    TRACE();
     int count = fields->FieldCount();
     for(int i = 0; i < count; i++)
     {
@@ -2145,6 +2150,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 
 ExprAST* Parser::ParseWithBlock()
 {
+    TRACE();
     if (!Expect(Token::With, true))
     {
 	return 0;
@@ -2458,14 +2464,11 @@ std::vector<ExprAST*> Parser::Parse()
 	return v;
     }
 
-    std::vector<VarDef> varList;
-
     VarDef input("input", GetTypeDecl("text"), false, true);
     VarDef output("output", GetTypeDecl("text"), false, true);
     nameStack.Add("input", new VarDef(input));
     nameStack.Add("output", new VarDef(output));
-    varList.push_back(input);
-    varList.push_back(output);
+    std::vector<VarDef> varList{input, output};
 
     v.push_back(new VarDeclAST(varList));
 

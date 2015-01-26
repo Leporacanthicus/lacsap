@@ -1,6 +1,8 @@
 #ifndef STACK_H
 #define STACK_H
 
+#include "trace.h"
+
 #include <deque>
 #include <map>
 #include <string>
@@ -57,6 +59,11 @@ public:
 	MapIter it = stack.back().find(name);
 	if (it == stack.back().end())
 	{
+	    if (verbosity > 1)
+	    {
+		std::cerr << "Adding value: " << name << std::endl;
+		v->dump();
+	    }
 	    stack.back()[name] = v;
 	    return true;
 	}
@@ -66,14 +73,27 @@ public:
     T Find(const std::string& name, size_t& level) const
     {
 	int lvl = MaxLevel();
+	if (verbosity > 1)
+	{
+	    std::cerr << "Finding value: " << name << std::endl;
+	}
 	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
 	{
 	    MapIter it = s->find(name);
 	    if (it != s->end())
 	    {
 		level = lvl;
+		if (verbosity > 1)
+		{
+		    std::cerr << "Found at lvl " << lvl << std::endl;
+		}
 		return it->second;
 	    }
+	}
+	if (verbosity > 1)
+	{
+	    std::cerr << "Not found" << std::endl;
+	    dump();
 	}
 	return 0;
     }

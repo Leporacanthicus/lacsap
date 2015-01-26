@@ -2,6 +2,7 @@
 #include "stack.h"
 #include "builtin.h"
 #include "options.h"
+#include "trace.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/APSInt.h>
@@ -47,13 +48,6 @@ VarStack variables;
 MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
-
-#define TRACE() do { if (verbosity) trace(__FILE__, __LINE__, __PRETTY_FUNCTION__); } while(0)
-
-void trace(const char *file, int line, const char *func)
-{
-    std::cerr << file << ":" << line << "::" << func << std::endl;
-}
 
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 {
@@ -1533,7 +1527,6 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 			      const Stack<NamedObject*>& nameStack)
 {
     std::map<std::string, NamedObject*> nonLocal;
-    size_t level;
     size_t maxLevel = nameStack.MaxLevel();
 
     if (verbosity > 1)
@@ -1542,8 +1535,10 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
     }
     for(auto v : varsUsed)
     {
+	size_t level;
 	if (!nameStack.Find(v->Name(), level))
 	{
+	    v->dump();
 	    assert(0 && "Hhhm. Variable has gone missing!");
 	}
 	if (!(level == 0 || level == maxLevel))
@@ -1561,6 +1556,7 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
     {
 	for(auto v : fn->UsedVars())
 	{
+	    size_t level;
 	    if (!nameStack.Find(v.Name(), level))
 	    {
 		assert(0 && "Hhhm. Variable has gone missing!");

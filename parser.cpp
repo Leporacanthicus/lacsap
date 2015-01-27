@@ -2456,6 +2456,7 @@ bool Parser::ParseProgram()
 
 std::vector<ExprAST*> Parser::Parse()
 {
+    TIME_TRACE();
     std::vector<ExprAST*> v;
 
     NextToken();

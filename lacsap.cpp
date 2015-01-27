@@ -21,7 +21,7 @@ llvm::FunctionPassManager* fpm;
 llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 int verbosity;
-bool disableMemcpyGen;
+bool timetrace;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -39,6 +39,10 @@ static llvm::cl::opt<EmitType>    EmitSelection("emit", llvm::cl::desc("Choose o
 						    clEnumValN(Exe, "exe", "Executable file"),
 						    clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
 						    clEnumValEnd));
+
+static llvm::cl::opt<bool, true>   TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"), 
+						   llvm::cl::location(timetrace));
+
 
 void DumpModule(llvm::Module* module)
 {
@@ -101,6 +105,7 @@ void OptimizerInit()
 
 static int Compile(const std::string& filename)
 {
+    TIME_TRACE();
     std::vector<ExprAST*> ast;
     Lexer                 l(filename);
     if (!l.Good())

@@ -1,5 +1,6 @@
 #include "binary.h"
 #include "options.h"
+#include "trace.h"
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/FileSystem.h>
@@ -33,6 +34,7 @@ static llvm::tool_output_file *GetOutputStream(const std::string& filename)
 
 static void CreateObject(llvm::Module *module, const std::string& objname)
 {
+    TIME_TRACE();
     llvm::InitializeAllTargets();
     llvm::InitializeAllTargetMCs();
     llvm::InitializeAllAsmPrinters();
@@ -104,6 +106,7 @@ std::string replace_ext(const std::string &origName,
 
 void CreateBinary(llvm::Module *module, const std::string& filename, EmitType emit)
 {
+    TIME_TRACE();
     if (emit == Exe)
     {
 	std::string objname = replace_ext(filename, ".pas", ".o");

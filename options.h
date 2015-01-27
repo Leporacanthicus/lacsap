@@ -20,5 +20,6 @@ enum OptFlags
 };
 
 extern int verbosity;
+extern bool timetrace;
 
 #endif

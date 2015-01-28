@@ -23,7 +23,7 @@ Parser::Parser(Lexer &l)
 	  AddType("real", new Types::TypeDecl(Types::Real)) &&
 	  AddType("char", new Types::TypeDecl(Types::Char)) &&
 	  AddType("boolean", new Types::EnumDecl(FalseTrue, Types::Boolean)) &&
-	  AddType("text", new Types::TextDecl())))
+	  AddType("text", Types::GetTextType())))
     {
 	assert(0 && "Failed to add basic types...");
     }

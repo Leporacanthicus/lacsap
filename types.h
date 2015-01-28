@@ -335,7 +335,6 @@ public:
 	virtual void dump() const;
     protected:
 	virtual llvm::Type* GetLlvmType() const;
-
     };
 
     class SetDecl : public TypeDecl
@@ -372,11 +371,13 @@ public:
     static llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
     static TypeDecl* TypeForSet();
     static TypeDecl* GetVoidType();
+    static TextDecl* GetTextType();
     static StringDecl* GetStringType();
 
 private:
-    static TypeDecl *voidType;
-    static TypeDecl *setType;
+    static TypeDecl   *voidType;
+    static TypeDecl   *setType;
+    static TextDecl   *textType;
     static StringDecl *strType;
 };
 #endif

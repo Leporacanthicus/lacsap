@@ -1979,8 +1979,7 @@ llvm::Value* FileOrNull(VariableExprAST* file)
 	return file->Address();
     }
 
-    Types::TypeDecl ty(Types::Char);
-    llvm::Type *fty = Types::GetFileType("text", &ty);
+    llvm::Type *fty = Types::GetTextType()->LlvmType();
     fty = llvm::PointerType::getUnqual(fty);
     return llvm::Constant::getNullValue(fty);
 }

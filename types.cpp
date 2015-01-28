@@ -8,9 +8,9 @@
 extern llvm::Module* theModule;
 
 /* Static variables in Types. */
-
 Types::TypeDecl* Types::voidType = 0;
 Types::TypeDecl* Types::setType = 0;
+Types::TextDecl* Types::textType = 0;
 Types::StringDecl* Types::strType = 0;
 
 llvm::Type* ErrorT(const std::string& msg)
@@ -514,4 +514,13 @@ Types::StringDecl* Types::GetStringType()
 	strType = new Types::StringDecl(255);
     }
     return strType;
+}
+
+Types::TextDecl* Types::GetTextType()
+{
+    if (!textType)
+    {
+	textType = new Types::TextDecl();
+    }
+    return textType;
 }

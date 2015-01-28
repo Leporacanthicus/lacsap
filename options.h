@@ -21,5 +21,5 @@ enum OptFlags
 
 extern int verbosity;
 extern bool timetrace;
-
+extern bool disableMemcpyOpt;
 #endif

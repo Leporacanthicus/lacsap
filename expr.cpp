@@ -234,7 +234,7 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 {
     llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
     size_t size = ty->Size();
-    if (size > MEMCPY_THRESHOLD)
+    if (!disableMemcpyOpt && size > MEMCPY_THRESHOLD)
     {
 	builder.CreateMemCpy(dest, src, size, 1);
 	return dest;
@@ -1670,7 +1670,7 @@ llvm::Value* AssignExprAST::CodeGen()
     if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
     {
 	size_t size = rhsv->Type()->Size();
-	if (size > MEMCPY_THRESHOLD)
+	if (!disableMemcpyOpt && size > MEMCPY_THRESHOLD)
 	{
 	    llvm::Value* src = rhsv->Address();
 	    return builder.CreateMemCpy(dest, src, size, 1);

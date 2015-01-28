@@ -22,6 +22,7 @@ llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
 int verbosity;
 bool timetrace;
+bool disableMemcpyOpt;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -43,6 +44,10 @@ static llvm::cl::opt<EmitType>    EmitSelection("emit", llvm::cl::desc("Choose o
 static llvm::cl::opt<bool, true>   TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"), 
 						   llvm::cl::location(timetrace));
 
+
+static llvm::cl::opt<bool, true>  DisableMemCpyGen("no-memcpy",
+						   llvm::cl::desc("Disable use of memcpy for large data structs"),
+						   llvm::cl::location(disableMemcpyOpt));
 
 void DumpModule(llvm::Module* module)
 {

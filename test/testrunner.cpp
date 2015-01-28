@@ -4,6 +4,7 @@
 #include <map>
 #include <iomanip>
 #include <cstdlib>
+#include <chrono>
 
 std::string compiler = "../lacsap";
 
@@ -44,6 +45,7 @@ public:
     virtual bool Run();
     virtual bool Result();
     std::string  Name() const;
+    virtual ~TestCase() {}
 protected:
     std::string name;
     std::string source;
@@ -112,6 +114,46 @@ bool FileTestCase::Result()
     return Diff(diffArgs);
 }
 
+/* Class that confirms the compile-time is "fast enough" */
+class TimeTestCase : public TestCase
+{
+public:
+    TimeTestCase(const std::string& nm, const std::string& src, const std::string& arg);
+    virtual bool Result();
+    virtual bool Compile(const std::string& options);
+private:
+    long maxTime;  // In milliseconds.
+    std::chrono::time_point<std::chrono::steady_clock> start, end;
+};
+
+TimeTestCase::TimeTestCase(const std::string& nm, const std::string& src, const std::string& arg)
+    : TestCase(nm, src, ""), maxTime(std::stol(arg))
+{
+}
+
+
+bool TimeTestCase::Compile(const std::string& options)
+{
+    start = std::chrono::steady_clock::now();
+
+    bool res = TestCase::Compile(options);
+
+    end = std::chrono::steady_clock::now();
+    return res;
+}
+
+bool TimeTestCase::Result()
+{
+    long elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+    if (elapsed > maxTime)
+    {
+	std::cerr << "Took too long to compiel  " << source << " "
+		  << std::fixed << std::setprecision(3) << elapsed << " ms" << std::endl;
+	return false;
+    }
+    return true;
+}
+
 
 TestCase* TestCaseFactory(const std::string& type, 
 			  const std::string& name,
@@ -121,6 +163,11 @@ TestCase* TestCaseFactory(const std::string& type,
     if (type == "File")
     {
 	return new FileTestCase(name, source, args);
+    }
+
+    if (type == "Time")
+    {
+	return new TimeTestCase(name, source, args);
     }
 
     return new TestCase(name, source, args);
@@ -226,8 +273,9 @@ struct
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
     { "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
-};
 
+    { "Time",  "LongCompile",   "longcompile.pas", "1000" },
+};
 
 
 void runTestCases(const std::vector<TestCase*>& tc, 
@@ -278,5 +326,10 @@ int main()
     runTestCases(tc, res, "-O1");
     runTestCases(tc, res, "-O2");
     res.Report();
+
+    for(auto i : tc)
+    {
+	delete i;
+    }
 }
 

@@ -51,6 +51,7 @@ void DumpModule(llvm::Module* module)
 
 llvm::Module* CodeGen(std::vector<ExprAST*> ast)
 {
+    TIME_TRACE();
     for(auto a : ast)
     {
 	llvm::Value* v = a->CodeGen(); 

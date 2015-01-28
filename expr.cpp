@@ -1664,8 +1664,20 @@ llvm::Value* AssignExprAST::CodeGen()
 	}
     }
 
-    llvm::Value* v = rhs->CodeGen();
     llvm::Value* dest = lhsv->Address();
+
+    // If rhs is a simple variable, and "large", then use memcpy on it!
+    if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
+    {
+	size_t size = rhsv->Type()->Size();
+	if (size > MEMCPY_THRESHOLD)
+	{
+	    llvm::Value* src = rhsv->Address();
+	    return builder.CreateMemCpy(dest, src, size, 1);
+	}
+    }
+
+    llvm::Value* v = rhs->CodeGen();
 
     if (!dest)
     {

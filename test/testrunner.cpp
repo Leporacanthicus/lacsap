@@ -269,6 +269,7 @@ struct
     { "Basic", "Variant Record","variant.pas",     "" },
     { "Basic", "Variant Rec2",  "variant2.pas",    "" },
     { "Basic", "Quicksort",     "qsort.pas",       "< numbers.txt" },
+    { "Basic", "Calc Words",    "calcwords.pas",   "< /usr/share/dict/words" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

@@ -1,10 +1,12 @@
 program calcwords;
 
 var
-   longest : string;
+   longest : array [1..10] of string;
    word	   : string;
-
-procedure readword(var w :string );
+   i, j	   : integer;
+   tmp	   : string;
+   
+procedure readword(var w : string );
 
 begin
    w := '';
@@ -54,16 +56,24 @@ begin
 end; { check }
 
 begin
-   longest := '';
+   for i := 1 to 10 do 
+      longest[i] := '';
    while not eof do
    begin
       readword(word);
       if check(word) then
       begin
-	 if length(word) > length(longest) then
-	    longest := word;
+	 if length(word) > length(longest[10]) then
+	 begin
+	    i := 10;
+	    while (i > 1) and (length(word) > length(longest[i])) do i := i - 1;
+	    for j := 9 downto i do
+	       longest[j+1] := longest[j];
+	    longest[i] := word;
+	 end;
       end;
    end;
-   writeln('Longest word:', longest);
+   for i := 1 to 10 do
+      writeln('Longest word:', longest[i]);
 end.
 	 

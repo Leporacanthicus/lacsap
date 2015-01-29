@@ -4,6 +4,7 @@ The purpose of the project is mainly to learn how LLVM operates together with a 
 
 Among things NOT yet supported are:
 * Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
+* Improve constant value sets (generate at compile-time)
 - Proper type checking. 
 - Goto statement.
 - Refactor AST dump functions to use visitors.

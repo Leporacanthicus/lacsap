@@ -1,7 +1,7 @@
-all: lacsap .depends runtime.o tests
-
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o \
 	  namedobject.o astvisitor.o trace.o
+
+RUNTIME_OBJS = runtime.o
 
 LLVM_DIR = /usr/local/llvm-debug
 #LLVM_DIR = /usr/local/
@@ -11,7 +11,7 @@ CC  = clang
 LD  = ${CXX}
 
 
-CFLAGS    = -g -Wall -Werror -Wextra -std=c99
+CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
 CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0
 CXXFLAGS += -fstandalone-debug -fno-exceptions -fno-rtti
 CXXFLAGS += -Qunused-arguments
@@ -29,6 +29,9 @@ LIBS = ${LLVMLIBS} ${OTHERLIBS}
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
+
+all: lacsap .depends tests ${RUNTIME_OBJS}
+
 .cpp.o: 
 	${CXX} ${CXXFLAGS} ${CXX_EXTRA} -c -o $@ $<
 
@@ -44,10 +47,9 @@ runtests: lacsap tests
 	${MAKE} -C test runtests
 
 clean:
-	rm -f ${OBJECTS}
+	rm -f ${OBJECTS} ${RUNTIME_OBJS}
 
 runtime.o : runtime.c
-	echo ${CXXFLAGS}
 	${CC} ${CFLAGS} -c $< -o $@
 
 include .depends

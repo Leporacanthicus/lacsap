@@ -816,38 +816,37 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Value* tmp = 0;
     if (BothStringish(lhs, rhs))
     {
-	switch(oper.GetToken())
+	if (oper.GetToken() == Token::Plus)
 	{
-	case Token::Plus:
-	    tmp = CallStrCat(lhs, rhs);
-	    return tmp;
-
- 	case Token::Equal:
+	    return CallStrCat(lhs, rhs);
+	}
+	else
+	{
 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
-	    
-	case Token::NotEqual:
- 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
 
-	case Token::GreaterOrEqual:
- 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
-	    
-	case Token::LessOrEqual:
- 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
+	    switch(oper.GetToken())
+	    {
+	    case Token::Equal:
+		return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
 
-	case Token::GreaterThan:
- 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
-	    
-	case Token::LessThan:
- 	    tmp = CallStrFunc("Compare");
-	    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
+	    case Token::NotEqual:
+		return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
 
-	default:
-	    return ErrorV("Invalid operand for strings");
+	    case Token::GreaterOrEqual:
+		return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
+
+	    case Token::LessOrEqual:
+		return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
+
+	    case Token::GreaterThan:
+		return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
+
+	    case Token::LessThan:
+		return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
+
+	    default:
+		return ErrorV("Invalid operand for strings");
+	    }
 	}
     }
     else if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
@@ -897,8 +896,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
     else if (llvm::isa<Types::SetDecl>(rhs->Type()))
     {
-	if (lhs->Type()->isIntegral() &&
-	    oper.GetToken() == Token::In)
+	if (lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
 	{
 	    llvm::Value* l = lhs->CodeGen();
 	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);

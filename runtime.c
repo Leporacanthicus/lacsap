@@ -711,14 +711,7 @@ String __StrCopy(String* str, int start, int len)
  */ 
 int __ArrCompare(char* a, char* b, int size)
 {
-    for(int i = 0; i < size; i++)
-    {
-	if (a[i] != b[i])
-	{
-	    return a[i] - b[i];
-	}
-    }
-    return 0;
+    return memcmp(a, b, size);
 }
 
 long __Clock(void)

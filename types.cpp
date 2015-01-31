@@ -477,7 +477,7 @@ Types::TypeDecl* Types::TypeForSet()
 {
     if (!setType)
     {
-	Types::Range *r = new Types::Range(0,32 * Types::SetDecl::MaxSetWords);
+	Types::Range *r = new Types::Range(0,Types::SetDecl::SetBits * Types::SetDecl::MaxSetWords-1);
 	setType = new Types::SetDecl(r);
     }
     return setType;

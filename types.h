@@ -340,10 +340,22 @@ public:
     class SetDecl : public TypeDecl
     {
     public:
+	typedef unsigned int ElemType;
 	// Must match with "runtime". 
-	enum { MaxSetWords = 16 };
+	enum { 
+	    MaxSetWords = 16, 
+	    SetBits = 32,
+	    SetMask = SetBits-1,
+	    SetPow2Bits = 5
+	};
 	SetDecl(Range *r)
-	    : TypeDecl(TK_Set, Set), range(r) {}
+	    : TypeDecl(TK_Set, Set), range(r) 
+	{
+	    assert(r->Size() <= MaxSetWords * SetBits && "Set too large");
+	    assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
+	    assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
+	    assert(SetMask == SetBits-1 && "Set pow2 mismatch");
+	}
 	virtual void dump() const;
 	static bool classof(const TypeDecl *e) { return e->getKind() == TK_Set; }
 	virtual bool isIntegral() const { return false; }

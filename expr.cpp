@@ -49,6 +49,17 @@ MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
+
+static bool IsConstant(ExprAST *e)
+{
+    if (llvm::isa<IntegerExprAST>(e) ||
+	llvm::isa<CharExprAST>(e))
+    {
+	return true;
+    }
+    return false;
+}
+
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 {
     if (!f->getType()->isPointerTy())
@@ -328,7 +339,7 @@ llvm::Value* VariableExprAST::CodeGen()
     {
 	return 0;
     }
-    return builder.CreateLoad(v, name.c_str()); 
+    return builder.CreateLoad(v, name); 
 }
 
 llvm::Value* VariableExprAST::Address()
@@ -1594,7 +1605,7 @@ void StringExprAST::DoDump(std::ostream& out) const
 llvm::Value* StringExprAST::CodeGen()
 {
     TRACE();
-    return builder.CreateGlobalStringPtr(val.c_str(), "_string");
+    return builder.CreateGlobalStringPtr(val, "_string");
 }
 
 void AssignExprAST::DoDump(std::ostream& out) const
@@ -1857,7 +1868,7 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", 
 							 theFunction);
     
-    llvm::Value* curVar = builder.CreateLoad(var, varName.c_str());
+    llvm::Value* curVar = builder.CreateLoad(var, varName);
     llvm::Value* endV = end->CodeGen();
     llvm::Value* endCond;
 
@@ -1878,7 +1889,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    curVar = builder.CreateLoad(var, varName.c_str());
+    curVar = builder.CreateLoad(var, varName);
     curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 
     builder.CreateStore(curVar, var);
@@ -2386,10 +2397,10 @@ void VarDeclAST::DoDump(std::ostream& out) const
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
-    // Are we declaring global variables  - no function!
     llvm::Value *v = 0;
     for(auto var : vars)
     {
+	// Are we declaring global variables  - no function!
 	if (!func)
 	{
 	    llvm::Type* ty = var.Type()->LlvmType();
@@ -2400,7 +2411,7 @@ llvm::Value* VarDeclAST::CodeGen()
 						       llvm::Function::InternalLinkage);
 
 	    llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, linkage,
-								init, var.Name().c_str());
+								init, var.Name());
 	    const llvm::DataLayout dl(theModule);
 	    size_t al = dl.getPrefTypeAlignment(ty);
 	    al = std::max(4ul, al);
@@ -2517,6 +2528,7 @@ llvm::Value* RangeExprAST::CodeGen()
     return 0;
 }
 
+
 void SetExprAST::DoDump(std::ostream& out) const
 {
     out << "Set :[";
@@ -2533,9 +2545,84 @@ void SetExprAST::DoDump(std::ostream& out) const
     out << "]";
 }
 
+llvm::Value* SetExprAST::MakeConstantSet()
+{
+    static int index=1;
+    llvm::Type* ty = Types::TypeForSet()->LlvmType();
+    assert(ty && "Expect type for set to work");
+
+    Types::SetDecl::ElemType elems[Types::SetDecl::MaxSetWords] = {};
+    for(auto v : values)
+    {
+	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
+	if (r) 
+	{
+	    IntegerExprAST* le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
+	    IntegerExprAST* he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
+	    unsigned low = le->Int();
+	    unsigned high = he->Int();
+	    for(unsigned i = low; i <= high; i++)
+	    {
+		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
+	    }
+	}
+	else
+	{
+	    IntegerExprAST* e = llvm::dyn_cast<IntegerExprAST>(v);
+	    unsigned i = e->Int();
+	    elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
+	}
+    }
+
+    llvm::Constant* initArr[Types::SetDecl::MaxSetWords];
+    llvm::ArrayType* aty = llvm::dyn_cast<llvm::ArrayType>(ty);
+    llvm::Type* eltTy = aty->getElementType();
+
+    for(unsigned i = 0; i < Types::SetDecl::MaxSetWords; i++)
+    {
+	initArr[i] = llvm::ConstantInt::get(eltTy, elems[i]);
+    }
+
+    llvm::Constant* init = llvm::ConstantArray::get(aty, initArr);
+    llvm::GlobalValue::LinkageTypes linkage = llvm::Function::InternalLinkage;
+    std::string name(std::string("P") + std::to_string(index) + ".set");
+    llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, linkage,
+							init, name);
+    
+    return gv;
+}
+
 llvm::Value* SetExprAST::Address()
 {
     TRACE();
+
+    // Check if ALL the values involved are constants.
+    bool allConstants = true;
+    for(auto v : values)
+    {
+	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
+	if (r) 
+	{
+	    if (!IsConstant(r->HighExpr()) || !IsConstant(r->LowExpr()))
+	    {
+		allConstants = false;
+		break;
+	    }
+	}
+	else
+	{
+	    if (!IsConstant(v))
+	    {
+		allConstants = false;
+		break;
+	    }
+	}
+    }
+
+    if (allConstants)
+    {
+	return MakeConstantSet();
+    }
 
     llvm::Type* ty = Types::TypeForSet()->LlvmType();
     assert(ty && "Expect type for set to work");
@@ -2546,7 +2633,8 @@ llvm::Value* SetExprAST::Address()
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
     builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)), 
-			 Types::SetDecl::MaxSetWords * 4, 0);
+			 (Types::SetDecl::MaxSetWords * Types::SetDecl::SetBits / 8), 0);
+
 
     // TODO: For optimisation, we may want to pass through the vector and see if the values 
     // are constants, and if so, be clever about it.

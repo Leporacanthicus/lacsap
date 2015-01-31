@@ -55,10 +55,10 @@ void Constants::StringConstDecl::dump() const
 }
 
 static bool GetAsReal(double& lValue, double& rValue, 
-		 const Constants::RealConstDecl* lhsR,
-		 const Constants::RealConstDecl* rhsR,
-		 const Constants::IntConstDecl* lhsI,
-		 const Constants::IntConstDecl* rhsI)
+		      const Constants::RealConstDecl* lhsR,
+		      const Constants::RealConstDecl* rhsR,
+		      const Constants::IntConstDecl* lhsI,
+		      const Constants::IntConstDecl* rhsI)
 {
     bool ok = rhsR && lhsR;
     if (lhsR)

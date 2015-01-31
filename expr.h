@@ -99,23 +99,27 @@ class IntegerExprAST : public ExprAST
 public:
     IntegerExprAST(long v, Types::TypeDecl* ty) 
 	: ExprAST(EK_IntegerExpr, ty), val(v) {}
+    IntegerExprAST(ExprKind ek, long v, Types::TypeDecl* ty) 
+	: ExprAST(ek, ty), val(v) {}
     virtual void DoDump(std::ostream& out) const override;
     virtual llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST *e) { return e->getKind() == EK_IntegerExpr; }
-private:
+    long Int() { return val; }
+    static bool classof(const ExprAST *e) 
+    { 
+	return e->getKind() == EK_IntegerExpr || e->getKind() == EK_CharExpr; 
+    }
+protected:
     long val;
 };
 
-class CharExprAST : public ExprAST
+class CharExprAST : public IntegerExprAST
 {
 public:
     CharExprAST(char v, Types::TypeDecl* ty) 
-	: ExprAST(EK_CharExpr, ty), val(v) {}
+	: IntegerExprAST(EK_CharExpr, v, ty) {}
     virtual void DoDump(std::ostream& out) const override;
     virtual llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CharExpr; }
-private:
-    char val;
 };
 
 class StringExprAST : public ExprAST
@@ -276,6 +280,7 @@ public:
     virtual void DoDump(std::ostream& out) const;
     virtual llvm::Value* CodeGen();
     virtual llvm::Value* Address();
+    llvm::Value* MakeConstantSet();
 private:
     std::vector<ExprAST*> values;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_SetExpr; }
@@ -319,8 +324,10 @@ public:
 	: ExprAST(EK_RangeExpr), low(l), high(h) {}
     virtual void DoDump(std::ostream& out) const override;
     virtual llvm::Value* CodeGen() override;
-    virtual llvm::Value* Low() { return low->CodeGen(); }
-    virtual llvm::Value* High() { return high->CodeGen(); }
+    llvm::Value* Low() { return low->CodeGen(); }
+    llvm::Value* High() { return high->CodeGen(); }
+    ExprAST* LowExpr() { return low; }
+    ExprAST* HighExpr() { return high; }
     static bool classof(const ExprAST *e) { return e->getKind() == EK_RangeExpr; }
 private:
     ExprAST* low;

@@ -211,6 +211,8 @@ void __close(File* f)
     {
 	fclose(files[f->handle].file);
 	files[f->handle].file = NULL;
+	free(f->buffer);
+	f->buffer = NULL;
 	return;
     }
     fprintf(stderr, "Attempt to close file failed\n");

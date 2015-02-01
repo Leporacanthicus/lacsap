@@ -807,6 +807,11 @@ llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
 
+    if (verbosity)
+    {
+	lhs->dump(); oper.dump(); rhs->dump();
+    }
+
     if (!lhs->Type() || !rhs->Type())
     {
 	assert(0 && "Huh? Both sides of expression should have type");
@@ -1099,6 +1104,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	l->dump();
 	oper.dump(std::cout);
 	r->dump();
+	assert(0 && "Should not get here!");
 	return ErrorV("Huh?");
     }
 }

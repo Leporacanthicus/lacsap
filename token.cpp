@@ -7,14 +7,14 @@
 
 Location::Location(const std::string& file, int line, int col)
 {
-    fname = file; 
-    lineNo = line;
-    column = col;
+    fname   = file; 
+    lineNum = line;
+    column  = col;
 }
 
 std::string Location::to_string() const
 { 
-    return fname+ ":" + std::to_string(lineNo) + ":" + std::to_string(column); 
+    return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column); 
 }
 
 Token::Token() : type(Token::Unknown), where("", 0, 0) {}
@@ -176,6 +176,8 @@ const TokenEntry tokenTable[] =
     { Token::DotDot,        false, -1, ".." },
     { Token::Uparrow,       false, -1, "^" },
     { Token::Identifier,    false, -1, "identifier" },
+    { Token::LineNumber,    false, -1, "__LINE__" },
+    { Token::FileName,      false, -1, "__FILE__" },
     { Token::Unknown,       false, -1, "Unknown" },
     { Token::EndOfFile,     false, -1, "EOF" },
 };

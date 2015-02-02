@@ -11,9 +11,11 @@ class Location
 public:
     Location(const std::string& file, int line, int column);
     std::string to_string() const;
+    std::string FileName() { return fname; }
+    long LineNumber() { return lineNum; }
 private:
     std::string fname;
-    int lineNo;
+    int lineNum;
     int column;
 };
 
@@ -104,6 +106,10 @@ public:
 	Case,
 	Otherwise,
 	With,
+
+	// Specials
+	LineNumber,
+	FileName,
 
 	EndOfFile  = -1, 
 	Unknown    = -1000,

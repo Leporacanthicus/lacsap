@@ -164,15 +164,15 @@ Token Lexer::NumberToken()
 // Needs to deal with '' in the middle of string and '''' as a char constant.
 Token Lexer::StringToken()
 {
-    int ch;
     std::string str;
     Location w = Where();
-    ch = NextChar();
+    int quote = CurChar();
+    int ch = NextChar();
     while(true)
     {
-	if (ch == '\'')
+	if (ch == quote)
 	{
-	    if (PeekChar() == '\'')
+	    if (PeekChar() == quote)
 	    {
 		NextChar();
 	    }
@@ -326,13 +326,13 @@ Token Lexer::GetToken()
 	return Token(tt, w);
     }
 
-    if (ch == '\'')
+    if (ch == '\'' || ch == '"')
     {
 	return StringToken();
     }
 
-    // Identifiers start with alpha characters.
-    if (std::isalpha(ch))
+    // Identifiers start with alpha characters, or underscore.
+    if (std::isalpha(ch) || ch == '_')
     {
 	std::string str; 
 	// Default to the "most likely". 
@@ -342,15 +342,24 @@ Token Lexer::GetToken()
 	{
 	    str += static_cast<char>(ch);
 	}
-	Token::TokenType tt = Token::KeyWordToToken(str); 
+	Token::TokenType tt = Token::KeyWordToToken(str);
 	if (tt != Token::Unknown)
 	{
+	    if (tt == Token::LineNumber)
+	    {
+		return Token(Token::Integer, w, w.LineNumber());
+	    }
+	    else if (tt == Token::FileName)
+	    {
+		return Token(Token::StringLiteral, w, w.FileName());
+	    }
 	    return Token(tt, w);
 	}
 	else 
 	{
 	    tt = Token::Identifier;
 	}
+
 	return Token(tt, w, str);
     }
 

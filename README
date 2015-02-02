@@ -10,6 +10,7 @@ Among things NOT yet supported are:
 - Refactor AST dump functions to use visitors.
 - Separate compile units.
 - Make runtime into libraries and/or codegen.
+- Debug symbols.
 
 Lots of other small and large things that I can't think of right now.
 

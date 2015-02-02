@@ -270,6 +270,7 @@ struct
     { "Basic", "Variant Rec2",  "variant2.pas",    "" },
     { "Basic", "Quicksort",     "qsort.pas",       "< numbers.txt" },
     { "Basic", "Calc Words",    "calcwords.pas",   "< /usr/share/dict/words" },
+    { "Basic", "Line & File",   "linefile.pas",    "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

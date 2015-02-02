@@ -7,14 +7,14 @@
 
 Location::Location(const std::string& file, int line, int col)
 {
-    fname = file; 
-    lineNo = line;
-    column = col;
+    fname   = file; 
+    lineNum = line;
+    column  = col;
 }
 
 std::string Location::to_string() const
 { 
-    return fname+ ":" + std::to_string(lineNo) + ":" + std::to_string(column); 
+    return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column); 
 }
 
 Token::Token() : type(Token::Unknown), where("", 0, 0) {}
@@ -176,17 +176,19 @@ const TokenEntry tokenTable[] =
     { Token::DotDot,        false, -1, ".." },
     { Token::Uparrow,       false, -1, "^" },
     { Token::Identifier,    false, -1, "identifier" },
+    { Token::LineNumber,    true,  -1, "__LINE__" },
+    { Token::FileName,      true,  -1, "__FILE__" },
     { Token::Unknown,       false, -1, "Unknown" },
     { Token::EndOfFile,     false, -1, "EOF" },
 };
 
 static const TokenEntry* FindToken(Token::TokenType type)
 {
-    for(size_t i = 0; i < sizeof(tokenTable)/sizeof(tokenTable[0]); i++)
+    for(auto &i : tokenTable)
     {
-	if (type == tokenTable[i].type)
+	if (type == i.type)
 	{
-	    return &tokenTable[i];
+	    return &i;
 	}
     }
     assert(0 && "Expect to find token!");
@@ -196,12 +198,16 @@ static const TokenEntry* FindToken(Token::TokenType type)
 static const TokenEntry* FindToken(const std::string& kw)
 {
     std::string kwlower = kw;
-    std::transform(kwlower.begin(), kwlower.end(), kwlower.begin(), ::tolower);
-    for(size_t i = 0; i < sizeof(tokenTable)/sizeof(tokenTable[0]); i++)
+    /* Don't "tolower" the keyword if it starts with __ */
+    if (kw.substr(0,2) != "__")
     {
-	if (kwlower == tokenTable[i].str)
+	std::transform(kwlower.begin(), kwlower.end(), kwlower.begin(), ::tolower);
+    }
+    for(auto &i : tokenTable)
+    {
+	if (kwlower == i.str)
 	{
-	    return &tokenTable[i];
+	    return &i;
 	}
     }
     return 0;

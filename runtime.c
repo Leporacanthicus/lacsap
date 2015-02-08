@@ -595,34 +595,28 @@ int __SetEqual(Set *a, Set *b)
     return !memcmp(a->v, b->v, sizeof(*a));
 }
 
-Set __SetUnion(Set *a, Set *b)
+void __SetUnion(Set *res, Set *a, Set *b)
 {
-    Set res;
     for(int i = 0; i < MaxSetWords; i++)
     {
-	res.v[i] = a->v[i] | b->v[i]; 
+	res->v[i] = a->v[i] | b->v[i]; 
     }
-    return res;
 }
 
-Set __SetDiff(Set *a, Set *b)
+void __SetDiff(Set *res, Set *a, Set *b)
 {
-    Set res;
     for(int i = 0; i < MaxSetWords; i++)
     {
-	res.v[i] = a->v[i] & ~b->v[i]; 
+	res->v[i] = a->v[i] & ~b->v[i]; 
     }
-    return res;
 }
 
-Set __SetIntersect(Set *a, Set *b)
+void __SetIntersect(Set *res, Set *a, Set *b)
 {
-    Set res;
     for(int i = 0; i < MaxSetWords; i++)
     {
-	res.v[i] = a->v[i] & b->v[i]; 
+	res->v[i] = a->v[i] & b->v[i]; 
     }
-    return res;
 }
 
 /* Check if all values in a are in set b. */

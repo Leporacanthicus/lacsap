@@ -591,16 +591,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 
     assert(type && "Expect to get a type from Types::TypeForSet");
 
-    llvm::Type* resTy;
-    if (resTyIsSet)
-    {
-	resTy = type->LlvmType();
-    }
-    else
-    {
-	resTy = Types::GetType(Types::Boolean);
-    }
-
     llvm::Value* rV = MakeAddressable(rhs, type);
     llvm::Value* lV = MakeAddressable(lhs, type);
 
@@ -609,13 +599,31 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return 0;
     }
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
-    std::vector<llvm::Type*> argTypes{pty, pty};
+    if (resTyIsSet)
+    {
+	llvm::Type* resTy = Types::GetType(Types::Void);
+	llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
+	std::vector<llvm::Type*> argTypes{pty, pty, pty};
+	
+	llvm::Value* v = CreateTempAlloca(type->LlvmType());
+	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+	
+	builder.CreateCall3(f, v, lV, rV);
+	return builder.CreateLoad(v);
+    }
+    else
+    {
+	llvm::Type* resTy = Types::GetType(Types::Boolean);
+	llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
+	std::vector<llvm::Type*> argTypes{pty, pty};
+	
+	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+	
+	return builder.CreateCall2(f, lV, rV, "calltmp");
+    }
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-
-    return builder.CreateCall2(f, lV, rV, "calltmp");
 }
 
 

@@ -245,7 +245,7 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 {
     llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
     size_t size = ty->Size();
-    if (!disableMemcpyOpt && size > MEMCPY_THRESHOLD)
+    if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
     {
 	builder.CreateMemCpy(dest, src, size, 1);
 	return dest;
@@ -1685,7 +1685,7 @@ llvm::Value* AssignExprAST::CodeGen()
     if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
     {
 	size_t size = rhsv->Type()->Size();
-	if (!disableMemcpyOpt && size > MEMCPY_THRESHOLD)
+	if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
 	{
 	    llvm::Value* src = rhsv->Address();
 	    return builder.CreateMemCpy(dest, src, size, 1);
@@ -2160,9 +2160,7 @@ llvm::Value* WriteAST::CodeGen()
 		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
 		assert(a && "Expected addressable value");
 		v = a->Address();
-		std::vector<llvm::Value*> ind;
-		ind.push_back(MakeIntegerConstant(0));
-		ind.push_back(MakeIntegerConstant(0));
+		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
 	    else if (type->Type() == Types::Array && 
@@ -2172,9 +2170,7 @@ llvm::Value* WriteAST::CodeGen()
 		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
 		assert(a && "Expected addressable value");
 		v = a->Address();
-		std::vector<llvm::Value*> ind;
-		ind.push_back(MakeIntegerConstant(0));
-		ind.push_back(MakeIntegerConstant(0));
+		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
 	    else
@@ -2675,8 +2671,10 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* loop = builder.CreateLoad(loopVar, "loopVar");
 
 	    // Set bit "loop" in set. 
-	    llvm::Value* index = builder.CreateLShr(loop, MakeIntegerConstant(5));
-	    llvm::Value* offset = builder.CreateAnd(loop, MakeIntegerConstant(31));
+	    llvm::Value* shiftBits = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
+	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
+	    llvm::Value* index = builder.CreateLShr(loop, shiftBits);
+	    llvm::Value* offset = builder.CreateAnd(loop, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
@@ -2702,8 +2700,10 @@ llvm::Value* SetExprAST::Address()
 		return 0;
 	    }
 	    x = builder.CreateZExt(x, Types::GetType(Types::Integer), "zext");
-	    llvm::Value* index = builder.CreateLShr(x, MakeIntegerConstant(5));
-	    llvm::Value* offset = builder.CreateAnd(x, MakeIntegerConstant(31));
+	    llvm::Value* shiftBits = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
+	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
+	    llvm::Value* index = builder.CreateLShr(x, shiftBits);
+	    llvm::Value* offset = builder.CreateAnd(x, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");

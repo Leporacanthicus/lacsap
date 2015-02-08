@@ -50,7 +50,7 @@ clean:
 	rm -f ${OBJECTS} ${RUNTIME_OBJS}
 
 runtime.o : runtime.c
-	${CC} ${CFLAGS} -c $< -o $@
+	${CC} ${CFLAGS} -fPIC -c $< -o $@
 
 include .depends
 

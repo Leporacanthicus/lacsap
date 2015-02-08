@@ -293,6 +293,7 @@ public:
 	: ExprAST(EK_BinaryExpr), oper(op), lhs(l), rhs(r) {}
     virtual void DoDump(std::ostream& out) const override;
     virtual llvm::Value* CodeGen() override;
+    llvm::Value* SetCodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_BinaryExpr; }
     llvm::Value* CallSetFunc(const std::string& name, bool resTyIsSet);
     llvm::Value* CallStrFunc(const std::string& name);

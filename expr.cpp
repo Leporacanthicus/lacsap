@@ -803,6 +803,71 @@ Types::TypeDecl* BinaryExprAST::Type() const
     return lType;
 }
 
+llvm::Value* BinaryExprAST::SetCodeGen()
+{
+    if (lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
+    {
+	llvm::Value* l = lhs->CodeGen();
+	AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
+	if (!rhsA)
+	{
+	    return ErrorV("Set value should be addressable!");
+	}
+	llvm::Value* setV = rhsA->Address();
+	l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
+	llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(Types::SetDecl::SetPow2Bits));
+	llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
+	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
+	llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
+
+	llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	llvm::Value* bit = builder.CreateLShr(bitset, offset);
+	return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
+    }
+    else if (llvm::isa<Types::SetDecl>(lhs->Type()))
+    {
+	switch(oper.GetToken())
+	{
+	case Token::Minus:
+	    return CallSetFunc("Diff", true);
+
+	case Token::Plus:
+	    return CallSetFunc("Union", true);
+
+	case Token::Multiply:
+	    return CallSetFunc("Intersect", true);
+
+	case Token::Equal:
+	    return CallSetFunc("Equal", false);
+
+	case Token::NotEqual:
+	    return builder.CreateNot(CallSetFunc("Equal", false), "notEqual");
+
+	case Token::LessOrEqual:
+	    return CallSetFunc("Contains", false);
+
+	case Token::GreaterOrEqual:
+	{
+	    ExprAST* tmp = rhs;
+	    rhs = lhs;
+	    lhs = tmp;
+	    llvm::Value* v = CallSetFunc("Contains", false);
+	    // Set it back
+	    lhs = rhs;
+	    rhs = tmp;
+	    return v;
+	}
+
+	default:
+	    return ErrorV("Unknown operator on set");
+	}
+    }
+    else
+    {
+	return ErrorV("Invalid arguments in set operation");
+    }
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -901,67 +966,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
     else if (llvm::isa<Types::SetDecl>(rhs->Type()))
     {
-	if (lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
-	{
-	    llvm::Value* l = lhs->CodeGen();
-	    AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
-	    if (!rhsA)
-	    {
-		return ErrorV("Set value should be addressable!");
-	    }
-	    llvm::Value* setV = rhsA->Address();
-	    l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
-	    llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(5));
-	    llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(31));
-	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
-	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
-	    
-	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
-	    llvm::Value* bit = builder.CreateLShr(bitset, offset);
-	    return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
-	}
-	else if (llvm::isa<Types::SetDecl>(lhs->Type()))
-	{
-	    switch(oper.GetToken())
-	    {
-	    case Token::Minus:
-		return CallSetFunc("Diff", true);
-		
-	    case Token::Plus:
-		return CallSetFunc("Union", true);
-		
-	    case Token::Multiply:
-		return CallSetFunc("Intersect", true);
-	    
-	    case Token::Equal:
-		return CallSetFunc("Equal", false);
-
-	    case Token::NotEqual:
-		return builder.CreateNot(CallSetFunc("Equal", false), "notEqual");
-
-	    case Token::LessOrEqual:
-		return CallSetFunc("Contains", false);
-
-	    case Token::GreaterOrEqual:
-	    {
-		ExprAST* tmp = rhs;
-		rhs = lhs;
-		lhs = tmp;
-		llvm::Value* v = CallSetFunc("Contains", false);
-		// Set it back
-		lhs = rhs;
-		rhs = tmp;
-		return v;
-	    }
-
-	    default:
-		return ErrorV("Unknown operator on set");
-	    }
-	}
-	else
-	{
-	    return ErrorV("Invalid arguments in set operation");
-	}
+	return SetCodeGen();
     }
 
     llvm::Value *l = lhs->CodeGen();

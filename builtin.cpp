@@ -6,6 +6,43 @@ extern llvm::Module* theModule;
 
 typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
 
+static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
+				      const std::string& func,
+				      const std::vector<ExprAST*>& args,
+				      llvm::Type* resTy = 0)
+{
+    llvm::Value* a = args[0]->CodeGen();
+    assert(a && "Expected codegen to work for args[0]");
+    llvm::Type* ty = Types::GetType(Types::Real);
+    if (!resTy)
+    {
+	resTy = ty;
+    }
+    std::vector<llvm::Type*> argTypes{ty};
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
+    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+    {
+	a = builder.CreateSIToFP(a, ty, "tofp");
+    }
+    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
+    {
+	return builder.CreateCall(f, a, "calltmp");
+    }
+    return ErrorV("Expected type of real or integer for this function'");
+}
+
+static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder,
+				    const std::string& func,
+				    const std::vector<ExprAST*>& args,
+				    llvm::Type* resTy = 0)
+{
+    std::string name = "llvm." + func + ".f64";
+    return CallRuntimeFPFunc(builder, name, args, resTy);
+}
+
 static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
 {
     assert(args.size() == 1 && "Expect 1 argument to abs");
@@ -21,11 +58,7 @@ static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
     }
     if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
     {
-	llvm::Value* neg = builder.CreateFNeg(a, "neg");
-	llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
-	llvm::Value* cmp = builder.CreateFCmpOGE(a, zero, "abscond");
-	llvm::Value* res = builder.CreateSelect(cmp, a, neg, "abs");
-	return res;
+	return CallBuiltinFunc(builder, "fabs", args);
     }
     return ErrorV("Expected type of real or integer for 'abs'");
 }
@@ -58,44 +91,6 @@ static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<Exp
 	return res;
     }
     return ErrorV("Expected type of real or integer for 'sqr'");
-}
-
-
-static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, 
-				      const std::string& func, 
-				      const std::vector<ExprAST*>& args, 
-				      llvm::Type* resTy = 0)
-{
-    llvm::Value* a = args[0]->CodeGen();
-    assert(a && "Expected codegen to work for args[0]");
-    llvm::Type* ty = Types::GetType(Types::Real);
-    if (!resTy)
-    {
-	resTy = ty;
-    }
-    std::vector<llvm::Type*> argTypes{ty};
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-
-    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-
-    if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
-    {
-	a = builder.CreateSIToFP(a, ty, "tofp");
-    }
-    if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
-    {
-	return builder.CreateCall(f, a, "calltmp");
-    }
-    return ErrorV("Expected type of real or integer for this function'");
-}
-
-static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder, 
-				    const std::string& func, 
-				    const std::vector<ExprAST*>& args,
-				    llvm::Type* resTy = 0)
-{
-    std::string name = "llvm." + func + ".f64";
-    return CallRuntimeFPFunc(builder, name, args, resTy);
 }
 
 static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -392,7 +387,7 @@ static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<Ex
     {
 	return ErrorV("Arguments to copy should be (string, integer, integer)");
     }
-    llvm::Value* str = MakeAddressable(args[0], Types::GetStringType());
+    llvm::Value* str = MakeAddressable(args[0]);
     assert(str && "Expect non-NULL return here...");
 
     llvm::Value* start = args[1]->CodeGen();
@@ -412,7 +407,7 @@ static llvm::Value* LengthCodeGen(llvm::IRBuilder<>& builder, const std::vector<
     {
 	return ErrorV("Incorrect argument type - needs to be a string");
     }
-    llvm::Value* v = MakeAddressable(args[0], args[0]->Type());
+    llvm::Value* v = MakeAddressable(args[0]);
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
     llvm::Value* v1 = builder.CreateGEP(v, ind, "str_0");
     llvm::Value* v2 = builder.CreateLoad(v1, "len");

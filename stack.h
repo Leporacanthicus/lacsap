@@ -1,7 +1,7 @@
 #ifndef STACK_H
 #define STACK_H
 
-#include "trace.h"
+#include "options.h"
 
 #include <deque>
 #include <map>
@@ -62,7 +62,6 @@ public:
 	    if (verbosity > 1)
 	    {
 		std::cerr << "Adding value: " << name << std::endl;
-		v->dump();
 	    }
 	    stack.back()[name] = v;
 	    return true;
@@ -93,7 +92,7 @@ public:
 	if (verbosity > 1)
 	{
 	    std::cerr << "Not found" << std::endl;
-	    dump();
+	    dump(std::cerr);
 	}
 	return 0;
     }
@@ -124,24 +123,9 @@ public:
 	return 0;
     }
 
-    void dump() const
-    {
-	int n = 0;
-	for(auto s : stack)
-	{
-	    std::cerr << "Level " << n << std::endl;
-	    n++;
-	    for(auto v : s)
-	    {
-		std::cerr << v.first << ": ";
-		v.second->dump();
-		std::cerr << std::endl;
-	    }
-	}
-    }
-
+    void dump(std::ostream& out) const;
 private:
-	StackType stack;
+    StackType stack;
 };
 
 template <typename T>
@@ -159,5 +143,23 @@ public:
 private:
     Stack<T>& stack;
 };
+
+template<typename T>
+void Stack<T>::dump(std::ostream& out) const
+{
+    int n = 0;
+    for(auto s : stack)
+    {
+	out << "Level " << n << std::endl;
+	n++;
+	for(auto v : s)
+	{
+	    out << v.first << ": ";
+	    v.second->dump(out);
+	    out << std::endl;
+	}
+    }
+}
+
 
 #endif

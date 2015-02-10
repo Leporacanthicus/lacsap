@@ -12,17 +12,53 @@
 #include <vector>
 #include <algorithm>
 
+
+
+class UpdateCallVisitor : public Visitor
+{
+public:
+    UpdateCallVisitor(const PrototypeAST *p) : proto(p) {}
+    virtual void visit(ExprAST* expr);
+private:
+    const PrototypeAST* proto;
+};
+
+void UpdateCallVisitor::visit(ExprAST* expr)
+{
+    TRACE();
+
+    if (verbosity > 1)
+    {
+	expr->dump();
+    }
+
+    CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr);
+    if(call)
+    {
+	if (call->Proto()->Name() == proto->Name()
+	    && call->Args().size() != proto->Args().size())
+	{
+	    if (verbosity)
+	    {
+		std::cerr << "Adding arguments for function" << std::endl;
+	    }
+	    auto& args = call->Args();
+	    for(auto u : proto->Function()->UsedVars())
+	    {
+		args.push_back(new VariableExprAST(u.Name(), u.Type()));
+	    }
+	}
+    }
+}
+
 Parser::Parser(Lexer &l) 
     : lexer(l), nextTokenValid(false), errCnt(0)
 {
-    std::vector<std::string> FalseTrue;
-    FalseTrue.push_back("false");
-    FalseTrue.push_back("true");
-    if (!(AddType("integer", new Types::TypeDecl(Types::Integer)) &&
-	  AddType("longint", new Types::TypeDecl(Types::Int64)) &&
-	  AddType("real", new Types::TypeDecl(Types::Real)) &&
-	  AddType("char", new Types::TypeDecl(Types::Char)) &&
-	  AddType("boolean", new Types::EnumDecl(FalseTrue, Types::Boolean)) &&
+    if (!(AddType("integer", new Types::IntegerDecl) &&
+	  AddType("longint", new Types::Int64Decl) &&
+	  AddType("real", new Types::RealDecl) &&
+	  AddType("char", new Types::CharDecl) &&
+	  AddType("boolean", new Types::BoolDecl) &&
 	  AddType("text", Types::GetTextType())))
     {
 	assert(0 && "Failed to add basic types...");
@@ -238,7 +274,7 @@ void Parser::TranslateToken(Token& token)
     }
 }
 
-int Parser::ParseConstantValue(Token::TokenType& tt)
+int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 {
     Token token = CurrentToken();
     TranslateToken(token);
@@ -251,37 +287,49 @@ int Parser::ParseConstantValue(Token::TokenType& tt)
     }
 
     tt = token.GetToken();
+
+    int result = 0;
     
-    if (tt == Token::Integer || tt == Token::Char)
+    switch(tt)
     {
-	NextToken();
-	return token.GetIntVal();
-    }
-    else if (tt == Token::Identifier)
+    case Token::Integer:
+	type = new Types::IntegerDecl;
+	result = token.GetIntVal();
+	break;
+
+    case Token::Char:
+	type = new Types::CharDecl;
+	result = token.GetIntVal();
+	break;
+
+    case Token::Identifier:
     {
-	tt = Token::Unknown;
-	EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()); 
+	tt = CurrentToken().GetToken();
+	EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
 	if (!ed)
 	{
+	    tt = Token::Unknown;
 	    Error("Invalid range specification, expected identifier for enumerated type");
 	    return 0;
 	}
-	tt = CurrentToken().GetToken();
-	NextToken();
-	return ed->Value();
+	type = ed->Type();
+	result = ed->Value();
+	break;
     }
-    else
-    {
+    default:
 	tt = Token::Unknown;
 	Error("Invalid constant value, expected char, integer or enum value");
 	return 0;
     }
+    NextToken();
+    return result;
 }
 
-Types::Range* Parser::ParseRange()
+Types::Range* Parser::ParseRange(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
-    int start = ParseConstantValue(tt);
+    
+    int start = ParseConstantValue(tt, type);
     if (tt == Token::Unknown)
     {
 	return 0;
@@ -291,7 +339,7 @@ Types::Range* Parser::ParseRange()
 	return 0;
     }
     
-    int end = ParseConstantValue(tt);
+    int end = ParseConstantValue(tt, type);
 
     if (tt == Token::Unknown)
     {
@@ -305,25 +353,25 @@ Types::Range* Parser::ParseRange()
     return new Types::Range(start, end);
 }
 
-Types::Range* Parser::ParseRangeOrTypeRange()
+Types::Range* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
-	Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
-	if (!ty)
+	type = GetTypeDecl(CurrentToken().GetIdentName());
+	if (!type)
 	{
 	    return ErrorR("Range specification needs to be type");
 	}
-	if (!ty->isIntegral())
+	if (!type->isIntegral())
 	{
 	    return ErrorR("Type used as index specification should be integral type");
 	}
 	NextToken();
-	return ty->GetRange();
+	return type->GetRange();
     }
     else
     {
-	return ParseRange();
+	return ParseRange(type);
     }
 }
 
@@ -700,14 +748,16 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	return 0;
     }
     std::vector<Types::Range*> rv;
+    Types::TypeDecl* type = NULL;
     while(CurrentToken().GetToken() != Token::RightSquare)
     {
-	Types::Range* r = ParseRangeOrTypeRange();
+	Types::Range* r = ParseRangeOrTypeRange(type);
 	if (!r) 
 
 	{
 	    return 0;
 	}
+	assert(type && "Uh? Type is supposed to be set now");
 	rv.push_back(r);
 	if (CurrentToken().GetToken() == Token::Comma)
 	{
@@ -727,7 +777,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     return new Types::ArrayDecl(ty, rv);
 }
 
-Types::VariantDecl* Parser::ParseVariantDecl()
+Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
     std::vector<int> variantsSeen;
@@ -736,7 +786,7 @@ Types::VariantDecl* Parser::ParseVariantDecl()
     {
 	do
 	{
-	    int v = ParseConstantValue(tt);
+	    int v = ParseConstantValue(tt, type);
 	    if (tt == Token::Unknown)
 	    {
 		return 0;
@@ -873,8 +923,17 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    {
 		return 0;
 	    }
-	    variant =  ParseVariantDecl();
-	    assert(variant);
+	    Types::TypeDecl* type;
+	    variant =  ParseVariantDecl(type);
+	    if(!variant)
+	    {
+		return 0;
+	    }
+	    if (*markerTy != *type)
+	    {
+		Error("Marker type does not match member variant type");
+		return 0;
+	    }
 	}
 	else
 	{
@@ -963,14 +1022,15 @@ Types::SetDecl* Parser::ParseSetDecl()
     {
 	return 0;
     }
-
-    Types::Range* r = ParseRangeOrTypeRange();
+    
+    Types::TypeDecl* type;
+    Types::Range* r = ParseRangeOrTypeRange(type);
     if (!r)
     {
 	return 0;
     }
-
-    return new Types::SetDecl(r);
+    assert(type && "Uh? Type is supposed to be set");
+    return new Types::SetDecl(r, type);
 }
 
 Types::StringDecl* Parser::ParseStringDecl()
@@ -1026,8 +1086,13 @@ Types::TypeDecl* Parser::ParseType()
     case Token::Integer:
     case Token::Char:
     {
-	Types::Range* r = ParseRange();
-	return new Types::RangeDecl(r, (tt == Token::Char)?Types::Char:Types::Integer);
+	Types::TypeDecl* type = NULL;
+	Types::Range* r = ParseRange(type);
+	if (!r)
+	{
+	    return 0;
+	}
+	return new Types::RangeDecl(r, type->Type());
     }
 
     case Token::Array:
@@ -1544,8 +1609,12 @@ ExprAST* Parser::ParseSetExpr()
     {
 	return 0;
     }
-    // TODO: Fix up type here... 
-    return new SetExprAST(values, Types::TypeForSet());
+    Types::TypeDecl* type = NULL;
+    if (!values.empty())
+    {
+	type = values[0]->Type();
+    }
+    return new SetExprAST(values, new Types::SetDecl(NULL, type));
 }
 
 VarDeclAST* Parser::ParseVarDecls()
@@ -1750,14 +1819,15 @@ BlockAST* Parser::ParseBlock()
 
 FunctionAST* Parser::ParseDefinition(int level)
 {
-    bool isFunction = CurrentToken().GetToken() == Token::Function;
+    Types::SimpleTypes functionType = 
+	CurrentToken().GetToken() == Token::Function?Types::Function:Types::Procedure;
     PrototypeAST* proto = ParsePrototype();
     if (!proto) 
     {
 	return 0;
     }
     std::string      name = proto->Name();
-    Types::TypeDecl* ty = new Types::TypeDecl(isFunction?Types::Function:Types::Procedure);
+    Types::TypeDecl* ty = new Types::FunctionDecl(functionType, proto->Type());
     NamedObject*     nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);

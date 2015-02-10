@@ -17,9 +17,26 @@
 #include <sstream>
 #include <map>
 #include <algorithm>
+#include <cctype>
 
+template<>
+void Stack<llvm::Value*>::dump(std::ostream& out) const
+{
+    int n = 0;
+    for(auto s : stack)
+    {
+	out << "Level " << n << std::endl;
+	n++;
+	for(auto v : s)
+	{
+	    out << v.first << ": ";
+	    v.second->dump();
+	    out << std::endl;
+	}
+    }
+}
 
-const size_t MEMCPY_THRESHOLD=64;
+const size_t MEMCPY_THRESHOLD = 64;
 
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
@@ -32,9 +49,9 @@ class MangleMap
 public:
     MangleMap(const std::string& name)
 	: actualName(name) {}
-    void dump() 
-    { 
-	std::cerr << "Name: " << actualName << std::endl; 
+    void dump(std::ostream& out)
+    {
+	out << "Name: " << actualName << std::endl;
     }
     const std::string& Name() { return actualName; }
 private:
@@ -68,21 +85,21 @@ bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
     }
     llvm::Type* ty = f->getType()->getContainedType(0);
     llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(ty);
-    ty = 0;
-    if (st)
+
+    assert(st && "Should be a StructType at this point");
+
+    ty = st->getElementType(Types::FileDecl::Buffer);
+    if (ty->isPointerTy())
     {
-	ty = st->getElementType(Types::FileDecl::Buffer);
-	if (ty->isPointerTy())
-	{
-	    ty = ty->getContainedType(0);
-	    const llvm::DataLayout dl(theModule);
-	    recSize = dl.getTypeAllocSize(ty);
-	}
-	else
-	{
-	    return false;
-	}
+	ty = ty->getContainedType(0);
+	const llvm::DataLayout dl(theModule);
+	recSize = dl.getTypeAllocSize(ty);
     }
+    else
+    {
+	return false;
+    }
+
     isText = st->getName().substr(0, 4) == "text";
     return true;
 }
@@ -135,7 +152,7 @@ static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
     return tmp;
 }
 
-llvm::Value* MakeAddressable(ExprAST* e, Types::TypeDecl* type)
+llvm::Value* MakeAddressable(ExprAST* e)
 {
     AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e);
     llvm::Value* v;
@@ -315,7 +332,12 @@ llvm::Value* NilExprAST::CodeGen()
 
 void CharExprAST::DoDump(std::ostream& out) const
 { 
-    out << "Char: '" << val << "'";
+    out << "Char: '";
+    if (isprint(val))
+	out << char(val);
+    else
+	out << "\\0x" << std::hex << val << std::dec;
+    out << "'";
 }
 
 llvm::Value* CharExprAST::CodeGen()
@@ -327,7 +349,8 @@ llvm::Value* CharExprAST::CodeGen()
 
 void VariableExprAST::DoDump(std::ostream& out) const
 { 
-    out << "Variable: " << name;
+    out << "Variable: " << name << " ";
+    Type()->dump(out);
 }
 
 llvm::Value* VariableExprAST::CodeGen()
@@ -587,41 +610,69 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 {
     TRACE();
     std::string func = std::string("__Set") + name;
-    Types::TypeDecl* type = Types::TypeForSet();
+    Types::TypeDecl* type;
+    if (lhs->Type())
+    {
+	type = lhs->Type();
+    }
+    else
+    {
+	type = rhs->Type();
+    }
 
-    assert(type && "Expect to get a type from Types::TypeForSet");
+    assert(type && "Expect to get a type");
 
-    llvm::Value* rV = MakeAddressable(rhs, type);
-    llvm::Value* lV = MakeAddressable(lhs, type);
+    SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs);
+    SetExprAST* lhsSet = llvm::dyn_cast<SetExprAST>(lhs);
+    llvm::Value* rV;
+    llvm::Value* lV;
+    if (rhsSet)
+    {
+	rV = rhsSet->Address();
+    }
+    else
+    {
+	rV = MakeAddressable(rhs);
+    }
+
+    if (lhsSet)
+    {
+	lV = lhsSet->Address();
+    }
+    else
+    {
+	lV = MakeAddressable(lhs);
+    }
 
     if (!rV || !lV)
     {
 	return 0;
     }
 
+    llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
+    llvm::Type* intTy = Types::GetType(Types::Integer);
+    llvm::Value* setWords = MakeIntegerConstant(llvm::dyn_cast<Types::SetDecl>(type)->SetWords());
     if (resTyIsSet)
     {
 	llvm::Type* resTy = Types::GetType(Types::Void);
-	llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
-	std::vector<llvm::Type*> argTypes{pty, pty, pty};
+	std::vector<llvm::Type*> argTypes{pty, pty, pty, intTy};
 	
 	llvm::Value* v = CreateTempAlloca(type->LlvmType());
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 	
-	builder.CreateCall3(f, v, lV, rV);
+	builder.CreateCall4(f, v, lV, rV, setWords);
 	return builder.CreateLoad(v);
     }
     else
     {
 	llvm::Type* resTy = Types::GetType(Types::Boolean);
-	llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
-	std::vector<llvm::Type*> argTypes{pty, pty};
+	std::vector<llvm::Type*> argTypes{pty, pty, intTy};
 	
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
 	
-	return builder.CreateCall2(f, lV, rV, "calltmp");
+	return builder.CreateCall3(f, lV, rV, setWords, "calltmp");
     }
 
 }
@@ -658,7 +709,7 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
 	{
 	    ty = e->Type()->LlvmType();
 	}
-	v = MakeAddressable(e, e->Type());
+	v = MakeAddressable(e);
 	if (ty != strTy)
 	{
 	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
@@ -719,14 +770,13 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
     return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
 }
 
-
 llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 {
     TRACE();
     std::string func = std::string("__Arr") + name;
 
-    llvm::Value* rV = MakeAddressable(rhs, rhs->Type());
-    llvm::Value* lV = MakeAddressable(rhs, rhs->Type());
+    llvm::Value* rV = MakeAddressable(rhs);
+    llvm::Value* lV = MakeAddressable(lhs);
 
     if (!rV || !lV)
     {
@@ -770,16 +820,37 @@ static llvm::Value* TypeConvert(llvm::Value* v, llvm::Type* ty, bool isNil = fal
     return v;
 }
 
+void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
+{
+    assert(!type && "Type shouldn't be updated more than once");
+    assert(ty && "Must supply valid type");
+
+    type = ty;
+}
+
+
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
     Token::TokenType tt = oper.GetToken();
     if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
     {
-	return new Types::TypeDecl(Types::Boolean);
+	return new Types::BoolDecl;
     }
     
+    if (type)
+    {
+	return type;
+    }
+
     Types::TypeDecl* lType = lhs->Type();
     Types::TypeDecl* rType = rhs->Type();
+
+    if (!rType && lType && lType->Type() == Types::Set)
+    {
+	return lType;
+    }
+
+    assert(rType && lType && "Should have types here...");
 
     // If both are the same, then return this type.
     if (rType->Type() == lType->Type())
@@ -813,7 +884,8 @@ Types::TypeDecl* BinaryExprAST::Type() const
 
 llvm::Value* BinaryExprAST::SetCodeGen()
 {
-    if (lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
+    TRACE();
+    if (lhs->Type() && lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
     {
 	llvm::Value* l = lhs->CodeGen();
 	AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
@@ -832,7 +904,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
     }
-    else if (llvm::isa<Types::SetDecl>(lhs->Type()))
+    else if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
     {
 	switch(oper.GetToken())
 	{
@@ -856,6 +928,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 
 	case Token::GreaterOrEqual:
 	{
+	    // Swap left<->right sides
 	    ExprAST* tmp = rhs;
 	    rhs = lhs;
 	    lhs = tmp;
@@ -883,6 +956,13 @@ llvm::Value* BinaryExprAST::CodeGen()
     if (verbosity)
     {
 	lhs->dump(); oper.dump(); rhs->dump();
+    }
+
+    if (llvm::isa<SetExprAST>(rhs) || llvm::isa<SetExprAST>(lhs) ||
+	(rhs->Type() && llvm::isa<Types::SetDecl>(rhs->Type())) ||
+	(lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
+    {
+	return SetCodeGen();
     }
 
     if (!lhs->Type() || !rhs->Type())
@@ -972,10 +1052,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    }
 	}
     }
-    else if (llvm::isa<Types::SetDecl>(rhs->Type()))
-    {
-	return SetCodeGen();
-    }
+ 
 
     llvm::Value *l = lhs->CodeGen();
     llvm::Value *r = rhs->CodeGen();
@@ -1327,7 +1404,7 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << "Prototype: name: " << name << "(" << std::endl;
     for(auto i : args)
     {
-	i.dump(); 
+	i.dump(out);
 	out << std::endl;
     }
     out << ")";
@@ -1463,7 +1540,10 @@ void FunctionAST::accept(Visitor& v)
     {
 	varDecls->accept(v);
     }
-    body->accept(v);
+    if (body)
+    {
+	body->accept(v);
+    }
 }
 
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
@@ -1517,8 +1597,8 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     if (verbosity > 1)
     {
-	variables.dump();
-	mangles.dump();
+	variables.dump(std::cerr);
+	mangles.dump(std::cerr);
     }
 
     builder.SetInsertPoint(bb, ip);
@@ -1559,21 +1639,21 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 
     if (verbosity > 1)
     {
-	nameStack.dump();
+	nameStack.dump(std::cerr);
     }
     for(auto v : varsUsed)
     {
 	size_t level;
 	if (!nameStack.Find(v->Name(), level))
 	{
-	    v->dump();
+	    v->dump(std::cerr);
 	    assert(0 && "Hhhm. Variable has gone missing!");
 	}
 	if (!(level == 0 || level == maxLevel))
 	{
 	    if (verbosity)
 	    {
-		std::cout << "Adding: " << v->Name() << " level=" << level << std::endl;
+		std::cerr << "Adding: " << v->Name() << " level=" << level << std::endl;
 	    }
 	    nonLocal[v->Name()] = v;
 	}
@@ -1608,7 +1688,7 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	    usedVariables.push_back(*v);
 	    if (verbosity)
 	    {
-		v->dump();
+		v->dump(std::cerr);
 	    }
 	}
     }
@@ -1693,24 +1773,34 @@ llvm::Value* AssignExprAST::CodeGen()
     }
 
     llvm::Value* dest = lhsv->Address();
-
-    // If rhs is a simple variable, and "large", then use memcpy on it!
-    if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
-    {
-	size_t size = rhsv->Type()->Size();
-	if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
-	{
-	    llvm::Value* src = rhsv->Address();
-	    return builder.CreateMemCpy(dest, src, size, 1);
-	}
-    }
-
-    llvm::Value* v = rhs->CodeGen();
-
     if (!dest)
     {
 	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
     }
+
+    // If rhs is a simple variable, and "large", then use memcpy on it!
+    if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
+    {
+	if (rhsv->Type() == lhsv->Type())
+	{
+	    size_t size = rhsv->Type()->Size();
+	    if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
+	    {
+		llvm::Value* src = rhsv->Address();
+		return builder.CreateMemCpy(dest, src, size, 1);
+	    }
+	}
+    }
+
+    if (SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs))
+    {
+	llvm::Value *v = rhsSet->CodeGen();
+	builder.CreateStore(v, dest);
+	return v;
+    }
+
+    llvm::Value* v = rhs->CodeGen();
+
     if (!v)
     {
 	return ErrorV("Could not produce expression for assignment");
@@ -1967,6 +2057,12 @@ llvm::Value* WhileExprAST::CodeGen()
     return afterBB;
 }
 
+void WhileExprAST::accept(Visitor& v)
+{
+    cond->accept(v);
+    body->accept(v);
+}
+
 void RepeatExprAST::DoDump(std::ostream& out) const
 {
     out << "Repeat: ";
@@ -1998,6 +2094,12 @@ llvm::Value* RepeatExprAST::CodeGen()
     builder.SetInsertPoint(afterBB);
     
     return afterBB;
+}
+
+void RepeatExprAST::accept(Visitor& v)
+{
+    cond->accept(v);
+    body->accept(v);
 }
 
 llvm::Value* FileOrNull(VariableExprAST* file)
@@ -2048,56 +2150,50 @@ void WriteAST::DoDump(std::ostream& out) const
 static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    std::vector<llvm::Type*> argTypes;
     llvm::Type* resTy = Types::GetType(Types::Void);
-    argTypes.push_back(fty);
+    llvm::Type* intTy = Types::GetType(Types::Integer);
+    std::vector<llvm::Type*> argTypes{fty};
     if (ty)
     {
 	switch(ty->Type())
 	{
 	case Types::Char:
 	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(Types::GetType(Types::Integer));
+	    argTypes.push_back(intTy);
 	    suffix = "char";
 	    break;
 
 	case Types::Boolean:
-	{
 	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(Types::GetType(Types::Integer));
+	    argTypes.push_back(intTy);
 	    suffix = "bool";
 	    break;
-	}
 
 	case Types::Integer:
-	    // Make args of two integers. 
-	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(ty->LlvmType());
+	    argTypes.push_back(intTy);
+	    argTypes.push_back(intTy);
 	    suffix = "int";
 	    break;
 
 	case Types::Int64:
-	    // Make args of two integers. 
 	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(Types::GetType(Types::Integer));
+	    argTypes.push_back(intTy);
 	    suffix = "int64";
 	    break;
 
 	case Types::Real:
-	{
 	    // Args: double, int, int
 	    argTypes.push_back(ty->LlvmType());
-	    llvm::Type* t = Types::GetType(Types::Integer); 
-	    argTypes.push_back(t);
-	    argTypes.push_back(t);
+	    argTypes.push_back(intTy);
+	    argTypes.push_back(intTy);
 	    suffix = "real";
 	    break;
-	}
+
 	case Types::String:
 	{
 	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
 	    argTypes.push_back(pty);
-	    argTypes.push_back(Types::GetType(Types::Integer));
+	    argTypes.push_back(intTy);
 	    suffix = "str";
 	    break;
 	}
@@ -2111,13 +2207,12 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    }
 	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
 	    argTypes.push_back(pty);
-	    llvm::Type* t = Types::GetType(Types::Integer); 
-	    argTypes.push_back(t);
+	    argTypes.push_back(intTy);
 	    suffix = "chars";
 	    break;
 	}
 	default:
-	    ty->dump();
+	    ty->dump(std::cerr);
 	    assert(0);
 	    return ErrorF("Invalid type argument for write");
 	}
@@ -2402,7 +2497,7 @@ void VarDeclAST::DoDump(std::ostream& out) const
     out << "Var ";
     for(auto v : vars)
     {
-	v.dump();
+	v.dump(out);
 	out << std::endl;
     }
 }
@@ -2535,12 +2630,17 @@ void RangeExprAST::DoDump(std::ostream& out) const
     high->dump(out);
 }
 
+Types::TypeDecl* RangeExprAST::Type() const
+{
+    // We have to pick one here. Semantic Analysis will check that both are same type
+    return low->Type();
+}
+
 llvm::Value* RangeExprAST::CodeGen()
 {
     TRACE();
     return 0;
 }
-
 
 void SetExprAST::DoDump(std::ostream& out) const
 {
@@ -2558,10 +2658,10 @@ void SetExprAST::DoDump(std::ostream& out) const
     out << "]";
 }
 
-llvm::Value* SetExprAST::MakeConstantSet()
+llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 {
     static int index=1;
-    llvm::Type* ty = Types::TypeForSet()->LlvmType();
+    llvm::Type* ty = type->LlvmType();
     assert(ty && "Expect type for set to work");
 
     Types::SetDecl::ElemType elems[Types::SetDecl::MaxSetWords] = {};
@@ -2572,9 +2672,11 @@ llvm::Value* SetExprAST::MakeConstantSet()
 	{
 	    IntegerExprAST* le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
 	    IntegerExprAST* he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
-	    unsigned low = le->Int();
-	    unsigned high = he->Int();
-	    for(unsigned i = low; i <= high; i++)
+	    int start = type->GetRange()->GetStart();
+	    int low = le->Int() - start;
+	    int high = he->Int() - start;
+	    assert(low >= 0 && "Range should end up positive ok");
+	    for(int i = low; i <= high; i++)
 	    {
 		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
 	    }
@@ -2587,20 +2689,24 @@ llvm::Value* SetExprAST::MakeConstantSet()
 	}
     }
 
-    llvm::Constant* initArr[Types::SetDecl::MaxSetWords];
+    Types::SetDecl *setType = llvm::dyn_cast<Types::SetDecl>(type);
+    size_t size = setType->SetWords();
+    llvm::Constant** initArr = new llvm::Constant*[size];
     llvm::ArrayType* aty = llvm::dyn_cast<llvm::ArrayType>(ty);
     llvm::Type* eltTy = aty->getElementType();
 
-    for(unsigned i = 0; i < Types::SetDecl::MaxSetWords; i++)
+    for(size_t i = 0; i < size; i++)
     {
 	initArr[i] = llvm::ConstantInt::get(eltTy, elems[i]);
     }
 
-    llvm::Constant* init = llvm::ConstantArray::get(aty, initArr);
+    llvm::Constant* init = llvm::ConstantArray::get(aty, llvm::ArrayRef<llvm::Constant*>(initArr, size));
     llvm::GlobalValue::LinkageTypes linkage = llvm::Function::InternalLinkage;
     std::string name(std::string("P") + std::to_string(index) + ".set");
     llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, linkage,
 							init, name);
+
+    delete [] initArr;
     
     return gv;
 }
@@ -2608,6 +2714,8 @@ llvm::Value* SetExprAST::MakeConstantSet()
 llvm::Value* SetExprAST::Address()
 {
     TRACE();
+
+    assert(type && "No type supplied");
 
     // Check if ALL the values involved are constants.
     bool allConstants = true;
@@ -2634,10 +2742,10 @@ llvm::Value* SetExprAST::Address()
 
     if (allConstants)
     {
-	return MakeConstantSet();
+	return MakeConstantSet(type);
     }
 
-    llvm::Type* ty = Types::TypeForSet()->LlvmType();
+    llvm::Type* ty = type->LlvmType();
     assert(ty && "Expect type for set to work");
 
     llvm::Value* setV = CreateTempAlloca(ty);
@@ -2646,7 +2754,7 @@ llvm::Value* SetExprAST::Address()
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
     builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)), 
-			 (Types::SetDecl::MaxSetWords * Types::SetDecl::SetBits / 8), 0);
+			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() * Types::SetDecl::SetBits / 8), 0);
 
 
     // TODO: For optimisation, we may want to pass through the vector and see if the values 
@@ -2670,10 +2778,16 @@ llvm::Value* SetExprAST::Address()
 		assert(0 && "Expected expressions to evalueate");
 		return 0;
 	    }
+	    
+	    // Adjust for range:
+	    Types::Range *range = type->GetRange();
 
-	    // Todo: What about negative range?
-	    low  = builder.CreateZExt(low, Types::GetType(Types::Integer), "zext.low");
-	    high = builder.CreateZExt(high, Types::GetType(Types::Integer), "zext.high");
+	    low  = builder.CreateSExt(low, Types::GetType(Types::Integer), "sext.low");
+	    high = builder.CreateSExt(high, Types::GetType(Types::Integer), "sext.high");
+
+	    llvm::Value *rangeStart = MakeIntegerConstant(range->GetStart());
+	    low = builder.CreateSub(low, rangeStart);
+	    high = builder.CreateSub(high, rangeStart);
 
 	    builder.CreateStore(low, loopVar);
 
@@ -2744,7 +2858,6 @@ llvm::Value* WithExprAST::CodeGen()
 {
     return body->CodeGen();
 }
-
 
 int GetErrors(void)
 {

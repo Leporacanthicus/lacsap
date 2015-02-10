@@ -13,7 +13,6 @@
 enum
 {
     MaxPascalFiles =  1000,
-    MaxSetWords    =  16,	/* Must match compiler definition */
     MaxStringLen   =  255,
 };
 
@@ -41,7 +40,7 @@ struct FileEntry
 
 typedef struct 
 {
-    unsigned int v[MaxSetWords];
+    unsigned int v[1];
 } Set;
 
 typedef struct 
@@ -590,39 +589,39 @@ double __random(void)
  * Set functions 
  *******************************************
  */
-int __SetEqual(Set *a, Set *b)
+int __SetEqual(Set *a, Set *b, int setWords)
 {
-    return !memcmp(a->v, b->v, sizeof(*a));
+    return !memcmp(a->v, b->v, sizeof(*a) * setWords);
 }
 
-void __SetUnion(Set *res, Set *a, Set *b)
+void __SetUnion(Set *res, Set *a, Set *b, int setWords)
 {
-    for(int i = 0; i < MaxSetWords; i++)
+    for(int i = 0; i < setWords; i++)
     {
 	res->v[i] = a->v[i] | b->v[i]; 
     }
 }
 
-void __SetDiff(Set *res, Set *a, Set *b)
+void __SetDiff(Set *res, Set *a, Set *b, int setWords)
 {
-    for(int i = 0; i < MaxSetWords; i++)
+    for(int i = 0; i < setWords; i++)
     {
 	res->v[i] = a->v[i] & ~b->v[i]; 
     }
 }
 
-void __SetIntersect(Set *res, Set *a, Set *b)
+void __SetIntersect(Set *res, Set *a, Set *b, int setWords)
 {
-    for(int i = 0; i < MaxSetWords; i++)
+    for(int i = 0; i < setWords; i++)
     {
 	res->v[i] = a->v[i] & b->v[i]; 
     }
 }
 
 /* Check if all values in a are in set b. */
-int __SetContains(Set *a, Set *b)
+int __SetContains(Set *a, Set *b, int setWords)
 {
-    for(int i = 0; i < MaxSetWords; i++)
+    for(int i = 0; i < setWords; i++)
     {
 	if ((a->v[i] & b->v[i]) != a->v[i])
 	    return 0;

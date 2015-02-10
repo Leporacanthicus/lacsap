@@ -1,5 +1,5 @@
 OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o \
-	  namedobject.o astvisitor.o trace.o
+	  namedobject.o semantics.o trace.o
 
 RUNTIME_OBJS = runtime.o
 

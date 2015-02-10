@@ -13,7 +13,7 @@ public:
     Parser(Lexer &l);
     std::vector<ExprAST*> Parse();
 
-    int GetErrors() { return errCnt; } 
+    int GetErrors() { return errCnt; }
 
 private:
     // Token handling functions
@@ -67,12 +67,12 @@ private:
 
     Constants::ConstDecl* ParseConstExpr();
     Constants::ConstDecl* ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs);
-    Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs, 
+    Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs,
 					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
 
-    Types::Range*       ParseRange();
-    Types::Range*       ParseRangeOrTypeRange();
+    Types::Range*       ParseRange(Types::TypeDecl*& type);
+    Types::Range*       ParseRangeOrTypeRange(Types::TypeDecl*& type);
     Types::TypeDecl*    ParseSimpleType();
     Types::TypeDecl*    ParseType();
     Types::EnumDecl*    ParseEnumDef();
@@ -82,8 +82,8 @@ private:
     Types::FileDecl*    ParseFileDecl();
     Types::SetDecl*     ParseSetDecl();
     Types::StringDecl*  ParseStringDecl();
-    Types::VariantDecl* ParseVariantDecl();
-    int                 ParseConstantValue(Token::TokenType& tt);
+    Types::VariantDecl* ParseVariantDecl(Types::TypeDecl*& type);
+    int                 ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
 
     // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
@@ -102,7 +102,7 @@ private:
 
     // Helper functions for expression evaluation.
     bool IsCall(Types::TypeDecl* type);
-    
+
     // Helper functions for identifier access/checking.
     EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);

@@ -29,7 +29,7 @@ public:
     virtual ~NamedObject() {}
     virtual Types::TypeDecl* Type() const = 0;
     const std::string& Name() const { return name; }
-    virtual void dump() { std::cerr << "Name: " << name << std::endl; }
+    virtual void dump(std::ostream& out) { out << "Name: " << name << std::endl; }
     NamedKind getKind() const { return kind; }
 private:
     const NamedKind kind;
@@ -46,10 +46,10 @@ public:
     Types::TypeDecl* Type() const { return type; }
     bool IsRef() const { return isRef; }
     bool IsExternal() const { return isExt; }
-    void dump() 
+    void dump(std::ostream& out) 
     { 
-	std::cerr << "Name: " << Name() << " Type: ";
-	type->dump();
+	out << "Name: " << Name() << " Type: ";
+	type->dump(out);
 	std::cerr << std::endl; 
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
@@ -69,7 +69,7 @@ public:
     }
     PrototypeAST* Proto() const { return proto; }
     Types::TypeDecl* Type() const { return type; }
-    void dump();
+    void dump(std::ostream& out);
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Func; }
 private:
     Types::TypeDecl* type;
@@ -82,11 +82,11 @@ public:
     TypeDef(const std::string& nm, Types::TypeDecl* ty) 
 	: NamedObject(NK_Type, nm), type(ty) { }
     Types::TypeDecl* Type() const { return type; }
-    void dump() 
+    void dump(std::ostream& out) 
     { 
-	std::cerr << "Type: " << Name() << " type : ";
-	type->dump();
-	std::cerr << std::endl; 
+	out << "Type: " << Name() << " type : ";
+	type->dump(out);
+	out << std::endl; 
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Type; }
 private:
@@ -101,10 +101,10 @@ public:
 
     Constants::ConstDecl* ConstValue() const { return constVal; }
     Types::TypeDecl* Type() const { return 0; }
-    void dump() 
+    void dump(std::ostream& out) 
     { 
-	std::cerr << "Const: " << Name() << " Value: " << constVal->Translate().ToString();
-	std::cerr << std::endl; 
+	out << "Const: " << Name() << " Value: " << constVal->Translate().ToString()
+	    << std::endl; 
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Const; }
 private:
@@ -118,9 +118,9 @@ public:
 	: NamedObject(NK_Enum, nm), enumValue(v), type(ty) { }
     int Value() const { return enumValue; }
     Types::TypeDecl* Type() const { return type; }
-    void dump() 
+    void dump(std::ostream& out) 
     { 
-	std::cerr << "Enum: " << Name() << " Value: " << enumValue << std::endl; 
+	out << "Enum: " << Name() << " Value: " << enumValue << std::endl; 
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
 private:
@@ -137,7 +137,7 @@ public:
     }
     Types::TypeDecl* Type() const { return type; }
     ExprAST* Actual() const { return actual; }
-    void dump();
+    void dump(std::ostream& out);
     static bool classof(const NamedObject* e) { return e->getKind() == NK_With; }
 private:
     ExprAST*         actual;

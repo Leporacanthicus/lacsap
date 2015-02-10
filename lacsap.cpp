@@ -2,7 +2,9 @@
 #include "parser.h"
 #include "binary.h"
 #include "constants.h"
+#include "semantics.h"
 #include "options.h"
+#include "trace.h"
 #include <iostream>
 #include <fstream>
 #include <llvm/PassManager.h>
@@ -54,7 +56,7 @@ void DumpModule(llvm::Module* module)
     module->dump(); 
 }
 
-llvm::Module* CodeGen(std::vector<ExprAST*> ast)
+bool CodeGen(std::vector<ExprAST*> ast)
 {
     TIME_TRACE();
     for(auto a : ast)
@@ -64,10 +66,10 @@ llvm::Module* CodeGen(std::vector<ExprAST*> ast)
 	{
 	    std::cerr << "Sorry, something went wrong here..." << std::endl;
 	    a->dump(std::cerr);
-	    return 0;
+	    return false;
 	}
     }
-    return theModule;
+    return true;
 }
 
 void OptimizerInit()
@@ -113,12 +115,12 @@ static int Compile(const std::string& filename)
 {
     TIME_TRACE();
     std::vector<ExprAST*> ast;
-    Lexer                 l(filename);
-    if (!l.Good())
+    Lexer                 lex(filename);
+    if (!lex.Good())
     {
 	return 1;
     }
-    Parser p(l);
+    Parser p(lex);
 
     OptimizerInit();
 
@@ -129,18 +131,28 @@ static int Compile(const std::string& filename)
 	std::cerr << "Errors in parsing: " << e << ". Exiting..." << std::endl;
 	return 1;
     }
-    llvm::Module* module = CodeGen(ast);
-    if (!module)
+
+    Semantics sema;
+    sema.Analyse(ast);
+
+    e = sema.GetErrors();
+    if (e > 0)
+    {
+	std::cerr << "Errors in analysis: " << e << ". Exiting..." << std::endl;
+	return 1;
+    }
+
+    if (!CodeGen(ast))
     {
 	std::cerr << "Code generation failed..." << std::endl;
 	return 1;
     }
-    mpm->run(*module);
+    mpm->run(*theModule);
     if (verbosity)
     {
-	DumpModule(module);
+	DumpModule(theModule);
     }
-    CreateBinary(module, filename, EmitSelection);
+    CreateBinary(theModule, filename, EmitSelection);
     return 0;
 }
 

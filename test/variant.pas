@@ -35,7 +35,7 @@ begin
    p1.dob.month :=  2;
    p1.dob.day :=    29;
    p1.native :=     true;
-   p1.birthplace := 'Stockholm';
+   p1.birthplace := 'Stockholm      ';
 
    with p2 do
    begin
@@ -44,7 +44,7 @@ begin
       dob.month :=      9;
       dob.day :=        22;
       native :=         false;
-      countryofbirth := 'USA';
+      countryofbirth := 'USA            ';
       naturalized.year := 1982;     
       naturalized.month := 12;
       naturalized.day := 13;

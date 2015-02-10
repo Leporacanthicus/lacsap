@@ -1,21 +1,21 @@
 #include "namedobject.h"
 #include "expr.h"
 
-void FuncDef::dump()
+void FuncDef::dump(std::ostream& out)
 {
-    std::cerr << "Function: Name: " << Name() << " Prototype:";
-    proto->dump();
-    std::cerr << std::endl;
+    out << "Function: Name: " << Name() << " Prototype:";
+    proto->dump(out);
+    out << std::endl;
 }
 
 
-void WithDef::dump() 
+void WithDef::dump(std::ostream& out) 
 { 
-    std::cerr << "With: " << Name() << " Actual: "; 
-    actual->dump();
-    std::cerr << " Type: ";
-    type->dump();
-    std::cerr << std::endl; 
+    out << "With: " << Name() << " Actual: "; 
+    actual->dump(out);
+    out << " Type: ";
+    type->dump(out);
+    out << std::endl; 
 }
 
 

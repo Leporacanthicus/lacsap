@@ -295,6 +295,7 @@ public:
     llvm::Value* CodeGen() override;
     llvm::Value* SetCodeGen();
     static bool classof(const ExprAST *e) { return e->getKind() == EK_BinaryExpr; }
+    llvm::Value* InlineSetFunc(const std::string& name, bool resTyIsSet);
     llvm::Value* CallSetFunc(const std::string& name, bool resTyIsSet);
     llvm::Value* CallStrFunc(const std::string& name);
     llvm::Value* CallArrFunc(const std::string& name, size_t size);

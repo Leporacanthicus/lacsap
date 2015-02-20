@@ -606,19 +606,78 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->dump(out); 
 }
 
+llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
+{
+    if (name == "Union" || name == "Intersect" || name == "Diff")
+    {
+	Types::TypeDecl* type = rhs->Type();
+
+	assert(*type == *lhs->Type() && "Expect same types");
+	SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs);
+	SetExprAST* lhsSet = llvm::dyn_cast<SetExprAST>(lhs);
+	llvm::Value* rV;
+	llvm::Value* lV;
+	if (rhsSet)
+	{
+	    rV = rhsSet->Address();
+	}
+	else
+	{
+	    rV = MakeAddressable(rhs);
+	}
+	
+	if (lhsSet)
+	{
+	    lV = lhsSet->Address();
+	}
+	else
+	{
+	    lV = MakeAddressable(lhs);
+	}
+
+	assert(rV && lV && "Should have generated values for left and right set");
+	llvm::Value* v = CreateTempAlloca(type->LlvmType());
+	for(size_t i = 0; i < llvm::dyn_cast<Types::SetDecl>(type)->SetWords(); i++)
+	{
+	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};
+	    llvm::Value *lAddr = builder.CreateGEP(lV, ind, "leftSet");
+	    llvm::Value *rAddr = builder.CreateGEP(rV, ind, "rightSet");
+	    llvm::Value *vAddr = builder.CreateGEP(v, ind, "resSet");
+	    llvm::Value *res = builder.CreateLoad(lAddr);
+	    llvm::Value *tmp = builder.CreateLoad(rAddr);
+	    if (name == "Union")
+	    {
+		res = builder.CreateOr(res, tmp);
+	    }
+	    else if (name == "Intersect")
+	    {
+		res = builder.CreateAnd(res, tmp);
+	    }
+	    else if (name == "Diff")
+	    {
+		tmp = builder.CreateNot(tmp);
+		res = builder.CreateAnd(res, tmp);
+	    }
+	    builder.CreateStore(res, vAddr);
+	}
+
+	return builder.CreateLoad(v);
+    }
+    return 0;
+}
+
 llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet)
 {
     TRACE();
+
+    if (llvm::Value* inl = InlineSetFunc(name, resTyIsSet))
+    {
+	return inl;
+    }
+    
     std::string func = std::string("__Set") + name;
-    Types::TypeDecl* type;
-    if (lhs->Type())
-    {
-	type = lhs->Type();
-    }
-    else
-    {
-	type = rhs->Type();
-    }
+    Types::TypeDecl* type = rhs->Type();
+    assert(*type == *lhs->Type() && "Expect both sides to have same type" );
 
     assert(type && "Expect to get a type");
 
@@ -644,10 +703,8 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	lV = MakeAddressable(lhs);
     }
 
-    if (!rV || !lV)
-    {
-	return 0;
-    }
+    assert(rV && lV && "Should have generated values for left and right set");
+
 
     llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
     llvm::Type* intTy = Types::GetType(Types::Integer);
@@ -676,7 +733,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     }
 
 }
-
 
 static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
 {
@@ -828,7 +884,6 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
     type = ty;
 }
 
-
 Types::TypeDecl* BinaryExprAST::Type() const 
 {
     Token::TokenType tt = oper.GetToken();
@@ -894,8 +949,19 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    return ErrorV("Set value should be addressable!");
 	}
 	llvm::Value* setV = rhsA->Address();
+	Types::TypeDecl* type = rhs->Type();
+	int start = type->GetRange()->GetStart();
 	l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
-	llvm::Value* index = builder.CreateLShr(l, MakeIntegerConstant(Types::SetDecl::SetPow2Bits));
+	l = builder.CreateSub(l, MakeIntegerConstant(start));
+	llvm::Value* index;
+	if (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() > 1)
+	{
+	    index = builder.CreateLShr(l, MakeIntegerConstant(Types::SetDecl::SetPow2Bits));
+	}
+	else
+	{
+	    index = MakeIntegerConstant(0);
+	}
 	llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
 	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");

@@ -3,10 +3,10 @@ This is the early stages of a Pascal compiler. It is nowhere complete yet.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-* Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
-- Better error handling.
+- Better error handling. Now slightly improved.
 - Proper type checking. 
 - Goto statement.
+* Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - Refactor AST dump functions to use visitors.
 - Separate compile units.
 - Make runtime into libraries and/or codegen.

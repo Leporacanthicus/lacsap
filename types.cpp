@@ -451,6 +451,10 @@ namespace Types
 	{
 	    return ty;
 	}
+	if (ty->Type() == Type())
+	{
+	    return ty;
+	}
 	return 0;
     }
 

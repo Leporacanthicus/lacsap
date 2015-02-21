@@ -14,12 +14,8 @@ enum OptLevel
     O2,
 };
 
-enum OptFlags
-{
-    Fmemcpy,
-};
-
 extern int verbosity;
 extern bool timetrace;
 extern bool disableMemcpyOpt;
+extern OptLevel optimization;
 #endif

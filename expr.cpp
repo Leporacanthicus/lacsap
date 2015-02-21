@@ -154,12 +154,11 @@ static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
 
 llvm::Value* MakeAddressable(ExprAST* e)
 {
-    AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e);
-    llvm::Value* v;
-    if (ea)
+    if (AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e))
     {
-	v = ea->Address();
+	llvm::Value* v = ea->Address();
 	assert(v && "Expect address to be non-zero");
+	return v;
     }
     else
     {
@@ -169,11 +168,11 @@ llvm::Value* MakeAddressable(ExprAST* e)
 	    return store;
 	}
 
-	v = CreateTempAlloca(store->getType());
+	llvm::Value* v = CreateTempAlloca(store->getType());
 	assert(v && "Expect address to be non-zero");
 	builder.CreateStore(store, v);
+	return v;
     }
-    return v;
 }
 
 void ExprAST::dump(std::ostream& out) const
@@ -608,32 +607,13 @@ void BinaryExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
 {
-    if (name == "Union" || name == "Intersect" || name == "Diff")
+    if (optimization >= O1 && (name == "Union" || name == "Intersect" || name == "Diff"))
     {
 	Types::TypeDecl* type = rhs->Type();
 
 	assert(*type == *lhs->Type() && "Expect same types");
-	SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs);
-	SetExprAST* lhsSet = llvm::dyn_cast<SetExprAST>(lhs);
-	llvm::Value* rV;
-	llvm::Value* lV;
-	if (rhsSet)
-	{
-	    rV = rhsSet->Address();
-	}
-	else
-	{
-	    rV = MakeAddressable(rhs);
-	}
-	
-	if (lhsSet)
-	{
-	    lV = lhsSet->Address();
-	}
-	else
-	{
-	    lV = MakeAddressable(lhs);
-	}
+	llvm::Value* rV = MakeAddressable(rhs);
+	llvm::Value* lV = MakeAddressable(lhs);
 
 	assert(rV && lV && "Should have generated values for left and right set");
 	llvm::Value* v = CreateTempAlloca(type->LlvmType());
@@ -681,30 +661,10 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 
     assert(type && "Expect to get a type");
 
-    SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs);
-    SetExprAST* lhsSet = llvm::dyn_cast<SetExprAST>(lhs);
-    llvm::Value* rV;
-    llvm::Value* lV;
-    if (rhsSet)
-    {
-	rV = rhsSet->Address();
-    }
-    else
-    {
-	rV = MakeAddressable(rhs);
-    }
-
-    if (lhsSet)
-    {
-	lV = lhsSet->Address();
-    }
-    else
-    {
-	lV = MakeAddressable(lhs);
-    }
+    llvm::Value* rV = MakeAddressable(rhs);
+    llvm::Value* lV = MakeAddressable(lhs);
 
     assert(rV && lV && "Should have generated values for left and right set");
-
 
     llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
     llvm::Type* intTy = Types::GetType(Types::Integer);
@@ -2820,8 +2780,10 @@ llvm::Value* SetExprAST::Address()
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
     builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)), 
-			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() * Types::SetDecl::SetBits / 8), 0);
+			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() * 
+			  Types::SetDecl::SetBits / 8), 0);
 
+    size_t size = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
 
     // TODO: For optimisation, we may want to pass through the vector and see if the values 
     // are constants, and if so, be clever about it.
@@ -2836,8 +2798,7 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* high = r->High();
 	    llvm::Function *fn = builder.GetInsertBlock()->getParent();
 
-	    llvm::Type*  ty = Types::GetType(Types::Integer);
-	    llvm::Value* loopVar = CreateTempAlloca(ty);
+	    llvm::Value* loopVar = CreateTempAlloca(Types::GetType(Types::Integer));
 
 	    if (!low || !high)
 	    {
@@ -2864,11 +2825,18 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* loop = builder.CreateLoad(loopVar, "loopVar");
 
 	    // Set bit "loop" in set. 
-	    llvm::Value* shiftBits = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
-	    llvm::Value* index = builder.CreateLShr(loop, shiftBits);
 	    llvm::Value* offset = builder.CreateAnd(loop, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
+	    llvm::Value* index = 0;
+	    if (size != 1)
+	    {
+		index = builder.CreateLShr(loop, MakeIntegerConstant(Types::SetDecl::SetPow2Bits));
+	    }
+	    else
+	    {
+		index = MakeIntegerConstant(0);
+	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
@@ -2893,11 +2861,18 @@ llvm::Value* SetExprAST::Address()
 		return 0;
 	    }
 	    x = builder.CreateZExt(x, Types::GetType(Types::Integer), "zext");
-	    llvm::Value* shiftBits = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
-	    llvm::Value* index = builder.CreateLShr(x, shiftBits);
 	    llvm::Value* offset = builder.CreateAnd(x, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
+	    llvm::Value* index = 0;
+	    if (size != 1)
+	    {
+		index = builder.CreateLShr(x, MakeIntegerConstant(Types::SetDecl::SetPow2Bits));
+	    }
+	    else
+	    {
+		index = MakeIntegerConstant(0);
+	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
 	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);

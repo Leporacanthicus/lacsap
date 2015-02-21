@@ -1,6 +1,8 @@
 #include "binary.h"
 #include "options.h"
 #include "trace.h"
+#include <llvm/CodeGen/CommandFlags.h>
+#include <llvm/MC/SubtargetFeature.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/FileSystem.h>
@@ -53,8 +55,24 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	return;
     }
 
+    if (MCPU == "native")
+    {
+	MCPU = sys::getHostCPUName();
+    }
+
+    std::string FeaturesStr;
+    if (MAttrs.size())
+    {
+	SubtargetFeatures Features;
+	for (unsigned i = 0; i != MAttrs.size(); ++i)
+	{
+	    Features.AddFeature(MAttrs[i]);
+	}
+	FeaturesStr = Features.getString();
+    }
+
     llvm::TargetOptions options;
-    llvm::TargetMachine* tm = target->createTargetMachine(triple.getTriple(), "", "", options);
+    llvm::TargetMachine* tm = target->createTargetMachine(triple.getTriple(), MCPU, FeaturesStr, options);
 
     if (!tm)
     {

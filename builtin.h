@@ -8,16 +8,15 @@
 #include <string>
 #include <vector>
 
-class Builtin
+namespace Builtin
 {
-public:
-    static bool IsBuiltin(const std::string& funcname);
-    static llvm::Value* CodeGen(llvm::IRBuilder<>& builder,
-				const std::string& funcname, 
-				const std::vector<ExprAST*>& args);
-    static Types::TypeDecl* Type(Stack<NamedObject*>& ns, 
-				 const std::string& funcname, 
-				 const std::vector<ExprAST*>& args);
+    bool IsBuiltin(const std::string& funcname);
+    llvm::Value* CodeGen(llvm::IRBuilder<>& builder,
+			 const std::string& funcname,
+			 const std::vector<ExprAST*>& args);
+    Types::TypeDecl* Type(Stack<NamedObject*>& ns,
+			  const std::string& funcname,
+			  const std::vector<ExprAST*>& args);
 };
 
 #endif

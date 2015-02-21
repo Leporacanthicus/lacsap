@@ -17,6 +17,13 @@ std::string Location::to_string() const
     return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column); 
 }
 
+std::ostream& operator<<(std::ostream &os, const Location& loc)
+{
+    os << loc.to_string();
+    return os;
+}
+
+
 Token::Token() : type(Token::Unknown), where("", 0, 0) {}
 
 Token::Token(TokenType t, const Location& w): type(t), where(w)

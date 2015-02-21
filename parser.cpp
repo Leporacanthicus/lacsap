@@ -12,8 +12,6 @@
 #include <vector>
 #include <algorithm>
 
-
-
 class UpdateCallVisitor : public Visitor
 {
 public:
@@ -32,8 +30,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	expr->dump();
     }
 
-    CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr);
-    if(call)
+    if(CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
     {
 	if (call->Proto()->Name() == proto->Name()
 	    && call->Args().size() != proto->Args().size())
@@ -45,7 +42,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	    auto& args = call->Args();
 	    for(auto u : proto->Function()->UsedVars())
 	    {
-		args.push_back(new VariableExprAST(u.Name(), u.Type()));
+		args.push_back(new VariableExprAST(call->Loc(), u.Name(), u.Type()));
 	    }
 	}
     }
@@ -197,11 +194,12 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 
 ExprAST* Parser::ParseNilExpr()
 {
+    Location w = CurrentToken().Loc();
     if (!Expect(Token::Nil, true))
     {
 	return 0;
     }
-    return new NilExprAST();
+    return new NilExprAST(w);
 }
 
 Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
@@ -211,29 +209,25 @@ Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
     {
 	return 0;
     }
-    ConstDef *constDef = llvm::dyn_cast<ConstDef>(def);
-    if (!constDef)
+    if (ConstDef *constDef = llvm::dyn_cast<ConstDef>(def))
     {
-	return 0;
+	return constDef->ConstValue();
     }
-    return constDef->ConstValue();
+    return 0;
 }
 
 EnumDef* Parser::GetEnumValue(const std::string& name)
 {
-    NamedObject* def = nameStack.Find(name);
-    if (!def) 
+    if (NamedObject* def = nameStack.Find(name))
     {
-	return 0;
+	return llvm::dyn_cast<EnumDef>(def);
     }
-    EnumDef *enumDef = llvm::dyn_cast<EnumDef>(def);
-    return enumDef;
+    return 0;
 }
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 {
-    Types::EnumDecl* ed = llvm::dyn_cast<Types::EnumDecl>(ty);
-    if (ed)
+    if (Types::EnumDecl* ed = llvm::dyn_cast<Types::EnumDecl>(ty))
     {
 	for(auto v : ed->Values())
 	{
@@ -253,21 +247,19 @@ Types::TypeDecl* Parser::ParseSimpleType()
     {
 	return ErrorT("Expected identifier of simple type");
     }
-    Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName());
-    if (!ty)
+    if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
     {
-	return ErrorT("Identifier does not name a type");
+	NextToken();
+	return ty;
     }
-    NextToken();
-    return ty;
+    return ErrorT("Identifier does not name a type");
 }
 
 void Parser::TranslateToken(Token& token)
 {
     if (token.GetToken() == Token::Identifier)
     {
-	Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName());
-	if (cd)
+	if (Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
 	{
 	    token = cd->Translate();
 	}
@@ -1125,14 +1117,15 @@ Types::TypeDecl* Parser::ParseType()
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
     long val = token.GetIntVal();
+    Location loc = token.Loc();
     ExprAST* result;
     if (val < std::numeric_limits<unsigned int>::min() || val > std::numeric_limits<unsigned int>::max())
     {
-	result = new IntegerExprAST(val, GetTypeDecl("longint"));
+	result = new IntegerExprAST(loc, val, GetTypeDecl("longint"));
     }
     else
     {
-	result = new IntegerExprAST(val, GetTypeDecl("integer"));
+	result = new IntegerExprAST(loc, val, GetTypeDecl("integer"));
     }
     NextToken();
     return result;
@@ -1140,14 +1133,14 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
 
 ExprAST* Parser::ParseCharExpr(Token token)
 {
-    ExprAST* result = new CharExprAST(token.GetIntVal(), GetTypeDecl("char"));
+    ExprAST* result = new CharExprAST(token.Loc(), token.GetIntVal(), GetTypeDecl("char"));
     NextToken();
     return result;
 }
 
 ExprAST* Parser::ParseRealExpr(Token token)
 {
-    ExprAST* result = new RealExprAST(token.GetRealVal(), GetTypeDecl("real"));
+    ExprAST* result = new RealExprAST(token.Loc(), token.GetRealVal(), GetTypeDecl("real"));
     NextToken();
     return result;
 }
@@ -1163,7 +1156,7 @@ ExprAST* Parser::ParseStringExpr(Token token)
     Types::Range* r = new Types::Range(0, len);
     rv.push_back(r);
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
-    ExprAST* result = new StringExprAST(token.GetStrVal(), ty);
+    ExprAST* result = new StringExprAST(token.Loc(), token.GetStrVal(), ty);
     NextToken();
     return result;
 }
@@ -1215,17 +1208,16 @@ ExprAST* Parser::ParseUnaryOp()
 
     NextToken();
 
-    ExprAST* rhs = ParsePrimary();
-    if (!rhs)
+    if (ExprAST* rhs = ParsePrimary())
     {
-	return 0;
+	// unary + = no change, so just return the expression.
+	if (oper.GetToken() == Token::Plus)
+	{
+	    return rhs;
+	}
+	return new UnaryExprAST(oper.Loc(), oper, rhs);
     }
-    // unary + = no change, so just return the expression.
-    if (oper.GetToken() == Token::Plus)
-    {
-	return rhs;
-    }
-    return new UnaryExprAST(oper, rhs);
+    return 0;
 }
 
 ExprAST* Parser::ParseExpression()
@@ -1257,7 +1249,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	indices.push_back(index);
 	if (indices.size() == adecl->Ranges().size())
 	{
-	    expr = new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
+	    expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
 	    indices.clear();
 	    type = adecl->SubType();
 	    adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
@@ -1276,7 +1268,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     }
     if (indices.size())
     {
-	expr = new ArrayExprAST(expr, indices, adecl->Ranges(), adecl->SubType());
+	expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
 	type = adecl->SubType();
     }
     return expr;
@@ -1306,7 +1298,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     if (elem >= 0)
     {
 	type = rd->GetElement(elem).FieldType();
-	e = new FieldExprAST(expr, elem, type);
+	e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
     }
     else
     {
@@ -1319,7 +1311,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    {
 		const Types::FieldDecl* fd = &v->GetElement(elem);
 		type = fd->FieldType();
-		e = new VariantFieldExprAST(expr, rd->FieldCount(), type);
+		e = new VariantFieldExprAST(CurrentToken().Loc(), expr, rd->FieldCount(), type);
 		// If name is empty, we have a made up struct. Dig another level down. 
 		if (fd->Name() == "")
 		{
@@ -1329,7 +1321,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 		    if (elem >= 0)
 		    {
 			type = r->GetElement(elem).FieldType();
-			e = new FieldExprAST(e, elem, type);
+			e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
 		    }
 		    else
 		    {
@@ -1356,11 +1348,10 @@ VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl
     if (type->Type() == Types::File)
     {
 	type = type->SubType();
-	return new FilePointerExprAST(expr, type);
+	return new FilePointerExprAST(CurrentToken().Loc(), expr, type);
     }
-
     type = type->SubType();
-    return new PointerExprAST(expr, type);
+    return new PointerExprAST(CurrentToken().Loc(), expr, type);
 }
 
 bool Parser::IsCall(Types::TypeDecl* type)
@@ -1390,7 +1381,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def);
     if (enumDef)
     {
-	return new IntegerExprAST(enumDef->Value(), enumDef->Type());
+	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
 
     bool isBuiltin = Builtin::IsBuiltin(idName);
@@ -1415,20 +1406,17 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    }
 	    else
 	    {
-		expr = new VariableExprAST(idName, type);
+		expr = new VariableExprAST(CurrentToken().Loc(), idName, type);
 		// Only add defined variables.
 		// Ignore result - we may be adding the same variable 
 		// several times, but we don't really care.
 		usedVariables.Add(idName, def);
 	    }
 	    assert(expr && "Expected expression here");
-
-	    assert(type);
+	    assert(type && "Type is supposed to be set here");
 
 	    Token::TokenType tt = CurrentToken().GetToken();
-	    while(tt == Token::LeftSquare || 
-		  tt == Token::Uparrow || 
-		  tt == Token::Period)
+	    while(tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::Period)
 	    {
 		assert(type && "Expect to have a type here...");
 		switch(tt)
@@ -1489,7 +1477,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 		{
 		    return Error("Expected name of a function or procedure");
 		}
-		arg = new FunctionExprAST(CurrentToken().GetIdentName(), 
+		arg = new FunctionExprAST(CurrentToken().Loc(),
+					  CurrentToken().GetIdentName(),
 					  funcDef->Proto()->Args()[argNo].Type());
 		NextToken();
 	    }
@@ -1520,7 +1509,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     if (funcDef)
     {
 	proto = funcDef->Proto();
-	expr = new FunctionExprAST(idName, funcDef->Type());
+	expr = new FunctionExprAST(CurrentToken().Loc(), idName, funcDef->Type());
     }
     else if (def)
     {
@@ -1535,7 +1524,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
 	    assert(fp && "Expected function pointer here...");
 	    proto = fp->Proto();
-	    expr = new VariableExprAST(idName, def->Type());
+	    expr = new VariableExprAST(CurrentToken().Loc(), idName, def->Type());
 	}
     }
     if (expr)
@@ -1545,31 +1534,29 @@ ExprAST* Parser::ParseIdentifierExpr()
 	{
 	    for(auto u : fn->UsedVars())
 	    {
-		args.push_back(new VariableExprAST(u.Name(), u.Type()));
+		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
 	    }
 	}
-	return new CallExprAST(expr, args, proto);
+	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
     }
 
     assert(isBuiltin && "Should be a builtin function if we get here");
     Types::TypeDecl* ty = Builtin::Type(nameStack, idName, args);
-    return new BuiltinExprAST(idName, args, ty);
+    return new BuiltinExprAST(CurrentToken().Loc(), idName, args, ty);
 }
 
 ExprAST* Parser::ParseParenExpr()
 {
     NextToken();
-    ExprAST* v = ParseExpression();
-    if (!v)
+    if (ExprAST* v = ParseExpression())
     {
-	return 0;
+	if (!Expect(Token::RightParen, true))
+	{
+	    return 0;
+	}
+	return v;
     }
-    
-    if (!Expect(Token::RightParen, true))
-    {
-	return 0;
-    }
-    return v;
+    return 0;
 }
 
 ExprAST* Parser::ParseSetExpr()
@@ -1579,6 +1566,7 @@ ExprAST* Parser::ParseSetExpr()
 	return 0;
     }
 
+    Location loc = CurrentToken().Loc();
     std::vector<ExprAST*> values;
     do
     {
@@ -1593,7 +1581,7 @@ ExprAST* Parser::ParseSetExpr()
 	    {
 		NextToken();
 		ExprAST* vEnd = ParseExpression();
-		v = new RangeExprAST(v, vEnd);
+		v = new RangeExprAST(loc, v, vEnd);
 	    }
 	    values.push_back(v);
 	}
@@ -1614,7 +1602,7 @@ ExprAST* Parser::ParseSetExpr()
     {
 	type = values[0]->Type();
     }
-    return new SetExprAST(values, new Types::SetDecl(NULL, type));
+    return new SetExprAST(loc, values, new Types::SetDecl(NULL, type));
 }
 
 VarDeclAST* Parser::ParseVarDecls()
@@ -1667,7 +1655,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	}
     } while(CurrentToken().GetToken() == Token::Identifier);
     
-    return new VarDeclAST(varList);
+    return new VarDeclAST(CurrentToken().Loc(), varList);
 }
 
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
@@ -1766,14 +1754,14 @@ PrototypeAST* Parser::ParsePrototype()
 	{
 	    return 0;
 	}
-	return new PrototypeAST(funcName, args, resultType);
+	return new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType);
     }
 	
     if (!Expect(Token::Semicolon, true))
     {
 	return 0;
     }
-    return new PrototypeAST(funcName, args);
+    return new PrototypeAST(CurrentToken().Loc(), funcName, args);
 }
 
 ExprAST* Parser::ParseStatement()
@@ -1781,9 +1769,10 @@ ExprAST* Parser::ParseStatement()
     ExprAST* expr = ParsePrimary();
     if (CurrentToken().GetToken() == Token::Assign)
     {
+	Location loc = CurrentToken().Loc();
 	NextToken();
 	ExprAST* rhs = ParseExpression();
-	expr = new AssignExprAST(expr, rhs);
+	expr = new AssignExprAST(loc, expr, rhs);
     }
     return expr;
 }
@@ -1797,6 +1786,7 @@ BlockAST* Parser::ParseBlock()
     
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
+    Location loc = CurrentToken().Loc();
     while(CurrentToken().GetToken() != Token::End)
     {
 	ExprAST* ast = ParseStatement();
@@ -1814,11 +1804,12 @@ BlockAST* Parser::ParseBlock()
     {
 	return 0;
     }
-    return new BlockAST(v);
+    return new BlockAST(loc, v);
 }
 
 FunctionAST* Parser::ParseDefinition(int level)
 {
+    Location loc = CurrentToken().Loc();
     Types::SimpleTypes functionType = 
 	CurrentToken().GetToken() == Token::Function?Types::Function:Types::Procedure;
     PrototypeAST* proto = ParsePrototype();
@@ -1843,7 +1834,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    NextToken();
 	    proto->SetIsForward(true);
-	    return new FunctionAST(proto, 0, 0);
+	    return new FunctionAST(CurrentToken().Loc(), proto, 0, 0);
 	}
     }
     
@@ -1920,7 +1911,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 		return 0;
 	    }
 
-	    FunctionAST* fn = new FunctionAST(proto, varDecls, body);
+	    FunctionAST* fn = new FunctionAST(loc, proto, varDecls, body);
 	    for(auto s : subFunctions)
 	    {
 		s->SetParent(fn);
@@ -1952,7 +1943,7 @@ ExprAST* Parser::ParseStmtOrBlock()
     case Token::Semicolon:
     case Token::End:
 	// Empty block.
-	return new BlockAST(std::vector<ExprAST*>());
+	return new BlockAST(CurrentToken().Loc(), std::vector<ExprAST*>());
 
     default:
 	return ParseStatement();
@@ -1961,6 +1952,7 @@ ExprAST* Parser::ParseStmtOrBlock()
 
 ExprAST* Parser::ParseIfExpr()
 {
+    Location loc = CurrentToken().Loc();
     if (!Expect(Token::If, true))
     {
 	assert(0 && "Huh? Expected if");
@@ -1993,14 +1985,15 @@ ExprAST* Parser::ParseIfExpr()
 	    }
 	}
     }
-    return new IfExprAST(cond, then, elseExpr);
+    return new IfExprAST(loc, cond, then, elseExpr);
 }
 
 ExprAST* Parser::ParseForExpr()
 {
+    Location loc = CurrentToken().Loc();
     if (!Expect(Token::For, true))
     {
-	assert(0 && "Huh? Expected for");
+	return 0;
     }
     if (CurrentToken().GetToken() != Token::Identifier)
     {
@@ -2039,12 +2032,16 @@ ExprAST* Parser::ParseForExpr()
     {
 	return 0;
     }
-    return new ForExprAST(varName, start, end, down, body);
+    return new ForExprAST(loc, varName, start, end, down, body);
 }
 
 ExprAST* Parser::ParseWhile()
 {
-    NextToken();
+    Location loc = CurrentToken().Loc();
+    if (!Expect(Token::While, true))
+    {
+	return 0;
+    }
 
     ExprAST* cond = ParseExpression();
     if (!cond || !Expect(Token::Do, true))
@@ -2053,13 +2050,18 @@ ExprAST* Parser::ParseWhile()
     }
     ExprAST* body = ParseStmtOrBlock();
 
-    return new WhileExprAST(cond, body);
+    return new WhileExprAST(loc, cond, body);
 }
 
 ExprAST* Parser::ParseRepeat()
 {
-    NextToken();
+    Location loc = CurrentToken().Loc();
+    if (!Expect(Token::Repeat, true))
+    {
+	return 0;
+    }
     std::vector<ExprAST*> v;
+    Location loc2 = CurrentToken().Loc();
     while(CurrentToken().GetToken() != Token::Until)
     {
 	ExprAST* stmt = ParseStatement();
@@ -2078,11 +2080,12 @@ ExprAST* Parser::ParseRepeat()
 	return 0;
     }
     ExprAST* cond = ParseExpression();
-    return new RepeatExprAST(cond, new BlockAST(v));
+    return new RepeatExprAST(loc, cond, new BlockAST(loc2, v));
 }
 
 ExprAST* Parser::ParseCaseExpr()
 {
+    Location loc = CurrentToken().Loc();
     if (!Expect(Token::Case, true))
     {
 	return 0;
@@ -2155,6 +2158,7 @@ ExprAST* Parser::ParseCaseExpr()
 
 	case Token::Colon:
 	{
+	    Location locColon = CurrentToken().Loc();
 	    NextToken();
 	    ExprAST* s = ParseStmtOrBlock();
 	    if (isOtherwise)
@@ -2167,7 +2171,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    }
 	    else
 	    {
-		labels.push_back(new LabelExprAST(lab, s));
+		labels.push_back(new LabelExprAST(locColon, lab, s));
 		lab.clear();
 	    }
 	    if (!ExpectSemicolonOrEnd())
@@ -2185,7 +2189,7 @@ ExprAST* Parser::ParseCaseExpr()
     {
 	return 0;
     }
-    return new CaseExprAST(expr, labels, otherwise);
+    return new CaseExprAST(loc, expr, labels, otherwise);
 }
 
 void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
@@ -2200,18 +2204,18 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	{
 	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
 	    assert(rd && "Expected record declarataion here!");
-	    ExpandWithNames(rd, new VariantFieldExprAST(v, parentCount, ty), 0);
+	    ExpandWithNames(rd, new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty), 0);
 	}
 	else
 	{
 	    ExprAST* e;
 	    if (llvm::isa<Types::RecordDecl>(fields))
 	    {
-		e = new FieldExprAST(v, i, ty);
+		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
 	    }
 	    else
 	    {
-		e = new VariantFieldExprAST(v, parentCount, ty);
+		e = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    }
 	    nameStack.Add(f.Name(), new WithDef(f.Name(), e, f.FieldType()));
 	}
@@ -2221,6 +2225,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 ExprAST* Parser::ParseWithBlock()
 {
     TRACE();
+    Location loc = CurrentToken().Loc();
     if (!Expect(Token::With, true))
     {
 	return 0;
@@ -2264,11 +2269,12 @@ ExprAST* Parser::ParseWithBlock()
 	}
     }
     ExprAST* body = ParseStmtOrBlock();
-    return new WithExprAST(body);
+    return new WithExprAST(loc, body);
 }
 
 ExprAST* Parser::ParseWrite()
 {
+    Location loc = CurrentToken().Loc();
     bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
 
     assert(CurrentToken().GetToken() == Token::Write ||
@@ -2351,11 +2357,12 @@ ExprAST* Parser::ParseWrite()
 	    return Error("Expected at least one expression for output in write");
 	}
     }
-    return new WriteAST(file, args, isWriteln);
+    return new WriteAST(loc, file, args, isWriteln);
 }
 
 ExprAST* Parser::ParseRead()
 {
+    Location loc = CurrentToken().Loc();
     bool isReadln = CurrentToken().GetToken() == Token::Readln;
 
     assert(CurrentToken().GetToken() == Token::Read ||
@@ -2418,7 +2425,7 @@ ExprAST* Parser::ParseRead()
 	    return Error("Expected at least one variable in read statement");
 	}
     }
-    return new ReadAST(file, args, isReadln);
+    return new ReadAST(loc, file, args, isReadln);
 }
 
 ExprAST* Parser::ParsePrimary()
@@ -2541,7 +2548,7 @@ std::vector<ExprAST*> Parser::Parse()
     nameStack.Add("output", new VarDef(output));
     std::vector<VarDef> varList{input, output};
 
-    v.push_back(new VarDeclAST(varList));
+    v.push_back(new VarDeclAST(Location("", 0, 0), varList));
 
     for(;;)
     {
@@ -2577,11 +2584,12 @@ std::vector<ExprAST*> Parser::Parse()
 	    
 	case Token::Begin:
 	{
+	    Location loc = CurrentToken().Loc();
 	    BlockAST* body = ParseBlock();
 	    // Parse the "main" of the program - we call that
 	    // "__PascalMain" so we can call it from C-code.
-	    PrototypeAST* proto = new PrototypeAST("__PascalMain", std::vector<VarDef>());
-	    FunctionAST* fun = new FunctionAST(proto, 0, body);
+	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>());
+	    FunctionAST* fun = new FunctionAST(loc, proto, 0, body);
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))
 	    {

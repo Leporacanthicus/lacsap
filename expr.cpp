@@ -376,6 +376,22 @@ llvm::Value* VariableExprAST::Address()
     return v;
 }
 
+ArrayExprAST::ArrayExprAST(const Location& loc,
+			   VariableExprAST *v,
+			   const std::vector<ExprAST*>& inds,
+			   const std::vector<Types::Range*>& r,
+			   Types::TypeDecl* ty)
+    : VariableExprAST(loc, EK_ArrayExpr, v, ty), expr(v), indices(inds), ranges(r)
+{
+    size_t mul = 1;
+    for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
+    {
+	indexmul.push_back(mul);
+	mul *= (*j)->Size();
+    }
+    std::reverse(indexmul.begin(), indexmul.end());
+}
+
 void ArrayExprAST::DoDump(std::ostream& out) const
 { 
     out << "Array: " << name;

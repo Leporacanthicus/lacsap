@@ -19,6 +19,8 @@ private:
     int column;
 };
 
+std::ostream& operator<<(std::ostream &os, const Location& loc);
+
 class Token
 {
 public:

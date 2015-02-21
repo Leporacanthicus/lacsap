@@ -60,8 +60,10 @@ public:
 	EK_CaseExpr,
 	EK_WithExpr,		/* 34 */
     };
-    ExprAST(ExprKind k) : kind(k) { type = 0; }
-    ExprAST(ExprKind k, Types::TypeDecl* ty) : type(ty), kind(k) {}
+    ExprAST(const Location &w, ExprKind k)
+	: loc(w), kind(k), type(0) { }
+    ExprAST(const Location &w, ExprKind k, Types::TypeDecl* ty)
+	: loc(w), kind(k), type(ty) {}
     virtual ~ExprAST() {}
     void dump(std::ostream& out) const;
     void dump() const;
@@ -76,17 +78,19 @@ public:
     void SetType(Types::TypeDecl* ty) { type = ty; }
     virtual Types::TypeDecl* Type() const { return type; }
     void EnsureSized() const;
+    const Location& Loc() const { return loc; }
+private:
+    const Location loc;
+    const ExprKind kind;
 protected:
     Types::TypeDecl* type;
-private:
-    const ExprKind kind;
 };
 
 class RealExprAST : public ExprAST
 {
 public:
-    RealExprAST(double v, Types::TypeDecl* ty) 
-	: ExprAST(EK_RealExpr, ty), val(v) {}
+    RealExprAST(const Location& w, double v, Types::TypeDecl* ty)
+	: ExprAST(w, EK_RealExpr, ty), val(v) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_RealExpr; }
@@ -97,10 +101,10 @@ private:
 class IntegerExprAST : public ExprAST
 {
 public:
-    IntegerExprAST(long v, Types::TypeDecl* ty)
-	: ExprAST(EK_IntegerExpr, ty), val(v) {}
-    IntegerExprAST(ExprKind ek, long v, Types::TypeDecl* ty)
-	: ExprAST(ek, ty), val(v) {}
+    IntegerExprAST(const Location& w, long v, Types::TypeDecl* ty)
+	: ExprAST(w, EK_IntegerExpr, ty), val(v) {}
+    IntegerExprAST(const Location& w, ExprKind ek, long v, Types::TypeDecl* ty)
+	: ExprAST(w, ek, ty), val(v) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     long Int() { return val; }
@@ -115,8 +119,8 @@ protected:
 class CharExprAST : public IntegerExprAST
 {
 public:
-    CharExprAST(char v, Types::TypeDecl* ty)
-	: IntegerExprAST(EK_CharExpr, v, ty) {}
+    CharExprAST(const Location& w, char v, Types::TypeDecl* ty)
+	: IntegerExprAST(w, EK_CharExpr, v, ty) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CharExpr; }
@@ -125,8 +129,8 @@ public:
 class StringExprAST : public ExprAST
 {
 public:
-    StringExprAST(const std::string &v, Types::TypeDecl* ty)
-	: ExprAST(EK_StringExpr, ty), val(v) {}
+    StringExprAST(const Location& w, const std::string &v, Types::TypeDecl* ty)
+	: ExprAST(w, EK_StringExpr, ty), val(v) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     const std::string& Str() const { return val; }
@@ -138,8 +142,8 @@ private:
 class NilExprAST : public ExprAST
 {
 public:
-    NilExprAST()
-	: ExprAST(EK_NilExpr, new Types::PointerDecl(new Types::VoidDecl)) {}
+    NilExprAST(const Location& w)
+	: ExprAST(w, EK_NilExpr, new Types::PointerDecl(new Types::VoidDecl)) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_NilExpr; }
@@ -148,8 +152,8 @@ public:
 class AddressableAST : public ExprAST
 {
 public:
-    AddressableAST(ExprKind k, Types::TypeDecl* ty) :
-	ExprAST(k, ty) {}
+    AddressableAST(const Location& w, ExprKind k, Types::TypeDecl* ty) :
+	ExprAST(w, k, ty) {}
     virtual llvm::Value* Address() = 0;
     static bool classof(const ExprAST *e)
     {
@@ -160,12 +164,12 @@ public:
 class VariableExprAST : public AddressableAST
 {
 public:
-    VariableExprAST(const std::string& nm, Types::TypeDecl* ty)
-	: AddressableAST(EK_VariableExpr, ty), name(nm) {}
-    VariableExprAST(ExprKind k, const std::string& nm, Types::TypeDecl* ty)
-	: AddressableAST(k, ty), name(nm) {}
-    VariableExprAST(ExprKind k, const VariableExprAST* v, Types::TypeDecl* ty)
-	: AddressableAST(k, ty), name(v->name) {}
+    VariableExprAST(const Location& w, const std::string& nm, Types::TypeDecl* ty)
+	: AddressableAST(w, EK_VariableExpr, ty), name(nm) {}
+    VariableExprAST(const Location& w, ExprKind k, const std::string& nm, Types::TypeDecl* ty)
+	: AddressableAST(w, k, ty), name(nm) {}
+    VariableExprAST(const Location& w, ExprKind k, const VariableExprAST* v, Types::TypeDecl* ty)
+	: AddressableAST(w, k, ty), name(v->name) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     const std::string& Name() const { return name; }
@@ -181,20 +185,11 @@ protected:
 class ArrayExprAST : public VariableExprAST
 {
 public:
-    ArrayExprAST(VariableExprAST *v,
+    ArrayExprAST(const Location& w,
+		 VariableExprAST *v,
 		 const std::vector<ExprAST*>& inds,
 		 const std::vector<Types::Range*>& r,
-		 Types::TypeDecl* ty)
-	: VariableExprAST(EK_ArrayExpr, v, ty), expr(v), indices(inds), ranges(r)
-    {
-	size_t mul = 1;
-	for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
-	{
-	    indexmul.push_back(mul);
-	    mul *= (*j)->Size();
-	}
-	std::reverse(indexmul.begin(), indexmul.end());
-    }
+		 Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
     /* Don't need CodeGen, just calculate address and use parent CodeGen */
     llvm::Value* Address() override;
@@ -209,8 +204,8 @@ private:
 class PointerExprAST : public VariableExprAST
 {
 public:
-    PointerExprAST(VariableExprAST *p, Types::TypeDecl* ty)
-	: VariableExprAST(EK_PointerExpr, p, ty), pointer(p) {}
+    PointerExprAST(const Location& w, VariableExprAST *p, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_PointerExpr, p, ty), pointer(p) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
@@ -222,8 +217,8 @@ private:
 class FilePointerExprAST : public VariableExprAST
 {
 public:
-    FilePointerExprAST(VariableExprAST* p, Types::TypeDecl* ty)
-	: VariableExprAST(EK_FilePointerExpr, p, ty), pointer(p) {}
+    FilePointerExprAST(const Location& w, VariableExprAST* p, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_FilePointerExpr, p, ty), pointer(p) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
@@ -235,8 +230,8 @@ private:
 class FieldExprAST : public VariableExprAST
 {
 public:
-    FieldExprAST(VariableExprAST* base, int elem, Types::TypeDecl* ty)
-	: VariableExprAST(EK_FieldExpr, base, ty), expr(base), element(elem) {}
+    FieldExprAST(const Location& w, VariableExprAST* base, int elem, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_FieldExpr, base, ty), expr(base), element(elem) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_FieldExpr; }
@@ -248,8 +243,8 @@ private:
 class VariantFieldExprAST : public VariableExprAST
 {
 public:
-    VariantFieldExprAST(VariableExprAST* base, int elem, Types::TypeDecl* ty)
-	: VariableExprAST(EK_VariantFieldExpr, base, ty), expr(base), element(elem) {}
+    VariantFieldExprAST(const Location& w, VariableExprAST* base, int elem, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_VariantFieldExpr, base, ty), expr(base), element(elem) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_VariantFieldExpr; }
@@ -261,8 +256,8 @@ private:
 class FunctionExprAST : public VariableExprAST
 {
 public:
-    FunctionExprAST(const std::string& nm, Types::TypeDecl* ty)
-	: VariableExprAST(EK_FunctionExpr, nm, ty) { }
+    FunctionExprAST(const Location& w, const std::string& nm, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_FunctionExpr, nm, ty) { }
 
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
@@ -274,8 +269,8 @@ class SetExprAST : public AddressableAST
 {
     friend class TypeCheckVisitor;
 public:
-    SetExprAST(std::vector<ExprAST*> v, Types::TypeDecl* ty)
-	: AddressableAST(EK_SetExpr, ty), values(v) {}
+    SetExprAST(const Location& w, std::vector<ExprAST*> v, Types::TypeDecl* ty)
+	: AddressableAST(w, EK_SetExpr, ty), values(v) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
@@ -290,7 +285,7 @@ class BinaryExprAST : public ExprAST
     friend class TypeCheckVisitor;
 public:
     BinaryExprAST(Token op, ExprAST* l, ExprAST* r)
-	: ExprAST(EK_BinaryExpr), oper(op), lhs(l), rhs(r) {}
+	: ExprAST(op.Loc(), EK_BinaryExpr), oper(op), lhs(l), rhs(r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* SetCodeGen();
@@ -312,8 +307,8 @@ class UnaryExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    UnaryExprAST(Token op, ExprAST* r)
-	: ExprAST(EK_UnaryExpr), oper(op), rhs(r) {};
+    UnaryExprAST(const Location& w, Token op, ExprAST* r)
+	: ExprAST(w, EK_UnaryExpr), oper(op), rhs(r) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     Types::TypeDecl* Type() const override;
@@ -328,8 +323,8 @@ class RangeExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    RangeExprAST(ExprAST* l, ExprAST* h)
-	: ExprAST(EK_RangeExpr), low(l), high(h) {}
+    RangeExprAST(const Location& w, ExprAST* l, ExprAST* h)
+	: ExprAST(w, EK_RangeExpr), low(l), high(h) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Low() { return low->CodeGen(); }
@@ -347,8 +342,8 @@ private:
 class BlockAST : public ExprAST
 {
 public:
-    BlockAST(std::vector<ExprAST*> block)
-	: ExprAST(EK_Block), content(block) {}
+    BlockAST(const Location& w, std::vector<ExprAST*> block)
+	: ExprAST(w, EK_Block), content(block) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     bool IsEmpty() { return content.size() == 0; }
@@ -363,8 +358,8 @@ class AssignExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    AssignExprAST(ExprAST* l, ExprAST* r)
-	: ExprAST(EK_AssignExpr), lhs(l), rhs(r) {}
+    AssignExprAST(const Location& w, ExprAST* l, ExprAST* r)
+	: ExprAST(w, EK_AssignExpr), lhs(l), rhs(r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_AssignExpr; }
@@ -377,8 +372,8 @@ private:
 class VarDeclAST : public ExprAST
 {
 public:
-    VarDeclAST(std::vector<VarDef> v)
-	: ExprAST(EK_VarDecl), vars(v), func(0) {}
+    VarDeclAST(const Location& w, std::vector<VarDef> v)
+	: ExprAST(w, EK_VarDecl), vars(v), func(0) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     void SetFunction(llvm::Function* f) { func = f; }
@@ -393,13 +388,16 @@ class FunctionAST;
 class PrototypeAST : public ExprAST
 {
 public:
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar)
-	: ExprAST(EK_Prototype), name(nm), args(ar), isForward(false), function(0)
+    PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar)
+	: ExprAST(w, EK_Prototype), name(nm), args(ar), isForward(false), function(0)
     {
 	resultType = new Types::VoidDecl;
     }
-    PrototypeAST(const std::string& nm, const std::vector<VarDef>& ar, Types::TypeDecl* resTy)
-	: ExprAST(EK_Prototype), name(nm), args(ar), resultType(resTy), isForward(false), function(0)
+    PrototypeAST(const Location& w,
+		 const std::string& nm,
+		 const std::vector<VarDef>& ar,
+		 Types::TypeDecl* resTy)
+	: ExprAST(w, EK_Prototype), name(nm), args(ar), resultType(resTy), isForward(false), function(0)
     {
 	assert(resTy && "Type must not be null!");
     }
@@ -427,8 +425,8 @@ private:
 class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(PrototypeAST *prot, VarDeclAST* v, BlockAST* b)
-	: ExprAST(EK_Function), proto(prot), varDecls(v), body(b)
+    FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b)
+	: ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b)
     {
 	assert((proto->IsForward() || body) && "Function should have body");
 	if (!proto->IsForward())
@@ -460,8 +458,8 @@ private:
 class CallExprAST : public ExprAST
 {
 public:
-    CallExprAST(ExprAST *c, std::vector<ExprAST*> a, const PrototypeAST* p)
-	: ExprAST(EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
+    CallExprAST(const Location& w, ExprAST *c, std::vector<ExprAST*> a, const PrototypeAST* p)
+	: ExprAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
     {
 	assert(proto && "Should have prototype!");
     }
@@ -480,8 +478,8 @@ private:
 class BuiltinExprAST : public ExprAST
 {
 public:
-    BuiltinExprAST(const std::string& nm, std::vector<ExprAST*> a, Types::TypeDecl* ty)
-	: ExprAST(EK_BuiltinExpr, ty), name(nm), args(a)
+    BuiltinExprAST(const Location& w, const std::string& nm, std::vector<ExprAST*> a, Types::TypeDecl* ty)
+	: ExprAST(w, EK_BuiltinExpr, ty), name(nm), args(a)
     {
     }
     void DoDump(std::ostream& out) const override;
@@ -496,8 +494,8 @@ private:
 class IfExprAST : public ExprAST
 {
 public:
-    IfExprAST(ExprAST* c, ExprAST* t, ExprAST* e)
-	: ExprAST(EK_IfExpr), cond(c), then(t), other(e) {}
+    IfExprAST(const Location& w, ExprAST* c, ExprAST* t, ExprAST* e)
+	: ExprAST(w, EK_IfExpr), cond(c), then(t), other(e) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_IfExpr; }
@@ -511,8 +509,8 @@ private:
 class ForExprAST : public ExprAST
 {
 public:
-    ForExprAST(const std::string& var, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
-	: ExprAST(EK_ForExpr), varName(var), start(s), stepDown(down), end(e), body(b) {}
+    ForExprAST(const Location& w, const std::string& var, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
+	: ExprAST(w, EK_ForExpr), varName(var), start(s), stepDown(down), end(e), body(b) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_ForExpr; }
@@ -528,8 +526,8 @@ private:
 class WhileExprAST : public ExprAST
 {
 public:
-    WhileExprAST(ExprAST* c, ExprAST* b)
-	: ExprAST(EK_WhileExpr), cond(c), body(b) {}
+    WhileExprAST(const Location& w, ExprAST* c, ExprAST* b)
+	: ExprAST(w, EK_WhileExpr), cond(c), body(b) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_WhileExpr; }
@@ -542,8 +540,8 @@ private:
 class RepeatExprAST : public ExprAST
 {
 public:
-    RepeatExprAST(ExprAST* c, ExprAST* b)
-	: ExprAST(EK_RepeatExpr), cond(c), body(b) {}
+    RepeatExprAST(const Location& w, ExprAST* c, ExprAST* b)
+	: ExprAST(w, EK_RepeatExpr), cond(c), body(b) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_RepeatExpr; }
@@ -565,8 +563,8 @@ public:
 	ExprAST* precision;
     };
 
-    WriteAST(VariableExprAST* f, const std::vector<WriteArg> &a, bool isLn)
-	: ExprAST(EK_Write), file(f), args(a), isWriteln(isLn) {}
+    WriteAST(const Location& w, VariableExprAST* f, const std::vector<WriteArg> &a, bool isLn)
+	: ExprAST(w, EK_Write), file(f), args(a), isWriteln(isLn) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_Write; }
@@ -579,8 +577,8 @@ private:
 class ReadAST : public ExprAST
 {
 public:
-    ReadAST(VariableExprAST* fi, const std::vector<ExprAST*> &a, bool isLn)
-	: ExprAST(EK_Read), file(fi), args(a), isReadln(isLn) {}
+    ReadAST(const Location& w, VariableExprAST* fi, const std::vector<ExprAST*> &a, bool isLn)
+	: ExprAST(w, EK_Read), file(fi), args(a), isReadln(isLn) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_Read; }
@@ -593,8 +591,8 @@ private:
 class LabelExprAST : public ExprAST
 {
 public:
-    LabelExprAST(const std::vector<int>& lab, ExprAST* st)
-	: ExprAST(EK_LabelExpr), labelValues(lab),stmt(st) {}
+    LabelExprAST(const Location& w, const std::vector<int>& lab, ExprAST* st)
+	: ExprAST(w, EK_LabelExpr), labelValues(lab),stmt(st) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override { assert(0); return 0; }
     llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
@@ -607,8 +605,8 @@ private:
 class CaseExprAST : public ExprAST
 {
 public:
-    CaseExprAST(ExprAST* e, const std::vector<LabelExprAST*>& lab, ExprAST* other)
-	: ExprAST(EK_CaseExpr), expr(e), labels(lab), otherwise(other) {}
+    CaseExprAST(const Location& w, ExprAST* e, const std::vector<LabelExprAST*>& lab, ExprAST* other)
+	: ExprAST(w, EK_CaseExpr), expr(e), labels(lab), otherwise(other) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_CaseExpr; }
@@ -621,8 +619,8 @@ private:
 class WithExprAST : public ExprAST
 {
 public:
-    WithExprAST(ExprAST *b)
-	: ExprAST(EK_WithExpr), body(b) {};
+    WithExprAST(const Location& w, ExprAST *b)
+	: ExprAST(w, EK_WithExpr), body(b) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST *e) { return e->getKind() == EK_WithExpr; }

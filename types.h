@@ -109,6 +109,7 @@ namespace Types
 	TypeKind getKind() const { return kind; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Type; }
 	virtual size_t Size() const;
+	size_t AlignSize() const;
     protected:
 	virtual llvm::Type* GetLlvmType() const = 0;
     protected:

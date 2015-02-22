@@ -36,7 +36,8 @@ void Stack<llvm::Value*>::dump(std::ostream& out) const
     }
 }
 
-const size_t MEMCPY_THRESHOLD = 64;
+const size_t MEMCPY_THRESHOLD = 16;
+const size_t MIN_ALIGN = 4;
 
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
@@ -66,7 +67,6 @@ MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
-
 static bool IsConstant(ExprAST *e)
 {
     if (llvm::isa<IntegerExprAST>(e) ||
@@ -75,6 +75,12 @@ static bool IsConstant(ExprAST *e)
 	return true;
     }
     return false;
+}
+
+size_t AlignOfType(llvm::Type* ty)
+{
+    const llvm::DataLayout dl(theModule);
+    return dl.getPrefTypeAlignment(ty);
 }
 
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
@@ -116,40 +122,46 @@ bool FileIsText(llvm::Value* f)
     return false;
 }
 
-static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
+
+static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, llvm::Type* ty, const std::string& name)
 {
     TRACE();
-    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().end());
-    Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type());
-    if (fc)
+   /* Save where we were... */
+    llvm::BasicBlock* bb = builder.GetInsertBlock();
+    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
+
+    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
+    assert(ty && "Must have type passed in");
+
+    llvm::AllocaInst* a = bld.CreateAlloca(ty, 0, name);
+    if (a->getAlignment() < MIN_ALIGN)
+    {
+	a->setAlignment(MIN_ALIGN);
+    }
+
+    // Now go back to where we were...
+    builder.SetInsertPoint(bb, ip);
+    return a;
+}
+
+static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
+{
+    if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
     {
 	fc->EnsureSized();
     }
+
     llvm::Type* ty = var.Type()->LlvmType();
-    if (!ty)
-    {
-	assert(0 && "Can't find type");
-	return 0;
-    }
-    return bld.CreateAlloca(ty, 0, var.Name());
+
+    return CreateNamedAlloca(fn, ty, var.Name());
 }
 
 static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
 {
-   /* Save where we were... */
-    llvm::BasicBlock* bb = builder.GetInsertBlock();
-    llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
-    
     /* Get the "entry" block */
     llvm::Function *fn = builder.GetInsertBlock()->getParent();
-    
-    llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
 
-    llvm::AllocaInst* tmp = bld.CreateAlloca(ty, 0, "tmp");
-    
-    builder.SetInsertPoint(bb, ip);
-    
-    return tmp;
+    return CreateNamedAlloca(fn, ty, "tmp");
 }
 
 llvm::Value* MakeAddressable(ExprAST* e)
@@ -237,7 +249,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
     llvm::Value* v = rhs->CodeGen();
     builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
     
-    return builder.CreateMemCpy(dest2, v, rhs->Str().size(), 1);
+    return builder.CreateMemCpy(dest2, v, rhs->Str().size(), std::max(AlignOfType(v->getType()), MIN_ALIGN));
 }
 
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
@@ -263,7 +275,8 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
     size_t size = ty->Size();
     if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
     {
-	builder.CreateMemCpy(dest, src, size, 1);
+	size_t align = ty->AlignSize();
+	builder.CreateMemCpy(dest, src, size, std::max(align, MIN_ALIGN));
 	return dest;
     }
     else
@@ -1810,7 +1823,8 @@ llvm::Value* AssignExprAST::CodeGen()
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 	    llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
 	    llvm::Value* v = rhs->CodeGen();
-	    return builder.CreateMemCpy(dest1, v, str->Str().size(), 1);
+	    return builder.CreateMemCpy(dest1, v, str->Str().size(),
+					std::max(AlignOfType(v->getType()), MIN_ALIGN));
 	}
     }
 
@@ -1829,7 +1843,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	    if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
 	    {
 		llvm::Value* src = rhsv->Address();
-		return builder.CreateMemCpy(dest, src, size, 1);
+		return builder.CreateMemCpy(dest, src, size, std::max(rhsv->Type()->AlignSize(), MIN_ALIGN));
 	    }
 	}
     }

@@ -76,6 +76,13 @@ namespace Types
 	return dl.getTypeAllocSize(ty);
     }
 
+    size_t TypeDecl::AlignSize() const
+    {
+	const llvm::DataLayout dl(theModule);
+	llvm::Type* ty = LlvmType();
+	return dl.getPrefTypeAlignment(ty);
+    }
+
     Range* TypeDecl::GetRange() const
     {
 	assert(isIntegral());

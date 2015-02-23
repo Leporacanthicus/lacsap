@@ -7,23 +7,49 @@
 class TypeCheckVisitor : public Visitor
 {
 public:
-    TypeCheckVisitor() : errors(0) {};
+    TypeCheckVisitor(Semantics* s) : sema(s) {};
     virtual void visit(ExprAST* expr);
-    int GetErrors() { return errors; }
 private:
-    bool CheckBinExpr(BinaryExprAST *b);
-    bool CheckAssignExpr(AssignExprAST *a);
-    bool CheckRangeExpr(RangeExprAST *r);
-    bool Error(const ExprAST* e, const std::string& msg) const;
+    void CheckBinExpr(BinaryExprAST *b);
+    void CheckAssignExpr(AssignExprAST *a);
+    void CheckRangeExpr(RangeExprAST *r);
+    void CheckSetExpr(SetExprAST *s);
+    void Error(const ExprAST* e, const std::string& msg) const;
 private:
-    int  errors;
+    Semantics* sema;
 };
 
+class SemaFixup
+{
+public:
+    SemaFixup() {}
+    virtual void DoIt() = 0;
+    virtual ~SemaFixup() {}
+};
 
-bool TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
+class SetRangeFixup : public SemaFixup
+{
+public:
+    SetRangeFixup(SetExprAST* s, Types::Range* r) : expr(s), guessRange(r) {}
+    void DoIt() override;
+private:
+    SetExprAST*   expr;
+    Types::Range* guessRange;
+};
+
+void SetRangeFixup::DoIt()
+{
+    if (!expr->Type()->GetRange())
+    {
+	Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(expr->Type());
+	sd->UpdateRange(guessRange);
+    }
+}
+
+void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
 {
     std::cerr << e->Loc() << ":" << msg << std::endl;
-    return false;
+    sema->AddError();
 }
 
 void TypeCheckVisitor::visit(ExprAST* expr)
@@ -37,32 +63,23 @@ void TypeCheckVisitor::visit(ExprAST* expr)
 
     if (BinaryExprAST* b = llvm::dyn_cast<BinaryExprAST>(expr))
     {
-	if (!CheckBinExpr(b))
-	{
-	    errors++;
-	    b->dump();
-	}
+	CheckBinExpr(b);
     }
     else if (AssignExprAST* a = llvm::dyn_cast<AssignExprAST>(expr))
     {
-	TRACE();
-	if (!CheckAssignExpr(a))
-	{
-	    errors++;
-	    a->dump();
-	}
+	CheckAssignExpr(a);
     }
     else if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(expr))
     {
-	if (CheckRangeExpr(r))
-	{
-	    errors++;
-	    r->dump();
-	}
+	CheckRangeExpr(r);
+    }
+    else if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(expr))
+    {
+	CheckSetExpr(s);
     }
 }
 
-bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
+void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 {
     TRACE();
     Types::TypeDecl* lty = b->lhs->Type();
@@ -74,7 +91,7 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if (!lty->isIntegral())
 	{
-	    return Error(b, "Left hand of 'in' expression should be integral.");
+	    Error(b, "Left hand of 'in' expression should be integral.");
 	}
 
 	if(Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
@@ -82,7 +99,7 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    assert(sd->SubType() && "Should have a subtype");
 	    if (*lty != *sd->SubType())
 	    {
-		return Error(b, "Left hand type does not match constituent parts of set");
+		Error(b, "Left hand type does not match constituent parts of set");
 	    }
 	    if (!sd->GetRange())
 	    {
@@ -96,7 +113,7 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
 	else
 	{
-	    return Error(b, "Right hand of 'in' expression should be a set.");
+	    Error(b, "Right hand of 'in' expression should be a set.");
 	}
 	ty = new Types::BoolDecl;
     }
@@ -127,7 +144,7 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	
 	if (*lty->SubType() != *rty->SubType())
 	{
-	    return Error(b, "Set type content isn't the same!");
+	    Error(b, "Set type content isn't the same!");
 	}
 	if (!lty->GetRange())
 	{
@@ -178,7 +195,7 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	long v = llvm::dyn_cast<IntegerExprAST>(b->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
-	    return Error(b, "Value out of range");
+	    Error(b, "Value out of range");
 	}
 	ty = lty;
     }
@@ -189,20 +206,19 @@ bool TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	long v = llvm::dyn_cast<IntegerExprAST>(b->lhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
-	    return Error(b, "Value out of range");
+	    Error(b, "Value out of range");
 	}
 	ty = rty;
     }
 
     if (!ty && !(ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
     {
-	return Error(b, "Incompatible type in expression");
+	Error(b, "Incompatible type in expression");
     }
     b->UpdateType(ty);
-    return true;
 }
 
-bool TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
+void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 {
     TRACE();
     Types::TypeDecl *lty = a->lhs->Type();
@@ -223,19 +239,18 @@ bool TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	}
 	if (*lty->SubType() != *rty->SubType())
 	{
-	    return Error(a, "Subtypes are different in assignment.");
+	    Error(a, "Subtypes are different in assignment.");
 	}
-	if (*lty->GetRange() != *rty->GetRange())
+	else if (*lty->GetRange() != *rty->GetRange())
 	{
-	    return Error(a, "Range mismatch for assignment");
+	    Error(a, "Range mismatch for assignment");
 	}
-	return true;
     }
 
     // Note difference to binary expression: only allowed on rhs!
     if (llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(a->rhs))
     {
-	return true;
+	return;
     }
 
     if (llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(a->rhs))
@@ -244,9 +259,9 @@ bool TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	long v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
-	    return Error(a, "Value out of range");
+	    Error(a, "Value out of range");
 	}
-	return true;
+	return;
     }
 
     if (llvm::isa<Types::ArrayDecl>(lty) && 
@@ -259,21 +274,19 @@ bool TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	{
 	    if (aty->Ranges()[0]->Size() == s->Str().size())
 	    {
-		return true;
+		return;
 	    }
 	}
-	return Error(a, "String assignment from incompatible string constant");
+	Error(a, "String assignment from incompatible string constant");
     }
 
     if (lty->AssignableType(rty) == NULL)
     {
-	return Error(a, "Incompatible type in assignment");
+	Error(a, "Incompatible type in assignment");
     }
-    return true;
 }
 
-
-bool TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
+void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
 {
     TRACE();
     Types::TypeDecl *lty = r->low->Type();
@@ -281,9 +294,41 @@ bool TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
 
     if (*rty != *lty)
     {
-	return Error(r, "Range should be same type at both ends");
+	Error(r, "Range should be same type at both ends");
     }
-    return true;
+}
+
+void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
+{
+    TRACE();
+    Types::Range* r;
+    if (!(r = s->Type()->GetRange()))
+    {
+	if (s->Type()->SubType())
+	{
+	    r = s->Type()->SubType()->GetRange();
+	    if (r->Size() > Types::SetDecl::MaxSetSize)
+	    {
+		r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
+	    }
+	    sema->AddFixup(new SetRangeFixup(s, r));
+	}
+    }
+}
+
+void Semantics::AddFixup(SemaFixup* f)
+{
+    TRACE();
+    fixups.push_back(f);
+}
+
+void Semantics::RunFixups()
+{
+    TRACE();
+    for(auto f : fixups)
+    {
+	f->DoIt();
+    }
 }
 
 void Semantics::Analyse(std::vector<ExprAST*>& ast)
@@ -291,8 +336,8 @@ void Semantics::Analyse(std::vector<ExprAST*>& ast)
     TRACE();
     for(auto& e : ast)
     {
-	TypeCheckVisitor tc;
+	TypeCheckVisitor tc(this);
 	e->accept(tc);
-	errors += tc.GetErrors();
     }
+    RunFixups();
 }

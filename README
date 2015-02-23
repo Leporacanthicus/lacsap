@@ -1,4 +1,7 @@
-This is the early stages of a Pascal compiler. It is nowhere complete yet. 
+This is the a nearly complete Pascal compiler, based on LLVM.
+
+Major missing feature: 
+goto.
 
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
@@ -11,6 +14,7 @@ Among things NOT yet supported are:
 - Separate compile units.
 - Make runtime into libraries and/or codegen.
 - Debug symbols.
+- Stop using clang as the "linker".
 
 Lots of other small and large things that I can't think of right now.
 

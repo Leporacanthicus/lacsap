@@ -475,7 +475,7 @@ namespace Builtin
 	    llvm::Value *count = builder.CreateCall(f, val, "count");
 	    for(size_t i = 1; i < sd->SetWords(); i++)
 	    {
-		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
+		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};
 		addr = builder.CreateGEP(v, ind, "leftSet");
 		val = builder.CreateLoad(addr);
 		llvm::Value *tmp = builder.CreateCall(f, val, "tmp");

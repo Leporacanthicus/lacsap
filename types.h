@@ -42,12 +42,12 @@ namespace Types
 	Range(int s, int e)
 	    : start(s), end(e)
 	{
-	    assert( (e - s) > 0 && "Range should have start before end.");
+	    assert( ((long)e - (long)s) > 0 && "Range should have start before end.");
 	}
     public:
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
-	size_t Size() const { return (size_t) (end - start) + 1; }
+	size_t Size() const { return (size_t) ((long)end - (long)start) + 1; }
 	void DoDump(std::ostream& out) const;
     private:
 	int start;

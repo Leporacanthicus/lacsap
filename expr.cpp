@@ -42,8 +42,8 @@ const size_t MIN_ALIGN = 4;
 extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
 
-typedef Stack<llvm::Value *> VarStack;
-typedef StackWrapper<llvm::Value *> VarStackWrapper;
+typedef Stack<llvm::Value*> VarStack;
+typedef StackWrapper<llvm::Value*> VarStackWrapper;
 
 class MangleMap
 {
@@ -67,7 +67,7 @@ MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 
-static bool IsConstant(ExprAST *e)
+static bool IsConstant(ExprAST* e)
 {
     if (llvm::isa<IntegerExprAST>(e) ||
 	llvm::isa<CharExprAST>(e))
@@ -122,7 +122,6 @@ bool FileIsText(llvm::Value* f)
     return false;
 }
 
-
 static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, llvm::Type* ty, const std::string& name)
 {
     TRACE();
@@ -159,7 +158,7 @@ static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
 {
     /* Get the "entry" block */
-    llvm::Function *fn = builder.GetInsertBlock()->getParent();
+    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
     return CreateNamedAlloca(fn, ty, "tmp");
 }
@@ -189,7 +188,7 @@ llvm::Value* MakeAddressable(ExprAST* e)
 
 void ExprAST::dump(std::ostream& out) const
 {
-    out << "Node=" << reinterpret_cast<const void *>(this) << ": "; 
+    out << "Node=" << reinterpret_cast<const void*>(this) << ": "; 
     DoDump(out); 
     out << std::endl;
 }	
@@ -199,14 +198,14 @@ void ExprAST::dump(void) const
     dump(std::cerr);
 }
 
-llvm::Value *ErrorV(const std::string& msg)
+llvm::Value* ErrorV(const std::string& msg)
 {
     std::cerr << msg << std::endl;
     errCnt++;
     return 0;
 }
 
-static llvm::Function *ErrorF(const std::string& msg)
+static llvm::Function* ErrorF(const std::string& msg)
 {
     ErrorV(msg);
     return 0;
@@ -355,7 +354,7 @@ void CharExprAST::DoDump(std::ostream& out) const
 llvm::Value* CharExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v = MakeCharConstant(val);
+    llvm::Value* v = MakeCharConstant(val);
     return v;
 }
 
@@ -390,7 +389,7 @@ llvm::Value* VariableExprAST::Address()
 }
 
 ArrayExprAST::ArrayExprAST(const Location& loc,
-			   VariableExprAST *v,
+			   VariableExprAST* v,
 			   const std::vector<ExprAST*>& inds,
 			   const std::vector<Types::Range*>& r,
 			   Types::TypeDecl* ty)
@@ -649,11 +648,11 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsS
 	for(size_t i = 0; i < llvm::dyn_cast<Types::SetDecl>(type)->SetWords(); i++)
 	{
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};
-	    llvm::Value *lAddr = builder.CreateGEP(lV, ind, "leftSet");
-	    llvm::Value *rAddr = builder.CreateGEP(rV, ind, "rightSet");
-	    llvm::Value *vAddr = builder.CreateGEP(v, ind, "resSet");
-	    llvm::Value *res = builder.CreateLoad(lAddr);
-	    llvm::Value *tmp = builder.CreateLoad(rAddr);
+	    llvm::Value* lAddr = builder.CreateGEP(lV, ind, "leftSet");
+	    llvm::Value* rAddr = builder.CreateGEP(rV, ind, "rightSet");
+	    llvm::Value* vAddr = builder.CreateGEP(v, ind, "resSet");
+	    llvm::Value* res = builder.CreateLoad(lAddr);
+	    llvm::Value* tmp = builder.CreateLoad(rAddr);
 	    if (name == "Union")
 	    {
 		res = builder.CreateOr(res, tmp);
@@ -867,6 +866,10 @@ static llvm::Value* TypeConvert(llvm::Value* v, llvm::Type* ty, bool isNil = fal
 
 void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 {
+    if (type == ty)
+    {
+	return;
+    }
     assert(!type && "Type shouldn't be updated more than once");
     assert(ty && "Must supply valid type");
 
@@ -953,9 +956,9 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	}
 	llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
 	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
-	llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
+	llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
 
-	llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
     }
@@ -1109,8 +1112,8 @@ llvm::Value* BinaryExprAST::CodeGen()
     }
  
 
-    llvm::Value *l = lhs->CodeGen();
-    llvm::Value *r = rhs->CodeGen();
+    llvm::Value* l = lhs->CodeGen();
+    llvm::Value* r = rhs->CodeGen();
     
     if (l == 0 || r == 0) 
     {
@@ -1413,6 +1416,7 @@ void BuiltinExprAST::DoDump(std::ostream& out) const
 
 void BuiltinExprAST::accept(Visitor& v)
 {
+    TRACE();
     for(auto i : args) 
     {
 	i->accept(v);
@@ -1445,7 +1449,7 @@ void BlockAST::accept(Visitor& v)
 llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v = 0;
+    llvm::Value* v = 0;
     for(auto e : content)
     {
 	v = e->CodeGen();
@@ -1616,7 +1620,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	return theFunction;
     }
 
-    llvm::BasicBlock *bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
+    llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
     builder.SetInsertPoint(bb);
 
     proto->CreateArgumentAlloca(theFunction);
@@ -1657,7 +1661,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
 
     builder.SetInsertPoint(bb, ip);
-    llvm::Value *block = body->CodeGen();
+    llvm::Value* block = body->CodeGen();
     if (!block && !body->IsEmpty())
     {
 	return 0;
@@ -1776,7 +1780,7 @@ llvm::Value* AssignExprAST::AssignStr()
     Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
     assert(sty && "Expect string type in lhsv->Type()");
 
-    llvm::Value *dest = lhsv->Address();
+    llvm::Value* dest = lhsv->Address();
 
     if (rhs->Type()->Type() == Types::Char)
     {
@@ -1850,7 +1854,7 @@ llvm::Value* AssignExprAST::CodeGen()
 
     if (SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs))
     {
-	llvm::Value *v = rhsSet->CodeGen();
+	llvm::Value* v = rhsSet->CodeGen();
 	builder.CreateStore(v, dest);
 	return v;
     }
@@ -1929,7 +1933,7 @@ void IfExprAST::accept(Visitor& v)
 llvm::Value* IfExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value *condV = cond->CodeGen();
+    llvm::Value* condV = cond->CodeGen();
     if (!condV)
     {
 	return 0;
@@ -1939,7 +1943,7 @@ llvm::Value* IfExprAST::CodeGen()
     {
 	assert(0 && "Only boolean expressions allowed in if-statement");
     }
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "then", theFunction);
     llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "ifcont");
 
@@ -2084,7 +2088,7 @@ void WhileExprAST::DoDump(std::ostream& out) const
 llvm::Value* WhileExprAST::CodeGen()
 {
     TRACE();
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "prebody" before the loop, a "body" and an "after" basic block  */
     llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "prebody", 
@@ -2129,7 +2133,7 @@ void RepeatExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* RepeatExprAST::CodeGen()
 {
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "body" and an "after" basic block  */
     llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body", 
@@ -2165,7 +2169,7 @@ llvm::Value* FileOrNull(VariableExprAST* file)
 	return file->Address();
     }
 
-    llvm::Type *fty = Types::GetTextType()->LlvmType();
+    llvm::Type* fty = Types::GetTextType()->LlvmType();
     fty = llvm::PointerType::getUnqual(fty);
     return llvm::Constant::getNullValue(fty);
 }
@@ -2203,7 +2207,23 @@ void WriteAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
+void WriteAST::accept(Visitor& v)
+{
+    for(auto a : args)
+    {
+	a.expr->accept(v);
+	if (a.width)
+	{
+	    a.expr->accept(v);
+	}
+	if (a.precision)
+	{
+	    a.precision->accept(v);
+	}
+    }
+}
+
+static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
     llvm::Type* resTy = Types::GetType(Types::Void);
@@ -2284,7 +2304,7 @@ static llvm::Constant *CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
     return f;
 }
 
-static llvm::Constant *CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
+static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 {
     llvm::Type* resTy = Types::GetType(Types::Void);
     assert(ty && "Type should not be NULL!");
@@ -2401,7 +2421,7 @@ llvm::Value* WriteAST::CodeGen()
 	    v = vexpr->Address();
 	    v = builder.CreateBitCast(v, voidPtrTy);
 	    argsV.push_back(v);
-	    llvm::Type *ty = v->getType();
+	    llvm::Type* ty = v->getType();
 	    fn = CreateWriteBinFunc(ty, f->getType());
 	}
 	builder.CreateCall(fn, argsV, "");
@@ -2437,7 +2457,15 @@ void ReadAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
+void ReadAST::accept(Visitor& v)
+{
+    for(auto a : args)
+    {
+	a->accept(v);
+    }
+}
+
+static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
     llvm::Type* resTy = Types::GetType(Types::Void);
@@ -2480,7 +2508,7 @@ static llvm::Constant *CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     return f;
 }
 
-static llvm::Constant *CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
+static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     llvm::Type* resTy = Types::GetType(Types::Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
@@ -2561,7 +2589,7 @@ void VarDeclAST::DoDump(std::ostream& out) const
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
-    llvm::Value *v = 0;
+    llvm::Value* v = 0;
     for(auto var : vars)
     {
 	// Are we declaring global variables  - no function!
@@ -2612,7 +2640,7 @@ void LabelExprAST::DoDump(std::ostream& out) const
 llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
 {
     TRACE();
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
     
     builder.SetInsertPoint(caseBB);
@@ -2652,7 +2680,7 @@ llvm::Value* CaseExprAST::CodeGen()
 	return ErrorV("Case selection must be integral type");
     }
 
-    llvm::Function *theFunction = builder.GetInsertBlock()->getParent();
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);    
     llvm::BasicBlock* defaultBB = afterBB;
     if (otherwise)
@@ -2745,7 +2773,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	}
     }
 
-    Types::SetDecl *setType = llvm::dyn_cast<Types::SetDecl>(type);
+    Types::SetDecl* setType = llvm::dyn_cast<Types::SetDecl>(type);
     size_t size = setType->SetWords();
     llvm::Constant** initArr = new llvm::Constant*[size];
     llvm::ArrayType* aty = llvm::dyn_cast<llvm::ArrayType>(ty);
@@ -2826,7 +2854,7 @@ llvm::Value* SetExprAST::Address()
 	{
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();
-	    llvm::Function *fn = builder.GetInsertBlock()->getParent();
+	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
 	    llvm::Value* loopVar = CreateTempAlloca(Types::GetType(Types::Integer));
 
@@ -2837,12 +2865,12 @@ llvm::Value* SetExprAST::Address()
 	    }
 	    
 	    // Adjust for range:
-	    Types::Range *range = type->GetRange();
+	    Types::Range* range = type->GetRange();
 
 	    low  = builder.CreateSExt(low, Types::GetType(Types::Integer), "sext.low");
 	    high = builder.CreateSExt(high, Types::GetType(Types::Integer), "sext.high");
 
-	    llvm::Value *rangeStart = MakeIntegerConstant(range->GetStart());
+	    llvm::Value* rangeStart = MakeIntegerConstant(range->GetStart());
 	    low = builder.CreateSub(low, rangeStart);
 	    high = builder.CreateSub(high, rangeStart);
 
@@ -2868,8 +2896,8 @@ llvm::Value* SetExprAST::Address()
 		index = MakeIntegerConstant(0);
 	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
-	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
+	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	    
@@ -2904,8 +2932,8 @@ llvm::Value* SetExprAST::Address()
 		index = MakeIntegerConstant(0);
 	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
-	    llvm::Value *bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value *bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
+	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	}

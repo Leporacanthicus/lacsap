@@ -1929,7 +1929,6 @@ void IfExprAST::accept(Visitor& v)
     }
 }
 
-
 llvm::Value* IfExprAST::CodeGen()
 {
     TRACE();
@@ -2667,6 +2666,19 @@ void CaseExprAST::DoDump(std::ostream& out) const
     {
 	out << "otherwise: ";
 	otherwise->dump();
+    }
+}
+
+void CaseExprAST::accept(Visitor& v)
+{
+    expr->accept(v);
+    for(auto l : labels)
+    {
+	l->accept(v);
+    }
+    if (otherwise)
+    {
+	otherwise->accept(v);
     }
 }
 

@@ -17,8 +17,6 @@
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Support/CommandLine.h>
 
-
-static std::string ErrStr;
 llvm::FunctionPassManager* fpm;
 llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
@@ -45,7 +43,7 @@ static llvm::cl::opt<EmitType>    EmitSelection("emit", llvm::cl::desc("Choose o
 						    clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
 						    clEnumValEnd));
 
-static llvm::cl::opt<bool, true>   TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"), 
+static llvm::cl::opt<bool, true>  TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
 						   llvm::cl::location(timetrace));
 
 

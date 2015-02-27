@@ -6,8 +6,8 @@
 #include <cctype>
 #include <iostream>
 
-Lexer::Lexer(const std::string& sourceFile) :
-    fName(sourceFile), lineNo(1),column(0), curValid(0)
+Lexer::Lexer(const std::string& sourceFile) 
+    : fName(sourceFile), lineNo(1),column(1), curValid(0)
 {
     inFile.open(fName);
 }
@@ -74,7 +74,7 @@ Token Lexer::NumberToken()
 	ch = NextChar();
     }
     num = static_cast<char>(ch);
-    
+
     enum State
     {
 	Intpart,
@@ -149,7 +149,7 @@ Token Lexer::NumberToken()
 	    state = Done;
 	}
     }
-    // If the next char is a dot or an 'e'/'E', we have a floating point number. 
+    // If the next char is a dot or an 'e'/'E', we have a floating point number.
     if (isFloat)
     {
 	return Token(Token::Real, w, std::stod(num));

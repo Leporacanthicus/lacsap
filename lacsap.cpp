@@ -20,36 +20,43 @@
 llvm::FunctionPassManager* fpm;
 llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
-int verbosity;
-bool timetrace;
-bool disableMemcpyOpt;
+int      verbosity;
+bool     timetrace;
+bool     disableMemcpyOpt;
 OptLevel optimization;
+bool     rangeCheck;
 
 // Command line option definitions.
-static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required, 
+static llvm::cl::opt<std::string>    InputFilename(llvm::cl::Positional, llvm::cl::Required, 
 						llvm::cl::desc("<input file>"));
-static llvm::cl::opt<int, true>   Verbose("v", llvm::cl::desc("Enable verbose output"), 
-						llvm::cl::location(verbosity));
-static llvm::cl::opt<OptLevel, true>    OptimizationLevel(llvm::cl::desc("Choose optimization level:"),
+
+static llvm::cl::opt<int, true>      Verbose("v", llvm::cl::desc("Enable verbose output"), 
+					  llvm::cl::location(verbosity));
+
+static llvm::cl::opt<OptLevel, true> OptimizationLevel(llvm::cl::desc("Choose optimization level:"),
 						    llvm::cl::values(
 							clEnumVal(O0, "No optimizations"),
 							clEnumVal(O1, "Enable trivial optimizations"),
 							clEnumVal(O2, "Enable more optimizations"),
 							clEnumValEnd),
 						    llvm::cl::location(optimization));
-static llvm::cl::opt<EmitType>    EmitSelection("emit", llvm::cl::desc("Choose output:"),
-						llvm::cl::values(
-						    clEnumValN(Exe, "exe", "Executable file"),
-						    clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
-						    clEnumValEnd));
 
-static llvm::cl::opt<bool, true>  TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
-						   llvm::cl::location(timetrace));
+static llvm::cl::opt<EmitType>       EmitSelection("emit", llvm::cl::desc("Choose output:"),
+						   llvm::cl::values(
+						       clEnumValN(Exe, "exe", "Executable file"),
+						       clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
+						       clEnumValEnd));
 
+static llvm::cl::opt<bool, true>     TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
+						     llvm::cl::location(timetrace));
 
-static llvm::cl::opt<bool, true>  DisableMemCpyGen("no-memcpy",
-						   llvm::cl::desc("Disable use of memcpy for large data structs"),
+static llvm::cl::opt<bool, true>     DisableMemCpy("no-memcpy",
+						   llvm::cl::desc("Disable use of memcpy for larger structs"),
 						   llvm::cl::location(disableMemcpyOpt));
+
+static llvm::cl::opt<bool, true>     RangeCheck("Cr",
+						llvm::cl::desc("Enable range checking"),
+						llvm::cl::location(rangeCheck));
 
 void DumpModule(llvm::Module* module)
 {

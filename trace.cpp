@@ -6,7 +6,7 @@
 class TimeTraceImpl
 {
 public:
-    TimeTraceImpl(const char *func) : func(func) 
+    TimeTraceImpl(const char *func) : func(func)
     {
 	start = std::chrono::steady_clock::now();
     }
@@ -24,11 +24,6 @@ private:
     const char* func;
 };
 
-void trace(const char *file, int line, const char *func)
-{
-    std::cerr << file << ":" << line << "::" << func << std::endl;
-}
-
 void TimeTrace::createImpl(const char *func)
 {
     impl = new TimeTraceImpl(func);
@@ -38,3 +33,9 @@ void TimeTrace::destroyImpl()
 {
     delete impl;
 }
+
+void trace(const char *file, int line, const char *func)
+{
+    std::cerr << file << ":" << line << "::" << func << std::endl;
+}
+

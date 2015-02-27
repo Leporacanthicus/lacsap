@@ -14,8 +14,9 @@ enum OptLevel
     O2,
 };
 
-extern int verbosity;
-extern bool timetrace;
-extern bool disableMemcpyOpt;
+extern int      verbosity;
+extern bool     timetrace;
+extern bool     disableMemcpyOpt;
+extern bool     rangeCheck;
 extern OptLevel optimization;
 #endif

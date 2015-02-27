@@ -194,7 +194,6 @@ namespace Types
 	llvm::Type* GetLlvmType() const override;
     };
 
-    
     class CompoundDecl : public TypeDecl
     {
     public:

@@ -10,8 +10,8 @@ void FuncDef::dump(std::ostream& out)
 
 
 void WithDef::dump(std::ostream& out) 
-{ 
-    out << "With: " << Name() << " Actual: "; 
+{
+    out << "With: " << Name() << " Actual: ";
     actual->dump(out);
     out << " Type: ";
     type->dump(out);

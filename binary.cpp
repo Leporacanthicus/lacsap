@@ -24,13 +24,13 @@ static llvm::tool_output_file *GetOutputStream(const std::string& filename)
     llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
     llvm::tool_output_file *FDOut = new llvm::tool_output_file(filename, error,
 							       OpenFlags);
-    if (error) 
+    if (error)
     {
 	std::cerr << error << '\n';
 	delete FDOut;
 	return 0;
     }
-    
+
     return FDOut;
 }
 
@@ -48,7 +48,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 
     std::string error;
     const llvm::Target *target = llvm::TargetRegistry::lookupTarget("", triple, error);
-    
+
     if (!target)
     {
 	std::cerr << "Error, could not find target: " << error << std::endl;
@@ -87,7 +87,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     tm->setAsmVerbosityDefault(true);
 
     std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(objname));
-    if (!Out) 
+    if (!Out)
     {
 	std::cerr << "Could not open file ... " << std::endl;
 	return;
@@ -98,7 +98,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     llvm::AnalysisID StartAfterID = 0;
     llvm::AnalysisID StopAfterID = 0;
     if (tm->addPassesToEmitFile(PM, FOS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false,
-                                   StartAfterID, StopAfterID)) 
+				StartAfterID, StopAfterID))
     {
 	std::cerr << objname << ": target does not support generation of this"
 	       << " file type!\n";
@@ -107,7 +107,6 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     PM.run(*module);
     Out->keep();
 }
-
 
 std::string replace_ext(const std::string &origName, 
 			const std::string& expectedExt, 
@@ -120,7 +119,6 @@ std::string replace_ext(const std::string &origName,
     }
     return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
 }
-
 
 void CreateBinary(llvm::Module *module, const std::string& filename, EmitType emit)
 {

@@ -23,7 +23,7 @@ public:
 	NK_With,
     };
     NamedObject(NamedKind k, const std::string& nm) 
-	: kind(k), name(nm) 
+	: kind(k), name(nm)
     {
     }
     virtual ~NamedObject() {}
@@ -40,17 +40,17 @@ class VarDef : public NamedObject
 {
 public:
     VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false, bool external = false) 
-	: NamedObject(NK_Var, nm), type(ty), isRef(ref), isExt(external) 
+	: NamedObject(NK_Var, nm), type(ty), isRef(ref), isExt(external)
     {
     }
     Types::TypeDecl* Type() const { return type; }
     bool IsRef() const { return isRef; }
     bool IsExternal() const { return isExt; }
-    void dump(std::ostream& out) 
+    void dump(std::ostream& out)
     { 
 	out << "Name: " << Name() << " Type: ";
 	type->dump(out);
-	std::cerr << std::endl; 
+	std::cerr << std::endl;
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 private:
@@ -82,11 +82,11 @@ public:
     TypeDef(const std::string& nm, Types::TypeDecl* ty) 
 	: NamedObject(NK_Type, nm), type(ty) { }
     Types::TypeDecl* Type() const { return type; }
-    void dump(std::ostream& out) 
+    void dump(std::ostream& out)
     { 
 	out << "Type: " << Name() << " type : ";
 	type->dump(out);
-	out << std::endl; 
+	out << std::endl;
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Type; }
 private:
@@ -101,10 +101,10 @@ public:
 
     Constants::ConstDecl* ConstValue() const { return constVal; }
     Types::TypeDecl* Type() const { return 0; }
-    void dump(std::ostream& out) 
+    void dump(std::ostream& out)
     { 
 	out << "Const: " << Name() << " Value: " << constVal->Translate().ToString()
-	    << std::endl; 
+	    << std::endl;
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Const; }
 private:
@@ -118,9 +118,9 @@ public:
 	: NamedObject(NK_Enum, nm), enumValue(v), type(ty) { }
     int Value() const { return enumValue; }
     Types::TypeDecl* Type() const { return type; }
-    void dump(std::ostream& out) 
+    void dump(std::ostream& out)
     { 
-	out << "Enum: " << Name() << " Value: " << enumValue << std::endl; 
+	out << "Enum: " << Name() << " Value: " << enumValue << std::endl;
     }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
 private:

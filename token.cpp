@@ -7,13 +7,13 @@
 
 Location::Location(const std::string& file, int line, int col)
 {
-    fname   = file; 
+    fname   = file;
     lineNum = line;
     column  = col;
 }
 
 std::string Location::to_string() const
-{ 
+{
     return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column); 
 }
 
@@ -58,7 +58,7 @@ std::string Token::ToString() const
 {
     std::stringstream ss;
     dump(ss);
-    
+
     return ss.str();
 }
 
@@ -71,7 +71,7 @@ void Token::dump(std::ostream& out, const char* file, int line) const
 {
     if (file)
     {
-	out << file << ":" << line << ": "; 
+	out << file << ":" << line << ": ";
     }
     out << "Token { Type: " << TypeStr() << " ";
     switch(type)
@@ -131,9 +131,9 @@ const TokenEntry tokenTable[] =
     { Token::With,          true,  -1, "with" },
     { Token::Program,       true,  -1, "program" },
     { Token::Write,         true,  -1, "write" },
-    { Token::Writeln,       true,  -1, "writeln" }, 
+    { Token::Writeln,       true,  -1, "writeln" },
     { Token::Read,          true,  -1, "read" },
-    { Token::Readln,        true,  -1, "readln" }, 
+    { Token::Readln,        true,  -1, "readln" },
     { Token::Var,           true,  -1, "var" },
     { Token::Array,         true,  -1, "array" },
     { Token::Of,            true,  -1, "of" },

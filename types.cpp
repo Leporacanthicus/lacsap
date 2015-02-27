@@ -742,7 +742,7 @@ namespace Types
  *    baseType *ptr;             // 1: pointer to the record.
  * };
  *
- * The translation from handle to actual file is done inside the C runtime 
+ * The translation from handle to actual file is done inside the C runtime
  * part.
  *
  * Note that this arrangement has to agree with the runtime.c definition.

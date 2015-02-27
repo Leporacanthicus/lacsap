@@ -188,13 +188,13 @@ llvm::Value* MakeAddressable(ExprAST* e)
 
 void ExprAST::dump(std::ostream& out) const
 {
-    out << "Node=" << reinterpret_cast<const void*>(this) << ": "; 
-    DoDump(out); 
+    out << "Node=" << reinterpret_cast<const void*>(this) << ": ";
+    DoDump(out);
     out << std::endl;
 }	
 
 void ExprAST::dump(void) const
-{ 
+{
     dump(std::cerr);
 }
 
@@ -241,13 +241,13 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
     TRACE();
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0),MakeIntegerConstant(0)};
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
-    
+
     ind[1] = MakeIntegerConstant(1);
     llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
 
     llvm::Value* v = rhs->CodeGen();
     builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
-    
+
     return builder.CreateMemCpy(dest2, v, rhs->Str().size(), std::max(AlignOfType(v->getType()), MIN_ALIGN));
 }
 
@@ -260,7 +260,7 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
     }
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
-    
+
     ind[1] = MakeIntegerConstant(1);
     llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
 
@@ -300,8 +300,7 @@ void ExprAST::EnsureSized() const
     TRACE();
     if (Type())
     {
-	Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(Type());
-	if (fc)
+	if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(Type()))
 	{
 	    fc->EnsureSized();
 	}
@@ -309,7 +308,7 @@ void ExprAST::EnsureSized() const
 }
 
 void RealExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Real: " << val;
 }
 
@@ -320,7 +319,7 @@ llvm::Value* RealExprAST::CodeGen()
 }
 
 void IntegerExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Integer: " << val;
 }
 
@@ -331,8 +330,8 @@ llvm::Value* IntegerExprAST::CodeGen()
 }
 
 void NilExprAST::DoDump(std::ostream& out) const
-{ 
-    out << "Nil: '" << "'";
+{
+    out << "Nil:";
 }
 
 llvm::Value* NilExprAST::CodeGen()
@@ -342,7 +341,7 @@ llvm::Value* NilExprAST::CodeGen()
 }
 
 void CharExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Char: '";
     if (isprint(val))
 	out << char(val);
@@ -359,13 +358,13 @@ llvm::Value* CharExprAST::CodeGen()
 }
 
 void VariableExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Variable: " << name << " ";
     Type()->dump(out);
 }
 
 llvm::Value* VariableExprAST::CodeGen()
-{ 
+{
     // Look this variable up in the function.
     TRACE();
     llvm::Value* v = Address();
@@ -373,7 +372,7 @@ llvm::Value* VariableExprAST::CodeGen()
     {
 	return 0;
     }
-    return builder.CreateLoad(v, name); 
+    return builder.CreateLoad(v, name);
 }
 
 llvm::Value* VariableExprAST::Address()
@@ -405,7 +404,7 @@ ArrayExprAST::ArrayExprAST(const Location& loc,
 }
 
 void ArrayExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Array: " << name;
     out << "[";
     bool first = true;
@@ -418,6 +417,11 @@ void ArrayExprAST::DoDump(std::ostream& out) const
 	first = false;
 	i->dump(out);
     }
+}
+
+void AddRangeCheck(llvm::Value* v, long limit)
+{
+    TRACE();
 }
 
 llvm::Value* ArrayExprAST::Address()
@@ -433,7 +437,6 @@ llvm::Value* ArrayExprAST::Address()
     for(size_t i = 0; i < indices.size(); i++)
     {
 	llvm::Value* index;
-	/* TODO: Add range checking? */
 	index = indices[i]->CodeGen();
 	if (!index)
 	{
@@ -448,6 +451,10 @@ llvm::Value* ArrayExprAST::Address()
 	if (start)
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, ty));
+	}
+	if (rangeCheck)
+	{
+	    AddRangeCheck(index, ranges[i]->GetEnd());
 	}
 	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
 	if (!totalIndex)
@@ -474,14 +481,13 @@ llvm::Value* FieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    llvm::Value* v = expr->Address();
-    if (!v) 
+    if (llvm::Value* v = expr->Address())
     {
-	return ErrorV("Expression did not form an address");
+	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
+	v = builder.CreateGEP(v, ind, "valueindex");
+	return v;
     }
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
-    v = builder.CreateGEP(v, ind, "valueindex");
-    return v;
+    return ErrorV("Expression did not form an address");
 }
 
 void VariantFieldExprAST::DoDump(std::ostream& out) const
@@ -510,31 +516,25 @@ void PointerExprAST::DoDump(std::ostream& out) const
 }
 
 llvm::Value* PointerExprAST::CodeGen()
-{ 
+{
     // Look this variable up in the function.
     TRACE();
-    llvm::Value* v = Address();
-    if (!v)
+    if (llvm::Value* v = Address())
     {
-	return 0;
+	if (!v->getType()->isPointerTy())
+	{
+	    return ErrorV("Expected pointer type.");
+	}
+	return builder.CreateLoad(v, "ptr");
     }
-    if (!v->getType()->isPointerTy())
-    {
-	return ErrorV("Expected pointer type.");
-    }
-    return builder.CreateLoad(v, "ptr"); 
+    return 0;
 }
 
 llvm::Value* PointerExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    llvm::Value* v = pointer->CodeGen();
-    if (!v)
-    {
-	return 0;
-    }
-    return v;
+    return pointer->CodeGen();
 }
 
 void FilePointerExprAST::DoDump(std::ostream& out) const
@@ -544,19 +544,15 @@ void FilePointerExprAST::DoDump(std::ostream& out) const
 }
 
 llvm::Value* FilePointerExprAST::CodeGen()
-{ 
+{
     // Look this variable up in the function.
     TRACE();
-    llvm::Value* v = Address();
-    if (!v)
+    if (llvm::Value* v = Address())
     {
-	return 0;
+	assert(v->getType()->isPointerTy() && "Expected pointer type.");
+	return builder.CreateLoad(v, "fileptr");
     }
-    if (!v->getType()->isPointerTy())
-    {
-	return ErrorV("Expected pointer type.");
-    }
-    return builder.CreateLoad(v, "ptr"); 
+    return 0;
 }
 
 llvm::Value* FilePointerExprAST::Address()
@@ -567,10 +563,6 @@ llvm::Value* FilePointerExprAST::Address()
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer)};
     v = builder.CreateGEP(v, ind, "bufptr");
     v = builder.CreateLoad(v, "buffer");
-    if (!v)
-    {
-	return 0;
-    }
     return v;
 }
 
@@ -581,13 +573,12 @@ void FunctionExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* FunctionExprAST::CodeGen()
 {
-    MangleMap* mm = mangles.Find(name); 
-    if (!mm)
+    if (MangleMap* mm = mangles.Find(name))
     {
-	return ErrorV(std::string("Name ") + name + " could not be found...");
+	std::string actualName = mm->Name();
+	return theModule->getFunction(actualName);
     }
-    std::string actualName = mm->Name();
-    return theModule->getFunction(actualName);
+    return ErrorV(std::string("Name ") + name + " could not be found...");
 }
 
 llvm::Value* FunctionExprAST::Address()
@@ -626,11 +617,11 @@ static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
 }
 
 void BinaryExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "BinaryOp: ";
     lhs->dump(out);
     oper.dump(out);
-    rhs->dump(out); 
+    rhs->dump(out);
 }
 
 llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
@@ -682,7 +673,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     {
 	return inl;
     }
-    
+
     std::string func = std::string("__Set") + name;
     Types::TypeDecl* type = rhs->Type();
     assert(*type == *lhs->Type() && "Expect both sides to have same type" );
@@ -762,7 +753,7 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
     return v;
 }
 
-static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, llvm::Type* resTy, 
+static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, llvm::Type* resTy,
 				const std::string& twine)
 {
     TRACE();
@@ -876,14 +867,14 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
     type = ty;
 }
 
-Types::TypeDecl* BinaryExprAST::Type() const 
+Types::TypeDecl* BinaryExprAST::Type() const
 {
     Token::TokenType tt = oper.GetToken();
     if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
     {
 	return new Types::BoolDecl;
     }
-    
+
     if (type)
     {
 	return type;
@@ -1078,9 +1069,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    std::vector<Types::Range*> rr = ar->Ranges();
 	    std::vector<Types::Range*> rl = al->Ranges();
 
-	    if (rr.size() == 1 && 
-                rl.size() == 1 && 
-		rr[0]->Size() == rl[0]->Size())
+	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
 		size_t size = rr[0]->Size();
 		tmp = CallArrFunc("Compare", size);
@@ -1088,34 +1077,33 @@ llvm::Value* BinaryExprAST::CodeGen()
 		{
 		case Token::Equal:
 		    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
-		    
+
 		case Token::NotEqual:
 		    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
-		    
+
 		case Token::GreaterOrEqual:
 		    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
-		    
+
 		case Token::LessOrEqual:
 		    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
-		    
+
 		case Token::GreaterThan:
 		    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
-		    
+
 		case Token::LessThan:
 		    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
-		    
+
 		default:
 		    return ErrorV("Invalid operand for char arrays");
 		}
 	    }
 	}
     }
- 
 
     llvm::Value* l = lhs->CodeGen();
     llvm::Value* r = rhs->CodeGen();
-    
-    if (l == 0 || r == 0) 
+
+    if (l == 0 || r == 0)
     {
 	return 0;
     }
@@ -1123,7 +1111,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     bool isRhsNil = llvm::isa<NilExprAST>(rhs);
 
     llvm::Type* lty = l->getType();
-    // If it's a divide operation, result is float, so convert to float. 
+    // If it's a divide operation, result is float, so convert to float.
     if (oper.GetToken() == Token::Divide)
     {
 	lty = Types::GetType(Types::Real);
@@ -1161,7 +1149,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     {
 	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(rty);
 	assert(ity && "Expected to make rty into an integer type!");
-	// In future, we may need further "unsigned" variants... 
+	// In future, we may need further "unsigned" variants...
 	bool isUnsigned = ity->getBitWidth() == 1;
 	switch(oper.GetToken())
 	{
@@ -1212,7 +1200,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	case Token::Or:
 	    return builder.CreateOr(l, r, "or");
-	    
+
 	default:
 	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
 	}
@@ -1258,7 +1246,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 }
 
 void UnaryExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Unary: " << oper.ToString();
     rhs->dump(out);
 }
@@ -1298,7 +1286,7 @@ llvm::Value* UnaryExprAST::CodeGen()
 }
 
 void CallExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "call: " << proto->Name() << "(";
     for(auto i : args)
     {
@@ -1389,7 +1377,7 @@ llvm::Value* CallExprAST::CodeGen()
 	viter++;
     }
     llvm::CallInst* inst = 0;
-    if (proto->Type()->Type() == Types::Void) 
+    if (proto->Type()->Type() == Types::Void)
     {
 	inst = builder.CreateCall(calleF, argsV, "");
     }
@@ -1405,7 +1393,7 @@ llvm::Value* CallExprAST::CodeGen()
 }
 
 void BuiltinExprAST::DoDump(std::ostream& out) const
-{ 
+{
     out << " builtin call: " << name << "(";
     for(auto i : args)
     {
@@ -1417,7 +1405,7 @@ void BuiltinExprAST::DoDump(std::ostream& out) const
 void BuiltinExprAST::accept(Visitor& v)
 {
     TRACE();
-    for(auto i : args) 
+    for(auto i : args)
     {
 	i->accept(v);
     }
@@ -1426,12 +1414,12 @@ void BuiltinExprAST::accept(Visitor& v)
 llvm::Value* BuiltinExprAST::CodeGen()
 {
     return Builtin::CodeGen(builder, name, args);
-}    
+}
 
 void BlockAST::DoDump(std::ostream& out) const
 {
     out << "Block: Begin " << std::endl;
-    for(auto p : content) 
+    for(auto p : content)
     {
 	p->dump(out);
     }
@@ -1459,7 +1447,7 @@ llvm::Value* BlockAST::CodeGen()
 }
 
 void PrototypeAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Prototype: name: " << name << "(" << std::endl;
     for(auto i : args)
     {
@@ -1547,14 +1535,12 @@ llvm::Function* PrototypeAST::CodeGen()
 void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 {
     unsigned idx = 0;
-    for(llvm::Function::arg_iterator ai = fn->arg_begin(); 
-	idx < args.size();
-	idx++, ai++)
+    for(llvm::Function::arg_iterator ai = fn->arg_begin(); idx < args.size(); idx++, ai++)
     {
 	llvm::Value* a;
 	if (args[idx].IsRef() || args[idx].Type()->isCompound())
 	{
-	    a = ai; 
+	    a = ai;
 	}
 	else
 	{
@@ -1586,7 +1572,7 @@ void PrototypeAST::AddExtraArgs(const std::vector<VarDef>& extra)
 }
 
 void FunctionAST::DoDump(std::ostream& out) const
-{ 
+{
     out << "Function: " << std::endl;
     proto->dump(out);
     out << "Function body:" << std::endl;
@@ -1649,7 +1635,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
 	for(auto fn : subFunctions)
 	{
-	    
 	    fn->CodeGen(newPrefix);
 	}
     }
@@ -1777,7 +1762,7 @@ llvm::Value* AssignExprAST::AssignStr()
     TRACE();
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     assert(lhsv && "Expect variable in lhs");
-    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type()); 
+    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type());
     assert(sty && "Expect string type in lhsv->Type()");
 
     llvm::Value* dest = lhsv->Address();
@@ -1801,7 +1786,7 @@ llvm::Value* AssignExprAST::AssignStr()
 
 llvm::Value* AssignExprAST::CodeGen()
 {
-    TRACE();    
+    TRACE();
 
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
@@ -1815,8 +1800,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	return AssignStr();
     }
 
-    if (llvm::isa<StringExprAST>(rhs) && 
-	lhs->Type()->Type() == Types::Array)
+    if (llvm::isa<StringExprAST>(rhs) && lhs->Type()->Type() == Types::Array)
     {
 	Types::ArrayDecl* arr = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
 	if (arr->SubType()->Type() == Types::Char)
@@ -1892,11 +1876,10 @@ llvm::Value* AssignExprAST::CodeGen()
 	}
     }
 
-    assert(rty == lty && 
-	   "Types must be the same in assignment.");
+    assert(rty == lty && "Types must be the same in assignment.");
 
     builder.CreateStore(v, dest);
-    
+
     return v;
 }
 
@@ -2028,17 +2011,16 @@ llvm::Value* ForExprAST::CodeGen()
     startV = TypeConvert(startV, var->getType()->getContainedType(0));
     llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
 
-    builder.CreateStore(startV, var); 
+    builder.CreateStore(startV, var);
 
-    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);    
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", 
-							 theFunction);
-    
+    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", theFunction);
+
     llvm::Value* curVar = builder.CreateLoad(var, varName);
     llvm::Value* endV = end->CodeGen();
     llvm::Value* endCond;
 
-    if (stepDown) 
+    if (stepDown)
     {
 	endCond = builder.CreateICmpSGE(curVar, endV, "loopcond");
     }
@@ -2059,8 +2041,8 @@ llvm::Value* ForExprAST::CodeGen()
     curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
 
     builder.CreateStore(curVar, var);
-    
-    if (stepDown) 
+
+    if (stepDown)
     {
 	endCond = builder.CreateICmpSGE(curVar, endV, "endcond");
     }
@@ -2070,7 +2052,7 @@ llvm::Value* ForExprAST::CodeGen()
     }
 
     builder.CreateCondBr(endCond, loopBB, afterBB);
-    
+
     builder.SetInsertPoint(afterBB);
 
     return afterBB;
@@ -2090,20 +2072,20 @@ llvm::Value* WhileExprAST::CodeGen()
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "prebody" before the loop, a "body" and an "after" basic block  */
-    llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "prebody", 
+    llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "prebody",
 							   theFunction);
-    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body", 
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body",
 							 theFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", 
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
 							 theFunction);
 
     builder.CreateBr(preBodyBB);
     builder.SetInsertPoint(preBodyBB);
-    
+
     llvm::Value* condv = cond->CodeGen();
 
     llvm::Value* endCond = builder.CreateICmpEQ(condv, MakeBooleanConstant(0), "whilecond");
-    builder.CreateCondBr(endCond, afterBB, bodyBB); 
+    builder.CreateCondBr(endCond, afterBB, bodyBB);
 
     builder.SetInsertPoint(bodyBB);
     if (!body->CodeGen())
@@ -2112,7 +2094,7 @@ llvm::Value* WhileExprAST::CodeGen()
     }
     builder.CreateBr(preBodyBB);
     builder.SetInsertPoint(afterBB);
-    
+
     return afterBB;
 }
 
@@ -2135,9 +2117,9 @@ llvm::Value* RepeatExprAST::CodeGen()
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "body" and an "after" basic block  */
-    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body", 
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body",
 							 theFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", 
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
 							 theFunction);
 
     builder.CreateBr(bodyBB);
@@ -2148,10 +2130,10 @@ llvm::Value* RepeatExprAST::CodeGen()
     }
     llvm::Value* condv = cond->CodeGen();
     llvm::Value* endCond = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "untilcond");
-    builder.CreateCondBr(endCond, afterBB, bodyBB); 
+    builder.CreateCondBr(endCond, afterBB, bodyBB);
 
     builder.SetInsertPoint(afterBB);
-    
+
     return afterBB;
 }
 
@@ -2346,7 +2328,7 @@ llvm::Value* WriteAST::CodeGen()
 		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
-	    else if (type->Type() == Types::Array && 
+	    else if (type->Type() == Types::Array &&
 		     type->SubType()->Type() == Types::Char &&
 		     !llvm::isa<StringExprAST>(arg.expr))
 	    {
@@ -2380,7 +2362,7 @@ llvm::Value* WriteAST::CodeGen()
 		{
 		    w = MakeIntegerConstant(0);
 		}
-	    }   
+	    }
 	    else
 	    {
 		w = arg.width->CodeGen();
@@ -2469,7 +2451,7 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     std::string suffix;
     llvm::Type* resTy = Types::GetType(Types::Void);
     std::vector<llvm::Type*> argTypes{fty};
-    // ty is NULL if we're doing readln. 
+    // ty is NULL if we're doing readln.
     if (!ty)
     {
 	suffix = "nl";
@@ -2495,7 +2477,7 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	case Types::String:
 	    suffix = "str";
 	    break;
-	    
+
 	default:
 	    return ErrorF("Invalid type argument for read");
 	}
@@ -2641,7 +2623,7 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
     TRACE();
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
-    
+
     builder.SetInsertPoint(caseBB);
     stmt->CodeGen();
     builder.CreateBr(afterBB);
@@ -2693,11 +2675,11 @@ llvm::Value* CaseExprAST::CodeGen()
     }
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);    
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);
     llvm::BasicBlock* defaultBB = afterBB;
     if (otherwise)
     {
-	defaultBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "default", theFunction);    
+	defaultBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "default", theFunction);
 	
     }	
     llvm::SwitchInst* sw = builder.CreateSwitch(v, defaultBB, labels.size());
@@ -2714,14 +2696,14 @@ llvm::Value* CaseExprAST::CodeGen()
     }
 
     builder.SetInsertPoint(afterBB);
-    
+
     return afterBB;
 }
 
 void RangeExprAST::DoDump(std::ostream& out) const
 {
     out << "Range:";
-    low->dump(out); 
+    low->dump(out);
     out << "..";
     high->dump(out);
 }
@@ -2763,8 +2745,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
     Types::SetDecl::ElemType elems[Types::SetDecl::MaxSetWords] = {};
     for(auto v : values)
     {
-	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
-	if (r) 
+	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
 	{
 	    IntegerExprAST* le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
 	    IntegerExprAST* he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
@@ -2803,7 +2784,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 							init, name);
 
     delete [] initArr;
-    
+
     return gv;
 }
 
@@ -2817,8 +2798,7 @@ llvm::Value* SetExprAST::Address()
     bool allConstants = true;
     for(auto v : values)
     {
-	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
-	if (r) 
+	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
 	{
 	    if (!IsConstant(r->HighExpr()) || !IsConstant(r->LowExpr()))
 	    {
@@ -2849,18 +2829,18 @@ llvm::Value* SetExprAST::Address()
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
-    builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)), 
-			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() * 
+    builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)),
+			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() *
 			  Types::SetDecl::SetBits / 8), 0);
 
     size_t size = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
 
-    // TODO: For optimisation, we may want to pass through the vector and see if the values 
+    // TODO: For optimisation, we may want to pass through the vector and see if the values
     // are constants, and if so, be clever about it.
     // Also, we should combine stores to the same word!
     for(auto v : values)
     {
-	// If we have a "range", then make a loop. 
+	// If we have a "range", then make a loop.
 	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
 	if (r)
 	{
@@ -2875,7 +2855,7 @@ llvm::Value* SetExprAST::Address()
 		assert(0 && "Expected expressions to evalueate");
 		return 0;
 	    }
-	    
+
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();
 
@@ -2888,13 +2868,13 @@ llvm::Value* SetExprAST::Address()
 
 	    builder.CreateStore(low, loopVar);
 
-	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", fn);    
+	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", fn);
 	    builder.CreateBr(loopBB);
 	    builder.SetInsertPoint(loopBB);
 
 	    llvm::Value* loop = builder.CreateLoad(loopVar, "loopVar");
 
-	    // Set bit "loop" in set. 
+	    // Set bit "loop" in set.
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
 	    llvm::Value* offset = builder.CreateAnd(loop, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
@@ -2912,10 +2892,10 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
-	    
+
 	    loop = builder.CreateAdd(loop, MakeConstant(1, loop->getType()), "update");
 	    builder.CreateStore(loop, loopVar);
-	    
+
 	    llvm::Value* endCond = builder.CreateICmpSLE(loop, high, "loopcond");
 
 	    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", fn);

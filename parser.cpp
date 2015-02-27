@@ -48,7 +48,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
     }
 }
 
-Parser::Parser(Lexer &l) 
+Parser::Parser(Lexer &l)
     : lexer(l), nextTokenValid(false), errCnt(0)
 {
     if (!(AddType("integer", new Types::IntegerDecl) &&
@@ -68,7 +68,7 @@ ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
     {
 	std::cerr << file << ":" << line << ": ";
     }
-    std::cerr << "Error: " << msg << std::endl; 
+    std::cerr << "Error: " << msg << std::endl;
     errCnt++;
     return 0;
 }
@@ -179,39 +179,34 @@ bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 {
-    NamedObject* def = nameStack.Find(name);
-    if (!def) 
+    if (NamedObject* def = nameStack.Find(name))
     {
-	return 0;
+	if (TypeDef *typeDef = llvm::dyn_cast<TypeDef>(def))
+	{
+	    return typeDef->Type();
+	}
     }
-    TypeDef *typeDef = llvm::dyn_cast<TypeDef>(def);
-    if (!typeDef)
-    {
-	return 0;
-    }
-    return typeDef->Type();
+    return 0;
 }
 
 ExprAST* Parser::ParseNilExpr()
 {
     Location w = CurrentToken().Loc();
-    if (!Expect(Token::Nil, true))
+    if (Expect(Token::Nil, true))
     {
-	return 0;
+	return new NilExprAST(w);
     }
-    return new NilExprAST(w);
+    return 0;
 }
 
 Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
-    NamedObject* def = nameStack.Find(name);
-    if (!def) 
+    if (NamedObject* def = nameStack.Find(name))
     {
-	return 0;
-    }
-    if (ConstDef *constDef = llvm::dyn_cast<ConstDef>(def))
-    {
-	return constDef->ConstValue();
+	if (ConstDef *constDef = llvm::dyn_cast<ConstDef>(def))
+	{
+	    return constDef->ConstValue();
+	}
     }
     return 0;
 }
@@ -281,7 +276,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     tt = token.GetToken();
 
     int result = 0;
-    
+
     switch(tt)
     {
     case Token::Integer:
@@ -320,7 +315,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 Types::Range* Parser::ParseRange(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
-    
+
     int start = ParseConstantValue(tt, type);
     if (tt == Token::Unknown)
     {
@@ -330,7 +325,7 @@ Types::Range* Parser::ParseRange(Types::TypeDecl*& type)
     {
 	return 0;
     }
-    
+
     int end = ParseConstantValue(tt, type);
 
     if (tt == Token::Unknown)
@@ -708,7 +703,7 @@ Types::PointerDecl* Parser::ParsePointerType()
 	return 0;
     }
     // If the name is an "identifier" then it's a name of a not yet declared type.
-    // We need to forward declare it, and backpatch later. 
+    // We need to forward declare it, and backpatch later.
     if (CurrentToken().GetToken() == Token::Identifier)
     {
 	std::string name = CurrentToken().GetIdentName();
@@ -773,7 +768,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
     std::vector<int> variantsSeen;
-    std::vector<Types::FieldDecl> variants; 
+    std::vector<Types::FieldDecl> variants;
     do
     {
 	do
@@ -1000,7 +995,7 @@ Types::FileDecl* Parser::ParseFileDecl()
     }
 
     Types::TypeDecl* type = ParseType();
- 
+
     return new Types::FileDecl(type);
 }
 
@@ -1014,7 +1009,7 @@ Types::SetDecl* Parser::ParseSetDecl()
     {
 	return 0;
     }
-    
+
     Types::TypeDecl* type;
     Types::Range* r = ParseRangeOrTypeRange(type);
     if (!r)
@@ -1098,7 +1093,7 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::Set:
 	return ParseSetDecl();
-    
+
     case Token::LeftParen:
 	return ParseEnumDef();
 
@@ -1232,7 +1227,7 @@ ExprAST* Parser::ParseExpression()
 
 VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type); 
+    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
     if (!adecl)
     {
 	return ErrorV("Expected variable of array type when using index");
@@ -1290,11 +1285,11 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     {
 	return ErrorV("Attempt to use field of varaible that hasn't got fields");
     }
-    
+
     std::string name = CurrentToken().GetIdentName();
     int elem = rd->Element(name);
     VariableExprAST* e = 0;
-    
+
     if (elem >= 0)
     {
 	type = rd->GetElement(elem).FieldType();
@@ -1654,7 +1649,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	    }
 	}
     } while(CurrentToken().GetToken() == Token::Identifier);
-    
+
     return new VarDeclAST(CurrentToken().Loc(), varList);
 }
 
@@ -1783,7 +1778,7 @@ BlockAST* Parser::ParseBlock()
     {
 	return 0;
     }
-    
+
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
     Location loc = CurrentToken().Loc();
@@ -1813,7 +1808,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     Types::SimpleTypes functionType = 
 	CurrentToken().GetToken() == Token::Function?Types::Function:Types::Procedure;
     PrototypeAST* proto = ParsePrototype();
-    if (!proto) 
+    if (!proto)
     {
 	return 0;
     }
@@ -1837,7 +1832,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    return new FunctionAST(CurrentToken().Loc(), proto, 0, 0);
 	}
     }
-    
+
     NameWrapper wrapper(nameStack);
     NameWrapper usedWrapper(usedVariables);
     for(auto v : proto->Args())
@@ -2016,7 +2011,7 @@ ExprAST* Parser::ParseForExpr()
     {
 	down = (tt == Token::Downto);
 	NextToken();
-    } 
+    }
     else
     {
 	return Error("Expected 'to' or 'downto', got " + CurrentToken().ToString());
@@ -2252,7 +2247,7 @@ ExprAST* Parser::ParseWithBlock()
     {
 	return 0;
     }
-    
+
     NameWrapper wrapper(nameStack);
     for(auto v : vars)
     {

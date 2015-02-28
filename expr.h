@@ -207,7 +207,6 @@ public:
     PointerExprAST(const Location& w, VariableExprAST* p, Types::TypeDecl* ty)
 	: VariableExprAST(w, EK_PointerExpr, p, ty), pointer(p) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_PointerExpr; }
 private:
@@ -220,7 +219,6 @@ public:
     FilePointerExprAST(const Location& w, VariableExprAST* p, Types::TypeDecl* ty)
 	: VariableExprAST(w, EK_FilePointerExpr, p, ty), pointer(p) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FilePointerExpr; }
 private:

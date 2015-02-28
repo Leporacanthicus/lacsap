@@ -419,11 +419,6 @@ void ArrayExprAST::DoDump(std::ostream& out) const
     }
 }
 
-void AddRangeCheck(llvm::Value* v, long limit)
-{
-    TRACE();
-}
-
 llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
@@ -451,10 +446,6 @@ llvm::Value* ArrayExprAST::Address()
 	if (start)
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, ty));
-	}
-	if (rangeCheck)
-	{
-	    AddRangeCheck(index, ranges[i]->GetEnd());
 	}
 	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
 	if (!totalIndex)
@@ -515,21 +506,6 @@ void PointerExprAST::DoDump(std::ostream& out) const
     pointer->dump(out);
 }
 
-llvm::Value* PointerExprAST::CodeGen()
-{
-    // Look this variable up in the function.
-    TRACE();
-    if (llvm::Value* v = Address())
-    {
-	if (!v->getType()->isPointerTy())
-	{
-	    return ErrorV("Expected pointer type.");
-	}
-	return builder.CreateLoad(v, "ptr");
-    }
-    return 0;
-}
-
 llvm::Value* PointerExprAST::Address()
 {
     TRACE();
@@ -541,18 +517,6 @@ void FilePointerExprAST::DoDump(std::ostream& out) const
 {
     out << "FilePointer:";
     pointer->dump(out);
-}
-
-llvm::Value* FilePointerExprAST::CodeGen()
-{
-    // Look this variable up in the function.
-    TRACE();
-    if (llvm::Value* v = Address())
-    {
-	assert(v->getType()->isPointerTy() && "Expected pointer type.");
-	return builder.CreateLoad(v, "fileptr");
-    }
-    return 0;
 }
 
 llvm::Value* FilePointerExprAST::Address()

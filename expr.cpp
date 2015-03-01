@@ -438,14 +438,7 @@ llvm::Value* ArrayExprAST::Address()
 	llvm::Value* index;
 	index = indices[i]->CodeGen();
 	assert(index && "Expression failed for index");
-	assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
-
 	llvm::Type* ty = index->getType();
-	int start = ranges[i]->GetStart();
-	if (start)
-	{
-	    index = builder.CreateSub(index, MakeConstant(start, ty));
-	}
 	if (indexmul[i] != 1)
 	{
 	    index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
@@ -2918,4 +2911,91 @@ llvm::Value* WithExprAST::CodeGen()
 int GetErrors(void)
 {
     return errCnt;
+}
+
+void RangeReduceAST::DoDump(std::ostream& out) const
+{
+    out << "RangeReduce: ";
+    expr->dump(out);
+    out << "[";
+    range->dump(out);
+    out << "]";
+}
+
+llvm::Value* RangeReduceAST::CodeGen()
+{
+    llvm::Value* index = expr->CodeGen();
+    assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
+
+    llvm::Type* ty = index->getType();
+    int start = range->GetStart();
+    if (start)
+    {
+	index = builder.CreateSub(index, MakeConstant(start, ty));
+    }
+    if (ty->getPrimitiveSizeInBits() < Types::GetType(Types::Integer)->getPrimitiveSizeInBits())
+    {
+	index = builder.CreateSExt(index, Types::GetType(Types::Integer), "sext");
+    }
+    return index;
+}
+
+void RangeCheckAST::DoDump(std::ostream& out) const
+{
+    out << "RangeCheck: ";
+    expr->dump(out);
+    out << "[";
+    range->dump(out);
+    out << "]";
+}
+
+llvm::Value* RangeCheckAST::CodeGen()
+{
+    llvm::Value* index = expr->CodeGen();
+    assert(index && "Expected expression to generate code");
+    assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
+
+    llvm::Value* orig_index = index;
+    llvm::Type* intTy = Types::GetType(Types::Integer);
+
+    llvm::Type* ty = index->getType();
+    int start = range->GetStart();
+    if (start)
+    {
+	index = builder.CreateSub(index, MakeConstant(start, ty));
+    }
+    if (ty->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
+    {
+	index = builder.CreateSExt(index, intTy, "sext");
+    }
+    int end = range->GetRange()->Size();
+    llvm::Value* cmp = builder.CreateICmpUGT(index, MakeIntegerConstant(end), "rangecheck");
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range", theFunction);
+    llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue", theFunction);
+    builder.CreateCondBr(cmp, oorBlock, contBlock);
+    theFunction->getBasicBlockList().push_back(contBlock);
+    
+    theFunction->getBasicBlockList().push_back(oorBlock);
+    builder.SetInsertPoint(oorBlock);
+    std::vector<llvm::Value*> args = { builder.CreateGlobalStringPtr(Loc().FileName()),
+				       MakeIntegerConstant(Loc().LineNumber()),
+				       MakeIntegerConstant(start),
+				       MakeIntegerConstant(end),
+				       orig_index};
+    std::vector<llvm::Type*> argTypes = { llvm::PointerType::getUnqual(Types::GetType(Types::Char)),
+					  intTy,
+					  intTy,
+					  intTy,
+					  intTy };
+
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
+    llvm::FunctionType* ft = llvm::FunctionType::get(voidPtrTy, argTypes, false);
+    llvm::Constant* fn = theModule->getOrInsertFunction("range_error", ft);
+
+    builder.CreateCall(fn, args, "");
+    builder.CreateUnreachable();
+    
+    builder.SetInsertPoint(contBlock);
+    return index;
 }

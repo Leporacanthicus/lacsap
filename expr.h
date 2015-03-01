@@ -58,7 +58,9 @@ public:
 	EK_Read,
 	EK_LabelExpr,
 	EK_CaseExpr,
-	EK_WithExpr,		/* 34 */
+	EK_WithExpr,
+	EK_RangeReduceExpr,     /* 35 */
+	EK_RangeCheckExpr,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -631,6 +633,34 @@ public:
     void accept(Visitor& v) override { body->accept(v); v.visit(this); }
 private:
     ExprAST* body;
+};
+
+class RangeReduceAST : public ExprAST
+{
+public:
+    RangeReduceAST(ExprAST* e, Types::RangeDecl* r)
+	: ExprAST(e->Loc(), EK_RangeReduceExpr, e->Type()), expr(e), range(r)
+    { }
+    RangeReduceAST(ExprKind k, ExprAST* e, Types::RangeDecl* r)
+	: ExprAST(e->Loc(), k, e->Type()), expr(e), range(r)
+    { }
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeReduceExpr; }
+protected:
+    ExprAST* expr;
+    Types::RangeDecl* range;
+};
+
+class RangeCheckAST : public RangeReduceAST
+{
+public:
+    RangeCheckAST(ExprAST* e, Types::RangeDecl* r)
+	: RangeReduceAST(EK_RangeCheckExpr, e, r)
+    { }
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeCheckExpr; }
 };
 
 /* Useful global functions */

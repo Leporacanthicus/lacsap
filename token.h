@@ -11,8 +11,8 @@ class Location
 public:
     Location(const std::string& file, int line, int column);
     std::string to_string() const;
-    std::string FileName() { return fname; }
-    long LineNumber() { return lineNum; }
+    std::string FileName() const { return fname; }
+    long LineNumber() const { return lineNum; }
 private:
     std::string fname;
     int lineNum;

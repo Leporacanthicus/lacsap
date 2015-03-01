@@ -3,6 +3,7 @@
 #include "astvisitor.h"
 #include "trace.h"
 #include "token.h"
+#include "options.h"
 
 class TypeCheckVisitor : public Visitor
 {
@@ -341,6 +342,15 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	if (a->ranges[i]->Type() != a->indices[i]->Type()->Type())
 	{
 	    Error(a, "Incorrect index type");
+	}
+	ExprAST* e = a->indices[i];
+	if (rangeCheck)
+	{
+	    a->indices[i] = new RangeCheckAST(e, a->ranges[i]);
+	}
+	else
+	{
+	    a->indices[i] = new RangeReduceAST(e, a->ranges[i]);
 	}
     }
 }

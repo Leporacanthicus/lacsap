@@ -155,6 +155,7 @@ public:
     AddressableAST(const Location& w, ExprKind k, Types::TypeDecl* ty) :
 	ExprAST(w, k, ty) {}
     virtual llvm::Value* Address() = 0;
+    llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e)
     {
 	return e->getKind() >= EK_AddressableExpr && e->getKind() <= EK_LastAddressable;
@@ -171,7 +172,6 @@ public:
     VariableExprAST(const Location& w, ExprKind k, const VariableExprAST* v, Types::TypeDecl* ty)
 	: AddressableAST(w, k, ty), name(v->name) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     const std::string& Name() const { return name; }
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e)
@@ -184,20 +184,22 @@ protected:
 
 class ArrayExprAST : public VariableExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     ArrayExprAST(const Location& w,
 		 VariableExprAST* v,
 		 const std::vector<ExprAST*>& inds,
-		 const std::vector<Types::Range*>& r,
+		 const std::vector<Types::RangeDecl*>& r,
 		 Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
     /* Don't need CodeGen, just calculate address and use parent CodeGen */
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_ArrayExpr; }
+    void accept(Visitor& v) override;
 private:
     VariableExprAST* expr;
     std::vector<ExprAST*> indices;
-    std::vector<Types::Range*> ranges;
+    std::vector<Types::RangeDecl*> ranges;
     std::vector<size_t> indexmul;
 };
 

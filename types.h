@@ -48,6 +48,7 @@ namespace Types
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
 	size_t Size() const { return (size_t) ((long)end - (long)start) + 1; }
+	void dump() const;
 	void DoDump(std::ostream& out) const;
     private:
 	int start;
@@ -210,34 +211,6 @@ namespace Types
 	TypeDecl* baseType;
     };	
 
-    class ArrayDecl : public CompoundDecl
-    {
-    public:
-	ArrayDecl(TypeDecl* b, const std::vector<Range*>& r)
-	    : CompoundDecl(TK_Array, Array, b), ranges(r)
-	{
-	    assert(r.size() > 0 && "Empty range not allowed");
-	}
-	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<Range*>& r)
-	    : CompoundDecl(tk,  String, b), ranges(r)
-	{
-	    assert(tk == TK_String && "Expected this to be a string...");
-	    assert(r.size() > 0 && "Empty range not allowed");
-	}
-	const std::vector<Range*>& Ranges() const { return ranges; }
-	bool isStringLike() const override { return (baseType->Type() == Char); }
-	void DoDump(std::ostream& out) const override;
-	bool SameAs(const TypeDecl* ty) const override;
-	static bool classof(const TypeDecl* e)
-	{
-	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray;
-	}
-    protected:
-	llvm::Type* GetLlvmType() const override;
-    private:
-	std::vector<Range*> ranges;
-    };
-
     class SimpleCompoundDecl : public TypeDecl
     {
     public:
@@ -262,14 +235,45 @@ namespace Types
 	    assert(r && "Range should be specified");
 	}
     public:
-	Range* GetRange() const override { return range; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Range; }
 	bool SameAs(const TypeDecl* ty) const override;
+	int GetStart() const { return range->GetStart(); }
+	int GetEnd() const { return range->GetEnd(); }
+	size_t Size() const override { return range->Size(); }
+	Range* GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl *ty) const override;
     private:
 	Range* range;
+    };
+
+    class ArrayDecl : public CompoundDecl
+    {
+    public:
+	ArrayDecl(TypeDecl* b, const std::vector<RangeDecl*>& r)
+	    : CompoundDecl(TK_Array, Array, b), ranges(r)
+	{
+	    assert(r.size() > 0 && "Empty range not allowed");
+	}
+	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeDecl*>& r)
+	    : CompoundDecl(tk,  String, b), ranges(r)
+	{
+	    assert(tk == TK_String && "Expected this to be a string...");
+	    assert(r.size() > 0 && "Empty range not allowed");
+	}
+	const std::vector<RangeDecl*>& Ranges() const { return ranges; }
+	bool isStringLike() const override { return (baseType->Type() == Char); }
+	void DoDump(std::ostream& out) const override;
+	bool SameAs(const TypeDecl* ty) const override;
+	static bool classof(const TypeDecl* e)
+	{
+	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray;
+	}
+    protected:
+	llvm::Type* GetLlvmType() const override;
+    private:
+	std::vector<RangeDecl*> ranges;
     };
 
     struct EnumValue
@@ -488,25 +492,26 @@ namespace Types
 	    SetMask = SetBits-1,
 	    SetPow2Bits = 5
 	};
-	SetDecl(Range* r, TypeDecl* subType);
+	SetDecl(RangeDecl* r, TypeDecl *ty);
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Set; }
 	size_t SetWords() const { return (range->Size() + SetMask) >> SetPow2Bits; }
-	Range* GetRange() const override { return range; }
-	void UpdateRange(Range* r) { range = r; }
+	Range* GetRange() const override;
+	void UpdateRange(RangeDecl* r) { range = r; }
 	void UpdateSubtype(TypeDecl* ty);
 	bool SameAs(const TypeDecl* ty) const override;
     private:
 	llvm::Type* GetLlvmType() const override;
     private:
-	Range* range;
+	RangeDecl* range;
     };
 
     class StringDecl : public ArrayDecl
     {
     public:
 	StringDecl(unsigned size)
-	    : ArrayDecl(TK_String, new CharDecl, std::vector<Range*>(1, new Range(0, size)))
+	    : ArrayDecl(TK_String, new CharDecl, 
+			std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), Integer)))
 	{
 	    assert(size > 0 && "Zero size not allowed");
 	}

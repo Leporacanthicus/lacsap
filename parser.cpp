@@ -91,7 +91,7 @@ Types::TypeDecl* Parser::ErrorT(const std::string& msg)
     return 0;
 }
 
-Types::Range* Parser::ErrorR(const std::string& msg)
+Types::RangeDecl* Parser::ErrorR(const std::string& msg)
 {
     Error(msg);
     return 0;
@@ -312,7 +312,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
-Types::Range* Parser::ParseRange(Types::TypeDecl*& type)
+Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
 
@@ -337,10 +337,10 @@ Types::Range* Parser::ParseRange(Types::TypeDecl*& type)
     {
 	return ErrorR("Invalid range specification");
     }
-    return new Types::Range(start, end);
+    return new Types::RangeDecl(new Types::Range(start, end), type->Type());
 }
 
-Types::Range* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
+Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
@@ -354,7 +354,7 @@ Types::Range* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 	    return ErrorR("Type used as index specification should be integral type");
 	}
 	NextToken();
-	return type->GetRange();
+	return new Types::RangeDecl(type->GetRange(), type->Type());
     }
     else
     {
@@ -734,18 +734,19 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     {
 	return 0;
     }
-    std::vector<Types::Range*> rv;
+    std::vector<Types::RangeDecl*> rv;
     Types::TypeDecl* type = NULL;
     while(CurrentToken().GetToken() != Token::RightSquare)
     {
-	Types::Range* r = ParseRangeOrTypeRange(type);
-	if (!r) 
-
+	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type)) 
+	{
+	    assert(type && "Uh? Type is supposed to be set now");
+	    rv.push_back(r);
+	}
+	else
 	{
 	    return 0;
 	}
-	assert(type && "Uh? Type is supposed to be set now");
-	rv.push_back(r);
 	if (CurrentToken().GetToken() == Token::Comma)
 	{
 	    NextToken();
@@ -1011,13 +1012,12 @@ Types::SetDecl* Parser::ParseSetDecl()
     }
 
     Types::TypeDecl* type;
-    Types::Range* r = ParseRangeOrTypeRange(type);
-    if (!r)
+    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
     {
-	return 0;
+	assert(type && "Uh? Type is supposed to be set");
+	return new Types::SetDecl(r, type);
     }
-    assert(type && "Uh? Type is supposed to be set");
-    return new Types::SetDecl(r, type);
+    return 0;
 }
 
 Types::StringDecl* Parser::ParseStringDecl()
@@ -1073,13 +1073,12 @@ Types::TypeDecl* Parser::ParseType()
     case Token::Integer:
     case Token::Char:
     {
-	Types::TypeDecl* type = NULL;
-	Types::Range* r = ParseRange(type);
-	if (!r)
+	Types::TypeDecl*  type = NULL;
+	if (Types::RangeDecl* r = ParseRange(type))
 	{
-	    return 0;
+	    return r;
 	}
-	return new Types::RangeDecl(r, type->Type());
+	return 0;
     }
 
     case Token::Array:
@@ -1142,14 +1141,12 @@ ExprAST* Parser::ParseRealExpr(Token token)
 
 ExprAST* Parser::ParseStringExpr(Token token)
 {
-    std::vector<Types::Range*> rv;
     int len =  token.GetStrVal().length()-1;
     if (len < 1)
     {
 	len = 1;
     }
-    Types::Range* r = new Types::Range(0, len);
-    rv.push_back(r);
+    std::vector<Types::RangeDecl*> rv{new Types::RangeDecl(new Types::Range(0, len), Types::Integer)};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
     ExprAST* result = new StringExprAST(token.Loc(), token.GetStrVal(), ty);
     NextToken();

@@ -409,6 +409,11 @@ namespace Types
 	return true;
     }
 
+    void Range::dump() const
+    {
+	DoDump(std::cerr);
+    }
+
     void Range::DoDump(std::ostream& out) const
     {
 	out << "[" << start << ".." << end << "]";
@@ -779,21 +784,7 @@ namespace Types
 	out << "Text ";
     }
 
-    void SetDecl::DoDump(std::ostream& out) const
-    {
-	out << "Set of ";
-	if (!range)
-	{
-	    out << "[Unknown]";
-	}
-	else
-	{
-	    range->DoDump(out);
-	}
-	out << std::endl;
-    }
-
-    SetDecl::SetDecl(Range* r, TypeDecl* ty)
+    SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty)
 	: CompoundDecl(TK_Set, Set, ty), range(r)
     {
 	assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
@@ -814,11 +805,35 @@ namespace Types
 	return ty;
     }
 
+    void SetDecl::DoDump(std::ostream& out) const
+    {
+	out << "Set of ";
+	if (!range)
+	{
+	    out << "[Unknown]";
+	}
+	else
+	{
+	    range->DoDump(out);
+	}
+	out << std::endl;
+    }
+
     void SetDecl::UpdateSubtype(TypeDecl* ty)
     {
 	assert(!baseType && "Expected to not have a subtype yet...");
 	baseType = ty;
     }
+
+    Range* SetDecl::GetRange() const
+    { 
+	if (range)
+	{
+	    return range->GetRange(); 
+	}
+	return 0;
+    }
+
 
     void StringDecl::DoDump(std::ostream& out) const
     {

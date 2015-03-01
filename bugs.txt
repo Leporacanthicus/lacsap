@@ -1,0 +1,12 @@
+This document lists known bugs (outside of missing features and bugs listed in README)
+
+Bug 1:
+Date: 01-Mar-2015
+
+The char type is dealt with as a signed value.
+----------------------------------------------------------------
+Bug 2:
+Date: 01-Mar-2015
+
+For loop for char from chr(0) to chr(127) goes past 127.
+----------------------------------------------------------------

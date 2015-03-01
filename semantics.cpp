@@ -14,6 +14,7 @@ private:
     void CheckAssignExpr(AssignExprAST *a);
     void CheckRangeExpr(RangeExprAST *r);
     void CheckSetExpr(SetExprAST *s);
+    void CheckArrayExpr(ArrayExprAST *a);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -30,11 +31,11 @@ public:
 class SetRangeFixup : public SemaFixup
 {
 public:
-    SetRangeFixup(SetExprAST* s, Types::Range* r) : expr(s), guessRange(r) {}
+    SetRangeFixup(SetExprAST* s, Types::RangeDecl* r) : expr(s), guessRange(r) {}
     void DoIt() override;
 private:
-    SetExprAST*   expr;
-    Types::Range* guessRange;
+    SetExprAST*       expr;
+    Types::RangeDecl* guessRange;
 };
 
 void SetRangeFixup::DoIt()
@@ -44,6 +45,37 @@ void SetRangeFixup::DoIt()
 	Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(expr->Type());
 	sd->UpdateRange(guessRange);
     }
+}
+
+static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
+{
+    Types::Range* r = ty->GetRange();
+    Types::TypeDecl* base;
+    if (!r)
+    {
+	if (!ty->SubType())
+	{
+	    return 0;
+	}
+	r = ty->SubType()->GetRange();
+    }
+
+    if (ty->isIntegral())
+    {
+	base = ty;
+    }
+    else
+    {
+	base = ty->SubType();
+    }
+    
+    if (r->Size() > Types::SetDecl::MaxSetSize)
+    {
+	return new Types::RangeDecl(new Types::Range(0, Types::SetDecl::MaxSetSize-1),
+				    base->Type());
+    }
+
+    return new Types::RangeDecl(r, base->Type());
 }
 
 void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
@@ -77,6 +109,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     {
 	CheckSetExpr(s);
     }
+    else if (ArrayExprAST* a = llvm::dyn_cast<ArrayExprAST>(expr))
+    {
+	CheckArrayExpr(a);
+    }
 }
 
 void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
@@ -103,12 +139,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    }
 	    if (!sd->GetRange())
 	    {
-		Types::Range *r = lty->GetRange();
-		if (r->Size() > Types::SetDecl::MaxSetSize)
-		{
-		    r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
-		}
-		sd->UpdateRange(r);
+		sd->UpdateRange(GetRangeDecl(lty));
 	    }
 	}
 	else
@@ -148,20 +179,11 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
 	if (!lty->GetRange())
 	{
-	    Types::Range* r;
-	    if (!(r = rty->GetRange()))
-	    {
-		r = rty->SubType()->GetRange();
-		if (r->Size() > Types::SetDecl::MaxSetSize)
-		{
-		    r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
-		}
-	    }
-	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(r);
+	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
 	}
 	if (!rty->GetRange())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(lty->GetRange());
+	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
 	}
 	ty = rty;
     }
@@ -231,7 +253,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 
 	if (!rty->GetRange())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(lty->GetRange());
+	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
 	}
 	if (!rty->SubType())
 	{
@@ -289,10 +311,8 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
 {
     TRACE();
-    Types::TypeDecl *lty = r->low->Type();
-    Types::TypeDecl *rty = r->high->Type();
 
-    if (*rty != *lty)
+    if (*r->low->Type() != *r->high->Type())
     {
 	Error(r, "Range should be same type at both ends");
     }
@@ -304,14 +324,23 @@ void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
     Types::Range* r;
     if (!(r = s->Type()->GetRange()))
     {
+	Types::RangeDecl* rd = GetRangeDecl(s->Type());
 	if (s->Type()->SubType())
 	{
-	    r = s->Type()->SubType()->GetRange();
-	    if (r->Size() > Types::SetDecl::MaxSetSize)
-	    {
-		r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
-	    }
-	    sema->AddFixup(new SetRangeFixup(s, r));
+	    sema->AddFixup(new SetRangeFixup(s, rd));
+	}
+    }
+}
+
+void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
+{
+    TRACE();
+
+    for(size_t i = 0; i < a->indices.size(); i++)
+    {
+	if (a->ranges[i]->Type() != a->indices[i]->Type()->Type())
+	{
+	    Error(a, "Incorrect index type");
 	}
     }
 }

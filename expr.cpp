@@ -357,22 +357,18 @@ llvm::Value* CharExprAST::CodeGen()
     return v;
 }
 
+llvm::Value* AddressableAST::CodeGen()
+{
+    TRACE();
+    llvm::Value* v = Address();
+    assert(v && "Expected to get an address");
+    return builder.CreateLoad(v);
+}
+
 void VariableExprAST::DoDump(std::ostream& out) const
 {
     out << "Variable: " << name << " ";
     Type()->dump(out);
-}
-
-llvm::Value* VariableExprAST::CodeGen()
-{
-    // Look this variable up in the function.
-    TRACE();
-    llvm::Value* v = Address();
-    if (!v)
-    {
-	return 0;
-    }
-    return builder.CreateLoad(v, name);
 }
 
 llvm::Value* VariableExprAST::Address()
@@ -390,7 +386,7 @@ llvm::Value* VariableExprAST::Address()
 ArrayExprAST::ArrayExprAST(const Location& loc,
 			   VariableExprAST* v,
 			   const std::vector<ExprAST*>& inds,
-			   const std::vector<Types::Range*>& r,
+			   const std::vector<Types::RangeDecl*>& r,
 			   Types::TypeDecl* ty)
     : VariableExprAST(loc, EK_ArrayExpr, v, ty), expr(v), indices(inds), ranges(r)
 {
@@ -433,21 +429,19 @@ llvm::Value* ArrayExprAST::Address()
     {
 	llvm::Value* index;
 	index = indices[i]->CodeGen();
-	if (!index)
-	{
-	    return ErrorV("Expression failed for index");
-	}
-	if (!index->getType()->isIntegerTy())
-	{
-	    return ErrorV("Index is supposed to be integral type");
-	}
+	assert(index && "Expression failed for index");
+	assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
+
 	llvm::Type* ty = index->getType();
 	int start = ranges[i]->GetStart();
 	if (start)
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, ty));
 	}
-	index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
+	if (indexmul[i] != 1)
+	{
+	    index = builder.CreateMul(index, MakeConstant(indexmul[i], ty));
+	}
 	if (!totalIndex)
 	{
 	    totalIndex = index;
@@ -460,6 +454,16 @@ llvm::Value* ArrayExprAST::Address()
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0), totalIndex};
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
+}
+
+void ArrayExprAST::accept(Visitor& v)
+{
+    for(auto i : indices)
+    {
+	i->accept(v);
+    }
+    expr->accept(v);
+    v.visit(this);
 }
 
 void FieldExprAST::DoDump(std::ostream& out) const
@@ -1030,8 +1034,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
 	    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
 
-	    std::vector<Types::Range*> rr = ar->Ranges();
-	    std::vector<Types::Range*> rl = al->Ranges();
+	    std::vector<Types::RangeDecl*> rr = ar->Ranges();
+	    std::vector<Types::RangeDecl*> rl = al->Ranges();
 
 	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
@@ -1067,15 +1071,13 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Value* l = lhs->CodeGen();
     llvm::Value* r = rhs->CodeGen();
 
-    if (l == 0 || r == 0)
-    {
-	return 0;
-    }
+    assert(l && r && "Should have a value for both sides");
 
     bool isRhsNil = llvm::isa<NilExprAST>(rhs);
 
     llvm::Type* lty = l->getType();
-    // If it's a divide operation, result is float, so convert to float.
+    // If it's a divide operation, result is real, so convert to real.
+    // Fixme: Should move to 
     if (oper.GetToken() == Token::Divide)
     {
 	lty = Types::GetType(Types::Real);
@@ -1086,14 +1088,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     l = TypeConvert(l, rty);
     lty = l->getType();
 
-    if (rty != lty)
-    {
-	std::cout << "Different types..." << std::endl;
-	l->dump();
-	r->dump();
-	assert(0 && "Different types...");
-	return 0;
-    }
+    assert(rty == lty && "Expect same types");
 
     // Can compare for (un)equality with pointers and integers
     if (rty->isIntegerTy() || rty->isPointerTy())
@@ -1133,6 +1128,10 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateShl(l, r, "shltmp");
 	case Token::Xor:
 	    return builder.CreateXor(l, r, "xortmp");
+	case Token::And:
+	    return builder.CreateAnd(l, r, "and");
+	case Token::Or:
+	    return builder.CreateOr(l, r, "or");
 
 	case Token::LessThan:
 	    if (isUnsigned)
@@ -1158,12 +1157,6 @@ llvm::Value* BinaryExprAST::CodeGen()
 		return builder.CreateICmpUGE(l, r, "ge");
 	    }
 	    return builder.CreateICmpSGE(l, r, "ge");
-
-	case Token::And:
-	    return builder.CreateAnd(l, r, "and");
-
-	case Token::Or:
-	    return builder.CreateOr(l, r, "or");
 
 	default:
 	    return ErrorV(std::string("Unknown token: ") + oper.ToString());

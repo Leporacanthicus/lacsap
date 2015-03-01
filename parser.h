@@ -71,8 +71,8 @@ private:
 					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
 
-    Types::Range*       ParseRange(Types::TypeDecl*& type);
-    Types::Range*       ParseRangeOrTypeRange(Types::TypeDecl*& type);
+    Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
+    Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);
     Types::TypeDecl*    ParseSimpleType();
     Types::TypeDecl*    ParseType();
     Types::EnumDecl*    ParseEnumDef();
@@ -93,12 +93,12 @@ private:
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
 
     /* Error functions - all the same except for the return type */
-    ExprAST*         Error(const std::string& msg, const char* file = 0, int line = 0);
-    PrototypeAST*    ErrorP(const std::string& msg);
-    FunctionAST*     ErrorF(const std::string& msg);
-    Types::TypeDecl* ErrorT(const std::string& msg);
-    Types::Range*    ErrorR(const std::string& msg);
-    VariableExprAST* ErrorV(const std::string& msg);
+    ExprAST*          Error(const std::string& msg, const char* file = 0, int line = 0);
+    PrototypeAST*     ErrorP(const std::string& msg);
+    FunctionAST*      ErrorF(const std::string& msg);
+    Types::TypeDecl*  ErrorT(const std::string& msg);
+    Types::RangeDecl* ErrorR(const std::string& msg);
+    VariableExprAST*  ErrorV(const std::string& msg);
 
     // Helper functions for expression evaluation.
     bool IsCall(Types::TypeDecl* type);

@@ -294,7 +294,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	Types::ArrayDecl* aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
 	if (aty->SubType()->Type() == Types::Char && aty->Ranges().size() == 1)
 	{
-	    if (aty->Ranges()[0]->Size() == s->Str().size())
+	    if (aty->Ranges()[0]->GetRange()->Size() == s->Str().size())
 	    {
 		return;
 	    }

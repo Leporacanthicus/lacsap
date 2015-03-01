@@ -240,7 +240,6 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	int GetStart() const { return range->GetStart(); }
 	int GetEnd() const { return range->GetEnd(); }
-	size_t Size() const override { return range->Size(); }
 	Range* GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl *ty) const override;
@@ -495,7 +494,7 @@ namespace Types
 	SetDecl(RangeDecl* r, TypeDecl *ty);
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Set; }
-	size_t SetWords() const { return (range->Size() + SetMask) >> SetPow2Bits; }
+	size_t SetWords() const { return (range->GetRange()->Size() + SetMask) >> SetPow2Bits; }
 	Range* GetRange() const override;
 	void UpdateRange(RangeDecl* r) { range = r; }
 	void UpdateSubtype(TypeDecl* ty);

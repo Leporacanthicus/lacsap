@@ -173,6 +173,7 @@ public:
 	: AddressableAST(w, k, ty), name(v->name) {}
     void DoDump(std::ostream& out) const override;
     const std::string& Name() const { return name; }
+    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e)
     {

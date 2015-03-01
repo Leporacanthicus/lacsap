@@ -337,14 +337,14 @@ namespace Types
 	size_t nelems = 0;
 	for(auto r : ranges)
 	{
-	    assert(r->Size() && "Expectig range to have a non-zero size!");
+	    assert(r->GetRange()->Size() && "Expectig range to have a non-zero size!");
 	    if (!nelems)
 	    {
-		nelems = r->Size();
+		nelems = r->GetRange()->Size();
 	    }
 	    else
 	    {
-		nelems *= r->Size();
+		nelems *= r->GetRange()->Size();
 	    }
 	}
 	assert(nelems && "Expect number of elements to be non-zero!");
@@ -792,14 +792,14 @@ namespace Types
 	assert(SetMask == SetBits-1 && "Set pow2 mismatch");
 	if (r)
 	{
-	    assert(r->Size() <= MaxSetSize && "Set too large");
+	    assert(r->GetRange()->Size() <= MaxSetSize && "Set too large");
 	}
     }
 
     llvm::Type* SetDecl::GetLlvmType() const
     {
 	assert(range);
-	assert(range->Size() <= MaxSetSize && "Set too large");
+	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
 	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(Integer));
 	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;

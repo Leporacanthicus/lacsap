@@ -371,6 +371,14 @@ void VariableExprAST::DoDump(std::ostream& out) const
     Type()->dump(out);
 }
 
+llvm::Value* VariableExprAST::CodeGen()
+{
+    TRACE();
+    llvm::Value* v = Address();
+    assert(v && "Expected to get an address");
+    return builder.CreateLoad(v, name);
+}
+
 llvm::Value* VariableExprAST::Address()
 {
     TRACE();
@@ -394,7 +402,7 @@ ArrayExprAST::ArrayExprAST(const Location& loc,
     for(auto j = ranges.end()-1; j >= ranges.begin(); j--)
     {
 	indexmul.push_back(mul);
-	mul *= (*j)->Size();
+	mul *= (*j)->GetRange()->Size();
     }
     std::reverse(indexmul.begin(), indexmul.end());
 }

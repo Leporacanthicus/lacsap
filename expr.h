@@ -646,7 +646,10 @@ public:
     { }
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeReduceExpr; }
+    static bool classof(const ExprAST* e)
+    {
+	return (e->getKind() == EK_RangeReduceExpr) || (e->getKind() == EK_RangeCheckExpr);
+    }
 protected:
     ExprAST* expr;
     Types::RangeDecl* range;

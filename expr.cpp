@@ -2153,7 +2153,7 @@ void WriteAST::accept(Visitor& v)
 	a.expr->accept(v);
 	if (a.width)
 	{
-	    a.expr->accept(v);
+	    a.width->accept(v);
 	}
 	if (a.precision)
 	{
@@ -2924,6 +2924,7 @@ void RangeReduceAST::DoDump(std::ostream& out) const
 
 llvm::Value* RangeReduceAST::CodeGen()
 {
+    TRACE();
     llvm::Value* index = expr->CodeGen();
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
 
@@ -2951,6 +2952,7 @@ void RangeCheckAST::DoDump(std::ostream& out) const
 
 llvm::Value* RangeCheckAST::CodeGen()
 {
+    TRACE();
     llvm::Value* index = expr->CodeGen();
     assert(index && "Expected expression to generate code");
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");

@@ -339,6 +339,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 
     for(size_t i = 0; i < a->indices.size(); i++)
     {
+	assert(!llvm::isa<RangeReduceAST>(a->indices[i]) && "Already done this?");
 	if (a->ranges[i]->Type() != a->indices[i]->Type()->Type())
 	{
 	    Error(a, "Incorrect index type");

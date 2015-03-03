@@ -518,6 +518,12 @@ llvm::Value* PointerExprAST::Address()
     return pointer->CodeGen();
 }
 
+void PointerExprAST::accept(Visitor& v)
+{
+    pointer->accept(v);
+    v.visit(this);
+}
+
 void FilePointerExprAST::DoDump(std::ostream& out) const
 {
     out << "FilePointer:";
@@ -533,6 +539,12 @@ llvm::Value* FilePointerExprAST::Address()
     v = builder.CreateGEP(v, ind, "bufptr");
     v = builder.CreateLoad(v, "buffer");
     return v;
+}
+
+void FilePointerExprAST::accept(Visitor& v)
+{
+    pointer->accept(v);
+    v.visit(this);
 }
 
 void FunctionExprAST::DoDump(std::ostream& out) const
@@ -1350,6 +1362,15 @@ llvm::Value* CallExprAST::CodeGen()
     return inst;
 }
 
+void CallExprAST::accept(Visitor& v)
+{
+    for(auto i : args)
+    {
+	i->accept(v);
+    }
+    v.visit(this);
+}
+
 void BuiltinExprAST::DoDump(std::ostream& out) const
 {
     out << " builtin call: " << name << "(";
@@ -1539,6 +1560,10 @@ void FunctionAST::DoDump(std::ostream& out) const
 
 void FunctionAST::accept(Visitor& v)
 {
+    for(auto i : subFunctions)
+    {
+	i->accept(v);
+    }
     if (varDecls)
     {
 	varDecls->accept(v);

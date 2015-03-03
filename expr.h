@@ -214,6 +214,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_PointerExpr; }
+    void accept(Visitor& v) override;
 private:
     ExprAST* pointer;
 };
@@ -226,6 +227,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FilePointerExpr; }
+    void accept(Visitor& v) override;
 private:
     ExprAST* pointer;
 };
@@ -471,6 +473,7 @@ public:
     static bool classof(const ExprAST* e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST* Proto() { return proto; }
     std::vector<ExprAST*>& Args() { return args; }
+    void accept(Visitor& v) override;
 private:
     const PrototypeAST*   proto;
     ExprAST*              callee;

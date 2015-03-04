@@ -3010,12 +3010,11 @@ llvm::Value* RangeCheckAST::CodeGen()
 	index = builder.CreateSExt(index, intTy, "sext");
     }
     int end = range->GetRange()->Size();
-    llvm::Value* cmp = builder.CreateICmpUGT(index, MakeIntegerConstant(end), "rangecheck");
+    llvm::Value* cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range", theFunction);
+    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range");
     llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue", theFunction);
     builder.CreateCondBr(cmp, oorBlock, contBlock);
-    theFunction->getBasicBlockList().push_back(contBlock);
     
     theFunction->getBasicBlockList().push_back(oorBlock);
     builder.SetInsertPoint(oorBlock);

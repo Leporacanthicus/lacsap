@@ -738,7 +738,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     Types::TypeDecl* type = NULL;
     while(CurrentToken().GetToken() != Token::RightSquare)
     {
-	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type)) 
+	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
 	{
 	    assert(type && "Uh? Type is supposed to be set now");
 	    rv.push_back(r);

@@ -3016,14 +3016,14 @@ llvm::Value* RangeCheckAST::CodeGen()
     llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range");
     llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue", theFunction);
     builder.CreateCondBr(cmp, oorBlock, contBlock);
-    
+
     theFunction->getBasicBlockList().push_back(oorBlock);
     builder.SetInsertPoint(oorBlock);
     std::vector<llvm::Value*> args = { builder.CreateGlobalStringPtr(Loc().FileName()),
 				       MakeIntegerConstant(Loc().LineNumber()),
 				       MakeIntegerConstant(start),
 				       MakeIntegerConstant(end),
-				       orig_index};
+				       orig_index };
     std::vector<llvm::Type*> argTypes = { llvm::PointerType::getUnqual(Types::GetType(Types::Char)),
 					  intTy,
 					  intTy,
@@ -3036,7 +3036,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 
     builder.CreateCall(fn, args, "");
     builder.CreateUnreachable();
-    
+
     builder.SetInsertPoint(contBlock);
     return index;
 }

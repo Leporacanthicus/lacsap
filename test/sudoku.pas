@@ -5,31 +5,31 @@ type
 		   fixed : boolean;
 		   n	 : integer;
 		end;
-   
+
    GridArray  = array [1..9, 1..9] of GridEntry;
-   
+
    CandType   = (Row, Col, Sub, Overall);
-   
+
    CandSet    = set of 1..9;
-   
+
    CandList   = record
 		   cursor : integer;
 		   bits	  : CandSet;
 		end;
-   
+
    Candidates = record
 		   row : array [1..9] of CandSet;
 		   col : array [1..9] of CandSet;
 		   sub : array [1..3, 1..3] of CandSet;
 		end;
-   
+
    Game	      = record
 		   grid	      : GridArray;
 		   time	      : real;
 		   solved     : boolean;
 		   cand	      : Candidates;
 		   emptyCount : integer;
-		end;	      
+		end;
 
 var
    g : Game;
@@ -85,7 +85,7 @@ function GetCandList(var g : Game;  x, y : integer; ty : CandType) : CandList;
 var
    sx, sy : integer;
    tmp	  : CandList;
-   
+
 begin
    tmp.cursor := 0;
    case ty of
@@ -94,10 +94,10 @@ begin
 	     SubDiv(x, y, sx, sy);
 	     tmp.bits := g.cand.sub[sx, sy];
 	  end;
-     
-     Col : 
+
+     Col :
 	   tmp.bits := g.cand.col[x];
-     Row : 
+     Row :
 	   tmp.bits := g.cand.row[y];
      Overall :
 	      begin
@@ -173,12 +173,12 @@ begin
      1 : begin
 	    SetGridFromString(g, 1, '700004060');
 	    SetGridFromString(g, 2, '120009000');
-   	    SetGridFromString(g, 3, '000507203');
-	    
+	    SetGridFromString(g, 3, '000507203');
+
 	    SetGridFromString(g, 4, '003000700');
 	    SetGridFromString(g, 5, '800000009');
 	    SetGridFromString(g, 6, '004000600');
-	    
+
 	    SetGridFromString(g, 7, '901803000');
 	    SetGridFromString(g, 8, '000900051');
 	    SetGridFromString(g, 9, '040700002');
@@ -187,11 +187,11 @@ begin
 	    SetGridFromString(g, 1, '000010005');
 	    SetGridFromString(g, 2, '035000827');
 	    SetGridFromString(g, 3, '009008000');
-	    
+
 	    SetGridFromString(g, 4, '406030009');
 	    SetGridFromString(g, 5, '000902160');
 	    SetGridFromString(g, 6, '070400000');
-	    
+
 	    SetGridFromString(g, 7, '013020900');
 	    SetGridFromString(g, 8, '060007008');
 	    SetGridFromString(g, 9, '002800540');
@@ -200,11 +200,11 @@ begin
 	    SetGridFromString(g, 1, '200908004');
 	    SetGridFromString(g, 2, '070000020');
 	    SetGridFromString(g, 3, '005000800');
-	    
+
 	    SetGridFromString(g, 4, '500206007');
 	    SetGridFromString(g, 5, '020010030');
 	    SetGridFromString(g, 6, '900704005');
-	    
+
 	    SetGridFromString(g, 7, '004000700');
 	    SetGridFromString(g, 8, '090000060');
 	    SetGridFromString(g, 9, '600407002');
@@ -213,11 +213,11 @@ begin
 	    SetGridFromString(g, 1, '000010003');
 	    SetGridFromString(g, 2, '030800040');
 	    SetGridFromString(g, 3, '009320006');
-	    
+
 	    SetGridFromString(g, 4, '500001900');
 	    SetGridFromString(g, 5, '007000500');
 	    SetGridFromString(g, 6, '008700001');
-	    
+
 	    SetGridFromString(g, 7, '200073800');
 	    SetGridFromString(g, 8, '040008010');
 	    SetGridFromString(g, 9, '700060000');
@@ -226,11 +226,11 @@ begin
 	    SetGridFromString(g, 1, '600500010');
 	    SetGridFromString(g, 2, '300090000');
 	    SetGridFromString(g, 3, '071060003');
-	    
+
 	    SetGridFromString(g, 4, '089000000');
 	    SetGridFromString(g, 5, '200104006');
 	    SetGridFromString(g, 6, '000000830');
-	    
+
 	    SetGridFromString(g, 7, '700010620');
 	    SetGridFromString(g, 8, '000050004');
 	    SetGridFromString(g, 9, '020006007');
@@ -262,8 +262,8 @@ begin
 	    SetGridFromString(g, 9, '000406000');
 	 end;
      otherwise : 
-      	 panic("Unknown index");
-   end;	       
+         panic("Unknown index");
+   end;
 end; { InitGame }
 
 
@@ -285,9 +285,8 @@ var
    cand	  : CandList;
    cand2  : CandList;
    cand3  : CandList;
-   inv	  : CandList;
    done	  : boolean;
-   
+
 begin
    list.cursor := 0;
    list.bits   := [];
@@ -355,7 +354,7 @@ function Next(var list : CandList): integer;
 
 var
    res	: integer;
-   
+
 begin
    res := 0;
    with list do
@@ -373,7 +372,7 @@ procedure DrawGame(var g : Game);
 
 var
    x, y	: integer;
-   
+
 begin
    for y := 1 to 9 do
    begin
@@ -407,7 +406,7 @@ begin
    done := false;
    Solve := false;
    repeat
-      if FindCandidate(g, x, y, list) then 
+      if FindCandidate(g, x, y, list) then
       begin
 	 if g.emptyCount = 0 then
 	 begin
@@ -473,5 +472,5 @@ begin
       InitGame(g, i);
       if not Solve(g, 1) then
 	 writeln("failed");
-   end;      
+   end;
 end.

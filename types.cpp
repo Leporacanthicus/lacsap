@@ -826,10 +826,10 @@ namespace Types
     }
 
     Range* SetDecl::GetRange() const
-    { 
+    {
 	if (range)
 	{
-	    return range->GetRange(); 
+	    return range->GetRange();
 	}
 	return 0;
     }

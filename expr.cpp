@@ -436,6 +436,7 @@ llvm::Value* ArrayExprAST::Address()
     for(size_t i = 0; i < indices.size(); i++)
     {
 	llvm::Value* index;
+	assert(llvm::isa<RangeReduceAST>(indices[i]));
 	index = indices[i]->CodeGen();
 	assert(index && "Expression failed for index");
 	llvm::Type* ty = index->getType();
@@ -484,6 +485,12 @@ llvm::Value* FieldExprAST::Address()
 	return v;
     }
     return ErrorV("Expression did not form an address");
+}
+
+void FieldExprAST::accept(Visitor& v)
+{
+    expr->accept(v);
+    v.visit(this);
 }
 
 void VariantFieldExprAST::DoDump(std::ostream& out) const
@@ -2617,6 +2624,13 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
     }
     return caseBB;
 }
+
+void LabelExprAST::accept(Visitor& v)
+{
+    stmt->accept(v);
+    v.visit(this);
+}
+
 
 void CaseExprAST::DoDump(std::ostream& out) const
 {

@@ -240,6 +240,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FieldExpr; }
+    void accept(Visitor& v) override;
 private:
     VariableExprAST* expr;
     int element;
@@ -605,6 +606,7 @@ public:
     llvm::Value* CodeGen() override { assert(0); return 0; }
     llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
+    void accept(Visitor& v) override;
 private:
     std::vector<int> labelValues;
     ExprAST*         stmt;

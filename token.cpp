@@ -64,7 +64,7 @@ std::string Token::ToString() const
 
 void Token::dump() const
 {
-    dump(std::cout);
+    dump(std::cerr);
 }
 
 void Token::dump(std::ostream& out, const char* file, int line) const

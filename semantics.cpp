@@ -119,6 +119,7 @@ void TypeCheckVisitor::visit(ExprAST* expr)
 void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 {
     TRACE();
+
     Types::TypeDecl* lty = b->lhs->Type();
     Types::TypeDecl* rty = b->rhs->Type();
     Types::TypeDecl* ty = 0;
@@ -244,6 +245,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 {
     TRACE();
+
     Types::TypeDecl *lty = a->lhs->Type();
     Types::TypeDecl *rty = a->rhs->Type();
 
@@ -322,6 +324,7 @@ void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
 void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
 {
     TRACE();
+
     Types::Range* r;
     if (!(r = s->Type()->GetRange()))
     {
@@ -339,19 +342,21 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 
     for(size_t i = 0; i < a->indices.size(); i++)
     {
-	assert(!llvm::isa<RangeReduceAST>(a->indices[i]) && "Already done this?");
-	if (a->ranges[i]->Type() != a->indices[i]->Type()->Type())
+	ExprAST* e = a->indices[i];
+	Types::RangeDecl* r = a->ranges[i];
+	if(llvm::isa<RangeReduceAST>(e))
+	    continue;
+	if (r->Type() != e->Type()->Type())
 	{
 	    Error(a, "Incorrect index type");
 	}
-	ExprAST* e = a->indices[i];
 	if (rangeCheck)
 	{
-	    a->indices[i] = new RangeCheckAST(e, a->ranges[i]);
+	    a->indices[i] = new RangeCheckAST(e, r);
 	}
 	else
 	{
-	    a->indices[i] = new RangeReduceAST(e, a->ranges[i]);
+	    a->indices[i] = new RangeReduceAST(e, r);
 	}
     }
 }
@@ -365,6 +370,7 @@ void Semantics::AddFixup(SemaFixup* f)
 void Semantics::RunFixups()
 {
     TRACE();
+
     for(auto f : fixups)
     {
 	f->DoIt();
@@ -374,6 +380,7 @@ void Semantics::RunFixups()
 void Semantics::Analyse(std::vector<ExprAST*>& ast)
 {
     TRACE();
+
     for(auto& e : ast)
     {
 	TypeCheckVisitor tc(this);

@@ -273,6 +273,7 @@ struct
     { "Basic", "Line & File",   "linefile.pas",    "" },
     { "Basic", "Set Values",    "set.pas",         "" },
     { "Basic", "Pop Count",     "popcnt.pas",      "" },
+    { "Basic", "Sudoku",        "sudoku.pas",      "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

@@ -3008,6 +3008,7 @@ llvm::Value* RangeCheckAST::CodeGen()
     if (ty->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
     {
 	index = builder.CreateSExt(index, intTy, "sext");
+	orig_index = builder.CreateSExt(orig_index, intTy, "sext");
     }
     int end = range->GetRange()->Size();
     llvm::Value* cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");

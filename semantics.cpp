@@ -69,11 +69,10 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
     {
 	base = ty->SubType();
     }
-    
+
     if (r->Size() > Types::SetDecl::MaxSetSize)
     {
-	return new Types::RangeDecl(new Types::Range(0, Types::SetDecl::MaxSetSize-1),
-				    base->Type());
+	r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
     }
 
     return new Types::RangeDecl(r, base->Type());

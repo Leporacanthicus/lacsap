@@ -834,7 +834,6 @@ namespace Types
 	return 0;
     }
 
-
     void StringDecl::DoDump(std::ostream& out) const
     {
 	out << "String[";

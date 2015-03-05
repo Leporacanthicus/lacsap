@@ -97,6 +97,7 @@ namespace Types
 	virtual bool isIntegral() const = 0;
 	virtual bool isCompound() const { return false; }
 	virtual bool isStringLike() const { return false; }
+	virtual bool isUnsigned() const { return false; }
 	virtual Range* GetRange() const;
 	virtual TypeDecl* SubType() const { return 0; }
 	virtual bool SameAs(const TypeDecl* ty) const = 0;
@@ -136,6 +137,7 @@ namespace Types
 	}
         std::string to_string() const override { return "char"; }
 	bool isIntegral() const override { return true; }
+	bool isUnsigned() const override { return true; }
 	bool isStringLike() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
     protected:
@@ -240,6 +242,7 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	int GetStart() const { return range->GetStart(); }
 	int GetEnd() const { return range->GetEnd(); }
+	bool isUnsigned() const override { 	return GetStart() >= 0; }
 	Range* GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl *ty) const override;
@@ -301,6 +304,7 @@ namespace Types
     public:
 	Range* GetRange() const override { return new Range(0, values.size()-1); }
 	const EnumValues& Values() const { return values; }
+	bool isUnsigned() const override { return true; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Enum; }
 	bool SameAs(const TypeDecl* ty) const override;

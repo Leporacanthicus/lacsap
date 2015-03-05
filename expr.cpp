@@ -986,6 +986,34 @@ llvm::Value* BinaryExprAST::SetCodeGen()
     }
 }
 
+llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
+{
+    switch (oper.GetToken())
+    {
+    case Token::Equal:
+	return builder.CreateICmpEQ(v, MakeIntegerConstant(0), "eq");
+
+    case Token::NotEqual:
+	return builder.CreateICmpNE(v, MakeIntegerConstant(0), "ne");
+
+    case Token::GreaterOrEqual:
+	return builder.CreateICmpSGE(v, MakeIntegerConstant(0), "ge");
+
+    case Token::LessOrEqual:
+	return builder.CreateICmpSLE(v, MakeIntegerConstant(0), "le");
+
+    case Token::GreaterThan:
+	return builder.CreateICmpSGT(v, MakeIntegerConstant(0), "gt");
+
+    case Token::LessThan:
+	return builder.CreateICmpSLT(v, MakeIntegerConstant(0), "lt");
+
+    default:
+	return ErrorV("Invalid operand for char arrays");
+    }
+}
+
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -1008,7 +1036,6 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return ErrorV("One or both sides of binary expression does not have a type...");
     }
 
-    llvm::Value* tmp = 0;
     if (BothStringish(lhs, rhs))
     {
 	if (oper.GetToken() == Token::Plus)
@@ -1017,31 +1044,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	}
 	else
 	{
-	    tmp = CallStrFunc("Compare");
-
-	    switch(oper.GetToken())
-	    {
-	    case Token::Equal:
-		return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
-
-	    case Token::NotEqual:
-		return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
-
-	    case Token::GreaterOrEqual:
-		return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
-
-	    case Token::LessOrEqual:
-		return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
-
-	    case Token::GreaterThan:
-		return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
-
-	    case Token::LessThan:
-		return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
-
-	    default:
-		return ErrorV("Invalid operand for strings");
-	    }
+	    return MakeStrCompare(oper, CallStrFunc("Compare"));
 	}
     }
     else if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
@@ -1060,30 +1063,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
 		size_t size = rr[0]->Size();
-		tmp = CallArrFunc("Compare", size);
-		switch (oper.GetToken())
-		{
-		case Token::Equal:
-		    return builder.CreateICmpEQ(tmp, MakeIntegerConstant(0), "eq");
 
-		case Token::NotEqual:
-		    return builder.CreateICmpNE(tmp, MakeIntegerConstant(0), "ne");
-
-		case Token::GreaterOrEqual:
-		    return builder.CreateICmpSGE(tmp, MakeIntegerConstant(0), "ge");
-
-		case Token::LessOrEqual:
-		    return builder.CreateICmpSLE(tmp, MakeIntegerConstant(0), "le");
-
-		case Token::GreaterThan:
-		    return builder.CreateICmpSGT(tmp, MakeIntegerConstant(0), "gt");
-
-		case Token::LessThan:
-		    return builder.CreateICmpSLT(tmp, MakeIntegerConstant(0), "lt");
-
-		default:
-		    return ErrorV("Invalid operand for char arrays");
-		}
+		return MakeStrCompare(oper, CallArrFunc("Compare", size));
 	    }
 	}
     }
@@ -1097,7 +1078,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     llvm::Type* lty = l->getType();
     // If it's a divide operation, result is real, so convert to real.
-    // Fixme: Should move to 
+    // Fixme: Should move to semantics?
     if (oper.GetToken() == Token::Divide)
     {
 	lty = Types::GetType(Types::Real);
@@ -1126,10 +1107,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (rty->isIntegerTy())
     {
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(rty);
-	assert(ity && "Expected to make rty into an integer type!");
-	// In future, we may need further "unsigned" variants...
-	bool isUnsigned = ity->getBitWidth() == 1;
+	bool isUnsigned = rhs->Type()->isUnsigned();
 	switch(oper.GetToken())
 	{
 	case Token::Plus:
@@ -2010,36 +1988,62 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::Value* endV = end->CodeGen();
     llvm::Value* endCond;
 
-    if (stepDown)
+    if (start->Type()->isUnsigned())
     {
-	endCond = builder.CreateICmpSGE(curVar, endV, "loopcond");
+	if (stepDown)
+	{
+	    endCond = builder.CreateICmpUGE(curVar, endV, "loopcond");
+	}
+	else
+	{
+	    endCond = builder.CreateICmpULE(curVar, endV, "loopcond");
+	}
     }
     else
     {
-	endCond = builder.CreateICmpSLE(curVar, endV, "loopcond");
+	if (stepDown)
+	{
+	    endCond = builder.CreateICmpSGE(curVar, endV, "loopcond");
+	}
+	else
+	{
+	    endCond = builder.CreateICmpSLE(curVar, endV, "loopcond");
+	}
     }
-
+    builder.CreateSub(endV, stepVal);
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
     builder.SetInsertPoint(loopBB);
-
     if (!body->CodeGen())
     {
 	return 0;
     }
     curVar = builder.CreateLoad(var, varName);
-    curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
-
-    builder.CreateStore(curVar, var);
-
-    if (stepDown)
+    if (start->Type()->isUnsigned())
     {
-	endCond = builder.CreateICmpSGE(curVar, endV, "endcond");
+	if (stepDown)
+	{
+	    endCond = builder.CreateICmpUGT(curVar, endV, "loopcond");
+	}
+	else
+	{
+	    endCond = builder.CreateICmpULT(curVar, endV, "loopcond");
+	}
     }
     else
     {
-	endCond = builder.CreateICmpSLE(curVar, endV, "endcond");
+	if (stepDown)
+	{
+	    endCond = builder.CreateICmpSGT(curVar, endV, "loopcond");
+	}
+	else
+	{
+	    endCond = builder.CreateICmpSLT(curVar, endV, "loopcond");
+	}
     }
+    curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
+    builder.CreateStore(curVar, var);
+
 
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
@@ -2975,7 +2979,14 @@ llvm::Value* RangeReduceAST::CodeGen()
     }
     if (ty->getPrimitiveSizeInBits() < Types::GetType(Types::Integer)->getPrimitiveSizeInBits())
     {
-	index = builder.CreateSExt(index, Types::GetType(Types::Integer), "sext");
+	if (expr->Type()->isUnsigned())
+	{
+	    index = builder.CreateZExt(index, Types::GetType(Types::Integer), "zext");
+	}
+	else
+	{
+	    index = builder.CreateSExt(index, Types::GetType(Types::Integer), "sext");
+	}
     }
     return index;
 }
@@ -3007,8 +3018,16 @@ llvm::Value* RangeCheckAST::CodeGen()
     }
     if (ty->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
     {
-	index = builder.CreateSExt(index, intTy, "sext");
-	orig_index = builder.CreateSExt(orig_index, intTy, "sext");
+	if (expr->Type()->isUnsigned())
+	{
+	    index = builder.CreateZExt(index, intTy, "zext");
+	    orig_index = builder.CreateZExt(orig_index, intTy, "zext");
+	}
+	else
+	{
+	    index = builder.CreateSExt(index, intTy, "sext");
+	    orig_index = builder.CreateSExt(orig_index, intTy, "sext");
+	}
     }
     int end = range->GetRange()->Size();
     llvm::Value* cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");

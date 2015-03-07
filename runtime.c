@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <time.h>
+#include <math.h>
 
 /*******************************************
  * Enum declarations
@@ -580,9 +581,28 @@ void __dispose(void* ptr)
     free(ptr);
 }
 
+/*******************************************
+ * Math and such
+ *******************************************
+ */
 double __random(void)
 {
     return rand() / (double)RAND_MAX;
+}
+
+double __atan2(double x, double y)
+{
+    return atan2(x, y);
+}
+
+double __tan(double x)
+{
+    return tan(x);
+}
+
+double __fmod(double x, double y)
+{
+    return fmod(x, y);
 }
 
 /*******************************************

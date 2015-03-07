@@ -21,7 +21,7 @@ namespace Builtin
 	{
 	    resTy = ty;
 	}
-	std::vector<llvm::Type*> argTypes{ty};
+	std::vector<llvm::Type*> argTypes = {ty};
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 
 	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
@@ -486,6 +486,106 @@ namespace Builtin
 	return ErrorV("Incorrect argument type - needs to be a integer or set");
     }
 
+    static llvm::Value* CyclesCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size())
+	{
+	    return ErrorV("Cycles function takes no arguments");
+	}
+	std::vector<llvm::Type*> argTypes;
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("llvm.readcyclecounter", ft);
+
+	return builder.CreateCall(f, "cycles");
+    }
+
+    static llvm::Value* FmodCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size() != 2)
+	{
+	    return ErrorV("Cycles function takes no arguments");
+	}
+
+	llvm::Type* realTy = Types::GetType(Types::Real);
+
+	llvm::Value* a = args[0]->CodeGen();
+	llvm::Value* b = args[1]->CodeGen();
+
+	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	{
+	    a = builder.CreateSIToFP(a, realTy, "tofp");
+	}
+	if (b->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	{
+	    b = builder.CreateSIToFP(b, realTy, "tofp");
+	}
+
+	std::vector<llvm::Value*> arg = {a, b};
+	
+	std::vector<llvm::Type*> argTypes = {realTy, realTy};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("__fmod", ft);
+	
+	return builder.CreateCall(f, arg);
+    }
+
+    static llvm::Value* Arctan2CodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size() != 2)
+	{
+	    return ErrorV("Cycles function takes no arguments");
+	}
+
+	llvm::Type* realTy = Types::GetType(Types::Real);
+	llvm::Value* a = args[0]->CodeGen();
+	llvm::Value* b = args[1]->CodeGen();
+
+	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	{
+	    a = builder.CreateSIToFP(a, realTy, "tofp");
+	}
+	if (b->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	{
+	    b = builder.CreateSIToFP(b, realTy, "tofp");
+	}
+
+	std::vector<llvm::Value*> arg = {a, b};
+	
+	std::vector<llvm::Type*> argTypes = {realTy, realTy};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("__arctan2", ft);
+	
+	return builder.CreateCall(f, arg);
+    }
+
+    static llvm::Value* TanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorV("Cycles function takes no arguments");
+	}
+
+	llvm::Type* realTy = Types::GetType(Types::Real);
+	llvm::Value* a = args[0]->CodeGen();
+
+	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	{
+	    a = builder.CreateSIToFP(a, realTy, "tofp");
+	}
+
+	std::vector<llvm::Value*> arg = {a};
+	
+	std::vector<llvm::Type*> argTypes = {realTy};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("__tan", ft);
+	
+	return builder.CreateCall(f, arg);
+    }
+
     enum ResultForm
     {
 	RF_Input,
@@ -515,6 +615,7 @@ namespace Builtin
 	{ "sqrt",    SqrtCodeGen,    RF_Real },
 	{ "sin",     SinCodeGen,     RF_Real },
 	{ "cos",     CosCodeGen,     RF_Real },
+	{ "tan",     TanCodeGen,     RF_Real },
 	{ "arctan",  ArctanCodeGen,  RF_Real },
 	{ "ln",      LnCodeGen,      RF_Real },
 	{ "exp",     ExpCodeGen,     RF_Real },
@@ -539,6 +640,9 @@ namespace Builtin
 	{ "clock",   ClockCodeGen,   RF_LongInt },
 	{ "panic",   PanicCodeGen,   RF_Void },
 	{ "popcnt",  PopCntCodeGen,  RF_Integer },
+	{ "cycles",  CyclesCodeGen,  RF_LongInt },
+	{ "fmod",    FmodCodeGen,    RF_Real },
+	{ "arctan2", Arctan2CodeGen,   RF_Real },
     };
 
     static const BuiltinFunction* find(const std::string& name)

@@ -611,6 +611,25 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->dump(out);
 }
 
+static llvm::Value *SetOperation(const std::string& name, llvm::Value* res, llvm::Value *src)
+{
+
+    if (name == "Union")
+    {
+	return builder.CreateOr(res, src);
+    }
+    if (name == "Intersect")
+    {
+	return builder.CreateAnd(res, src);
+    }
+    if (name == "Diff")
+    {
+	src = builder.CreateNot(src);
+	return builder.CreateAnd(res, src);
+    }
+    return 0;
+}
+
 llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
 {
     if (optimization >= O1 && (name == "Union" || name == "Intersect" || name == "Diff"))
@@ -621,9 +640,11 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsS
 	llvm::Value* rV = MakeAddressable(rhs);
 	llvm::Value* lV = MakeAddressable(lhs);
 
+	size_t words = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
 	assert(rV && lV && "Should have generated values for left and right set");
+
 	llvm::Value* v = CreateTempAlloca(type->LlvmType());
-	for(size_t i = 0; i < llvm::dyn_cast<Types::SetDecl>(type)->SetWords(); i++)
+	for(size_t i = 0; i < words; i++)
 	{
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};
 	    llvm::Value* lAddr = builder.CreateGEP(lV, ind, "leftSet");
@@ -631,22 +652,9 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsS
 	    llvm::Value* vAddr = builder.CreateGEP(v, ind, "resSet");
 	    llvm::Value* res = builder.CreateLoad(lAddr);
 	    llvm::Value* tmp = builder.CreateLoad(rAddr);
-	    if (name == "Union")
-	    {
-		res = builder.CreateOr(res, tmp);
-	    }
-	    else if (name == "Intersect")
-	    {
-		res = builder.CreateAnd(res, tmp);
-	    }
-	    else if (name == "Diff")
-	    {
-		tmp = builder.CreateNot(tmp);
-		res = builder.CreateAnd(res, tmp);
-	    }
+	    res = SetOperation(name, res, tmp);
 	    builder.CreateStore(res, vAddr);
 	}
-
 	return builder.CreateLoad(v);
     }
     return 0;

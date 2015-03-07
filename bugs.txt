@@ -4,9 +4,14 @@ Bug 1:
 Date: 01-Mar-2015
 
 The char type is dealt with as a signed value.
+
+Resolved: Fixed by adding support for unsigned.
+Fix in: 8a34cd3fc47dae1613f9b94759cb097ec0a60a02
 ----------------------------------------------------------------
 Bug 2:
 Date: 01-Mar-2015
 
 For loop for char from chr(0) to chr(127) goes past 127.
+Resolved: Fixed by moving the end value comparison before the increment.
+Fix in: 8a34cd3fc47dae1613f9b94759cb097ec0a60a02
 ----------------------------------------------------------------

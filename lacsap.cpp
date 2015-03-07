@@ -7,7 +7,7 @@
 #include "trace.h"
 #include <iostream>
 #include <fstream>
-#include <llvm/PassManager.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/IR/LLVMContext.h>
@@ -17,9 +17,9 @@
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Support/CommandLine.h>
 
-llvm::FunctionPassManager* fpm;
 llvm::PassManager* mpm;
 llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+
 int      verbosity;
 bool     timetrace;
 bool     disableMemcpyOpt;
@@ -81,7 +81,6 @@ bool CodeGen(std::vector<ExprAST*> ast)
 
 void OptimizerInit()
 {
-    fpm = new llvm::FunctionPassManager(theModule);
     mpm = new llvm::PassManager();
 
     llvm::InitializeNativeTarget();
@@ -89,31 +88,31 @@ void OptimizerInit()
     if (OptimizationLevel > O0)
     {
 	// Promote allocas to registers.
-	fpm->add(llvm::createPromoteMemoryToRegisterPass());
+	mpm->add(llvm::createPromoteMemoryToRegisterPass());
 	// Provide basic AliasAnalysis support for GVN.
-	fpm->add(llvm::createBasicAliasAnalysisPass());
+	mpm->add(llvm::createBasicAliasAnalysisPass());
 	// Do simple "peephole" optimizations and bit-twiddling optzns.
-	fpm->add(llvm::createInstructionCombiningPass());
+	mpm->add(llvm::createInstructionCombiningPass());
 	// Reassociate expressions.
-	fpm->add(llvm::createReassociatePass());
+	mpm->add(llvm::createReassociatePass());
 	// Eliminate Common SubExpressions.
-	fpm->add(llvm::createGVNPass());
+	mpm->add(llvm::createGVNPass());
 	// Simplify the control flow graph (deleting unreachable blocks, etc).
-	fpm->add(llvm::createCFGSimplificationPass());
+	mpm->add(llvm::createCFGSimplificationPass());
         // Memory copying opts. 
-	fpm->add(llvm::createMemCpyOptPass());
+	mpm->add(llvm::createMemCpyOptPass());
 	// Merge constants.
 	mpm->add(llvm::createConstantMergePass());
 	// dead code removal:
-	fpm->add(llvm::createDeadCodeEliminationPass());
+	mpm->add(llvm::createDeadCodeEliminationPass());
 	if (OptimizationLevel > O1)
 	{
 	    // Inline functions. 
 	    mpm->add(llvm::createFunctionInliningPass());
 	    // Thread jumps.
-	    fpm->add(llvm::createJumpThreadingPass());
+	    mpm->add(llvm::createJumpThreadingPass());
 	    // Loop strength reduce.
-	    fpm->add(llvm::createLoopStrengthReducePass());
+	    mpm->add(llvm::createLoopStrengthReducePass());
 	}
     }
 }

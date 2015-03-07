@@ -39,7 +39,6 @@ void Stack<llvm::Value*>::dump(std::ostream& out) const
 const size_t MEMCPY_THRESHOLD = 16;
 const size_t MIN_ALIGN = 4;
 
-extern llvm::FunctionPassManager* fpm;
 extern llvm::Module* theModule;
 
 typedef Stack<llvm::Value*> VarStack;
@@ -1634,7 +1633,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     TRACE();
     verifyFunction(*theFunction);
-    fpm->run(*theFunction);
     return theFunction;
 }
 

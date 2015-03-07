@@ -84,7 +84,6 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     llvm::TargetLibraryInfoWrapperPass *TLI =
 	new llvm::TargetLibraryInfoWrapperPass(triple);
     PM.add(TLI);
-    tm->setAsmVerbosityDefault(true);
 
     std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(objname));
     if (!Out)

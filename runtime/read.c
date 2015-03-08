@@ -3,14 +3,56 @@
 #include <string.h>
 #include "runtime.h"
 
+static int read_chunk_text(struct FileEntry* f)
+{
+    if(f->isText & 2)
+    {
+	int ch = fgetc(f->file);
+	f->readAhead = f->bufferSize = (ch != EOF);
+	return ch;
+    }
+    else
+    {
+	if (f->readPos != f->bufferSize)
+	{
+	    f->readAhead = 1;
+	    return f->fileData->buffer[f->readPos++];
+	}
+
+	int n;
+	if ((n = fread(f->fileData->buffer, 1, f->recordSize, f->file)))
+	{
+	    if (n > 0)
+	    {
+		f->bufferSize = n;
+		f->readAhead = 1;
+		f->readPos = 1;
+		return *f->fileData->buffer;
+	    }
+	}
+    }
+    return EOF;
+}
+
+int get_next(struct FileEntry* f)
+{
+    return read_chunk_text(f);
+}
+
+
+
 /* Make a local function so it can inline */
-static int __get_text(File *file)
+static int __get_text(File* file)
 {
     struct FileEntry *f = &files[file->handle];
-    int ch = fgetc(f->file);
+    int ch = get_next(f);
     *file->buffer = ch;
-    f->readAhead = (ch != EOF);
-    return f->readAhead;
+    if (ch == EOF)
+    {
+	f->readAhead = 0;
+	return 0;
+    }
+    return 1;
 }
 
 /*******************************************
@@ -233,7 +275,7 @@ void __read_str(File* file, String* val)
     {
 	__get_text(file);
     }
-    while(!__eoln(file) && count < sizeof(buffer))
+    while(*file->buffer != '\n' && count < sizeof(buffer))
     {
 	buffer[count++] = *file->buffer;
 	if (!__get_text(file))

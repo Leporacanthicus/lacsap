@@ -25,13 +25,15 @@ typedef struct File
 
 struct FileEntry
 {
-    File  fileData;
+    File* fileData;
     FILE* file;
     char* name;
     int   isText;
     int   inUse;
     int   recordSize;
     int   readAhead;
+    int   readPos;
+    int   bufferSize;
 };
 
 typedef struct 

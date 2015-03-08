@@ -675,7 +675,6 @@ public:
 llvm::Value* MakeIntegerConstant(int val);
 llvm::Value* MakeConstant(long val, llvm::Type* ty);
 llvm::Value* ErrorV(const std::string& msg);
-llvm::Value* FileOrNull(VariableExprAST* file);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
 bool FileIsText(llvm::Value* f);
 llvm::Value* MakeAddressable(ExprAST* e);

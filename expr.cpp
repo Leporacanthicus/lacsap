@@ -2143,18 +2143,6 @@ void RepeatExprAST::accept(Visitor& v)
     body->accept(v);
 }
 
-llvm::Value* FileOrNull(VariableExprAST* file)
-{
-    if (file)
-    {
-	return file->Address();
-    }
-
-    llvm::Type* fty = Types::GetTextType()->LlvmType();
-    fty = llvm::PointerType::getUnqual(fty);
-    return llvm::Constant::getNullValue(fty);
-}
-
 void WriteAST::DoDump(std::ostream& out) const
 {
     if (isWriteln)
@@ -2307,7 +2295,7 @@ llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    llvm::Value* f = FileOrNull(file);
+    llvm::Value* f = file->Address();
 
     bool isText = FileIsText(f);
     for(auto arg: args)
@@ -2508,7 +2496,7 @@ llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    llvm::Value* f = FileOrNull(file);
+    llvm::Value* f = file->Address();
 
     bool isText = FileIsText(f);
     llvm::Type* fTy =  f->getType();

@@ -17,7 +17,6 @@ static void skip_spaces(File* file)
 
 static int get_sign(File* file)
 {
-    
     if (*file->buffer == '-')
     {
 	__get(file);
@@ -65,10 +64,6 @@ void __read_int(File* file, int* v)
     int n = 0;
     int sign;
 
-    if (!file)
-    {
-	file = &input;
-    }
     if (file->handle >= MaxPascalFiles)
     {
 	return;
@@ -79,22 +74,20 @@ void __read_int(File* file, int* v)
     }
     skip_spaces(file);
     sign = get_sign(file);
-    while(isdigit(*file->buffer) && !__eoln(file))
+    while(isdigit(*file->buffer))
     {
 	n *= 10;
 	n += (*file->buffer) - '0';
-	__get(file);
+	if (!__get(file))
+	{
+	    break;
+	}
     }
     *v = n * sign;
 }
 
 void __read_chr(File* file, char* v)
 {
-    if (!file)
-    {
-	file = &input;
-    }
-
     if (file->handle >= MaxPascalFiles)
     {
 	return;
@@ -116,10 +109,7 @@ void __read_real(File* file, double* v)
     double multiplicand = 1.0;
     int exponent = 0;
     int sign;
-    if (!file)
-    {
-	file = &input;
-    }
+
     if (file->handle >= MaxPascalFiles)
     {
 	return;
@@ -132,21 +122,27 @@ void __read_real(File* file, double* v)
     skip_spaces(file);
     sign = get_sign(file);
     
-    while(isdigit(*file->buffer) && !__eoln(file))
+    while(isdigit(*file->buffer))
     {
 	n *= 10.0;
 	n += (*file->buffer) - '0';
-	__get(file);
+	if (!__get(file))
+	{
+	    break;
+	}
     }
     if (*file->buffer == '.')
     {
 	__get(file);
-	while(isdigit(*file->buffer) && !__eoln(file))
+	while(isdigit(*file->buffer))
 	{
 	    n *= 10.0;
 	    n += (*file->buffer) - '0';
-	    __get(file);
 	    divisor *= 10.0;
+	    if (!__get(file))
+	    {
+		break;
+	    }
 	}
     }
     if (*file->buffer == 'e' || *file->buffer == 'E')
@@ -157,7 +153,10 @@ void __read_real(File* file, double* v)
 	{
 	    exponent *= 10;
 	    exponent += (*file->buffer) - '0';
-	    __get(file);
+	    if (!__get(file))
+	    {
+		break;
+	    }
 	}
 	exponent *= expsign;
 	multiplicand = exponent_to_multi(exponent);
@@ -168,17 +167,17 @@ void __read_real(File* file, double* v)
 
 void __read_nl(File* file)
 {
-    if (!file)
-    {
-	file = &input;
-    }
     if (!files[file->handle].readAhead)
     {
-	__get(file);
+	if (!__get(file))
+	{
+	    return;
+	}
     }
-    while(*file->buffer != '\n' && !__eof(file))
+    while(*file->buffer != '\n')
     {
-	__get(file);
+	if (!__get(file))
+	    break;
     }
     files[file->handle].readAhead = 0;
 }
@@ -187,10 +186,7 @@ void __read_str(File* file, String* val)
 {
     char buffer[256];
     size_t count = 0;
-    if (!file)
-    {
-	file = &input;
-    }
+
     if (file->handle >= MaxPascalFiles)
     {
 	return;
@@ -202,7 +198,10 @@ void __read_str(File* file, String* val)
     while(!__eoln(file) && count < sizeof(buffer))
     {
 	buffer[count++] = *file->buffer;
-	__get(file);
+	if (!__get(file))
+	{
+	    break;
+	}
     }
     val->len = count;
     memcpy(val->str, buffer, count);

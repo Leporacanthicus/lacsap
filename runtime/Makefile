@@ -3,7 +3,7 @@ CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
 CC  = clang
 
 OBJECTS = main.o math.o fileio.o write.o read.o readbin.o writebin.o alloc.o set.o string.o array.o panic.o \
-          clock.o rangeerror.o assign.o
+          clock.o rangeerror.o assign.o eofeoln.o getput.o
 SOURCES = $(patsubst %.o,%.c,${OBJECTS})
 
 RUNTIME_LIB = libruntime.a
@@ -12,7 +12,7 @@ RUNTIME=../${RUNTIME_LIB}
 
 
 all: ${RUNTIME}
-${RUNTIME}: ${RUNTIME_LIB}
+${RUNTIME} : ${RUNTIME_LIB}
 	cp $< $@
 
 ${RUNTIME_LIB} : ${OBJECTS}

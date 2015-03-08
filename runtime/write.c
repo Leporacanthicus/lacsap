@@ -8,19 +8,19 @@
  */
 void __write_int(File* file, int v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     fprintf(f, "%*d", width, v);
 }
 
 void __write_int64(File* file, long v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     fprintf(f, "%*ld", width, v);
 }
 
 void __write_real(File* file, double v, int width, int precision)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     if (precision > 0)
     {
 	fprintf(f, "%*.*f", width, precision, v);
@@ -33,7 +33,7 @@ void __write_real(File* file, double v, int width, int precision)
 
 void __write_char(File* file, char v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     if (width > 0)
     {
 	fprintf(f, "%*c", width, v);
@@ -46,7 +46,7 @@ void __write_char(File* file, char v, int width)
 
 void __write_bool(File* file, int v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     const char* vstr = (v)?"TRUE":"FALSE";
     if (width > 0)
     {
@@ -60,7 +60,7 @@ void __write_bool(File* file, int v, int width)
  
 void __write_chars(File* file, const char* v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     if (width > 0)
     {
 	fprintf(f, "%*s", width, v);
@@ -73,7 +73,7 @@ void __write_chars(File* file, const char* v, int width)
 
 void __write_str(File* file, const String* v, int width)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     char s[256];
     memcpy(s, v->str, v->len);
     s[v->len] = 0;
@@ -90,7 +90,7 @@ void __write_str(File* file, const String* v, int width)
 
 void __write_nl(File* file)
 {
-    FILE* f = getFile(file, &output);
+    FILE* f = getFile(file);
     fputc('\n', f);
 }
 

@@ -2282,6 +2282,10 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return Error("Write must have arguments.");
 	}
+	else
+	{
+	    file = new VariableExprAST(loc, "output", Types::GetTextType());
+	}
     }
     else
     {
@@ -2300,14 +2304,17 @@ ExprAST* Parser::ParseWrite()
 	    }
 	    if (args.size() == 0)
 	    {
-		VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr);
-		if (vexpr)
+		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
 		{
 		    if (vexpr->Type()->Type() == Types::File)
 		    {
 			file = vexpr;
 			wa.expr = 0;
 		    }
+		}
+		if (file == 0)
+		{
+			file = new VariableExprAST(loc, "output", Types::GetTextType());
 		}
 	    }
 	    if (wa.expr)
@@ -2370,6 +2377,10 @@ ExprAST* Parser::ParseRead()
 	{
 	    return Error("Read must have arguments.");
 	}
+	else
+	{
+	    file = new VariableExprAST(loc, "input", Types::GetTextType());
+	}
     }
     else
     {
@@ -2386,14 +2397,17 @@ ExprAST* Parser::ParseRead()
 	    }
 	    if (args.size() == 0)
 	    {
-		VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr);
-		if (vexpr)
+		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
 		{
 		    if (vexpr->Type()->Type() == Types::File)
 		    {
 			file = vexpr;
 			expr = 0;
 		    }
+		}
+		if (file == 0)
+		{
+		    file = new VariableExprAST(loc, "input", Types::GetTextType());
 		}
 	    }
 	    if (expr)
@@ -2534,8 +2548,8 @@ std::vector<ExprAST*> Parser::Parse()
 	return v;
     }
 
-    VarDef input("input", GetTypeDecl("text"), false, true);
-    VarDef output("output", GetTypeDecl("text"), false, true);
+    VarDef input("input", Types::GetTextType(), false, true);
+    VarDef output("output", Types::GetTextType(), false, true);
     nameStack.Add("input", new VarDef(input));
     nameStack.Add("output", new VarDef(output));
     std::vector<VarDef> varList{input, output};

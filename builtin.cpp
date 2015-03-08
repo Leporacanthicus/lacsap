@@ -322,9 +322,9 @@ namespace Builtin
 	}
 	else
 	{
-	    fvar = 0;
+	    fvar = new VariableExprAST(Location("",0,0), "input", Types::GetTextType());
 	}
-	llvm::Value* faddr = FileOrNull(fvar);
+	llvm::Value* faddr =fvar->Address();
 	std::vector<llvm::Type*> argTypes{faddr->getType()};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(resTy), argTypes, false);

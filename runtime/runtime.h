@@ -63,13 +63,8 @@ void InitFiles();
  * File Basics, low level I/O.
  *******************************************
  */
-static inline FILE* getFile(File* f, File* deflt)
+static inline FILE* getFile(File* f)
 {
-    if (!f)
-    {
-	assert(deflt);
-	f = deflt;
-    }
     if (f->handle < MaxPascalFiles && files[f->handle].inUse)
     {
 	return files[f->handle].file;
@@ -77,7 +72,7 @@ static inline FILE* getFile(File* f, File* deflt)
     return NULL;
 }
 
-void __get(File *file);
+int __get(File *file);
 void __put(File *file);
 int __eof(File* file);
 int __eoln(File* file);

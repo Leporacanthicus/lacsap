@@ -4,6 +4,8 @@
 *.o
 *.bc
 *.s
+*.a
+*.ll
 *~
 a.out
 .depends

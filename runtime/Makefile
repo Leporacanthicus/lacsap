@@ -1,12 +1,21 @@
-all: runtime_lib
-
 CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
 CC  = clang
 
-runtime_lib: runtime.o
-	cp runtime.o ..
+OBJECTS = runtime.o
 
-runtime.o : runtime.c
+RUNTIME_LIB = libruntime.a
+
+RUNTIME=../${RUNTIME_LIB}
+
+
+all: ${RUNTIME}
+${RUNTIME}: ${RUNTIME_LIB}
+	cp $< $@
+
+${RUNTIME_LIB} : ${OBJECTS}
+	ar r $@ ${OBJECTS}
+
+%c.%o:
 	${CC} ${CFLAGS} -fPIC -c $< -o $@
 
 clean:

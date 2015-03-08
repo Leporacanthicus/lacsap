@@ -6,14 +6,14 @@ goto.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
+* Make runtime into library and/or codegen.
 - Better error handling. Now slightly improved.
 - Proper type checking. 
 - Support for unsigned integral types.
 - Goto statement.
-* Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
+- Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - Refactor AST dump functions to use visitors.
 - Separate compile units.
-- Make runtime into libraries and/or codegen.
 - Debug symbols.
 - Stop using clang as the "linker".
 

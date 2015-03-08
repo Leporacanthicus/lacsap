@@ -127,7 +127,12 @@ void CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	std::string objname = replace_ext(filename, ".pas", ".o");
 	std::string exename = replace_ext(filename, ".pas", "");
 	CreateObject(module, objname);
-	std::string cmd = std::string("clang ") + objname + " runtime.o -lm -o " + exename; 
+	std::string verboseflags;
+	if (verbosity)
+	{
+	    verboseflags = "-v ";
+	}
+	std::string cmd = std::string("clang ") + verboseflags + objname + " -L. -lruntime -lm -o " + exename; 
 	if (verbosity)
 	{
 	    std::cerr << "Executing final link command: " << cmd << std::endl;

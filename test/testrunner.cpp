@@ -274,6 +274,7 @@ struct
     { "Basic", "Set Values",    "set.pas",         "" },
     { "Basic", "Pop Count",     "popcnt.pas",      "" },
     { "Basic", "Sudoku",        "sudoku.pas",      "" },
+    { "Basic", "General",       "general.pas",     "< general.in" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
@@ -317,20 +318,47 @@ void runTestCases(const std::vector<TestCase*>& tc,
 }
 	
 
-int main()
+int main(int argc, char **argv)
 {
     std::vector<TestCase*> tc; 
     TestResult res;
+    bool runSomeTests = false;
+    std::string mode = "full";
+
+    if (argc >= 2)
+    {
+	mode = argv[1];
+    }
 
     for(auto t : testCaseList)
     {
 	tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
     }
 
-    runTestCases(tc, res, "-O0");
-    runTestCases(tc, res, "-O1");
-    runTestCases(tc, res, "-O1 -Cr");
-    runTestCases(tc, res, "-O2");
+    if (mode == "full" || mode == "-O0")
+    {
+	runTestCases(tc, res, "-O0");
+	runSomeTests = true;
+    }
+    if (mode == "full" || mode == "-O1")
+    {
+	runTestCases(tc, res, "-O1");
+	runSomeTests = true;
+    }
+    if (mode == "full" || mode == "-O1 -Cr")
+    {
+	runTestCases(tc, res, "-O1 -Cr");
+	runSomeTests = true;
+    }
+    if (mode == "full" || mode == "-O2")
+    {
+	runTestCases(tc, res, "-O2");
+	runSomeTests = true;
+    }
+    if (!runSomeTests)
+    {
+	runTestCases(tc, res, mode);
+    }
     res.Report();
 
     for(auto i : tc)

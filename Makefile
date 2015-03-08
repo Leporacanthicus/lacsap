@@ -35,22 +35,28 @@ lacsap: ${OBJECTS} .depends
 	${LD} ${LDFLAGS} -o $@ ${OBJECTS} ${LIBS}
 
 .phony: tests
-tests:
+tests: runtime_lib
 	${MAKE} -C test
 
 .phony: runtime_lib
 runtime_lib:
 	${MAKE} -C runtime
 
-.phony: runtests 
-runtests: lacsap tests
-	${MAKE} -C test runtests
+.phony: runtests
+runtests: fulltests
+
+.phony: fulltests 
+fulltests: lacsap tests
+	${MAKE} -C test fulltests
+
+.phony: fasttests 
+fasttests: lacsap tests
+	${MAKE} -C test fasttests
 
 clean:
-	rm -f ${OBJECTS}
+	rm -f ${OBJECTS} libruntime.a
 	make -C test clean
 	make -C runtime clean
-
 
 include .depends
 

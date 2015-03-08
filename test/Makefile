@@ -18,8 +18,11 @@ testrunner: ${OBJECTS}
 libruntime.a: ../libruntime.a
 	cp $< .
 
-runtests: testrunner libruntime.a
+fulltests: testrunner libruntime.a
 	./testrunner
+
+fasttests: testrunner libruntime.a
+	./testrunner -O1
 
 clean:
 	rm -f ${OBJECTS}

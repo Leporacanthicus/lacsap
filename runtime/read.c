@@ -3,6 +3,44 @@
 #include <string.h>
 #include "runtime.h"
 
+/* Make a local function so it can inline */
+static int __get_text(File *file)
+{
+    struct FileEntry *f = &files[file->handle];
+    int ch = fgetc(f->file);
+    *file->buffer = ch;
+    f->readAhead = (ch != EOF);
+    return f->readAhead;
+}
+
+/*******************************************
+ * File End of {line,file}
+ *******************************************
+ */
+int __eof(File* file)
+{
+    if (!files[file->handle].readAhead)
+    {
+	if (!__get_text(file))
+	{
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+int __eoln(File* file)
+{
+    if (!files[file->handle].readAhead)
+    {
+	if (!__get_text(file))
+	{
+	    return 1;
+	}
+    }
+    return *file->buffer == '\n';
+}
+
 /*******************************************
  * Read Functionality
  *******************************************
@@ -11,7 +49,7 @@ static void skip_spaces(File* file)
 {
     while(isspace(*file->buffer) && !__eof(file))
     {
-	__get(file);
+	__get_text(file);
     }
 }
 
@@ -19,12 +57,12 @@ static int get_sign(File* file)
 {
     if (*file->buffer == '-')
     {
-	__get(file);
+	__get_text(file);
 	return -1;
     }
     else if (*file->buffer == '+')
     {
-	__get(file);
+	__get_text(file);
     }
     return 1;
 }
@@ -70,7 +108,7 @@ void __read_int(File* file, int* v)
     }
     if (!files[file->handle].readAhead)
     {
-	__get(file);
+	__get_text(file);
     }
     skip_spaces(file);
     sign = get_sign(file);
@@ -78,7 +116,7 @@ void __read_int(File* file, int* v)
     {
 	n *= 10;
 	n += (*file->buffer) - '0';
-	if (!__get(file))
+	if (!__get_text(file))
 	{
 	    break;
 	}
@@ -95,11 +133,11 @@ void __read_chr(File* file, char* v)
 
     if (!files[file->handle].readAhead)
     {
-	__get(file);
+	__get_text(file);
     }
 
     *v = *file->buffer;
-    __get(file);
+    __get_text(file);
 }
 
 void __read_real(File* file, double* v)
@@ -116,7 +154,7 @@ void __read_real(File* file, double* v)
     }
     if (!files[file->handle].readAhead)
     {
-	__get(file);
+	__get_text(file);
     }
 
     skip_spaces(file);
@@ -126,20 +164,20 @@ void __read_real(File* file, double* v)
     {
 	n *= 10.0;
 	n += (*file->buffer) - '0';
-	if (!__get(file))
+	if (!__get_text(file))
 	{
 	    break;
 	}
     }
     if (*file->buffer == '.')
     {
-	__get(file);
+	__get_text(file);
 	while(isdigit(*file->buffer))
 	{
 	    n *= 10.0;
 	    n += (*file->buffer) - '0';
 	    divisor *= 10.0;
-	    if (!__get(file))
+	    if (!__get_text(file))
 	    {
 		break;
 	    }
@@ -147,13 +185,13 @@ void __read_real(File* file, double* v)
     }
     if (*file->buffer == 'e' || *file->buffer == 'E')
     {
-	__get(file);
+	__get_text(file);
 	int expsign = get_sign(file);
 	while(isdigit(*file->buffer) && !__eoln(file))
 	{
 	    exponent *= 10;
 	    exponent += (*file->buffer) - '0';
-	    if (!__get(file))
+	    if (!__get_text(file))
 	    {
 		break;
 	    }
@@ -169,14 +207,14 @@ void __read_nl(File* file)
 {
     if (!files[file->handle].readAhead)
     {
-	if (!__get(file))
+	if (!__get_text(file))
 	{
 	    return;
 	}
     }
     while(*file->buffer != '\n')
     {
-	if (!__get(file))
+	if (!__get_text(file))
 	    break;
     }
     files[file->handle].readAhead = 0;
@@ -193,12 +231,12 @@ void __read_str(File* file, String* val)
     }
     if (!files[file->handle].readAhead)
     {
-	__get(file);
+	__get_text(file);
     }
     while(!__eoln(file) && count < sizeof(buffer))
     {
 	buffer[count++] = *file->buffer;
-	if (!__get(file))
+	if (!__get_text(file))
 	{
 	    break;
 	}

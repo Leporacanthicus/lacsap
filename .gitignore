@@ -1,6 +1,7 @@
 *
 !*.*
 !test
+!runtime
 *.o
 *.bc
 *.s

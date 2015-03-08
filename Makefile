@@ -26,7 +26,6 @@ LIBS = ${LLVMLIBS} ${OTHERLIBS}
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
-
 all: lacsap .depends tests runtime_lib
 
 .cpp.o: 

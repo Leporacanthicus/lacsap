@@ -234,9 +234,28 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	ty = rty;
     }
 
-    if (!ty && !(ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
+    if (!ty)
     {
-	Error(b, "Incompatible type in expression");
+	if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
+	{
+	    if (!ty->isCompound())
+	    {
+		if (lty != ty)
+		{
+		    ExprAST *e = b->lhs;
+		    b->lhs = new TypeCastAST(e->Loc(), e, ty);
+		}
+		if (rty != ty)
+		{
+		    ExprAST *e = b->rhs;
+		    b->rhs = new TypeCastAST(e->Loc(), e, ty);
+		}
+	    }
+	}
+	else
+	{
+	    Error(b, "Incompatible type in expression");
+	}
     }
     b->UpdateType(ty);
 }

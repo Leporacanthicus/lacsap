@@ -72,15 +72,13 @@ namespace Types
     size_t TypeDecl::Size() const
     {
 	const llvm::DataLayout dl(theModule);
-	llvm::Type* ty = LlvmType();
-	return dl.getTypeAllocSize(ty);
+	return dl.getTypeAllocSize(LlvmType());
     }
 
     size_t TypeDecl::AlignSize() const
     {
 	const llvm::DataLayout dl(theModule);
-	llvm::Type* ty = LlvmType();
-	return dl.getPrefTypeAlignment(ty);
+	return dl.getPrefTypeAlignment(LlvmType());
     }
 
     Range* TypeDecl::GetRange() const
@@ -470,6 +468,18 @@ namespace Types
 	return 0;
     }
 
+    unsigned RangeDecl::Bits() const
+    {
+	unsigned s = range->Size();
+	unsigned b = 1;
+	while(s < (1 << b))
+	{
+	    b++;
+	}
+	return b;
+    }
+
+
     void EnumDecl::SetValues(const std::vector<std::string>& nmv)
     {
 	unsigned int v = 0;
@@ -516,6 +526,17 @@ namespace Types
 	    return false;
 	}
 	return true;
+    }
+
+    unsigned EnumDecl::Bits() const
+    {
+	unsigned s = values.size();
+	unsigned b = 1;
+	while(s < (1 << b))
+	{
+	    b++;
+	}
+	return b;
     }
 
     void FunctionDecl::DoDump(std::ostream& out) const

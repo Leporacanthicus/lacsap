@@ -3053,3 +3053,34 @@ llvm::Value* RangeCheckAST::CodeGen()
     builder.SetInsertPoint(contBlock);
     return index;
 }
+
+void TypeCastAST::DoDump(std::ostream& out) const
+{
+    out << "Convert to ";
+    type->dump(out);
+    out << "(";
+    expr->dump(out);
+    out << ")";
+}
+
+llvm::Value* TypeCastAST::CodeGen()
+{
+    Types::TypeDecl* current = expr->Type();
+
+    if (type->Type() == Types::Real)
+    {
+	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
+    }
+    
+    if (type->isIntegral() && current->isIntegral())
+    {
+	if (type->isUnsigned())
+	{
+	    return builder.CreateZExt(expr->CodeGen(), type->LlvmType());
+	}
+	return builder.CreateSExt(expr->CodeGen(), type->LlvmType());
+
+    }
+    dump();
+    assert(0 && "Expected to get something out of this function");
+}

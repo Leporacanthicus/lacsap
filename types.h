@@ -100,6 +100,7 @@ namespace Types
 	virtual bool isUnsigned() const { return false; }
 	virtual Range* GetRange() const;
 	virtual TypeDecl* SubType() const { return 0; }
+	virtual unsigned Bits() const { return 0; }
 	virtual bool SameAs(const TypeDecl* ty) const = 0;
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
@@ -140,6 +141,7 @@ namespace Types
 	bool isUnsigned() const override { return true; }
 	bool isStringLike() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	unsigned Bits() const override { return 8; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -152,6 +154,7 @@ namespace Types
 	}
         std::string to_string() const override { return "integer"; };
 	bool isIntegral() const override { return true; }
+	unsigned Bits() const override { return 32; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
     protected:
@@ -166,6 +169,7 @@ namespace Types
 	}
         std::string to_string() const override { return "longint"; };
 	bool isIntegral() const override { return true; }
+	unsigned Bits() const override { return 64; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
     protected:
@@ -181,6 +185,7 @@ namespace Types
         std::string to_string() const override { return "real"; };
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
+	unsigned Bits() const override { return 64; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -242,7 +247,8 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	int GetStart() const { return range->GetStart(); }
 	int GetEnd() const { return range->GetEnd(); }
-	bool isUnsigned() const override { 	return GetStart() >= 0; }
+	bool isUnsigned() const override { return GetStart() >= 0; }
+	unsigned Bits() const override;
 	Range* GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl *ty) const override;
@@ -306,6 +312,7 @@ namespace Types
 	const EnumValues& Values() const { return values; }
 	bool isUnsigned() const override { return true; }
 	void DoDump(std::ostream& out) const override;
+	unsigned Bits() const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Enum; }
 	bool SameAs(const TypeDecl* ty) const override;
     private:

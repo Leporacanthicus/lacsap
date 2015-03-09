@@ -15,3 +15,14 @@ For loop for char from chr(0) to chr(127) goes past 127.
 Resolved: Fixed by moving the end value comparison before the increment.
 Fix in: 8a34cd3fc47dae1613f9b94759cb097ec0a60a02
 ----------------------------------------------------------------
+Bug3:
+Date: 09-Mar-2015
+
+Enum values can't be used to array declarations, e.g. 
+type
+   e = (Mon, Tue, Wed, Thu, Fri, Sat, Sun);
+   a =  array [Mon..Sun] of integer;
+
+Workaround: 
+   a =  array [e] of integer;
+----------------------------------------------------------------

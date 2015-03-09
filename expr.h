@@ -61,6 +61,7 @@ public:
 	EK_WithExpr,
 	EK_RangeReduceExpr,     /* 35 */
 	EK_RangeCheckExpr,
+	EK_TypeCastExpr,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -670,6 +671,20 @@ public:
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeCheckExpr; }
 };
+
+
+class TypeCastAST : public ExprAST
+{
+public:
+    TypeCastAST(const Location& w, ExprAST* e, Types::TypeDecl* t)
+	: ExprAST(w, EK_TypeCastExpr, t), expr(e) {};
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_TypeCastExpr; }
+private:
+    ExprAST* expr;
+};
+    
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);

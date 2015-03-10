@@ -24,6 +24,7 @@ namespace Types
     {
 	switch(type)
 	{
+	case Enum:
 	case Integer:
 	    return llvm::Type::getInt32Ty(llvm::getGlobalContext());
 

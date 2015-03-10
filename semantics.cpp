@@ -214,6 +214,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if (!isNumeric(lty) || !isNumeric(rty))
 	{
+	    Error(b, "Invalid (non-numeric) type for divide");
 	}
 	if (lty->isIntegral())
 	{

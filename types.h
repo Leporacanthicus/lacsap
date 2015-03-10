@@ -299,7 +299,7 @@ namespace Types
     class EnumDecl : public SimpleCompoundDecl
     {
     public:
-	EnumDecl(const std::vector<std::string>& nmv, SimpleTypes ty = Integer)
+	EnumDecl(const std::vector<std::string>& nmv, SimpleTypes ty = Enum)
 	    : SimpleCompoundDecl(TK_Enum, Enum, ty)
 	{
 	    assert(nmv.size() && "Must have names in the enum type.");

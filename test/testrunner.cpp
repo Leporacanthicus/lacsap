@@ -275,6 +275,7 @@ struct
     { "Basic", "Pop Count",     "popcnt.pas",      "" },
     { "Basic", "Sudoku",        "sudoku.pas",      "" },
     { "Basic", "General",       "general.pas",     "< general.in" },
+    { "Basic", "Array",         "arr.pas",         "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

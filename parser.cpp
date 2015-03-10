@@ -292,15 +292,18 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     case Token::Identifier:
     {
 	tt = CurrentToken().GetToken();
-	EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
-	if (!ed)
+	
+	if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
+	{
+	    type = ed->Type();
+	    result = ed->Value();
+	}
+	else
 	{
 	    tt = Token::Unknown;
-	    Error("Invalid range specification, expected identifier for enumerated type");
+	    Error("Invalid constant, expected identifier for enumerated type");
 	    return 0;
 	}
-	type = ed->Type();
-	result = ed->Value();
 	break;
     }
     default:
@@ -344,22 +347,18 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
-	type = GetTypeDecl(CurrentToken().GetIdentName());
-	if (!type)
+	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
 	{
-	    return ErrorR("Range specification needs to be type");
+	    if (!type->isIntegral())
+	    {
+		return ErrorR("Type used as index specification should be integral type");
+	    }
+	    NextToken();
+	    return new Types::RangeDecl(type->GetRange(), type->Type());
 	}
-	if (!type->isIntegral())
-	{
-	    return ErrorR("Type used as index specification should be integral type");
-	}
-	NextToken();
-	return new Types::RangeDecl(type->GetRange(), type->Type());
     }
-    else
-    {
-	return ParseRange(type);
-    }
+
+    return ParseRange(type);
 }
 
 Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, 

@@ -48,6 +48,19 @@ void SetRangeFixup::DoIt()
     }
 }
 
+static bool isNumeric(Types::TypeDecl* t)
+{
+    switch(t->Type())
+    {
+    case Types::Integer:
+    case Types::Int64:
+    case Types::Real:
+	return true;
+    default:
+	return false;
+    }
+}
+
 static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 {
     Types::Range* r = ty->GetRange();
@@ -194,6 +207,34 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	if (lty->Type() == Types::Char && rty->Type() == Types::Char)
 	{
 	    ty = new Types::StringDecl(255);
+	}
+    }
+
+    if (!ty && (op == Token::Divide))
+    {
+	if (!isNumeric(lty) || !isNumeric(rty))
+	{
+	}
+	if (lty->isIntegral())
+	{
+	    ExprAST *e = b->lhs;
+	    ty = new Types::RealDecl;
+	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
+	    lty = ty;
+	}
+	if (rty->isIntegral())
+	{
+	    ExprAST *e = b->rhs;
+	    if (!ty)
+	    {
+		ty = new Types::RealDecl;
+	    }
+	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
+	    rty = ty;
+	}
+	if (!lty->CompatibleType(rty))
+	{
+	    Error(b, "Incompatible type for divide");
 	}
     }
 

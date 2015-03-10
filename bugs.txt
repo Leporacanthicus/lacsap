@@ -25,4 +25,7 @@ type
 
 Workaround: 
    a =  array [e] of integer;
+
+Resolved: Fixed the parsing of array ranges.
+Fix in: 68549927d33765c7b74f6d97ce9fab60aeb49ed5
 ----------------------------------------------------------------

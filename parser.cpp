@@ -11,6 +11,7 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 class UpdateCallVisitor : public Visitor
 {
@@ -59,6 +60,11 @@ Parser::Parser(Lexer &l)
 	  AddType("text", Types::GetTextType())))
     {
 	assert(0 && "Failed to add basic types...");
+    }
+
+    if (!(AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
+    {
+	assert(0 && "Failed to add builtin constants");
     }
 }
 

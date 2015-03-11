@@ -29,3 +29,10 @@ Workaround:
 Resolved: Fixed the parsing of array ranges.
 Fix in: 68549927d33765c7b74f6d97ce9fab60aeb49ed5
 ----------------------------------------------------------------
+Bug4:
+Date: 10-Mar-2015
+
+Function returning string can not be passed directly to write.
+
+E.g. write("Executable=", paramstr(0));
+----------------------------------------------------------------

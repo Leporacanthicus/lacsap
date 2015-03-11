@@ -276,6 +276,7 @@ struct
     { "Basic", "Sudoku",        "sudoku.pas",      "" },
     { "Basic", "General",       "general.pas",     "< general.in" },
     { "Basic", "Array",         "arr.pas",         "" },
+    { "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

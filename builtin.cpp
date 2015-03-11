@@ -586,6 +586,41 @@ namespace Builtin
 	return builder.CreateCall(f, arg);
     }
 
+    static llvm::Value* ParamStrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorV("ParamStr takes one argument");
+	}
+	if (args[0]->Type()->Type() != Types::Integer)
+	{
+	    return ErrorV("Arguments to copy should be (string, integer, integer)");
+	}
+	llvm::Value* n   = args[0]->CodeGen();
+
+	std::vector<llvm::Type*> argTypes{n->getType()};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("__ParamStr", ft);
+
+	return builder.CreateCall(f, n, "paramstr");
+    }
+
+    static llvm::Value* ParamCountCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    {
+	if (args.size() != 0)
+	{
+	    return ErrorV("ParamCount takes no arguments");
+	}
+
+	std::vector<llvm::Type*> argTypes{};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Integer), argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction("__ParamCount", ft);
+
+	return builder.CreateCall(f, "paramcount");
+    }
+
     enum ResultForm
     {
 	RF_Input,
@@ -607,42 +642,44 @@ namespace Builtin
 
     const static BuiltinFunction bifs[] =
     {
-	{ "abs",     AbsCodeGen,     RF_Input },
-	{ "odd",     OddCodeGen,     RF_Boolean },
-	{ "trunc",   TruncCodeGen,   RF_Integer },
-	{ "round",   RoundCodeGen,   RF_Integer },
-	{ "sqr",     SqrCodeGen,     RF_Input },
-	{ "sqrt",    SqrtCodeGen,    RF_Real },
-	{ "sin",     SinCodeGen,     RF_Real },
-	{ "cos",     CosCodeGen,     RF_Real },
-	{ "tan",     TanCodeGen,     RF_Real },
-	{ "arctan",  ArctanCodeGen,  RF_Real },
-	{ "ln",      LnCodeGen,      RF_Real },
-	{ "exp",     ExpCodeGen,     RF_Real },
-	{ "chr",     ChrCodeGen,     RF_Char },
-	{ "ord",     OrdCodeGen,     RF_Integer },
-	{ "succ",    SuccCodeGen,    RF_Input },
-	{ "pred",    PredCodeGen,    RF_Input },
-	{ "new",     NewCodeGen,     RF_Void },
-	{ "dispose", DisposeCodeGen, RF_Void },
-	{ "assign",  AssignCodeGen,  RF_Void },
-	{ "reset",   ResetCodeGen,   RF_Void },
-	{ "close",   CloseCodeGen,   RF_Void },
-	{ "rewrite", RewriteCodeGen, RF_Void },
-	{ "append",  AppendCodeGen,  RF_Void },
-	{ "eof",     EofCodeGen,     RF_Boolean },
-	{ "eoln",    EolnCodeGen,    RF_Boolean },
-	{ "random",  RandomCodeGen,  RF_Real },
-	{ "get",     GetCodeGen,     RF_Void },
-	{ "put",     PutCodeGen,     RF_Void },
-	{ "copy",    CopyCodeGen,    RF_String },
-	{ "length",  LengthCodeGen,  RF_Integer },
-	{ "clock",   ClockCodeGen,   RF_LongInt },
-	{ "panic",   PanicCodeGen,   RF_Void },
-	{ "popcnt",  PopCntCodeGen,  RF_Integer },
-	{ "cycles",  CyclesCodeGen,  RF_LongInt },
-	{ "fmod",    FmodCodeGen,    RF_Real },
-	{ "arctan2", Arctan2CodeGen,   RF_Real },
+	{ "abs",        AbsCodeGen,        RF_Input },
+	{ "odd",        OddCodeGen,        RF_Boolean },
+	{ "trunc",      TruncCodeGen,      RF_Integer },
+	{ "round",      RoundCodeGen,      RF_Integer },
+	{ "sqr",        SqrCodeGen,        RF_Input },
+	{ "sqrt",       SqrtCodeGen,       RF_Real },
+	{ "sin",        SinCodeGen,        RF_Real },
+	{ "cos",        CosCodeGen,        RF_Real },
+	{ "tan",        TanCodeGen,        RF_Real },
+	{ "arctan",     ArctanCodeGen,     RF_Real },
+	{ "ln",         LnCodeGen,         RF_Real },
+	{ "exp",        ExpCodeGen,        RF_Real },
+	{ "chr",        ChrCodeGen,        RF_Char },
+	{ "ord",        OrdCodeGen,        RF_Integer },
+	{ "succ",       SuccCodeGen,       RF_Input },
+	{ "pred",       PredCodeGen,       RF_Input },
+	{ "new",        NewCodeGen,        RF_Void },
+	{ "dispose",    DisposeCodeGen,    RF_Void },
+	{ "assign",     AssignCodeGen,     RF_Void },
+	{ "reset",      ResetCodeGen,      RF_Void },
+	{ "close",      CloseCodeGen,      RF_Void },
+	{ "rewrite",    RewriteCodeGen,    RF_Void },
+	{ "append",     AppendCodeGen,     RF_Void },
+	{ "eof",        EofCodeGen,        RF_Boolean },
+	{ "eoln",       EolnCodeGen,       RF_Boolean },
+	{ "random",     RandomCodeGen,     RF_Real },
+	{ "get",        GetCodeGen,        RF_Void },
+	{ "put",        PutCodeGen,        RF_Void },
+	{ "copy",       CopyCodeGen,       RF_String },
+	{ "length",     LengthCodeGen,     RF_Integer },
+	{ "clock",      ClockCodeGen,      RF_LongInt },
+	{ "panic",      PanicCodeGen,      RF_Void },
+	{ "popcnt",     PopCntCodeGen,     RF_Integer },
+	{ "cycles",     CyclesCodeGen,     RF_LongInt },
+	{ "fmod",       FmodCodeGen,       RF_Real },
+	{ "arctan2",    Arctan2CodeGen,    RF_Real },
+	{ "paramcount", ParamCountCodeGen, RF_Integer },
+	{ "paramstr",   ParamStrCodeGen,   RF_String },
     };
 
     static const BuiltinFunction* find(const std::string& name)

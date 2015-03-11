@@ -6,8 +6,13 @@
  */
 extern void __PascalMain(void);
 
-int main()
+char **c_argv;
+int c_argc;
+
+int main(int argc, char **argv)
 {
+    c_argv = argv;
+    c_argc = argc;
     InitFiles();
     __PascalMain();
     return 0;

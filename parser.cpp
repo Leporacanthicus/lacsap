@@ -199,7 +199,7 @@ ExprAST* Parser::ParseNilExpr()
     return 0;
 }
 
-Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
+const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
     if (NamedObject* def = nameStack.Find(name))
     {
@@ -236,6 +236,17 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
     return nameStack.Add(name, new TypeDef(name, ty));
 }
 
+bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
+{
+    if (!nameStack.Add(name, new ConstDef(name, cd)))
+    {
+	Error(std::string("Name ") + name + " is already declared as a constant");
+	return false;
+    }
+    return true;
+
+}
+
 Types::TypeDecl* Parser::ParseSimpleType()
 {
     if (CurrentToken().GetToken() != Token::Identifier)
@@ -254,7 +265,7 @@ void Parser::TranslateToken(Token& token)
 {
     if (token.GetToken() == Token::Identifier)
     {
-	if (Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
+	if (const Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
 	{
 	    token = cd->Translate();
 	}
@@ -384,7 +395,7 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
     return 0;
 }
 
-Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs)
+const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs)
 {
     for(;;)
     {
@@ -397,7 +408,7 @@ Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, Constants::ConstDecl* 
 	Token binOp = CurrentToken();
 	NextToken();
 
-	Constants::ConstDecl* rhs = ParseConstExpr();
+	const Constants::ConstDecl* rhs = ParseConstExpr();
 	if (!rhs)
 	{
 	    return 0;
@@ -429,11 +440,11 @@ Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, Constants::ConstDecl* 
     }
 }
 
-Constants::ConstDecl* Parser::ParseConstExpr()
+const Constants::ConstDecl* Parser::ParseConstExpr()
 {
     Token::TokenType unaryToken = Token::Unknown;
     Location loc = CurrentToken().Loc();
-    Constants::ConstDecl* cd;
+    const Constants::ConstDecl* cd;
     int mul = 1;
     do
     {
@@ -535,7 +546,8 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 		assert(cd && "Expected to get an identifier!");
 		if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 		{
-		    Constants::BoolConstDecl* bd = llvm::dyn_cast<Constants::BoolConstDecl>(cd);
+		    const Constants::BoolConstDecl* bd =
+			llvm::dyn_cast<Constants::BoolConstDecl>(cd);
 		    cd = new Constants::BoolConstDecl(loc, !bd->Value());
 		}
 		
@@ -543,12 +555,14 @@ Constants::ConstDecl* Parser::ParseConstExpr()
 		{
 		    if(llvm::isa<Constants::RealConstDecl>(cd))
 		    {
-			Constants::RealConstDecl* rd = llvm::dyn_cast<Constants::RealConstDecl>(cd);
+			const Constants::RealConstDecl* rd =
+			    llvm::dyn_cast<Constants::RealConstDecl>(cd);
 			cd = new Constants::RealConstDecl(loc, -rd->Value());
 		    }
 		    else if (llvm::isa<Constants::IntConstDecl>(cd))
 		    {
-			Constants::IntConstDecl* id = llvm::dyn_cast<Constants::IntConstDecl>(cd);
+			const Constants::IntConstDecl* id =
+			    llvm::dyn_cast<Constants::IntConstDecl>(cd);
 			cd = new Constants::IntConstDecl(loc, -id->Value());
 		    }
 		    else
@@ -594,14 +608,13 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-	Constants::ConstDecl *cd = ParseConstExpr();
+	const Constants::ConstDecl *cd = ParseConstExpr();
 	if (!cd) 
 	{
 	    Error("Invalid constant value");
 	}
-	if (!nameStack.Add(nm, new ConstDef(nm, cd)))
+	if (!AddConst(nm, cd))
 	{
-	    Error(std::string("Name ") + nm + " is already declared as a constant");
 	    return;
 	}
 	if (!Expect(Token::Semicolon, true))

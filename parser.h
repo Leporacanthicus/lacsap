@@ -65,8 +65,8 @@ private:
     void          ParseConstDef();
     void          TranslateToken(Token& token);
 
-    Constants::ConstDecl* ParseConstExpr();
-    Constants::ConstDecl* ParseConstRHS(int exprPrec, Constants::ConstDecl* lhs);
+    const Constants::ConstDecl* ParseConstExpr();
+    const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
     Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs,
 					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
@@ -106,8 +106,9 @@ private:
     // Helper functions for identifier access/checking.
     EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
-    Constants::ConstDecl* GetConstDecl(const std::string& name);
+    const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);
+    bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
 
 private:
     typedef StackWrapper<NamedObject*> NameWrapper;

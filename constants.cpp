@@ -3,7 +3,7 @@
 #include <llvm/Support/Casting.h>
 #include <iostream>
 
-Token Constants::IntConstDecl::Translate()
+Token Constants::IntConstDecl::Translate() const
 {
     return Token(Token::Integer, loc, value);
 }
@@ -13,7 +13,7 @@ void Constants::IntConstDecl::dump() const
     std::cout << "IntConstDecl: " << Value();
 }
 
-Token Constants::RealConstDecl::Translate()
+Token Constants::RealConstDecl::Translate() const
 {
     return Token(Token::Real, loc, value);
 }
@@ -23,7 +23,7 @@ void Constants::RealConstDecl::dump() const
     std::cout << "RealConstDelc: " << Value();
 }
 
-Token Constants::CharConstDecl::Translate()
+Token Constants::CharConstDecl::Translate() const
 {
     return Token(Token::Char, loc, (long)value);
 }
@@ -33,7 +33,7 @@ void Constants::CharConstDecl::dump() const
     std::cout << "CharConstDecl: " << Value();
 }
 
-Token Constants::BoolConstDecl::Translate()
+Token Constants::BoolConstDecl::Translate() const
 {
     std::string s = (value)?"true":"false";
     return Token(Token::Identifier, loc, s);
@@ -44,7 +44,7 @@ void Constants::BoolConstDecl::dump() const
     std::cout << "BoolConstDecl: " << Value();
 }
 
-Token Constants::StringConstDecl::Translate()
+Token Constants::StringConstDecl::Translate() const
 {
     return Token(Token::StringLiteral, loc, value);
 }

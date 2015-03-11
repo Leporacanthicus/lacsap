@@ -23,7 +23,7 @@ public:
 	ConstDecl(ConstKind k, const Location& w)
 	    : kind(k), loc(w) {}
 	virtual ~ConstDecl() {}
-	virtual Token Translate() = 0;
+	virtual Token Translate() const = 0;
 	ConstKind getKind() const { return kind; }
 	virtual void dump() const = 0;
     protected:
@@ -37,10 +37,10 @@ public:
     public:
 	IntConstDecl(const Location& w, long v) 
 	    : ConstDecl(CK_IntConstDecl, w), value(v) {}
-	virtual Token Translate();
+	Token Translate() const override;
 	long Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_IntConstDecl; }
-	virtual void dump() const;
+	void dump() const override;
     private:
 	long value;
     };
@@ -50,10 +50,10 @@ public:
     public:
 	RealConstDecl(const Location& w, double v) 
 	    : ConstDecl(CK_RealConstDecl, w), value(v) {}
-	virtual Token Translate();
+	Token Translate() const override;
 	double Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_RealConstDecl; }
-	virtual void dump() const;
+	void dump() const override;
     private:
 	double value;
     };
@@ -63,10 +63,10 @@ public:
     public:
 	CharConstDecl(const Location& w, char v) 
 	    : ConstDecl(CK_CharConstDecl, w), value(v) {}
-	virtual Token Translate();
+	Token Translate() const override;
 	char Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_CharConstDecl; }
-	virtual void dump() const;
+	void dump() const override;
     private:
 	char value;
     };
@@ -76,10 +76,10 @@ public:
     public:
 	BoolConstDecl(const Location& w, bool v) 
 	    : ConstDecl(CK_BoolConstDecl, w), value(v) {}
-	virtual Token Translate();
+	Token Translate() const override;
 	bool Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_BoolConstDecl; }
-	virtual void dump() const;
+	void dump() const override;
     private:
 	bool value;
     };
@@ -89,10 +89,10 @@ public:
     public:
 	StringConstDecl(const Location& w, const std::string &v) 
 	    : ConstDecl(CK_StringConstDecl, w), value(v) {}
-	virtual Token Translate();
+        Token Translate() const override;
 	const std::string& Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_StringConstDecl; }
-	virtual void dump() const;
+	void dump() const override;
     private:
 	std::string value;
     };

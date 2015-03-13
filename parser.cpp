@@ -762,8 +762,7 @@ Types::PointerDecl* Parser::ParsePointerType()
 	std::string name = CurrentToken().GetIdentName();
 	// Is it a known type?
 	NextToken();
-	Types::TypeDecl* ty = GetTypeDecl(name); 
-	if (ty)
+	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
 	    return new Types::PointerDecl(ty);	
 	}
@@ -1574,8 +1573,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
     if (expr)
     {
-	FunctionAST* fn = proto->Function();
-	if (fn)
+	if (FunctionAST* fn = proto->Function())
 	{
 	    for(auto u : fn->UsedVars())
 	    {
@@ -1595,11 +1593,10 @@ ExprAST* Parser::ParseParenExpr()
     NextToken();
     if (ExprAST* v = ParseExpression())
     {
-	if (!Expect(Token::RightParen, true))
+	if (Expect(Token::RightParen, true))
 	{
-	    return 0;
+	    return v;
 	}
-	return v;
     }
     return 0;
 }
@@ -1834,13 +1831,15 @@ BlockAST* Parser::ParseBlock()
     Location loc = CurrentToken().Loc();
     while(CurrentToken().GetToken() != Token::End)
     {
-	ExprAST* ast = ParseStatement();
-	if (!ast)
+	if (ExprAST* ast = ParseStatement())
 	{
-	    return 0;
+	    v.push_back(ast);
+	    if (!ExpectSemicolonOrEnd())
+	    {
+		return 0;
+	    }
 	}
-	v.push_back(ast);
-	if (!ExpectSemicolonOrEnd())
+	else
 	{
 	    return 0;
 	}
@@ -2072,12 +2071,11 @@ ExprAST* Parser::ParseForExpr()
     {
 	return 0;
     }
-    ExprAST* body = ParseStmtOrBlock();
-    if (!body)
+    if (ExprAST* body = ParseStmtOrBlock())
     {
-	return 0;
+	return new ForExprAST(loc, varName, start, end, down, body);
     }
-    return new ForExprAST(loc, varName, start, end, down, body);
+    return 0;
 }
 
 ExprAST* Parser::ParseWhile()
@@ -2279,18 +2277,20 @@ ExprAST* Parser::ParseWithBlock()
     do
     {
 	ExprAST* e = ParseIdentifierExpr();
-	VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(e);
-	if (!v)
+	if (VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(e))
+	{
+	    vars.push_back(v);
+	    if (CurrentToken().GetToken() != Token::Do)
+	    {
+		if (!Expect(Token::Comma, true))
+		{
+		    return 0;
+		}
+	    }
+	}
+	else
 	{
 	    return Error("With statement must contain only variable expression");
-	}
-	vars.push_back(v);
-	if (CurrentToken().GetToken() != Token::Do)
-	{
-	    if (!Expect(Token::Comma, true))
-	    {
-		return 0;
-	    }
 	}
     } while(CurrentToken().GetToken() != Token::Do);
     if (!Expect(Token::Do, true))
@@ -2301,16 +2301,17 @@ ExprAST* Parser::ParseWithBlock()
     NameWrapper wrapper(nameStack);
     for(auto v : vars)
     {
-	Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type());
-	if(!rd)
+	if(Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
+	{
+	    ExpandWithNames(rd, v, 0);
+	    if (Types::VariantDecl* variant = rd->Variant())
+	    {
+		ExpandWithNames(variant, v, rd->FieldCount());
+	    }
+	}
+	else
 	{
 	    return Error("Type for with statement should be a record type");
-	}
-	ExpandWithNames(rd, v, 0);
-	Types::VariantDecl* variant = rd->Variant();
-	if (variant)
-	{
-	    ExpandWithNames(variant, v, rd->FieldCount());
 	}
     }
     ExprAST* body = ParseStmtOrBlock();

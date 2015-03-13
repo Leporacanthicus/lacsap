@@ -34,6 +34,7 @@ private:
     ExprAST* ParseUnaryOp();
     ExprAST* ParseSetExpr();
     ExprAST* ParseNilExpr();
+    ExprAST* ParseSizeOfExpr();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);

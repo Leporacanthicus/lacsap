@@ -112,6 +112,7 @@ public:
 	// Specials
 	LineNumber,
 	FileName,
+	SizeOf,
 
 	EndOfFile  = -1, 
 	Unknown    = -1000,

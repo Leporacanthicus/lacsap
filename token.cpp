@@ -185,6 +185,7 @@ const TokenEntry tokenTable[] =
     { Token::Identifier,    false, -1, "identifier" },
     { Token::LineNumber,    true,  -1, "__LINE__" },
     { Token::FileName,      true,  -1, "__FILE__" },
+    { Token::SizeOf,        true,  -1, "sizeof" },
     { Token::Unknown,       false, -1, "Unknown" },
     { Token::EndOfFile,     false, -1, "EOF" },
 };

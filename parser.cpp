@@ -197,12 +197,44 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 
 ExprAST* Parser::ParseNilExpr()
 {
-    Location w = CurrentToken().Loc();
     if (Expect(Token::Nil, true))
     {
-	return new NilExprAST(w);
+	return new NilExprAST(CurrentToken().Loc());
     }
     return 0;
+}
+
+ExprAST* Parser::ParseSizeOfExpr()
+{
+    if (!Expect(Token::SizeOf, true))
+    {
+	return 0;
+    }
+    if (!Expect(Token::LeftParen, true))
+    {
+	return 0;
+    }
+    ExprAST* expr = 0;
+    if (CurrentToken().GetToken() == Token::Identifier)
+    {
+	if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
+	{
+	    expr = new SizeOfExprAST(CurrentToken().Loc(), ty);
+	    NextToken();
+	}
+    }
+    if (!expr)
+    {
+	if (ExprAST* e = ParseExpression())
+	{
+	    expr = new SizeOfExprAST(CurrentToken().Loc(), e->Type());
+	}
+    }
+    if (!Expect(Token::RightParen, true))
+    {
+	return 0;
+    }
+    return expr;
 }
 
 const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
@@ -650,22 +682,23 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	Types::TypeDecl* ty = ParseType();
-	if (!ty)
+	if (Types::TypeDecl* ty = ParseType())
 	{
-	    return;
+	    if (!AddType(nm,  ty))
+	    {
+		Error(std::string("Name ") + nm + " is already in use.");
+	    }
+	    if (ty->Type() == Types::PointerIncomplete)
+	    {
+		Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(ty);
+		incomplete.push_back(pd);
+	    }	    
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return;
+	    }
 	}
-	
-	if (!AddType(nm,  ty))
-	{
-	    Error(std::string("Name ") + nm + " is already in use.");
-	}
-	if (ty->Type() == Types::PointerIncomplete)
-	{
-	    Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(ty);
-	    incomplete.push_back(pd);
-	}	    
-	if (!Expect(Token::Semicolon, true))
+	else
 	{
 	    return;
 	}
@@ -674,13 +707,15 @@ void Parser::ParseTypeDef()
     // Now fix up any incomplete types...
     for(auto p : incomplete)
     {
-	Types::TypeDecl *ty = GetTypeDecl(p->Name());
-	if(!ty)
+	if (Types::TypeDecl *ty = GetTypeDecl(p->Name()))
+	{
+	    p->SetSubType(ty);
+	}
+	else
 	{
 	    Error("Forward declared pointer type not declared: " + p->Name());
 	    return;
 	}
-	p->SetSubType(ty);
     }
 }
 
@@ -2513,6 +2548,9 @@ ExprAST* Parser::ParsePrimary()
     case Token::Plus:
     case Token::Not:
 	return ParseUnaryOp();
+
+    case Token::SizeOf:
+	return ParseSizeOfExpr();
 
     default:
 	CurrentToken().dump(std::cerr);

@@ -3084,3 +3084,15 @@ llvm::Value* TypeCastAST::CodeGen()
     dump();
     assert(0 && "Expected to get something out of this function");
 }
+
+llvm::Value* SizeOfExprAST::CodeGen()
+{
+    return MakeIntegerConstant(type->Size());
+}
+
+void SizeOfExprAST::DoDump(std::ostream& out) const
+{
+    out << "Sizeof(";
+    type->dump();
+    out << ")" << std::endl;
+}

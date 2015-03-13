@@ -427,11 +427,7 @@ namespace Types
     {
 	if (const RangeDecl* rty = llvm::dyn_cast<RangeDecl>(ty))
 	{
-	    if (rty->type != type)
-	    {
-		return false;
-	    }
-	    if (*range != *rty->range)
+	    if (rty->type != type || *range != *rty->range)
 	    {
 		return false;
 	    }
@@ -458,11 +454,7 @@ namespace Types
 
     const TypeDecl* RangeDecl::AssignableType(const TypeDecl* ty) const
     {
-	if (SameAs(ty))
-	{
-	    return ty;
-	}
-	if (ty->Type() == Type())
+	if (SameAs(ty) || ty->Type() == Type())
 	{
 	    return ty;
 	}
@@ -506,11 +498,7 @@ namespace Types
     {
 	if (const EnumDecl* ety = llvm::dyn_cast<EnumDecl>(ty))
 	{
-	    if (ety->type != type)
-	    {
-		return false;
-	    }
-	    if (values.size() != ety->values.size())
+	    if (ety->type != type || values.size() != ety->values.size())
 	    {
 		return false;
 	    }

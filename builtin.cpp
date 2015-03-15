@@ -61,6 +61,16 @@ namespace Builtin
 	virtual bool Semantics() const override;
     };
 
+    class BuiltinFunctionOdd : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionOdd(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override;
+    };
+
     llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to abs");
@@ -91,19 +101,7 @@ namespace Builtin
 	return false;
     }
 
-    BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& a)
-    {
-	return new BuiltinFunctionAbs(a);
-    }
-
-
-    void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
-    {
-	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
-	BIFMap[name] = createFunc;
-    }
-
-    static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionOdd::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
 	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
@@ -112,6 +110,17 @@ namespace Builtin
 	    return builder.CreateBitCast(tmp, Types::GetType(Types::Boolean));
 	}
 	return ErrorV("Expected type of integer for 'odd'");
+    }
+
+    Types::TypeDecl* BuiltinFunctionOdd::Type() const
+    {
+	// TODO: This should return integer type, not "whatever argument is".
+	return args[0]->Type();
+    }
+
+    bool BuiltinFunctionOdd::Semantics() const
+    {
+	return false;
     }
 
     static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -679,7 +688,6 @@ namespace Builtin
 
     const static BuiltinFunction bifs[] =
     {
-	{ "odd",        OddCodeGen,        RF_Boolean },
 	{ "trunc",      TruncCodeGen,      RF_Integer },
 	{ "round",      RoundCodeGen,      RF_Integer },
 	{ "sqr",        SqrCodeGen,        RF_Input },
@@ -797,6 +805,22 @@ namespace Builtin
 
 
     /* New style interface */ 
+    BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionAbs(args);
+    }
+
+    BuiltinFunctionBase* CreateOdd(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionOdd(args);
+    }
+
+    void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
+    {
+	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
+	BIFMap[name] = createFunc;
+    }
+
     bool IsBuiltin(const std::string& name)
     {
 	auto it = BIFMap.find(name);
@@ -822,6 +846,7 @@ namespace Builtin
     void InitBuiltins()
     {
 	AddBIFCreator("abs", CreateAbs);
+	AddBIFCreator("odd", CreateOdd);
     }
 
 } // namespace Builtin

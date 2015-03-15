@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <cstdlib>
 #include <chrono>
+#include <cassert>
 
 std::string compiler = "../lacsap";
 
@@ -170,6 +171,7 @@ TestCase* TestCaseFactory(const std::string& type,
 	return new TimeTestCase(name, source, args);
     }
 
+    assert(type == "Basic");
     return new TestCase(name, source, args);
 }
 
@@ -277,7 +279,8 @@ struct
     { "Basic", "General",       "general.pas",     "< general.in" },
     { "Basic", "Array",         "arr.pas",         "" },
     { "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
-    { "Basci", "pi",            "pi.pas",          "" },
+    { "Basic", "pi",            "pi.pas",          "" },
+    { "Basic", "size",          "size.pas",        "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

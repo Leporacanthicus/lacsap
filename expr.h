@@ -6,6 +6,7 @@
 #include "namedobject.h"
 #include "astvisitor.h"
 #include "stack.h"
+#include "builtin.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>
 #include <llvm/PassManager.h>
@@ -63,6 +64,7 @@ public:
 	EK_RangeCheckExpr,
 	EK_TypeCastExpr,
 	EK_SizeOfExpr,
+	EK_BuiltinNewExpr,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -483,7 +485,7 @@ private:
     std::vector<ExprAST*> args;
 };
 
-// Builtin function call
+// Builtin function call - deprecated
 class BuiltinExprAST : public ExprAST
 {
 public:
@@ -498,6 +500,22 @@ public:
 private:
     std::string           name;
     std::vector<ExprAST*> args;
+};
+
+// Builtin funciton call - new variant
+class BuiltinExprNewAST : public ExprAST
+{
+public:
+    BuiltinExprNewAST(const Location& w, Builtin::BuiltinFunctionBase* b)
+	: ExprAST(w, EK_BuiltinNewExpr, b->Type()), bif(b)
+    {
+    }
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_BuiltinNewExpr; }
+    void accept(Visitor& v) override { }
+private:
+    Builtin::BuiltinFunctionBase* bif;
 };
 
 class IfExprAST : public ExprAST

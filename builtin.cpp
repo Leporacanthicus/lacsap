@@ -7,6 +7,10 @@ extern llvm::Module* theModule;
 
 namespace Builtin
 {
+    typedef BuiltinFunctionBase* (*CreateBIFObject)(const std::vector<ExprAST*>& a);
+    std::map<std::string, CreateBIFObject> BIFMap;
+
+    /* TODO: Remove this Old style functionalit */
     typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
 
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
@@ -46,7 +50,18 @@ namespace Builtin
 	return CallRuntimeFPFunc(builder, name, args, resTy);
     }
 
-    static llvm::Value* AbsCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+
+    class BuiltinFunctionAbs : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionAbs(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override;
+    };
+
+    llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to abs");
 
@@ -64,6 +79,28 @@ namespace Builtin
 	    return CallBuiltinFunc(builder, "fabs", args);
 	}
 	return ErrorV("Expected type of real or integer for 'abs'");
+    }
+
+    Types::TypeDecl* BuiltinFunctionAbs::Type() const
+    {
+	return args[0]->Type();
+    }
+
+    bool BuiltinFunctionAbs::Semantics() const
+    {
+	return false;
+    }
+
+    BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& a)
+    {
+	return new BuiltinFunctionAbs(a);
+    }
+
+
+    void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
+    {
+	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
+	BIFMap[name] = createFunc;
     }
 
     static llvm::Value* OddCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -642,7 +679,6 @@ namespace Builtin
 
     const static BuiltinFunction bifs[] =
     {
-	{ "abs",        AbsCodeGen,        RF_Input },
 	{ "odd",        OddCodeGen,        RF_Boolean },
 	{ "trunc",      TruncCodeGen,      RF_Integer },
 	{ "round",      RoundCodeGen,      RF_Integer },
@@ -697,12 +733,6 @@ namespace Builtin
 	return 0;
     }
 
-    bool IsBuiltin(const std::string& name)
-    {
-	const BuiltinFunction* b = find(name);
-	return b != 0;
-    }
-
     llvm::Value* CodeGen(llvm::IRBuilder<>& builder,
 				  const std::string& name,
 				  const std::vector<ExprAST*>& args)
@@ -714,8 +744,8 @@ namespace Builtin
     }
 
     Types::TypeDecl* Type(Stack<NamedObject*>& ns,
-				   const std::string& name,
-				   const std::vector<ExprAST*>& args)
+			  const std::string& name,
+			  const std::vector<ExprAST*>& args)
     {
 	const BuiltinFunction* b = find(name);
 	if (!b)
@@ -764,4 +794,34 @@ namespace Builtin
 	}
 	return td->Type();
     }
+
+
+    /* New style interface */ 
+    bool IsBuiltin(const std::string& name)
+    {
+	auto it = BIFMap.find(name);
+	if (it != BIFMap.end())
+	{
+	    return true;
+	}
+	/* TODO: Remove this when done */
+	const BuiltinFunction* b = find(name);
+	return b != 0;
+    }
+
+    BuiltinFunctionBase* CreateBuiltinFunction(const std::string& name, std::vector<ExprAST*>& args)
+    {
+	auto it = BIFMap.find(name);
+	if (it != BIFMap.end())
+	{
+	    return it->second(args);
+	}
+	return 0;
+    }
+
+    void InitBuiltins()
+    {
+	AddBIFCreator("abs", CreateAbs);
+    }
+
 } // namespace Builtin

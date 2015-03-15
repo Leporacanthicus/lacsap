@@ -1584,6 +1584,12 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
 
     assert(isBuiltin && "Should be a builtin function if we get here");
+
+    if (Builtin::BuiltinFunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
+    {
+	return new BuiltinExprNewAST(CurrentToken().Loc(), bif);
+    }
+
     Types::TypeDecl* ty = Builtin::Type(nameStack, idName, args);
     return new BuiltinExprAST(CurrentToken().Loc(), idName, args, ty);
 }

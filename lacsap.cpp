@@ -5,6 +5,7 @@
 #include "semantics.h"
 #include "options.h"
 #include "trace.h"
+#include "builtin.h"
 #include <iostream>
 #include <fstream>
 #include <llvm/IR/LegacyPassManager.h>
@@ -122,6 +123,8 @@ static int Compile(const std::string& filename)
     TIME_TRACE();
     std::vector<ExprAST*> ast;
     Lexer                 lex(filename);
+
+    Builtin::InitBuiltins();
     if (!lex.Good())
     {
 	return 1;

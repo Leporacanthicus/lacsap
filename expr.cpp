@@ -3096,3 +3096,16 @@ void SizeOfExprAST::DoDump(std::ostream& out) const
     type->dump();
     out << ")" << std::endl;
 }
+
+
+void BuiltinExprNewAST::DoDump(std::ostream& out) const
+{
+    out << "Sizeof(";
+    type->dump();
+    out << ")" << std::endl;
+}
+
+llvm::Value* BuiltinExprNewAST::CodeGen()
+{
+    return bif->CodeGen(builder);
+}

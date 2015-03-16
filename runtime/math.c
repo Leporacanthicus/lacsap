@@ -16,11 +16,6 @@ double __arctan2(double x, double y)
     return atan2(x, y);
 }
 
-double __tan(double x)
-{
-    return tan(x);
-}
-
 double __fmod(double x, double y)
 {
     return fmod(x, y);

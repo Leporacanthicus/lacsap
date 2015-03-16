@@ -41,16 +41,6 @@ namespace Builtin
 	return ErrorV("Expected type of real or integer for this function'");
     }
 
-    static llvm::Value* CallBuiltinFunc(llvm::IRBuilder<>& builder,
-					const std::string& func,
-					const std::vector<ExprAST*>& args,
-					llvm::Type* resTy = 0)
-    {
-	std::string name = "llvm." + func + ".f64";
-	return CallRuntimeFPFunc(builder, name, args, resTy);
-    }
-
-
     class BuiltinFunctionAbs : public BuiltinFunctionBase
     {
     public:
@@ -58,7 +48,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override;
-	virtual bool Semantics() const override;
+	virtual bool Semantics() const override { return false; }
     };
 
     class BuiltinFunctionOdd : public BuiltinFunctionBase
@@ -68,7 +58,36 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override;
-	virtual bool Semantics() const override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionSqr : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionSqr(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionFloat : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionFloat(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a), funcname(fn) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    protected:
+	std::string funcname;
+    };
+
+    class BuiltinFunctionFloatIntrinsic : public BuiltinFunctionFloat
+    {
+    public:
+	BuiltinFunctionFloatIntrinsic(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionFloat("llvm." + fn + ".f64", a) {}
     };
 
     llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
@@ -86,7 +105,7 @@ namespace Builtin
 	}
 	if (a->getType()->getTypeID() == llvm::Type::DoubleTyID)
 	{
-	    return CallBuiltinFunc(builder, "fabs", args);
+	    return CallRuntimeFPFunc(builder, "llvm.fabs.f64", args);
 	}
 	return ErrorV("Expected type of real or integer for 'abs'");
     }
@@ -94,11 +113,6 @@ namespace Builtin
     Types::TypeDecl* BuiltinFunctionAbs::Type() const
     {
 	return args[0]->Type();
-    }
-
-    bool BuiltinFunctionAbs::Semantics() const
-    {
-	return false;
     }
 
     llvm::Value* BuiltinFunctionOdd::CodeGen(llvm::IRBuilder<>& builder)
@@ -118,12 +132,7 @@ namespace Builtin
 	return args[0]->Type();
     }
 
-    bool BuiltinFunctionOdd::Semantics() const
-    {
-	return false;
-    }
-
-    static llvm::Value* SqrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to sqr");
 
@@ -142,47 +151,33 @@ namespace Builtin
 	return ErrorV("Expected type of real or integer for 'sqr'");
     }
 
-    static llvm::Value* SqrtCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    Types::TypeDecl* BuiltinFunctionSqr::Type() const
+    {
+	return args[0]->Type();
+    }
+
+    llvm::Value* BuiltinFunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to 'sqrt'");
-	return CallBuiltinFunc(builder, "sqrt", args);
+	return CallRuntimeFPFunc(builder, funcname, args);
     }
 
-    static llvm::Value* SinCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    Types::TypeDecl* BuiltinFunctionFloat::Type() const
     {
-	assert(args.size() == 1 && "Expect 1 argument to sin");
-	return CallBuiltinFunc(builder, "sin", args);
+	static Types::TypeDecl* ty = 0;
+	if (!ty)
+	{
+	    ty = new Types::RealDecl;
+	}
+	return ty;
     }
 
-    static llvm::Value* CosCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 argument to cos");
-	return CallBuiltinFunc(builder, "cos", args);
-    }
-
-    static llvm::Value* LnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 argument to ln");
-	return CallBuiltinFunc(builder, "log", args);
-    }
-
-    static llvm::Value* ExpCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 argument to exp");
-	return CallBuiltinFunc(builder, "exp", args);
-    }
-
-    static llvm::Value* ArctanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 argument to atan");
-	return CallRuntimeFPFunc(builder, "atan", args);
-    }
 
     static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
     {
 	assert(args.size() == 1 && "Expect 1 argument to round");
 
-	llvm::Value* v = CallBuiltinFunc(builder, "round", args);
+	llvm::Value* v = CallRuntimeFPFunc(builder, "llvm.round.f64", args);
 	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
     }
 
@@ -607,31 +602,6 @@ namespace Builtin
 	return builder.CreateCall(f, arg);
     }
 
-    static llvm::Value* TanCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	if (args.size() != 1)
-	{
-	    return ErrorV("Cycles function takes no arguments");
-	}
-
-	llvm::Type* realTy = Types::GetType(Types::Real);
-	llvm::Value* a = args[0]->CodeGen();
-
-	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
-	{
-	    a = builder.CreateSIToFP(a, realTy, "tofp");
-	}
-
-	std::vector<llvm::Value*> arg = {a};
-	
-	std::vector<llvm::Type*> argTypes = {realTy};
-
-	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction("__tan", ft);
-	
-	return builder.CreateCall(f, arg);
-    }
-
     static llvm::Value* ParamStrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
     {
 	if (args.size() != 1)
@@ -690,14 +660,6 @@ namespace Builtin
     {
 	{ "trunc",      TruncCodeGen,      RF_Integer },
 	{ "round",      RoundCodeGen,      RF_Integer },
-	{ "sqr",        SqrCodeGen,        RF_Input },
-	{ "sqrt",       SqrtCodeGen,       RF_Real },
-	{ "sin",        SinCodeGen,        RF_Real },
-	{ "cos",        CosCodeGen,        RF_Real },
-	{ "tan",        TanCodeGen,        RF_Real },
-	{ "arctan",     ArctanCodeGen,     RF_Real },
-	{ "ln",         LnCodeGen,         RF_Real },
-	{ "exp",        ExpCodeGen,        RF_Real },
 	{ "chr",        ChrCodeGen,        RF_Char },
 	{ "ord",        OrdCodeGen,        RF_Integer },
 	{ "succ",       SuccCodeGen,       RF_Input },
@@ -803,7 +765,6 @@ namespace Builtin
 	return td->Type();
     }
 
-
     /* New style interface */ 
     BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& args)
     {
@@ -815,14 +776,55 @@ namespace Builtin
 	return new BuiltinFunctionOdd(args);
     }
 
+    BuiltinFunctionBase* CreateSqr(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionSqr(args);
+    }
+
+    BuiltinFunctionBase* CreateSqrt(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloatIntrinsic("sqrt", args);
+    }
+
+    BuiltinFunctionBase* CreateSin(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloatIntrinsic("sin", args);
+    }
+
+    BuiltinFunctionBase* CreateCos(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloatIntrinsic("cos", args);
+    }
+
+    BuiltinFunctionBase* CreateTan(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloat("tan", args);
+    }
+
+    BuiltinFunctionBase* CreateArctan(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloat("atan", args);
+    }
+
+    BuiltinFunctionBase* CreateLn(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloatIntrinsic("log", args);
+    }
+
+    BuiltinFunctionBase* CreateExp(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloatIntrinsic("exp", args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
 	BIFMap[name] = createFunc;
     }
 
-    bool IsBuiltin(const std::string& name)
+    bool IsBuiltin(std::string name)
     {
+	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 	auto it = BIFMap.find(name);
 	if (it != BIFMap.end())
 	{
@@ -833,8 +835,9 @@ namespace Builtin
 	return b != 0;
     }
 
-    BuiltinFunctionBase* CreateBuiltinFunction(const std::string& name, std::vector<ExprAST*>& args)
+    BuiltinFunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args)
     {
+	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 	auto it = BIFMap.find(name);
 	if (it != BIFMap.end())
 	{
@@ -845,8 +848,15 @@ namespace Builtin
 
     void InitBuiltins()
     {
-	AddBIFCreator("abs", CreateAbs);
-	AddBIFCreator("odd", CreateOdd);
+	AddBIFCreator("abs",    CreateAbs);
+	AddBIFCreator("odd",    CreateOdd);
+	AddBIFCreator("sqr",    CreateSqr);
+	AddBIFCreator("sqrt",   CreateSqrt);
+	AddBIFCreator("sin",    CreateSin);
+	AddBIFCreator("cos",    CreateCos);
+	AddBIFCreator("tan",    CreateTan);
+	AddBIFCreator("ln",     CreateLn);
+	AddBIFCreator("exp",    CreateExp);
+	AddBIFCreator("arctan", CreateArctan);
     }
-
 } // namespace Builtin

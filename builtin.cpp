@@ -9,11 +9,12 @@ namespace Builtin
 {
     static Types::TypeDecl* intTy = 0;
     static Types::TypeDecl* realTy = 0;
+//    static Types::TypeDecl* charTy = 0;
 
     typedef BuiltinFunctionBase* (*CreateBIFObject)(const std::vector<ExprAST*>& a);
     std::map<std::string, CreateBIFObject> BIFMap;
 
-    /* TODO: Remove this Old style functionalit */
+    /* TODO: Remove this Old style functionality */
     typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
 
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
@@ -102,6 +103,25 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
+    class BuiltinFunctionRandom : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionRandom(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionChr : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionChr(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    };
 
     class BuiltinFunctionFloat : public BuiltinFunctionBase
     {
@@ -160,8 +180,11 @@ namespace Builtin
 
     Types::TypeDecl* BuiltinFunctionOdd::Type() const
     {
-	// TODO: This should return integer type, not "whatever argument is".
-	return args[0]->Type();
+	if (!intTy)
+	{
+	    intTy = new Types::IntegerDecl;
+	}
+	return intTy;
     }
 
     llvm::Value* BuiltinFunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
@@ -203,7 +226,6 @@ namespace Builtin
 	return realTy;
     }
 
-
     llvm::Value* BuiltinFunctionRound::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to round");
@@ -223,7 +245,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
     {
-	assert(args.size() == 1 && "Expect 1 argument to round");
+	assert(args.size() == 1 && "Expect 1 argument to trunc");
 	
 	llvm::Value* v = args[0]->CodeGen();
 	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
@@ -238,9 +260,9 @@ namespace Builtin
 	return intTy;
     }
 
-    static llvm::Value* RandomCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
     {
-	assert(args.size() == 0 && "Expect no argument to random");
+	assert(args.size() == 0 && "Expect 0 arguments to rand");
 	std::vector<llvm::Type*> argTypes;
 	llvm::Type* ty = Types::GetType(Types::Real);
 	llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
@@ -248,6 +270,15 @@ namespace Builtin
 	llvm::Constant* f = theModule->getOrInsertFunction("__random", ft);
 
 	return builder.CreateCall(f, "calltmp");
+    }
+
+    Types::TypeDecl* BuiltinFunctionRandom::Type() const
+    {
+	if (!realTy)
+	{
+	    realTy = new Types::RealDecl;
+	}
+	return realTy;
     }
 
     static llvm::Value* ChrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -720,7 +751,6 @@ namespace Builtin
 	{ "append",     AppendCodeGen,     RF_Void },
 	{ "eof",        EofCodeGen,        RF_Boolean },
 	{ "eoln",       EolnCodeGen,       RF_Boolean },
-	{ "random",     RandomCodeGen,     RF_Real },
 	{ "get",        GetCodeGen,        RF_Void },
 	{ "put",        PutCodeGen,        RF_Void },
 	{ "copy",       CopyCodeGen,       RF_String },
@@ -873,6 +903,11 @@ namespace Builtin
 	return new BuiltinFunctionTrunc(args);
     }
 
+    BuiltinFunctionBase* CreateRandom(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionRandom(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -917,5 +952,6 @@ namespace Builtin
 	AddBIFCreator("arctan", CreateArctan);
 	AddBIFCreator("round",  CreateRound);
 	AddBIFCreator("trunc",  CreateTrunc);
+	AddBIFCreator("random", CreateRandom);
     }
 } // namespace Builtin

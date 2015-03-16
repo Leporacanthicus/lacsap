@@ -3109,3 +3109,10 @@ llvm::Value* BuiltinExprNewAST::CodeGen()
 {
     return bif->CodeGen(builder);
 }
+
+void BuiltinExprNewAST::accept(Visitor& v)
+{
+    bif->accept(v);
+}
+
+

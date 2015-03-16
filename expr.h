@@ -513,7 +513,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_BuiltinNewExpr; }
-    void accept(Visitor& v) override { }
+    void accept(Visitor& v) override;
 private:
     Builtin::BuiltinFunctionBase* bif;
 };

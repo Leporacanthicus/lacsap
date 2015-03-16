@@ -7,6 +7,9 @@ extern llvm::Module* theModule;
 
 namespace Builtin
 {
+    static Types::TypeDecl* intTy = 0;
+    static Types::TypeDecl* realTy = 0;
+
     typedef BuiltinFunctionBase* (*CreateBIFObject)(const std::vector<ExprAST*>& a);
     std::map<std::string, CreateBIFObject> BIFMap;
 
@@ -51,6 +54,14 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
+    void BuiltinFunctionBase::accept(Visitor& v)
+    {
+	for(auto a : args)
+	{
+	    a->accept(v);
+	}
+    }
+
     class BuiltinFunctionOdd : public BuiltinFunctionBase
     {
     public:
@@ -70,6 +81,27 @@ namespace Builtin
 	Types::TypeDecl* Type() const override;
 	virtual bool Semantics() const override { return false; }
     };
+
+    class BuiltinFunctionRound : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionRound(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionTrunc : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionTrunc(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	virtual bool Semantics() const override { return false; }
+    };
+
 
     class BuiltinFunctionFloat : public BuiltinFunctionBase
     {
@@ -164,16 +196,15 @@ namespace Builtin
 
     Types::TypeDecl* BuiltinFunctionFloat::Type() const
     {
-	static Types::TypeDecl* ty = 0;
-	if (!ty)
+	if (!realTy)
 	{
-	    ty = new Types::RealDecl;
+	    realTy = new Types::RealDecl;
 	}
-	return ty;
+	return realTy;
     }
 
 
-    static llvm::Value* RoundCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionRound::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to round");
 
@@ -181,12 +212,30 @@ namespace Builtin
 	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
     }
 
-    static llvm::Value* TruncCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    Types::TypeDecl* BuiltinFunctionRound::Type() const
     {
-	assert(args.size() == 1 && "Expect 1 argument to trunc");
+	if (!intTy)
+	{
+	    intTy = new Types::IntegerDecl;
+	}
+	return intTy;
+    }
 
+    llvm::Value* BuiltinFunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	assert(args.size() == 1 && "Expect 1 argument to round");
+	
 	llvm::Value* v = args[0]->CodeGen();
 	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
+    }
+
+    Types::TypeDecl* BuiltinFunctionTrunc::Type() const
+    {
+	if (!intTy)
+	{
+	    intTy = new Types::IntegerDecl;
+	}
+	return intTy;
     }
 
     static llvm::Value* RandomCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -658,8 +707,6 @@ namespace Builtin
 
     const static BuiltinFunction bifs[] =
     {
-	{ "trunc",      TruncCodeGen,      RF_Integer },
-	{ "round",      RoundCodeGen,      RF_Integer },
 	{ "chr",        ChrCodeGen,        RF_Char },
 	{ "ord",        OrdCodeGen,        RF_Integer },
 	{ "succ",       SuccCodeGen,       RF_Input },
@@ -816,6 +863,16 @@ namespace Builtin
 	return new BuiltinFunctionFloatIntrinsic("exp", args);
     }
 
+    BuiltinFunctionBase* CreateRound(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionRound(args);
+    }
+
+    BuiltinFunctionBase* CreateTrunc(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionTrunc(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -858,5 +915,7 @@ namespace Builtin
 	AddBIFCreator("ln",     CreateLn);
 	AddBIFCreator("exp",    CreateExp);
 	AddBIFCreator("arctan", CreateArctan);
+	AddBIFCreator("round",  CreateRound);
+	AddBIFCreator("trunc",  CreateTrunc);
     }
 } // namespace Builtin

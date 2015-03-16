@@ -3,6 +3,7 @@
 
 #include "namedobject.h"
 #include "stack.h"
+#include "astvisitor.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 #include <string>
@@ -28,6 +29,7 @@ namespace Builtin
 	virtual llvm::Value* CodeGen(llvm::IRBuilder<>& builder) = 0;
 	virtual Types::TypeDecl* Type() const = 0;
 	virtual bool Semantics() const = 0;
+	virtual void accept(Visitor& v);
 	virtual ~BuiltinFunctionBase() {}
     protected:
 	const std::vector<ExprAST*> args;

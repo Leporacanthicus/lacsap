@@ -220,6 +220,27 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
+    class BuiltinFunctionFile : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionFile(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a), funcname(fn) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
+	virtual bool Semantics() const override { return false; }
+    protected:
+	std::string funcname;
+    };
+
+    class BuiltinFunctionFileBool : public BuiltinFunctionFile
+    {
+    public:
+	BuiltinFunctionFileBool(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionFile(fn, a) {}
+	Types::TypeDecl* Type() const override { return BoolType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
     void BuiltinFunctionBase::accept(Visitor& v)
     {
 	for(auto a : args)
@@ -416,6 +437,31 @@ namespace Builtin
 	return ErrorV("Expected pointer argument for 'new'");
     }
 
+    llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* fvar;
+	if (args.size() > 0)
+	{
+	    fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	    if (!fvar)
+	    {
+		return ErrorV("Expected a variable expression");
+	    }
+	}
+	else
+	{
+	    fvar = new VariableExprAST(Location("",0,0), "input", Types::GetTextType());
+	}
+	llvm::Value* faddr = fvar->Address();
+	std::vector<llvm::Type*> argTypes{faddr->getType()};
+
+	llvm::FunctionType* ft = llvm::FunctionType::get(Type()->LlvmType(), argTypes, false);
+	llvm::Constant* f = theModule->getOrInsertFunction(std::string("__") + funcname, ft);
+
+	return builder.CreateCall(f, faddr, "");
+    }
+
+
     static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
     {
 	assert(args.size() == 2 && "Expect 2 args for 'assign'");
@@ -456,79 +502,6 @@ namespace Builtin
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
 	return builder.CreateCall(f, argsV, "");
-    }
-
-
-    static llvm::Value* FileCallCodeGen(llvm::IRBuilder<>& builder,
-					const std::vector<ExprAST*>& args,
-					const std::string func,
-					Types::SimpleTypes resTy = Types::Void)
-    {
-	VariableExprAST* fvar;
-	if (args.size() > 0)
-	{
-	    fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
-	    if (!fvar)
-	    {
-		return ErrorV("Expected a variable expression");
-	    }
-	}
-	else
-	{
-	    fvar = new VariableExprAST(Location("",0,0), "input", Types::GetTextType());
-	}
-	llvm::Value* faddr =fvar->Address();
-	std::vector<llvm::Type*> argTypes{faddr->getType()};
-
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(resTy), argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-
-	return builder.CreateCall(f, faddr, "");
-    }
-
-    static llvm::Value* ResetCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 arg for 'reset'");
-
-	return FileCallCodeGen(builder, args, "__reset");
-    }
-
-    static llvm::Value* CloseCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 arg for 'close'");
-	return FileCallCodeGen(builder, args, "__close");
-    }
-
-    static llvm::Value* RewriteCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 arg for 'rewrite'");
-	return FileCallCodeGen(builder, args, "__rewrite");
-    }
-
-    static llvm::Value* AppendCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	assert(args.size() == 1 && "Expect 1 arg for 'append'");
-	return FileCallCodeGen(builder, args, "__append");
-    }
-
-    static llvm::Value* EofCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	return FileCallCodeGen(builder, args, "__eof", Types::Boolean);
-    }
-
-    static llvm::Value* EolnCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	return FileCallCodeGen(builder, args, "__eoln", Types::Boolean);
-    }
-
-    static llvm::Value* GetCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	return FileCallCodeGen(builder, args, "__get");
-    }
-
-    static llvm::Value* PutCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	return FileCallCodeGen(builder, args, "__put");
     }
 
     static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -771,14 +744,6 @@ namespace Builtin
     const static BuiltinFunction bifs[] =
     {
 	{ "assign",     AssignCodeGen,     RF_Void },
-	{ "reset",      ResetCodeGen,      RF_Void },
-	{ "close",      CloseCodeGen,      RF_Void },
-	{ "rewrite",    RewriteCodeGen,    RF_Void },
-	{ "append",     AppendCodeGen,     RF_Void },
-	{ "eof",        EofCodeGen,        RF_Boolean },
-	{ "eoln",       EolnCodeGen,       RF_Boolean },
-	{ "get",        GetCodeGen,        RF_Void },
-	{ "put",        PutCodeGen,        RF_Void },
 	{ "copy",       CopyCodeGen,       RF_String },
 	{ "length",     LengthCodeGen,     RF_Integer },
 	{ "clock",      ClockCodeGen,      RF_LongInt },
@@ -964,6 +929,47 @@ namespace Builtin
 	return new BuiltinFunctionDispose(args);
     }
 
+    BuiltinFunctionBase* CreateAppend(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("append", args);
+    }
+
+    BuiltinFunctionBase* CreateReset(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("reset", args);
+    }
+
+    BuiltinFunctionBase* CreateRewrite(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("rewrite", args);
+    }
+
+    BuiltinFunctionBase* CreateClose(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("close", args);
+    }
+
+    BuiltinFunctionBase* CreatePut(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("put", args);
+    }
+
+    BuiltinFunctionBase* CreateGet(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFile("get", args);
+    }
+
+    BuiltinFunctionBase* CreateEof(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFileBool("eof", args);
+    }
+
+    BuiltinFunctionBase* CreateEoln(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFileBool("eoln", args);
+    }
+    
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1015,5 +1021,13 @@ namespace Builtin
 	AddBIFCreator("pred",    CreatePred);
 	AddBIFCreator("new",     CreateNew);
 	AddBIFCreator("dispose", CreateDispose);
+	AddBIFCreator("reset",   CreateReset);
+	AddBIFCreator("rewrite", CreateRewrite);
+	AddBIFCreator("append",  CreateAppend);
+	AddBIFCreator("close",   CreateClose);
+	AddBIFCreator("get",     CreateGet);
+	AddBIFCreator("put",     CreatePut);
+	AddBIFCreator("eof",     CreateEof);
+	AddBIFCreator("eoln",    CreateEoln);
     }
 } // namespace Builtin

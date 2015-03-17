@@ -200,6 +200,26 @@ namespace Builtin
 	    : BuiltinFunctionFloat("llvm." + fn + ".f64", a) {}
     };
 
+    class BuiltinFunctionNew : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionNew(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionDispose : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionDispose(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
     void BuiltinFunctionBase::accept(Visitor& v)
     {
 	for(auto a : args)
@@ -344,10 +364,11 @@ namespace Builtin
 	return ErrorV("Expected integer type for pred function");
     }
 
-    static llvm::Value* NewCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionNew::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 1 && "Expect 1 argument to 'new'");
 
+	// TODO: Move to semantics.
 	Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
 	if (pd)
 	{
@@ -376,9 +397,9 @@ namespace Builtin
 	return ErrorV("Expected pointer argument for 'new'");
     }
 
-    static llvm::Value* DisposeCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
     {
-	assert(args.size() == 1 && "Expect 1 argument to 'dispos'");
+	assert(args.size() == 1 && "Expect 1 argument to 'dispose'");
 
 	llvm::Value* a = args[0]->CodeGen();
 	if (a->getType()->isPointerTy())
@@ -749,8 +770,6 @@ namespace Builtin
 
     const static BuiltinFunction bifs[] =
     {
-	{ "new",        NewCodeGen,        RF_Void },
-	{ "dispose",    DisposeCodeGen,    RF_Void },
 	{ "assign",     AssignCodeGen,     RF_Void },
 	{ "reset",      ResetCodeGen,      RF_Void },
 	{ "close",      CloseCodeGen,      RF_Void },
@@ -935,6 +954,16 @@ namespace Builtin
 	return new BuiltinFunctionPred(args);
     }
 
+    BuiltinFunctionBase* CreateNew(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionNew(args);
+    }
+
+    BuiltinFunctionBase* CreateDispose(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionDispose(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -967,22 +996,24 @@ namespace Builtin
 
     void InitBuiltins()
     {
-	AddBIFCreator("abs",    CreateAbs);
-	AddBIFCreator("odd",    CreateOdd);
-	AddBIFCreator("sqr",    CreateSqr);
-	AddBIFCreator("sqrt",   CreateSqrt);
-	AddBIFCreator("sin",    CreateSin);
-	AddBIFCreator("cos",    CreateCos);
-	AddBIFCreator("tan",    CreateTan);
-	AddBIFCreator("ln",     CreateLn);
-	AddBIFCreator("exp",    CreateExp);
-	AddBIFCreator("arctan", CreateArctan);
-	AddBIFCreator("round",  CreateRound);
-	AddBIFCreator("trunc",  CreateTrunc);
-	AddBIFCreator("random", CreateRandom);
-	AddBIFCreator("chr",    CreateChr);
-	AddBIFCreator("ord",    CreateOrd);
-	AddBIFCreator("succ",   CreateSucc);
-	AddBIFCreator("pred",   CreatePred);
+	AddBIFCreator("abs",     CreateAbs);
+	AddBIFCreator("odd",     CreateOdd);
+	AddBIFCreator("sqr",     CreateSqr);
+	AddBIFCreator("sqrt",    CreateSqrt);
+	AddBIFCreator("sin",     CreateSin);
+	AddBIFCreator("cos",     CreateCos);
+	AddBIFCreator("tan",     CreateTan);
+	AddBIFCreator("ln",      CreateLn);
+	AddBIFCreator("exp",     CreateExp);
+	AddBIFCreator("arctan",  CreateArctan);
+	AddBIFCreator("round",   CreateRound);
+	AddBIFCreator("trunc",   CreateTrunc);
+	AddBIFCreator("random",  CreateRandom);
+	AddBIFCreator("chr",     CreateChr);
+	AddBIFCreator("ord",     CreateOrd);
+	AddBIFCreator("succ",    CreateSucc);
+	AddBIFCreator("pred",    CreatePred);
+	AddBIFCreator("new",     CreateNew);
+	AddBIFCreator("dispose", CreateDispose);
     }
 } // namespace Builtin

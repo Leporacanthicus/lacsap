@@ -81,13 +81,37 @@ namespace Builtin
 	return ErrorV("Expected type of real or integer for this function'");
     }
 
-    class BuiltinFunctionAbs : public BuiltinFunctionBase
+    class BuiltinFunctionSameAsArg : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionSameAsArg(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	Types::TypeDecl* Type() const override { return args[0]->Type(); }
+    };
+
+    class BuiltinFunctionInt : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionInt(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	Types::TypeDecl* Type() const override { return IntType(); }
+    };
+
+    class BuiltinFunctionAbs : public BuiltinFunctionSameAsArg
     {
     public:
 	BuiltinFunctionAbs(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionSameAsArg(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return args[0]->Type(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionSqr : public BuiltinFunctionSameAsArg
+    {
+    public:
+	BuiltinFunctionSqr(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionSameAsArg(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	virtual bool Semantics() const override { return false; }
     };
 
@@ -101,33 +125,21 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionSqr : public BuiltinFunctionBase
-    {
-    public:
-	BuiltinFunctionSqr(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
-	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return args[0]->Type(); }
-	virtual bool Semantics() const override { return false; }
-    };
-
-    class BuiltinFunctionRound : public BuiltinFunctionBase
+    class BuiltinFunctionRound : public BuiltinFunctionInt
     {
     public:
 	BuiltinFunctionRound(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return IntType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionTrunc : public BuiltinFunctionBase
+    class BuiltinFunctionTrunc : public BuiltinFunctionInt
     {
     public:
 	BuiltinFunctionTrunc(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return IntType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
@@ -151,33 +163,39 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionOrd : public BuiltinFunctionBase
+    class BuiltinFunctionOrd : public BuiltinFunctionInt
     {
     public:
 	BuiltinFunctionOrd(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return IntType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionSucc : public BuiltinFunctionBase
+    class BuiltinFunctionLength : public BuiltinFunctionInt
+    {
+    public:
+	BuiltinFunctionLength(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionInt(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionSucc : public BuiltinFunctionSameAsArg
     {
     public:
 	BuiltinFunctionSucc(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionSameAsArg(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return args[0]->Type(); }
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionPred : public BuiltinFunctionBase
+    class BuiltinFunctionPred : public BuiltinFunctionSameAsArg
     {
     public:
 	BuiltinFunctionPred(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionSameAsArg(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return args[0]->Type(); }
 	virtual bool Semantics() const override { return false; }
     };
 
@@ -461,6 +479,19 @@ namespace Builtin
 	return builder.CreateCall(f, faddr, "");
     }
 
+    llvm::Value* BuiltinFunctionLength::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	if (args[0]->Type()->Type() != Types::String)
+	{
+	    return ErrorV("Incorrect argument type - needs to be a string");
+	}
+	llvm::Value* v = MakeAddressable(args[0]);
+	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
+	llvm::Value* v1 = builder.CreateGEP(v, ind, "str_0");
+	llvm::Value* v2 = builder.CreateLoad(v1, "len");
+
+	return builder.CreateZExt(v2, Types::GetType(Types::Integer), "extend");
+    }
 
     static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
     {
@@ -528,20 +559,6 @@ namespace Builtin
 	llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
 
 	return builder.CreateCall3(f, str, start, len, "copy");
-    }
-
-    static llvm::Value* LengthCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	if (args[0]->Type()->Type() != Types::String)
-	{
-	    return ErrorV("Incorrect argument type - needs to be a string");
-	}
-	llvm::Value* v = MakeAddressable(args[0]);
-	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
-	llvm::Value* v1 = builder.CreateGEP(v, ind, "str_0");
-	llvm::Value* v2 = builder.CreateLoad(v1, "len");
-
-	return builder.CreateZExt(v2, Types::GetType(Types::Integer), "extend");
     }
 
     static llvm::Value* ClockCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
@@ -745,7 +762,6 @@ namespace Builtin
     {
 	{ "assign",     AssignCodeGen,     RF_Void },
 	{ "copy",       CopyCodeGen,       RF_String },
-	{ "length",     LengthCodeGen,     RF_Integer },
 	{ "clock",      ClockCodeGen,      RF_LongInt },
 	{ "panic",      PanicCodeGen,      RF_Void },
 	{ "popcnt",     PopCntCodeGen,     RF_Integer },
@@ -968,7 +984,11 @@ namespace Builtin
     {
 	return new BuiltinFunctionFileBool("eoln", args);
     }
-    
+
+    BuiltinFunctionBase* CreateLength(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionLength(args);
+    }
 
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
@@ -979,8 +999,7 @@ namespace Builtin
     bool IsBuiltin(std::string name)
     {
 	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-	auto it = BIFMap.find(name);
-	if (it != BIFMap.end())
+	if (BIFMap.find(name) != BIFMap.end())
 	{
 	    return true;
 	}
@@ -1029,5 +1048,6 @@ namespace Builtin
 	AddBIFCreator("put",     CreatePut);
 	AddBIFCreator("eof",     CreateEof);
 	AddBIFCreator("eoln",    CreateEoln);
+	AddBIFCreator("length",  CreateLength);
     }
 } // namespace Builtin

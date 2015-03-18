@@ -13,15 +13,6 @@ class ExprAST;
 
 namespace Builtin
 {
-    // Deprecated interface.
-    llvm::Value* CodeGen(llvm::IRBuilder<>& builder,
-			 const std::string& funcname,
-			 const std::vector<ExprAST*>& args);
-    Types::TypeDecl* Type(Stack<NamedObject*>& ns,
-			  const std::string& funcname,
-			  const std::vector<ExprAST*>& args);
-
-    // New interface.
     class BuiltinFunctionBase
     {
     public:

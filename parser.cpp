@@ -1587,11 +1587,10 @@ ExprAST* Parser::ParseIdentifierExpr()
 
     if (Builtin::BuiltinFunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
     {
-	return new BuiltinExprNewAST(CurrentToken().Loc(), bif);
+	return new BuiltinExprAST(CurrentToken().Loc(), bif);
     }
-
-    Types::TypeDecl* ty = Builtin::Type(nameStack, idName, args);
-    return new BuiltinExprAST(CurrentToken().Loc(), idName, args, ty);
+    assert(0 && "Should not get here");
+    return 0;
 }
 
 ExprAST* Parser::ParseParenExpr()

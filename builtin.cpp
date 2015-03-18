@@ -10,6 +10,8 @@ namespace Builtin
     static Types::TypeDecl* realTy = 0;
     static Types::TypeDecl* charTy = 0;
     static Types::TypeDecl* boolTy = 0;
+    static Types::TypeDecl* longTy = 0;
+    static Types::TypeDecl* strTy = 0;
 
     static Types::TypeDecl* IntType()
     {
@@ -45,6 +47,24 @@ namespace Builtin
 	    charTy = new Types::CharDecl;
 	}
 	return charTy;
+    }
+
+    static Types::TypeDecl* LongIntType()
+    {
+	if (!longTy)
+	{
+	    longTy = new Types::Int64Decl;
+	}
+	return longTy;
+    }
+
+    static Types::TypeDecl* StringType()
+    {
+	if (!strTy)
+	{
+	    strTy = new Types::StringDecl(255);
+	}
+	return strTy;
     }
 
     typedef BuiltinFunctionBase* (*CreateBIFObject)(const std::vector<ExprAST*>& a);
@@ -181,6 +201,15 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
+    class BuiltinFunctionPopcnt : public BuiltinFunctionInt
+    {
+    public:
+	BuiltinFunctionPopcnt(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionInt(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
     class BuiltinFunctionSucc : public BuiltinFunctionSameAsArg
     {
     public:
@@ -211,6 +240,18 @@ namespace Builtin
 	std::string funcname;
     };
 
+    class BuiltinFunctionFloat2Arg : public BuiltinFunctionFloat
+    {
+    public:
+	BuiltinFunctionFloat2Arg(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionFloat(fn, a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return RealType(); }
+	virtual bool Semantics() const override { return false; }
+    protected:
+	std::string funcname;
+    };
+
     class BuiltinFunctionFloatIntrinsic : public BuiltinFunctionFloat
     {
     public:
@@ -218,33 +259,38 @@ namespace Builtin
 	    : BuiltinFunctionFloat("llvm." + fn + ".f64", a) {}
     };
 
-    class BuiltinFunctionNew : public BuiltinFunctionBase
+    class BuiltinFunctionVoid : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionVoid(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
+    };
+
+    class BuiltinFunctionNew : public BuiltinFunctionVoid
     {
     public:
 	BuiltinFunctionNew(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionVoid(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionDispose : public BuiltinFunctionBase
+    class BuiltinFunctionDispose : public BuiltinFunctionVoid
     {
     public:
 	BuiltinFunctionDispose(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a) {}
+	    : BuiltinFunctionVoid(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
-    class BuiltinFunctionFile : public BuiltinFunctionBase
+    class BuiltinFunctionFile : public BuiltinFunctionVoid
     {
     public:
 	BuiltinFunctionFile(const std::string& fn, const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionBase(a), funcname(fn) {}
+	    : BuiltinFunctionVoid(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
 	virtual bool Semantics() const override { return false; }
     protected:
 	std::string funcname;
@@ -256,6 +302,81 @@ namespace Builtin
 	BuiltinFunctionFileBool(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionFile(fn, a) {}
 	Types::TypeDecl* Type() const override { return BoolType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionAssign : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionAssign(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionPanic : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionPanic(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+
+    class BuiltinFunctionLongInt : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionLongInt(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	Types::TypeDecl* Type() const override { return LongIntType(); }
+    };
+
+ 
+    class BuiltinFunctionClock : public BuiltinFunctionLongInt
+    {
+    public:
+	BuiltinFunctionClock(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionLongInt(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionCycles : public BuiltinFunctionLongInt
+    {
+    public:
+	BuiltinFunctionCycles(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionLongInt(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionParamcount : public BuiltinFunctionInt
+    {
+    public:
+	BuiltinFunctionParamcount(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionInt(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionParamstr : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionParamstr(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return StringType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionCopy : public BuiltinFunctionBase
+    {
+    public:
+	BuiltinFunctionCopy(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionBase(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return StringType(); }
 	virtual bool Semantics() const override { return false; }
     };
 
@@ -493,7 +614,7 @@ namespace Builtin
 	return builder.CreateZExt(v2, Types::GetType(Types::Integer), "extend");
     }
 
-    static llvm::Value* AssignCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionAssign::CodeGen(llvm::IRBuilder<>& builder)
     {
 	assert(args.size() == 2 && "Expect 2 args for 'assign'");
 
@@ -535,7 +656,7 @@ namespace Builtin
 	return builder.CreateCall(f, argsV, "");
     }
 
-    static llvm::Value* CopyCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionCopy::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (args.size() != 3)
 	{
@@ -561,7 +682,7 @@ namespace Builtin
 	return builder.CreateCall3(f, str, start, len, "copy");
     }
 
-    static llvm::Value* ClockCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionClock::CodeGen(llvm::IRBuilder<>& builder)
     {
 	std::vector<llvm::Type*> argTypes;
 
@@ -571,9 +692,8 @@ namespace Builtin
 	return builder.CreateCall(f, "clock");
     }
 
-    static llvm::Value* PanicCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionPanic::CodeGen(llvm::IRBuilder<>& builder)
     {
-
 	llvm::Value* message = args[0]->CodeGen();
 	llvm::Type* ty = message->getType();
 	if (!ty->isPointerTy() || ty->getContainedType(0) != Types::GetType(Types::Char))
@@ -589,7 +709,7 @@ namespace Builtin
 	return builder.CreateCall(f,  argsV);
     }
 
-    static llvm::Value* PopCntCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionPopcnt::CodeGen(llvm::IRBuilder<>& builder)
     {
 	Types::TypeDecl* type = args[0]->Type();
 	std::string name = "llvm.ctpop.i";
@@ -629,7 +749,7 @@ namespace Builtin
 	return ErrorV("Incorrect argument type - needs to be a integer or set");
     }
 
-    static llvm::Value* CyclesCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionCycles::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (args.size())
 	{
@@ -643,38 +763,7 @@ namespace Builtin
 	return builder.CreateCall(f, "cycles");
     }
 
-    static llvm::Value* FmodCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
-    {
-	if (args.size() != 2)
-	{
-	    return ErrorV("Cycles function takes no arguments");
-	}
-
-	llvm::Type* realTy = Types::GetType(Types::Real);
-
-	llvm::Value* a = args[0]->CodeGen();
-	llvm::Value* b = args[1]->CodeGen();
-
-	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
-	{
-	    a = builder.CreateSIToFP(a, realTy, "tofp");
-	}
-	if (b->getType()->getTypeID() == llvm::Type::IntegerTyID)
-	{
-	    b = builder.CreateSIToFP(b, realTy, "tofp");
-	}
-
-	std::vector<llvm::Value*> arg = {a, b};
-	
-	std::vector<llvm::Type*> argTypes = {realTy, realTy};
-
-	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction("__fmod", ft);
-	
-	return builder.CreateCall(f, arg);
-    }
-
-    static llvm::Value* Arctan2CodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionFloat2Arg::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (args.size() != 2)
 	{
@@ -699,12 +788,12 @@ namespace Builtin
 	std::vector<llvm::Type*> argTypes = {realTy, realTy};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction("__arctan2", ft);
+	llvm::Constant* f = theModule->getOrInsertFunction(funcname, ft);
 	
 	return builder.CreateCall(f, arg);
     }
 
-    static llvm::Value* ParamStrCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionParamstr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (args.size() != 1)
 	{
@@ -712,7 +801,7 @@ namespace Builtin
 	}
 	if (args[0]->Type()->Type() != Types::Integer)
 	{
-	    return ErrorV("Arguments to copy should be (string, integer, integer)");
+	    return ErrorV("Arguments to paramstr should be (integer)");
 	}
 	llvm::Value* n   = args[0]->CodeGen();
 
@@ -724,7 +813,7 @@ namespace Builtin
 	return builder.CreateCall(f, n, "paramstr");
     }
 
-    static llvm::Value* ParamCountCodeGen(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& args)
+    llvm::Value* BuiltinFunctionParamcount::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (args.size() != 0)
 	{
@@ -737,116 +826,6 @@ namespace Builtin
 	llvm::Constant* f = theModule->getOrInsertFunction("__ParamCount", ft);
 
 	return builder.CreateCall(f, "paramcount");
-    }
-
-    enum ResultForm
-    {
-	RF_Input,
-	RF_Boolean,
-	RF_Integer,
-	RF_LongInt,
-	RF_Real,
-	RF_Char,
-	RF_Void,
-	RF_String,
-    };
-
-    struct BuiltinFunction
-    {
-	const char *name;
-	CodeGenFunc CodeGen;
-	ResultForm  rf;
-    };
-
-    const static BuiltinFunction bifs[] =
-    {
-	{ "assign",     AssignCodeGen,     RF_Void },
-	{ "copy",       CopyCodeGen,       RF_String },
-	{ "clock",      ClockCodeGen,      RF_LongInt },
-	{ "panic",      PanicCodeGen,      RF_Void },
-	{ "popcnt",     PopCntCodeGen,     RF_Integer },
-	{ "cycles",     CyclesCodeGen,     RF_LongInt },
-	{ "fmod",       FmodCodeGen,       RF_Real },
-	{ "arctan2",    Arctan2CodeGen,    RF_Real },
-	{ "paramcount", ParamCountCodeGen, RF_Integer },
-	{ "paramstr",   ParamStrCodeGen,   RF_String },
-    };
-
-    static const BuiltinFunction* find(const std::string& name)
-    {
-	std::string nmlower = name;
-	std::transform(nmlower.begin(), nmlower.end(), nmlower.begin(), ::tolower);
-    
-	for(size_t i = 0; i < sizeof(bifs)/sizeof(bifs[0]); i++)
-	{
-	    if (nmlower == bifs[i].name)
-	    {
-		return &bifs[i];
-	    }
-	}
-	return 0;
-    }
-
-    llvm::Value* CodeGen(llvm::IRBuilder<>& builder,
-				  const std::string& name,
-				  const std::vector<ExprAST*>& args)
-    {
-	const BuiltinFunction* b = find(name);
-	assert(b && "Expected to find builtin function here!");
-
-	return b->CodeGen(builder, args);
-    }
-
-    Types::TypeDecl* Type(Stack<NamedObject*>& ns,
-			  const std::string& name,
-			  const std::vector<ExprAST*>& args)
-    {
-	const BuiltinFunction* b = find(name);
-	if (!b)
-	{
-	    return 0;
-	}
-
-	const char* type = 0;
-	switch(b->rf)
-	{
-	case RF_Input:
-	    return args[0]->Type();
-	
-	case RF_Boolean:
-	    type = "boolean";
-	    break;
-
-	case RF_Integer:
-	    type = "integer";
-	    break;
-
-	case RF_LongInt:
-	    type = "longint";
-	    break;
-
-	case RF_Char:
-	    type = "char";
-	    break;
-
-	case RF_Real:
-	    type = "real";
-	    break;
-
-	case RF_String:
-	    return Types::GetStringType();
-	    break;
-
-	case RF_Void:
-	    return Types::GetVoidType();
-	}
-	TypeDef* td = llvm::dyn_cast_or_null<TypeDef>(ns.FindBottomLevel(type));
-	assert(td && "TypeDef not found?");
-	if (!td)
-	{
-	    return 0;
-	}
-	return td->Type();
     }
 
     /* New style interface */ 
@@ -888,6 +867,16 @@ namespace Builtin
     BuiltinFunctionBase* CreateArctan(const std::vector<ExprAST*>& args)
     {
 	return new BuiltinFunctionFloat("atan", args);
+    }
+
+    BuiltinFunctionBase* CreateArctan2(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloat("atan2", args);
+    }
+
+    BuiltinFunctionBase* CreateFmod(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionFloat("fmod", args);
     }
 
     BuiltinFunctionBase* CreateLn(const std::vector<ExprAST*>& args)
@@ -990,6 +979,46 @@ namespace Builtin
 	return new BuiltinFunctionLength(args);
     }
 
+    BuiltinFunctionBase* CreatePopcnt(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionPopcnt(args);
+    }
+
+    BuiltinFunctionBase* CreateAssign(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionAssign(args);
+    }
+
+    BuiltinFunctionBase* CreatePanic(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionPanic(args);
+    }
+
+    BuiltinFunctionBase* CreateClock(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionClock(args);
+    }
+
+    BuiltinFunctionBase* CreateCycles(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionCycles(args);
+    }
+
+    BuiltinFunctionBase* CreateParamcount(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionParamcount(args);
+    }
+
+    BuiltinFunctionBase* CreateParamstr(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionParamstr(args);
+    }
+
+    BuiltinFunctionBase* CreateCopy(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionCopy(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -999,13 +1028,7 @@ namespace Builtin
     bool IsBuiltin(std::string name)
     {
 	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
-	if (BIFMap.find(name) != BIFMap.end())
-	{
-	    return true;
-	}
-	/* TODO: Remove this when done */
-	const BuiltinFunction* b = find(name);
-	return b != 0;
+	return BIFMap.find(name) != BIFMap.end();
     }
 
     BuiltinFunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args)
@@ -1021,33 +1044,43 @@ namespace Builtin
 
     void InitBuiltins()
     {
-	AddBIFCreator("abs",     CreateAbs);
-	AddBIFCreator("odd",     CreateOdd);
-	AddBIFCreator("sqr",     CreateSqr);
-	AddBIFCreator("sqrt",    CreateSqrt);
-	AddBIFCreator("sin",     CreateSin);
-	AddBIFCreator("cos",     CreateCos);
-	AddBIFCreator("tan",     CreateTan);
-	AddBIFCreator("ln",      CreateLn);
-	AddBIFCreator("exp",     CreateExp);
-	AddBIFCreator("arctan",  CreateArctan);
-	AddBIFCreator("round",   CreateRound);
-	AddBIFCreator("trunc",   CreateTrunc);
-	AddBIFCreator("random",  CreateRandom);
-	AddBIFCreator("chr",     CreateChr);
-	AddBIFCreator("ord",     CreateOrd);
-	AddBIFCreator("succ",    CreateSucc);
-	AddBIFCreator("pred",    CreatePred);
-	AddBIFCreator("new",     CreateNew);
-	AddBIFCreator("dispose", CreateDispose);
-	AddBIFCreator("reset",   CreateReset);
-	AddBIFCreator("rewrite", CreateRewrite);
-	AddBIFCreator("append",  CreateAppend);
-	AddBIFCreator("close",   CreateClose);
-	AddBIFCreator("get",     CreateGet);
-	AddBIFCreator("put",     CreatePut);
-	AddBIFCreator("eof",     CreateEof);
-	AddBIFCreator("eoln",    CreateEoln);
-	AddBIFCreator("length",  CreateLength);
+	AddBIFCreator("abs",        CreateAbs);
+	AddBIFCreator("odd",        CreateOdd);
+	AddBIFCreator("sqr",        CreateSqr);
+	AddBIFCreator("sqrt",       CreateSqrt);
+	AddBIFCreator("sin",        CreateSin);
+	AddBIFCreator("cos",        CreateCos);
+	AddBIFCreator("tan",        CreateTan);
+	AddBIFCreator("ln",         CreateLn);
+	AddBIFCreator("exp",        CreateExp);
+	AddBIFCreator("arctan",     CreateArctan);
+	AddBIFCreator("round",      CreateRound);
+	AddBIFCreator("trunc",      CreateTrunc);
+	AddBIFCreator("random",     CreateRandom);
+	AddBIFCreator("chr",        CreateChr);
+	AddBIFCreator("ord",        CreateOrd);
+	AddBIFCreator("succ",       CreateSucc);
+	AddBIFCreator("pred",       CreatePred);
+	AddBIFCreator("new",        CreateNew);
+	AddBIFCreator("dispose",    CreateDispose);
+	AddBIFCreator("reset",      CreateReset);
+	AddBIFCreator("rewrite",    CreateRewrite);
+	AddBIFCreator("append",     CreateAppend);
+	AddBIFCreator("close",      CreateClose);
+	AddBIFCreator("get",        CreateGet);
+	AddBIFCreator("put",        CreatePut);
+	AddBIFCreator("eof",        CreateEof);
+	AddBIFCreator("eoln",       CreateEoln);
+	AddBIFCreator("length",     CreateLength);
+	AddBIFCreator("arctan2",    CreateArctan2);
+	AddBIFCreator("fmod",       CreateFmod);
+	AddBIFCreator("popcnt",     CreatePopcnt);
+	AddBIFCreator("assign",     CreateAssign);
+	AddBIFCreator("panic",      CreatePanic);
+	AddBIFCreator("clock",      CreateClock);
+	AddBIFCreator("cycles",     CreateCycles);
+	AddBIFCreator("paramcount", CreateParamcount);
+	AddBIFCreator("paramstr",   CreateParamstr);
+	AddBIFCreator("copy",       CreateCopy);
     }
 } // namespace Builtin

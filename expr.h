@@ -64,7 +64,6 @@ public:
 	EK_RangeCheckExpr,
 	EK_TypeCastExpr,
 	EK_SizeOfExpr,
-	EK_BuiltinNewExpr,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -485,34 +484,17 @@ private:
     std::vector<ExprAST*> args;
 };
 
-// Builtin function call - deprecated
+// Builtin funciton call
 class BuiltinExprAST : public ExprAST
 {
 public:
-    BuiltinExprAST(const Location& w, const std::string& nm, std::vector<ExprAST*> a, Types::TypeDecl* ty)
-	: ExprAST(w, EK_BuiltinExpr, ty), name(nm), args(a)
+    BuiltinExprAST(const Location& w, Builtin::BuiltinFunctionBase* b)
+	: ExprAST(w, EK_BuiltinExpr, b->Type()), bif(b)
     {
     }
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_BuiltinExpr; }
-    void accept(Visitor& v) override;
-private:
-    std::string           name;
-    std::vector<ExprAST*> args;
-};
-
-// Builtin funciton call - new variant
-class BuiltinExprNewAST : public ExprAST
-{
-public:
-    BuiltinExprNewAST(const Location& w, Builtin::BuiltinFunctionBase* b)
-	: ExprAST(w, EK_BuiltinNewExpr, b->Type()), bif(b)
-    {
-    }
-    void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_BuiltinNewExpr; }
     void accept(Visitor& v) override;
 private:
     Builtin::BuiltinFunctionBase* bif;

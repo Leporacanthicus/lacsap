@@ -1363,30 +1363,6 @@ void CallExprAST::accept(Visitor& v)
     v.visit(this);
 }
 
-void BuiltinExprAST::DoDump(std::ostream& out) const
-{
-    out << " builtin call: " << name << "(";
-    for(auto i : args)
-    {
-	i->dump(out);
-    }
-    out << ")";
-}
-
-void BuiltinExprAST::accept(Visitor& v)
-{
-    TRACE();
-    for(auto i : args)
-    {
-	i->accept(v);
-    }
-}
-
-llvm::Value* BuiltinExprAST::CodeGen()
-{
-    return Builtin::CodeGen(builder, name, args);
-}
-
 void BlockAST::DoDump(std::ostream& out) const
 {
     out << "Block: Begin " << std::endl;
@@ -3098,19 +3074,19 @@ void SizeOfExprAST::DoDump(std::ostream& out) const
 }
 
 
-void BuiltinExprNewAST::DoDump(std::ostream& out) const
+void BuiltinExprAST::DoDump(std::ostream& out) const
 {
     out << "Sizeof(";
     type->dump();
     out << ")" << std::endl;
 }
 
-llvm::Value* BuiltinExprNewAST::CodeGen()
+llvm::Value* BuiltinExprAST::CodeGen()
 {
     return bif->CodeGen(builder);
 }
 
-void BuiltinExprNewAST::accept(Visitor& v)
+void BuiltinExprAST::accept(Visitor& v)
 {
     bif->accept(v);
 }

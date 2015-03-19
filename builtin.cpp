@@ -396,6 +396,15 @@ namespace Builtin
 	virtual bool Semantics() const override { return false; }
     };
 
+    class BuiltinFunctionSign : public BuiltinFunctionSameAsArg
+    {
+    public:
+	BuiltinFunctionSign(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionSameAsArg(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
     void BuiltinFunctionBase::accept(Visitor& v)
     {
 	for(auto a : args)
@@ -905,6 +914,43 @@ namespace Builtin
 	return builder.CreateSelect(sel, a, b, "min");
     }
 
+    llvm::Value* BuiltinFunctionSign::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorV("'sign' takes one argument");
+	}
+	llvm::Value* v = args[0]->CodeGen();
+	if (args[0]->Type()->Type() == Types::Real)
+	{
+	    llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
+	    llvm::Value* one = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(1.0));
+	    llvm::Value* mone = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(-1.0));
+	    llvm::Value* sel1 = builder.CreateFCmpOGT(v, zero, "gt");
+	    llvm::Value* sel2 = builder.CreateFCmpOLT(v, zero, "lt");
+	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
+	    return builder.CreateSelect(sel2, mone, res, "sgn2");
+	}
+	else if (args[0]->Type()->isUnsigned())
+	{
+	    llvm::Value* zero = MakeIntegerConstant(0);
+	    llvm::Value* one = MakeIntegerConstant(1);
+	    llvm::Value* sel1 = builder.CreateICmpUGT(v, zero, "gt");
+	    return builder.CreateSelect(sel1, one, zero, "sgn1");
+	} 
+	else if (args[0]->Type()->isIntegral())
+	{
+	    llvm::Value* zero = MakeIntegerConstant(0);
+	    llvm::Value* one = MakeIntegerConstant(1);
+	    llvm::Value* mone = MakeIntegerConstant(-1);
+	    llvm::Value* sel1 = builder.CreateICmpSGT(v, zero, "gt");
+	    llvm::Value* sel2 = builder.CreateICmpSLT(v, zero, "lt");
+	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
+	    return builder.CreateSelect(sel2, mone, res, "sgn2");
+	}
+	return ErrorV("Invalid argument type for 'sign'");
+    }
+
     /* New style interface */ 
     BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& args)
     {
@@ -1106,6 +1152,11 @@ namespace Builtin
 	return new BuiltinFunctionMin(args);
     }
 
+    BuiltinFunctionBase* CreateSign(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionSign(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1171,5 +1222,6 @@ namespace Builtin
 	AddBIFCreator("copy",       CreateCopy);
 	AddBIFCreator("max",        CreateMax);
 	AddBIFCreator("min",        CreateMin);
+	AddBIFCreator("sign",       CreateSign);
     }
 } // namespace Builtin

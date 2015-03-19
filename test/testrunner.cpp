@@ -282,7 +282,7 @@ struct
     { "Basic", "pi",            "pi.pas",          "" },
     { "Basic", "size",          "size.pas",        "" },
     { "Basic", "minmax",        "minmax.pas",      "< minmax.in" },
-    { "Basic", "sign",          "sign.pas",        "" },
+    { "Basic", "sign",          "sign.pas",        "< sign.in" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

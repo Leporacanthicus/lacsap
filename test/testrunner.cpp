@@ -282,6 +282,7 @@ struct
     { "Basic", "pi",            "pi.pas",          "" },
     { "Basic", "size",          "size.pas",        "" },
     { "Basic", "minmax",        "minmax.pas",      "< minmax.in" },
+    { "Basic", "sign",          "sign.pas",        "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
@@ -323,7 +324,6 @@ void runTestCases(const std::vector<TestCase*>& tc,
 	}
     }
 }
-	
 
 int main(int argc, char **argv)
 {

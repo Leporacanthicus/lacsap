@@ -1427,14 +1427,17 @@ ExprAST* Parser::ParseIdentifierExpr()
     {
 	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
-
-    bool isBuiltin = Builtin::IsBuiltin(idName);
-    if (!isBuiltin)
+    bool isBuiltin = false;
+    if (!def)
     {
-	if (!def)
+	isBuiltin = Builtin::IsBuiltin(idName);
+	if (!isBuiltin)
 	{
 	    return Error(std::string("Undefined name '") + idName + "'");
 	}
+    }
+    if (def)
+    {
 	// If type is not function, not procedure, or the next thing is an assignment
 	// then we want a "variable" with this name. 
 	Types::TypeDecl* type = def->Type();

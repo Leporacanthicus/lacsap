@@ -248,8 +248,6 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return RealType(); }
 	virtual bool Semantics() const override { return false; }
-    protected:
-	std::string funcname;
     };
 
     class BuiltinFunctionFloatIntrinsic : public BuiltinFunctionFloat
@@ -377,6 +375,24 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return StringType(); }
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionMin : public BuiltinFunctionSameAsArg
+    {
+    public:
+	BuiltinFunctionMin(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionSameAsArg(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	virtual bool Semantics() const override { return false; }
+    };
+
+    class BuiltinFunctionMax : public BuiltinFunctionSameAsArg
+    {
+    public:
+	BuiltinFunctionMax(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionSameAsArg(a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	virtual bool Semantics() const override { return false; }
     };
 
@@ -828,6 +844,67 @@ namespace Builtin
 	return builder.CreateCall(f, "paramcount");
     }
 
+    llvm::Value* BuiltinFunctionMax::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	if (args.size() != 2)
+	{
+	    return ErrorV("'max' takes two arguments");
+	}
+	if (args[0]->Type()->Type() == Types::Real ||
+	    args[1]->Type()->Type() == Types::Real)
+	{
+	    BuiltinFunctionFloat2Arg max("llvm.maxnum.f64", args);
+	    return max.CodeGen(builder);
+	}
+	if (!args[0]->Type()->isIntegral() || !args[1]->Type()->isIntegral())
+	{
+	    return ErrorV("'max' takes numeric arguments");
+	}
+	    
+	llvm::Value* a = args[0]->CodeGen();
+	llvm::Value* b = args[1]->CodeGen();
+	llvm::Value* sel;
+	if (args[0]->Type()->isUnsigned() || args[1]->Type()->isUnsigned())
+	{
+	    sel = builder.CreateICmpUGT(a, b, "sel");
+	}
+	else
+	{
+	    sel = builder.CreateICmpSGT(a, b, "sel");
+	}
+	return builder.CreateSelect(sel, a, b, "max");
+    }
+
+    llvm::Value* BuiltinFunctionMin::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	if (args.size() != 2)
+	{
+	    return ErrorV("'min' takes two arguments");
+	}
+	if (args[0]->Type()->Type() == Types::Real ||
+	    args[1]->Type()->Type() == Types::Real)
+	{
+	    BuiltinFunctionFloat2Arg min("llvm.minnum.f64", args);
+	    return min.CodeGen(builder);
+	}
+	if (!args[0]->Type()->isIntegral() || !args[1]->Type()->isIntegral())
+	{
+	    return ErrorV("'min' takes numeric arguments");
+	}
+	llvm::Value* a = args[0]->CodeGen();
+	llvm::Value* b = args[1]->CodeGen();
+	llvm::Value* sel;
+	if (args[0]->Type()->isUnsigned() || args[1]->Type()->isUnsigned())
+	{
+	    sel = builder.CreateICmpULT(a, b, "sel");
+	}
+	else
+	{
+	    sel = builder.CreateICmpSLT(a, b, "sel");
+	}
+	return builder.CreateSelect(sel, a, b, "min");
+    }
+
     /* New style interface */ 
     BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& args)
     {
@@ -1019,6 +1096,16 @@ namespace Builtin
 	return new BuiltinFunctionCopy(args);
     }
 
+    BuiltinFunctionBase* CreateMax(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionMax(args);
+    }
+
+    BuiltinFunctionBase* CreateMin(const std::vector<ExprAST*>& args)
+    {
+	return new BuiltinFunctionMin(args);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1082,5 +1169,7 @@ namespace Builtin
 	AddBIFCreator("paramcount", CreateParamcount);
 	AddBIFCreator("paramstr",   CreateParamstr);
 	AddBIFCreator("copy",       CreateCopy);
+	AddBIFCreator("max",        CreateMax);
+	AddBIFCreator("min",        CreateMin);
     }
 } // namespace Builtin

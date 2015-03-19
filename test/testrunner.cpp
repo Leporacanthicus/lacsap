@@ -281,6 +281,7 @@ struct
     { "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
     { "Basic", "pi",            "pi.pas",          "" },
     { "Basic", "size",          "size.pas",        "" },
+    { "Basic", "minmax",        "minmax.pas",      "< minmax.in" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

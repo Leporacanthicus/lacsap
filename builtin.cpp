@@ -1,11 +1,15 @@
 #include "expr.h"
 #include "builtin.h"
 #include <llvm/IR/DataLayout.h>
+#include <functional>
 
 extern llvm::Module* theModule;
 
 namespace Builtin
 {
+    typedef const std::vector<ExprAST*> ArgList;
+
+
     static Types::TypeDecl* intTy = 0;
     static Types::TypeDecl* realTy = 0;
     static Types::TypeDecl* charTy = 0;
@@ -67,7 +71,7 @@ namespace Builtin
 	return strTy;
     }
 
-    typedef BuiltinFunctionBase* (*CreateBIFObject)(const std::vector<ExprAST*>& a);
+    typedef std::function<BuiltinFunctionBase*(const std::vector<ExprAST*>&)>  CreateBIFObject;
     std::map<std::string, CreateBIFObject> BIFMap;
 
     /* TODO: Remove this Old style functionality */
@@ -951,212 +955,6 @@ namespace Builtin
 	return ErrorV("Invalid argument type for 'sign'");
     }
 
-    /* New style interface */ 
-    BuiltinFunctionBase* CreateAbs(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionAbs(args);
-    }
-
-    BuiltinFunctionBase* CreateOdd(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionOdd(args);
-    }
-
-    BuiltinFunctionBase* CreateSqr(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionSqr(args);
-    }
-
-    BuiltinFunctionBase* CreateSqrt(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloatIntrinsic("sqrt", args);
-    }
-
-    BuiltinFunctionBase* CreateSin(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloatIntrinsic("sin", args);
-    }
-
-    BuiltinFunctionBase* CreateCos(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloatIntrinsic("cos", args);
-    }
-
-    BuiltinFunctionBase* CreateTan(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloat("tan", args);
-    }
-
-    BuiltinFunctionBase* CreateArctan(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloat("atan", args);
-    }
-
-    BuiltinFunctionBase* CreateArctan2(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloat("atan2", args);
-    }
-
-    BuiltinFunctionBase* CreateFmod(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloat("fmod", args);
-    }
-
-    BuiltinFunctionBase* CreateLn(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloatIntrinsic("log", args);
-    }
-
-    BuiltinFunctionBase* CreateExp(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFloatIntrinsic("exp", args);
-    }
-
-    BuiltinFunctionBase* CreateRound(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionRound(args);
-    }
-
-    BuiltinFunctionBase* CreateTrunc(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionTrunc(args);
-    }
-
-    BuiltinFunctionBase* CreateRandom(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionRandom(args);
-    }
-
-    BuiltinFunctionBase* CreateChr(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionChr(args);
-    }
-
-    BuiltinFunctionBase* CreateOrd(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionOrd(args);
-    }
-
-    BuiltinFunctionBase* CreateSucc(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionSucc(args);
-    }
-
-    BuiltinFunctionBase* CreatePred(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionPred(args);
-    }
-
-    BuiltinFunctionBase* CreateNew(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionNew(args);
-    }
-
-    BuiltinFunctionBase* CreateDispose(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionDispose(args);
-    }
-
-    BuiltinFunctionBase* CreateAppend(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("append", args);
-    }
-
-    BuiltinFunctionBase* CreateReset(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("reset", args);
-    }
-
-    BuiltinFunctionBase* CreateRewrite(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("rewrite", args);
-    }
-
-    BuiltinFunctionBase* CreateClose(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("close", args);
-    }
-
-    BuiltinFunctionBase* CreatePut(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("put", args);
-    }
-
-    BuiltinFunctionBase* CreateGet(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFile("get", args);
-    }
-
-    BuiltinFunctionBase* CreateEof(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFileBool("eof", args);
-    }
-
-    BuiltinFunctionBase* CreateEoln(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionFileBool("eoln", args);
-    }
-
-    BuiltinFunctionBase* CreateLength(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionLength(args);
-    }
-
-    BuiltinFunctionBase* CreatePopcnt(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionPopcnt(args);
-    }
-
-    BuiltinFunctionBase* CreateAssign(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionAssign(args);
-    }
-
-    BuiltinFunctionBase* CreatePanic(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionPanic(args);
-    }
-
-    BuiltinFunctionBase* CreateClock(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionClock(args);
-    }
-
-    BuiltinFunctionBase* CreateCycles(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionCycles(args);
-    }
-
-    BuiltinFunctionBase* CreateParamcount(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionParamcount(args);
-    }
-
-    BuiltinFunctionBase* CreateParamstr(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionParamstr(args);
-    }
-
-    BuiltinFunctionBase* CreateCopy(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionCopy(args);
-    }
-
-    BuiltinFunctionBase* CreateMax(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionMax(args);
-    }
-
-    BuiltinFunctionBase* CreateMin(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionMin(args);
-    }
-
-    BuiltinFunctionBase* CreateSign(const std::vector<ExprAST*>& args)
-    {
-	return new BuiltinFunctionSign(args);
-    }
-
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1180,48 +978,51 @@ namespace Builtin
 	return 0;
     }
 
+#define NEW(name) [](ArgList& a)->BuiltinFunctionBase*{return new BuiltinFunction##name(a);}
+#define NEW2(name, func) [](ArgList& a)->BuiltinFunctionBase*{return new BuiltinFunction##name(func, a);}
+
     void InitBuiltins()
     {
-	AddBIFCreator("abs",        CreateAbs);
-	AddBIFCreator("odd",        CreateOdd);
-	AddBIFCreator("sqr",        CreateSqr);
-	AddBIFCreator("sqrt",       CreateSqrt);
-	AddBIFCreator("sin",        CreateSin);
-	AddBIFCreator("cos",        CreateCos);
-	AddBIFCreator("tan",        CreateTan);
-	AddBIFCreator("ln",         CreateLn);
-	AddBIFCreator("exp",        CreateExp);
-	AddBIFCreator("arctan",     CreateArctan);
-	AddBIFCreator("round",      CreateRound);
-	AddBIFCreator("trunc",      CreateTrunc);
-	AddBIFCreator("random",     CreateRandom);
-	AddBIFCreator("chr",        CreateChr);
-	AddBIFCreator("ord",        CreateOrd);
-	AddBIFCreator("succ",       CreateSucc);
-	AddBIFCreator("pred",       CreatePred);
-	AddBIFCreator("new",        CreateNew);
-	AddBIFCreator("dispose",    CreateDispose);
-	AddBIFCreator("reset",      CreateReset);
-	AddBIFCreator("rewrite",    CreateRewrite);
-	AddBIFCreator("append",     CreateAppend);
-	AddBIFCreator("close",      CreateClose);
-	AddBIFCreator("get",        CreateGet);
-	AddBIFCreator("put",        CreatePut);
-	AddBIFCreator("eof",        CreateEof);
-	AddBIFCreator("eoln",       CreateEoln);
-	AddBIFCreator("length",     CreateLength);
-	AddBIFCreator("arctan2",    CreateArctan2);
-	AddBIFCreator("fmod",       CreateFmod);
-	AddBIFCreator("popcnt",     CreatePopcnt);
-	AddBIFCreator("assign",     CreateAssign);
-	AddBIFCreator("panic",      CreatePanic);
-	AddBIFCreator("clock",      CreateClock);
-	AddBIFCreator("cycles",     CreateCycles);
-	AddBIFCreator("paramcount", CreateParamcount);
-	AddBIFCreator("paramstr",   CreateParamstr);
-	AddBIFCreator("copy",       CreateCopy);
-	AddBIFCreator("max",        CreateMax);
-	AddBIFCreator("min",        CreateMin);
-	AddBIFCreator("sign",       CreateSign);
+	AddBIFCreator("abs",        NEW(Abs));
+	AddBIFCreator("odd",        NEW(Odd));
+	AddBIFCreator("sqr",        NEW(Sqr));
+	AddBIFCreator("round",      NEW(Round));
+	AddBIFCreator("trunc",      NEW(Trunc));
+	AddBIFCreator("random",     NEW(Random));
+	AddBIFCreator("chr",        NEW(Chr));
+	AddBIFCreator("ord",        NEW(Ord));
+	AddBIFCreator("succ",       NEW(Succ));
+	AddBIFCreator("pred",       NEW(Pred));
+	AddBIFCreator("new",        NEW(New));
+	AddBIFCreator("dispose",    NEW(Dispose));
+	AddBIFCreator("length",     NEW(Length));
+	AddBIFCreator("popcnt",     NEW(Popcnt));
+	AddBIFCreator("assign",     NEW(Assign));
+	AddBIFCreator("panic",      NEW(Panic));
+	AddBIFCreator("clock",      NEW(Clock));
+	AddBIFCreator("cycles",     NEW(Cycles));
+	AddBIFCreator("paramcount", NEW(Paramcount));
+	AddBIFCreator("paramstr",   NEW(Paramstr));
+	AddBIFCreator("copy",       NEW(Copy));
+	AddBIFCreator("max",        NEW(Max));
+	AddBIFCreator("min",        NEW(Min));
+	AddBIFCreator("sign",       NEW(Sign));
+	AddBIFCreator("sqrt",       NEW2(FloatIntrinsic, "sqrt"));
+	AddBIFCreator("sin",        NEW2(FloatIntrinsic, "sin"));
+	AddBIFCreator("cos",        NEW2(FloatIntrinsic, "cos"));
+	AddBIFCreator("ln",         NEW2(FloatIntrinsic, "log"));
+	AddBIFCreator("exp",        NEW2(FloatIntrinsic, "exp"));
+	AddBIFCreator("arctan",     NEW2(Float, "atan"));
+	AddBIFCreator("arctan2",    NEW2(Float, "atan2"));
+	AddBIFCreator("fmod",       NEW2(Float, "fmod"));
+	AddBIFCreator("tan",        NEW2(Float, "tan"));
+	AddBIFCreator("reset",      NEW2(File, "reset"));
+	AddBIFCreator("rewrite",    NEW2(File, "rewrite"));
+	AddBIFCreator("append",     NEW2(File, "append"));
+	AddBIFCreator("close",      NEW2(File, "close"));
+	AddBIFCreator("get",        NEW2(File, "get"));
+	AddBIFCreator("put",        NEW2(File, "put"));
+	AddBIFCreator("eof",        NEW2(FileBool, "eof"));
+	AddBIFCreator("eoln",       NEW2(FileBool, "eoln"));
     }
 } // namespace Builtin

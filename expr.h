@@ -487,6 +487,7 @@ private:
 // Builtin funciton call
 class BuiltinExprAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     BuiltinExprAST(const Location& w, Builtin::BuiltinFunctionBase* b)
 	: ExprAST(w, EK_BuiltinExpr, b->Type()), bif(b)

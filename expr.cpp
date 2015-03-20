@@ -3076,7 +3076,7 @@ void SizeOfExprAST::DoDump(std::ostream& out) const
 
 void BuiltinExprAST::DoDump(std::ostream& out) const
 {
-    out << "Sizeof(";
+    out << "Builtin(";
     type->dump();
     out << ")" << std::endl;
 }
@@ -3089,6 +3089,7 @@ llvm::Value* BuiltinExprAST::CodeGen()
 void BuiltinExprAST::accept(Visitor& v)
 {
     bif->accept(v);
+    v.visit(this);
 }
 
 

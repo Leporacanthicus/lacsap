@@ -16,6 +16,7 @@ private:
     void CheckRangeExpr(RangeExprAST *r);
     void CheckSetExpr(SetExprAST *s);
     void CheckArrayExpr(ArrayExprAST *a);
+    void CheckBuiltinExpr(BuiltinExprAST *b);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -93,7 +94,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 
 void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
 {
-    std::cerr << e->Loc() << ":" << msg << std::endl;
+    std::cerr << e->Loc() << ": " << msg << std::endl;
     sema->AddError();
 }
 
@@ -125,6 +126,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (ArrayExprAST* a = llvm::dyn_cast<ArrayExprAST>(expr))
     {
 	CheckArrayExpr(a);
+    }
+    else if (BuiltinExprAST* b = llvm::dyn_cast<BuiltinExprAST>(expr))
+    {
+	CheckBuiltinExpr(b);
     }
 }
 
@@ -418,6 +423,15 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	{
 	    a->indices[i] = new RangeReduceAST(e, r);
 	}
+    }
+}
+
+void TypeCheckVisitor::CheckBuiltinExpr(BuiltinExprAST* b)
+{
+    TRACE();
+    if (!b->bif->Semantics())
+    {
+	Error(b, "Invalid use of builtin function");
     }
 }
 

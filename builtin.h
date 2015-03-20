@@ -19,11 +19,11 @@ namespace Builtin
 	BuiltinFunctionBase(const std::vector<ExprAST*>& a) : args(a) {}
 	virtual llvm::Value* CodeGen(llvm::IRBuilder<>& builder) = 0;
 	virtual Types::TypeDecl* Type() const = 0;
-	virtual bool Semantics() const = 0;
+	virtual bool Semantics() = 0;
 	virtual void accept(Visitor& v);
 	virtual ~BuiltinFunctionBase() {}
     protected:
-	const std::vector<ExprAST*> args;
+	std::vector<ExprAST*> args;
     };
 
     bool IsBuiltin(std::string funcname);

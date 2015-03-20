@@ -469,7 +469,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
-	assert(args.size() == 1 && "Expect 1 argument to 'sqrt'");
+	assert(args.size() == 1 && "Expect 1 argument to float function");
 	return CallRuntimeFPFunc(builder, funcname, args);
     }
 
@@ -506,7 +506,6 @@ namespace Builtin
 	assert(args.size() == 1 && "Expect 1 argument to chr");
 
 	llvm::Value* a = args[0]->CodeGen();
-	assert(a && "Expected codegen to work for args[0]");
 	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
 	{
 	    return builder.CreateTrunc(a, Types::GetType(Types::Char), "chr");
@@ -519,7 +518,6 @@ namespace Builtin
 	assert(args.size() == 1 && "Expect 1 argument to ord");
 
 	llvm::Value* a = args[0]->CodeGen();
-	assert(a && "Expected codegen to work for args[0]");
 	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
 	{
 	    return builder.CreateZExt(a, Types::GetType(Types::Integer), "ord");
@@ -532,7 +530,6 @@ namespace Builtin
 	assert(args.size() == 1 && "Expect 1 argument to succ");
 
 	llvm::Value* a = args[0]->CodeGen();
-	assert(a && "Expected codegen to work for args[0]");
 	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
 	{
 	    return builder.CreateAdd(a, MakeConstant(1, a->getType()), "succ");
@@ -545,7 +542,6 @@ namespace Builtin
 	assert(args.size() == 1 && "Expect 1 argument to pred");
 
 	llvm::Value* a = args[0]->CodeGen();
-	assert(a && "Expected codegen to work for args[0]");
 	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
 	{
 	    return builder.CreateSub(a, MakeConstant(1, a->getType()), "pred");
@@ -563,7 +559,7 @@ namespace Builtin
 	{
 	    size_t size = pd->SubType()->Size();
 	    llvm::Type* ty = Types::GetType(Types::Integer);
-	    std::vector<llvm::Type*> argTypes{ty};
+	    std::vector<llvm::Type*> argTypes = {ty};
 
 	    // Result is "void *"
 	    llvm::Type* resTy = Types::GetVoidPtrType();
@@ -594,7 +590,7 @@ namespace Builtin
 	if (a->getType()->isPointerTy())
 	{
 	    llvm::Type* ty = a->getType();
-	    std::vector<llvm::Type*> argTypes{ty};
+	    std::vector<llvm::Type*> argTypes = {ty};
 
 	    std::string name = "__dispose";
 	    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
@@ -621,7 +617,7 @@ namespace Builtin
 	    fvar = new VariableExprAST(Location("",0,0), "input", Types::GetTextType());
 	}
 	llvm::Value* faddr = fvar->Address();
-	std::vector<llvm::Type*> argTypes{faddr->getType()};
+	std::vector<llvm::Type*> argTypes = {faddr->getType()};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Type()->LlvmType(), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(std::string("__") + funcname, ft);
@@ -665,7 +661,7 @@ namespace Builtin
 	    return ErrorV("Argument for filename should be string type.");
 	}
 	llvm::Type* intTy = Types::GetType(Types::Integer);
-	std::vector<llvm::Type*> argTypes{faddr->getType(), ty, intTy, intTy};
+	std::vector<llvm::Type*> argTypes = {faddr->getType(), ty, intTy, intTy};
 
 	bool textFile;
 	int  recSize;
@@ -703,7 +699,7 @@ namespace Builtin
 	llvm::Value* start = args[1]->CodeGen();
 	llvm::Value* len   = args[2]->CodeGen();
 
-	std::vector<llvm::Type*> argTypes{str->getType(), start->getType(), len->getType()};
+	std::vector<llvm::Type*> argTypes = {str->getType(), start->getType(), len->getType()};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
@@ -729,7 +725,7 @@ namespace Builtin
 	{
 	    return ErrorV("Argument for panic message should be string type.");
 	}
-	std::vector<llvm::Type*> argTypes{ty};
+	std::vector<llvm::Type*> argTypes = {ty};
 	std::vector<llvm::Value*> argsV{message};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
@@ -746,7 +742,7 @@ namespace Builtin
 	{
 	    name += std::to_string(type->Size() * 8);
 	    llvm::Type* ty = type->LlvmType();
-	    std::vector<llvm::Type*> argTypes{ty};
+	    std::vector<llvm::Type*> argTypes = {ty};
 	    llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 
 	    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
@@ -761,7 +757,7 @@ namespace Builtin
 	    llvm::Value *addr = builder.CreateGEP(v, ind, "leftSet");
 	    llvm::Value *val = builder.CreateLoad(addr);
 	    llvm::Type* ty = val->getType();
-	    std::vector<llvm::Type*> argTypes{ty};
+	    std::vector<llvm::Type*> argTypes = {ty};
 	    llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 	    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 	    llvm::Value *count = builder.CreateCall(f, val, "count");
@@ -834,7 +830,7 @@ namespace Builtin
 	}
 	llvm::Value* n   = args[0]->CodeGen();
 
-	std::vector<llvm::Type*> argTypes{n->getType()};
+	std::vector<llvm::Type*> argTypes = {n->getType()};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__ParamStr", ft);
@@ -849,7 +845,7 @@ namespace Builtin
 	    return ErrorV("ParamCount takes no arguments");
 	}
 
-	std::vector<llvm::Type*> argTypes{};
+	std::vector<llvm::Type*> argTypes = {};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Integer), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__ParamCount", ft);

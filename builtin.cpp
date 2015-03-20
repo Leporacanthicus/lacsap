@@ -888,6 +888,7 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 	llvm::Value *count = builder.CreateCall(f, val, "count");
+	Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(type);
 	for(size_t i = 1; i < sd->SetWords(); i++)
 	{
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};

@@ -35,4 +35,6 @@ Date: 10-Mar-2015
 Function returning string can not be passed directly to write.
 
 E.g. write("Executable=", paramstr(0));
+Resolved: Added call to "MakeAddressable" in WrtieAST::CodeGen.
+Fix in: 78d825566b899b6a32f7f7e3dfb80742a513f46d
 ----------------------------------------------------------------

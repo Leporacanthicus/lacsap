@@ -2286,9 +2286,14 @@ llvm::Value* WriteAST::CodeGen()
 	    fn = CreateWriteFunc(type, f->getType());
 	    if (type->Type() == Types::String)
 	    {
-		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
-		assert(a && "Expected addressable value");
-		v = a->Address();
+		if (AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr))
+		{
+		    v = a->Address();
+		}
+		else
+		{
+		    v = MakeAddressable(arg.expr);
+		}
 		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }

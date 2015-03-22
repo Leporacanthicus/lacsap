@@ -956,9 +956,9 @@ namespace Builtin
 		return false;
 	    }
 	}
-	if (!(args[1]->Type()->isIntegral()) && args[1]->Type()->Type() != Types::Real)
+	if (args[1]->Type()->Type() != Types::Real)
 	{
-	    if (args[0]->Type()->isIntegral())
+	    if (args[1]->Type()->isIntegral())
 	    {
 		ExprAST* e = args[1];
 		args[1] = new TypeCastAST(Location("",0,0), e, RealType());

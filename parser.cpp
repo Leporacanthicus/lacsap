@@ -1110,6 +1110,10 @@ Types::TypeDecl* Parser::ParseType()
     if (tt == Token::Packed)
     {
 	tt = NextToken().GetToken();
+	if (tt != Token::Array && tt != Token::Record)
+	{
+	    return ErrorT("Expected 'array' or 'record' after 'packed'");
+	}
     }
 
     switch(tt)

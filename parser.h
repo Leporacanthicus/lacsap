@@ -75,10 +75,12 @@ private:
     Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
     Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);
     Types::TypeDecl*    ParseSimpleType();
+    Types::ObjectDecl*  ParseObjectDecl();
     Types::TypeDecl*    ParseType();
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
+    bool                ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant);
     Types::RecordDecl*  ParseRecordDecl();
     Types::FileDecl*    ParseFileDecl();
     Types::SetDecl*     ParseSetDecl();

@@ -22,6 +22,7 @@ namespace Types
 	
 	Variant,
 	Record,
+	Object,
 
         Set,
 	SubRange,
@@ -80,6 +81,7 @@ namespace Types
 	    TK_File,
 	    TK_Set,
 	    TK_Variant,
+	    TK_Object,
 	};
 	TypeDecl(TypeKind k, SimpleTypes t)
 	    : kind(k), type(t), ltype(0)
@@ -411,7 +413,8 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e)
 	{
-	    return e->getKind() == TK_Variant || e->getKind() == TK_Record;
+	    return e->getKind() == TK_Variant || e->getKind() == TK_Record || 
+		e->getKind() == TK_Object;
 	}
     protected:
 	std::vector<FieldDecl> fields;
@@ -440,6 +443,23 @@ namespace Types
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
+    protected:
+	llvm::Type* GetLlvmType() const override;
+    private:
+	VariantDecl* variant;
+    };
+
+    class ObjectDecl : public FieldCollection
+    {
+    public:
+	ObjectDecl(const std::vector<FieldDecl>& flds, VariantDecl* v)
+	    : FieldCollection(TK_Object, Object, flds), variant(v) { };
+	bool isIntegral() const override { return false; }
+	void DoDump(std::ostream& out) const override;
+	size_t Size() const override;
+	VariantDecl* Variant() { return variant; }
+	bool SameAs(const TypeDecl* ty) const override;
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:

@@ -149,6 +149,8 @@ namespace Types
 	    return "Variant";
 	case FuncPtr:
 	    return "FuncPtr";
+	case Object:
+	    return "Object";
 	}
     }
 
@@ -707,6 +709,58 @@ namespace Types
     }
 
     bool RecordDecl::SameAs(const TypeDecl* ty) const
+    {
+	return this == ty;
+    }
+
+    size_t ObjectDecl::Size() const
+    {
+	EnsureSized();
+	return TypeDecl::Size();
+    }
+
+    void ObjectDecl::DoDump(std::ostream& out) const
+    {
+	out << " ";
+	for(auto f : fields)
+	{
+	    f.DoDump(out);
+	    out << std::endl;
+	}
+	if (variant)
+	{
+	    variant->DoDump(out);
+	}
+    }
+
+    llvm::Type* ObjectDecl::GetLlvmType() const
+    {
+	std::vector<llvm::Type*> fv;
+	for(auto f : fields)
+	{
+	    if (llvm::isa<PointerDecl>(f.FieldType()) && !f.FieldType()->hasLlvmType())
+	    {
+		if (!opaqueType)
+		{
+		    opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		}
+		return opaqueType;
+	    }
+	    fv.push_back(f.LlvmType());
+	}
+	if (variant)
+	{
+	    fv.push_back(variant->LlvmType());
+	}
+	if (opaqueType)
+	{
+	    opaqueType->setBody(fv);
+	    return opaqueType;
+	}
+	return llvm::StructType::create(fv);
+    }
+
+    bool ObjectDecl::SameAs(const TypeDecl* ty) const
     {
 	return this == ty;
     }

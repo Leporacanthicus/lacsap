@@ -922,14 +922,10 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
     return new Types::VariantDecl(variants);
 }
 
-Types::RecordDecl* Parser::ParseRecordDecl()
+
+bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant)
 {
-    if (!Expect(Token::Record, true))
-    {
-	return 0;
-    }
-    Types::VariantDecl* variant = 0;
-    std::vector<Types::FieldDecl> fields;
+    variant = 0;
     do
     {
 	std::vector<std::string> names;
@@ -946,14 +942,14 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 		NextToken();
 		if (!Expect(Token::Colon, true))
 		{
-		    return 0;
+		    return false;
 		}
 	    }
 	    markerTy = ParseType();
 	    if (!markerTy->isIntegral())
 	    {
 		Error("Expect variant selector to be integral type");
-		return 0;
+		return false;
 	    }
 	    if (marker != "")
 	    {
@@ -961,18 +957,18 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    }
 	    if (!Expect(Token::Of, true))
 	    {
-		return 0;
+		return false;
 	    }
 	    Types::TypeDecl* type;
 	    variant =  ParseVariantDecl(type);
 	    if(!variant)
 	    {
-		return 0;
+		return false;
 	    }
 	    if (*markerTy != *type)
 	    {
 		Error("Marker type does not match member variant type");
-		return 0;
+		return false;
 	    }
 	}
 	else
@@ -981,7 +977,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    {
 		if (!Expect(Token::Identifier, false))
 		{
-		    return 0;
+		    return false;
 		}
 		names.push_back(CurrentToken().GetIdentName());
 		NextToken();
@@ -989,18 +985,18 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 		{
 		    if (!Expect(Token::Comma, true))
 		    {
-			return 0;
+			return false;
 		    }
 		}
 	    } while(CurrentToken().GetToken() != Token::Colon);
 	    if (!Expect(Token::Colon, true))
 	    {
-		return 0;
+		return false;
 	    }
 	    if (names.size() == 0)
 	    {
 		assert(0 && "Should have at least one name declared?");
-		return 0;
+		return false;
 	    }
 	    Types::TypeDecl* ty = ParseType();
 	    if (!ty)
@@ -1014,7 +1010,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 		    if (n == f.Name())
 		    {
 			Error(std::string("Duplicate field name '") + n + "' in record");
-			return 0;
+			return false;
 		    }
 		}
 		fields.push_back(Types::FieldDecl(n, ty));
@@ -1022,17 +1018,34 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	}
 	if (!ExpectSemicolonOrEnd())
 	{
-	    return 0;
+	    return false;
 	}
     } while(CurrentToken().GetToken() != Token::End);
-    NextToken();
+    return true;
+}
+
+Types::RecordDecl* Parser::ParseRecordDecl()
+{
+    if (!Expect(Token::Record, true))
+    {
+	return 0;
+    }
+    std::vector<Types::FieldDecl> fields;
+    Types::VariantDecl* variant;
+    if (!ParseFields(fields, variant))
+    {
+	return 0;
+    }
+    if (!Expect(Token::End, true))
+    {
+	return 0;
+    }
     if (fields.size() == 0 && !variant)
     {
 	Error("No elements in record declaration");
 	return 0;
     }
-    Types::RecordDecl* r = new Types::RecordDecl(fields, variant);
-    return r;
+    return new Types::RecordDecl(fields, variant);
 }
 
 Types::FileDecl* Parser::ParseFileDecl()
@@ -1104,6 +1117,27 @@ Types::StringDecl* Parser::ParseStringDecl()
     return new Types::StringDecl(size);
 }
 
+Types::ObjectDecl* Parser::ParseObjectDecl()
+{
+    if (!Expect(Token::Object, true))
+    {
+	return 0;
+    }
+    std::vector<Types::FieldDecl> fields;
+    Types::VariantDecl* variant;
+    if (!ParseFields(fields, variant))
+    {
+	return 0;
+    }
+    
+    if (!Expect(Token::End, true))
+    {
+	return 0;
+    }
+
+    return new Types::ObjectDecl(fields, variant);
+}
+
 Types::TypeDecl* Parser::ParseType()
 {
     Token::TokenType tt = CurrentToken().GetToken();
@@ -1142,6 +1176,9 @@ Types::TypeDecl* Parser::ParseType()
 
     case Token::Record:
 	return ParseRecordDecl();
+
+    case Token::Object:
+	return ParseObjectDecl();
 
     case Token::File:
 	return ParseFileDecl();
@@ -1333,48 +1370,63 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	return 0;
     }
 
-    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type);
-    if (!rd)
-    {
-	return ErrorV("Attempt to use field of varaible that hasn't got fields");
-    }
-
     std::string name = CurrentToken().GetIdentName();
-    int elem = rd->Element(name);
     VariableExprAST* e = 0;
-
-    if (elem >= 0)
+    Types::VariantDecl* v = 0;
+    unsigned fc = 0;
+    if (Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(type))
     {
-	type = rd->GetElement(elem).FieldType();
-	e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	int elem = od->Element(name);
+	if (elem >= 0)
+	{
+	    type = od->GetElement(elem).FieldType();
+	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	}
+	else
+	{
+	    fc = od->FieldCount();
+	    v = od->Variant();
+	}
+    }
+    else if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type))
+    {
+	int elem = rd->Element(name);
+	if (elem >= 0)
+	{
+	    type = rd->GetElement(elem).FieldType();
+	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	}
+	else
+	{
+	    fc = rd->FieldCount();
+	    v = rd->Variant();
+	}
     }
     else
     {
-	// If the main structure doesn't have it, it may be a variant?
-	Types::VariantDecl* v = rd->Variant();
-	if (v)
+	return ErrorV("Attempt to use filed of variable that hasn't got fields");
+    }
+    if (!e && v)
+    {
+	if (int elem = v->Element(name) >= 0)
 	{
-	    elem = v->Element(name);
-	    if (elem >= 0)
+	    const Types::FieldDecl* fd = &v->GetElement(elem);
+	    type = fd->FieldType();
+	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
+	    // If name is empty, we have a made up struct. Dig another level down. 
+	    if (fd->Name() == "")
 	    {
-		const Types::FieldDecl* fd = &v->GetElement(elem);
-		type = fd->FieldType();
-		e = new VariantFieldExprAST(CurrentToken().Loc(), expr, rd->FieldCount(), type);
-		// If name is empty, we have a made up struct. Dig another level down. 
-		if (fd->Name() == "")
+		Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType()); 
+		assert(r && "Expect record declarataion");
+		elem = r->Element(name);
+		if (elem >= 0)
 		{
-		    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType()); 
-		    assert(r && "Expect record declarataion");
-		    elem = r->Element(name);
-		    if (elem >= 0)
-		    {
-			type = r->GetElement(elem).FieldType();
-			e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
-		    }
-		    else
-		    {
-			e = 0;
-		    }
+		    type = r->GetElement(elem).FieldType();
+		    e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
+		}
+		else
+		{
+		    e = 0;
 		}
 	    }
 	}

@@ -80,7 +80,8 @@ private:
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
-    bool                ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant);
+    bool                ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant,
+				    Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();
     Types::FileDecl*    ParseFileDecl();
     Types::SetDecl*     ParseSetDecl();

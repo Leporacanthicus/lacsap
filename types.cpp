@@ -151,6 +151,8 @@ namespace Types
 	    return "FuncPtr";
 	case Object:
 	    return "Object";
+	case MemberFunc:
+	    return "MemberFunc";
 	}
     }
 
@@ -738,6 +740,10 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 	for(auto f : fields)
 	{
+	    if (llvm::isa<MemberFuncDecl>(f.FieldType()))
+	    {
+		continue;
+	    }
 	    if (llvm::isa<PointerDecl>(f.FieldType()) && !f.FieldType()->hasLlvmType())
 	    {
 		if (!opaqueType)
@@ -761,6 +767,21 @@ namespace Types
     }
 
     bool ObjectDecl::SameAs(const TypeDecl* ty) const
+    {
+	return this == ty;
+    }
+
+    void MemberFuncDecl::DoDump(std::ostream& out) const
+    {
+	out << "Member function"; proto->dump(out);
+    }
+
+    llvm::Type* MemberFuncDecl::GetLlvmType() const
+    {
+	return 0;
+    }
+
+    bool MemberFuncDecl::SameAs(const TypeDecl* ty) const
     {
 	return this == ty;
     }

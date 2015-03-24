@@ -34,6 +34,7 @@ namespace Types
 	File,
 	String,
 	FuncPtr,
+	MemberFunc,
     };
 
     /* Range is either created by the user, or calculated on basetype */
@@ -82,6 +83,7 @@ namespace Types
 	    TK_Set,
 	    TK_Variant,
 	    TK_Object,
+	    TK_MemberFunc,
 	};
 	TypeDecl(TypeKind k, SimpleTypes t)
 	    : kind(k), type(t), ltype(0)
@@ -464,6 +466,23 @@ namespace Types
 	llvm::Type* GetLlvmType() const override;
     private:
 	VariantDecl* variant;
+    };
+
+    /* Objects can have member functions/procedures */
+    class MemberFuncDecl : public TypeDecl
+    {
+    public:
+	MemberFuncDecl(PrototypeAST* p)
+	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p) {}
+
+	bool isIntegral() const override { return false; }
+	void DoDump(std::ostream& out) const override;
+	bool SameAs(const TypeDecl* ty) const override;
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
+    protected:
+	llvm::Type* GetLlvmType() const override;
+    private:
+	PrototypeAST* proto;
     };
 
     class FuncPtrDecl : public CompoundDecl

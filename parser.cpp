@@ -923,8 +923,10 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 }
 
 
-bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant)
+bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant,
+			 Token::TokenType type)
 {
+    bool isObject = type == Token::Object;
     variant = 0;
     do
     {
@@ -971,6 +973,14 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDe
 		return false;
 	    }
 	}
+	else if (isObject && 
+		 (CurrentToken().GetToken() == Token::Function ||
+		  CurrentToken().GetToken() == Token::Procedure))
+	{
+	    PrototypeAST* p = ParsePrototype();
+	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p);
+	    fields.push_back(Types::FieldDecl(p->Name(), m));
+	}
 	else
 	{
 	    do
@@ -998,22 +1008,24 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDe
 		assert(0 && "Should have at least one name declared?");
 		return false;
 	    }
-	    Types::TypeDecl* ty = ParseType();
-	    if (!ty)
+	    if (Types::TypeDecl* ty = ParseType())
 	    {
-		return 0;
-	    }
-	    for(auto n : names)
-	    {
-		for(auto f : fields)
+		for(auto n : names)
 		{
-		    if (n == f.Name())
+		    for(auto f : fields)
 		    {
-			Error(std::string("Duplicate field name '") + n + "' in record");
-			return false;
+			if (n == f.Name())
+			{
+			    Error(std::string("Duplicate field name '") + n + "' in record");
+			    return false;
+			}
 		    }
+		    fields.push_back(Types::FieldDecl(n, ty));
 		}
-		fields.push_back(Types::FieldDecl(n, ty));
+	    }
+	    else
+	    {
+		return false;
 	    }
 	}
 	if (!ExpectSemicolonOrEnd())
@@ -1032,7 +1044,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     }
     std::vector<Types::FieldDecl> fields;
     Types::VariantDecl* variant;
-    if (!ParseFields(fields, variant))
+    if (!ParseFields(fields, variant, Token::Record))
     {
 	return 0;
     }
@@ -1123,13 +1135,13 @@ Types::ObjectDecl* Parser::ParseObjectDecl()
     {
 	return 0;
     }
+    
     std::vector<Types::FieldDecl> fields;
     Types::VariantDecl* variant;
-    if (!ParseFields(fields, variant))
+    if (!ParseFields(fields, variant, Token::Object))
     {
 	return 0;
-    }
-    
+    }    
     if (!Expect(Token::End, true))
     {
 	return 0;
@@ -1408,7 +1420,8 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     }
     if (!e && v)
     {
-	if (int elem = v->Element(name) >= 0)
+	int elem = v->Element(name);
+	if (elem >= 0)
 	{
 	    const Types::FieldDecl* fd = &v->GetElement(elem);
 	    type = fd->FieldType();

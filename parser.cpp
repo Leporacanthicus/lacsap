@@ -821,7 +821,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
     std::vector<int> variantsSeen;
-    std::vector<Types::FieldDecl> variants;
+    std::vector<Types::FieldDecl*> variants;
     do
     {
 	do
@@ -853,7 +853,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	{
 	    return 0;
 	}
-	std::vector<Types::FieldDecl> fields; 
+	std::vector<Types::FieldDecl*> fields; 
 	do 
 	{
 	    std::vector<std::string> names;
@@ -887,13 +887,13 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    {
 		for(auto f : fields)
 		{
-		    if (n == f.Name())
+		    if (n == f->Name())
 		    {
 			Error(std::string("Duplicate field name '") + n + "' in record");
 			return 0;
 		    }
 		}
-		fields.push_back(Types::FieldDecl(n, ty));
+		fields.push_back(new Types::FieldDecl(n, ty));
 	    }
 	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
@@ -916,14 +916,14 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	}
 	else
 	{
-	    variants.push_back(Types::FieldDecl("", new Types::RecordDecl(fields, 0)));
+	    variants.push_back(new Types::FieldDecl("", new Types::RecordDecl(fields, 0)));
 	}
     } while (CurrentToken().GetToken() != Token::End);
     return new Types::VariantDecl(variants);
 }
 
 
-bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant,
+bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
 			 Token::TokenType type)
 {
     bool isObject = type == Token::Object;
@@ -955,7 +955,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDe
 	    }
 	    if (marker != "")
 	    {
-		fields.push_back(Types::FieldDecl(marker, markerTy));
+		fields.push_back(new Types::FieldDecl(marker, markerTy));
 	    }
 	    if (!Expect(Token::Of, true))
 	    {
@@ -979,7 +979,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDe
 	{
 	    PrototypeAST* p = ParsePrototype();
 	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p);
-	    fields.push_back(Types::FieldDecl(p->Name(), m));
+	    fields.push_back(new Types::FieldDecl(p->Name(), m));
 	}
 	else
 	{
@@ -1014,13 +1014,13 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDe
 		{
 		    for(auto f : fields)
 		    {
-			if (n == f.Name())
+			if (n == f->Name())
 			{
 			    Error(std::string("Duplicate field name '") + n + "' in record");
 			    return false;
 			}
 		    }
-		    fields.push_back(Types::FieldDecl(n, ty));
+		    fields.push_back(new Types::FieldDecl(n, ty));
 		}
 	    }
 	    else
@@ -1042,7 +1042,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     {
 	return 0;
     }
-    std::vector<Types::FieldDecl> fields;
+    std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
     if (!ParseFields(fields, variant, Token::Record))
     {
@@ -1136,18 +1136,31 @@ Types::ObjectDecl* Parser::ParseObjectDecl()
 	return 0;
     }
     
-    std::vector<Types::FieldDecl> fields;
+    std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
     if (!ParseFields(fields, variant, Token::Object))
     {
 	return 0;
-    }    
+    }
+    std::vector<Types::MemberFuncDecl*> mf;
+    for(auto f = fields.begin(); f != fields.end(); )
+    {
+	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->FieldType()))
+	{
+	    mf.push_back(m);
+	    f = fields.erase(f);
+	}
+	else
+	{
+	    f++;
+	}
+    }
     if (!Expect(Token::End, true))
     {
 	return 0;
     }
 
-    return new Types::ObjectDecl(fields, variant);
+    return new Types::ObjectDecl(fields, mf, variant);
 }
 
 Types::TypeDecl* Parser::ParseType()
@@ -1382,6 +1395,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	return 0;
     }
 
+    std::string typedesc;
     std::string name = CurrentToken().GetIdentName();
     VariableExprAST* e = 0;
     Types::VariantDecl* v = 0;
@@ -1389,23 +1403,34 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     if (Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(type))
     {
 	int elem = od->Element(name);
+	typedesc = "object";
 	if (elem >= 0)
 	{
-	    type = od->GetElement(elem).FieldType();
+	    type = od->GetElement(elem)->FieldType();
 	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
 	}
-	else
+	else 
 	{
-	    fc = od->FieldCount();
-	    v = od->Variant();
+	    elem = od->MembFunc(name);
+	    if (elem >= 0)
+	    {
+		type = od->GetMembFunc(elem);
+
+	    }
+	    else
+	    {
+		fc = od->FieldCount();
+		v = od->Variant();
+	    }
 	}
     }
     else if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type))
     {
+	typedesc = "record";
 	int elem = rd->Element(name);
 	if (elem >= 0)
 	{
-	    type = rd->GetElement(elem).FieldType();
+	    type = rd->GetElement(elem)->FieldType();
 	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
 	}
 	else
@@ -1423,7 +1448,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	int elem = v->Element(name);
 	if (elem >= 0)
 	{
-	    const Types::FieldDecl* fd = &v->GetElement(elem);
+	    const Types::FieldDecl* fd = v->GetElement(elem);
 	    type = fd->FieldType();
 	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
 	    // If name is empty, we have a made up struct. Dig another level down. 
@@ -1434,7 +1459,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 		elem = r->Element(name);
 		if (elem >= 0)
 		{
-		    type = r->GetElement(elem).FieldType();
+		    type = r->GetElement(elem)->FieldType();
 		    e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
 		}
 		else
@@ -1446,7 +1471,7 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
     }
     if (!e)
     {
-	return ErrorV(std::string("Can't find element ") + name + " in record");
+	return ErrorV(std::string("Can't find element ") + name + " in " + typedesc);
     }
     NextToken();
     return e;
@@ -1484,6 +1509,73 @@ bool Parser::IsCall(Types::TypeDecl* type)
     return false;
 }
 
+bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
+{
+    if (CurrentToken().GetToken() == Token::LeftParen)
+    {
+	// Get past the '(' and fetch the next one. 
+	if (!Expect(Token::LeftParen, true))
+	{
+	    return false;
+	}
+	unsigned argNo = 0;
+	while (CurrentToken().GetToken() != Token::RightParen)
+	{
+	    bool isFuncArg = false;
+	    if (funcDef && funcDef->Proto())
+	    {
+		auto funcArgs = funcDef->Proto()->Args();
+		if (argNo >= funcArgs.size())
+		{
+		    Error("Too many arguments");
+		    return false;
+		}
+		Types::TypeDecl* td = funcArgs[argNo].Type();
+		if (td->Type() == Types::Pointer && 
+		    (td->SubType()->Type() == Types::Function ||
+		     td->SubType()->Type() == Types::Procedure))
+		{
+		    isFuncArg = true;
+		}
+	    }
+	    ExprAST* arg;
+	    if (isFuncArg)
+	    {
+		if (CurrentToken().GetToken() != Token::Identifier)
+		{
+		    Error("Expected name of a function or procedure");
+		    return false;
+		}
+		arg = new FunctionExprAST(CurrentToken().Loc(),
+					  CurrentToken().GetIdentName(),
+					  funcDef->Proto()->Args()[argNo].Type());
+		NextToken();
+	    }
+	    else
+	    {
+		arg = ParseExpression();
+	    }
+	    if (!arg) 
+	    {
+		return false;
+	    }
+	    args.push_back(arg);
+	    if (CurrentToken().GetToken() == Token::Comma)
+	    {
+		NextToken();
+	    }
+	    else if (!Expect(Token::RightParen, false))
+	    {
+		return false;
+	    }
+	    argNo++;
+	}
+	NextToken();
+    }
+    return true;
+}
+
+
 ExprAST* Parser::ParseIdentifierExpr()
 {
     Token token = CurrentToken();
@@ -1491,8 +1583,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     std::string idName = token.GetIdentName();
     NextToken();
     NamedObject* def = nameStack.Find(idName);
-    EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def);
-    if (enumDef)
+    if (EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def))
     {
 	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
@@ -1560,64 +1651,9 @@ ExprAST* Parser::ParseIdentifierExpr()
 
     const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::vector<ExprAST* > args;
-    if (CurrentToken().GetToken() == Token::LeftParen)
+    if (!ParseArgs(funcDef, args))
     {
-	// Get past the '(' and fetch the next one. 
-	if (!Expect(Token::LeftParen, true))
-	{
-	    return 0;
-	}
-	unsigned argNo = 0;
-	while (CurrentToken().GetToken() != Token::RightParen)
-	{
-	    bool isFuncArg = false;
-	    if (funcDef && funcDef->Proto())
-	    {
-		auto funcArgs = funcDef->Proto()->Args();
-		if (argNo >= funcArgs.size())
-		{
-		    return Error("Too many arguments");
-		}
-		Types::TypeDecl* td = funcArgs[argNo].Type();
-		if (td->Type() == Types::Pointer && 
-		    (td->SubType()->Type() == Types::Function ||
-		     td->SubType()->Type() == Types::Procedure))
-		{
-		    isFuncArg = true;
-		}
-	    }
-	    ExprAST* arg;
-	    if (isFuncArg)
-	    {
-		if (CurrentToken().GetToken() != Token::Identifier)
-		{
-		    return Error("Expected name of a function or procedure");
-		}
-		arg = new FunctionExprAST(CurrentToken().Loc(),
-					  CurrentToken().GetIdentName(),
-					  funcDef->Proto()->Args()[argNo].Type());
-		NextToken();
-	    }
-	    else
-	    {
-		arg = ParseExpression();
-	    }
-	    if (!arg) 
-	    {
-		return 0;
-	    }
-	    args.push_back(arg);
-	    if (CurrentToken().GetToken() == Token::Comma)
-	    {
-		NextToken();
-	    }
-	    else if (!Expect(Token::RightParen, false))
-	    {
-		return 0;
-	    }
-	    argNo++;
-	}
-	NextToken();
+	return 0;
     }
 
     const PrototypeAST* proto = 0;
@@ -1779,6 +1815,9 @@ VarDeclAST* Parser::ParseVarDecls()
 
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
 // procedure name ( { [var] name1 [,name2 ...]: type [; ...] } )
+// member function/procedure:
+//   function classname.name{( args... )}: type;
+//   procedure classname.name{ args... }
 PrototypeAST* Parser::ParsePrototype()
 {
     // Consume "function" or "procedure"
@@ -1789,11 +1828,38 @@ PrototypeAST* Parser::ParsePrototype()
     bool isFunction = CurrentToken().GetToken() == Token::Function;
 
     NextToken();
+    if (!Expect(Token::Identifier, false))
+    {
+	return 0;
+    }
+    Types::ObjectDecl* od = 0;
     std::string funcName = CurrentToken().GetIdentName();
     // Get function name.
     if (!Expect(Token::Identifier, true))
     {
 	return 0;
+    }
+    // Is it a member function?
+    if (CurrentToken().GetToken() == Token::Period)
+    {
+	NextToken();
+	if (Types::TypeDecl* ty = GetTypeDecl(funcName))
+	{
+	    if ((od = llvm::dyn_cast<Types::ObjectDecl>(ty)))
+	    {
+		if (!Expect(Token::Identifier, false))
+		{
+		    return 0;
+		}
+		funcName = CurrentToken().GetIdentName();
+		NextToken();
+	    }
+	}
+	if (!od)
+	{
+	    Error("Expected object name");
+	    return 0;
+	}
     }
     std::vector<VarDef> args;
     if (CurrentToken().GetToken() == Token::LeftParen)
@@ -2318,9 +2384,9 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
     int count = fields->FieldCount();
     for(int i = 0; i < count; i++)
     {
-	const Types::FieldDecl f = fields->GetElement(i);
-	Types::TypeDecl* ty = f.FieldType();
-	if (f.Name() == "")
+	const Types::FieldDecl *f = fields->GetElement(i);
+	Types::TypeDecl* ty = f->FieldType();
+	if (f->Name() == "")
 	{
 	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
 	    assert(rd && "Expected record declarataion here!");
@@ -2337,7 +2403,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	    {
 		e = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    }
-	    nameStack.Add(f.Name(), new WithDef(f.Name(), e, f.FieldType()));
+	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->FieldType()));
 	}
     }
 }

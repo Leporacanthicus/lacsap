@@ -80,7 +80,7 @@ private:
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
-    bool                ParseFields(std::vector<Types::FieldDecl>& fields, Types::VariantDecl*& variant,
+    bool                ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
 				    Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();
     Types::FileDecl*    ParseFileDecl();
@@ -88,6 +88,7 @@ private:
     Types::StringDecl*  ParseStringDecl();
     Types::VariantDecl* ParseVariantDecl(Types::TypeDecl*& type);
     int                 ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
+    bool                ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args);
 
     // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

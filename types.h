@@ -400,10 +400,10 @@ namespace Types
     class FieldCollection : public TypeDecl
     {
     public:
-	FieldCollection(TypeKind k, SimpleTypes t, const std::vector<FieldDecl>& flds)
+	FieldCollection(TypeKind k, SimpleTypes t, const std::vector<FieldDecl*>& flds)
 	    : TypeDecl(k, t), fields(flds), opaqueType(0) { }
 	int Element(const std::string& name) const;
-	const FieldDecl& GetElement(unsigned int n) const
+	const FieldDecl* GetElement(unsigned int n) const
 	{
 	    assert(n < fields.size() && "Out of range field");
 	    return fields[n];
@@ -419,14 +419,14 @@ namespace Types
 		e->getKind() == TK_Object;
 	}
     protected:
-	std::vector<FieldDecl> fields;
+	std::vector<FieldDecl*> fields;
 	mutable llvm::StructType* opaqueType;
     };
 
     class VariantDecl : public FieldCollection
     {
     public:
-	VariantDecl(const std::vector<FieldDecl>& flds)
+	VariantDecl(const std::vector<FieldDecl*>& flds)
 	    : FieldCollection(TK_Variant, Variant, flds) { };
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Variant; }
@@ -437,7 +437,7 @@ namespace Types
     class RecordDecl : public FieldCollection
     {
     public:
-	RecordDecl(const std::vector<FieldDecl>& flds, VariantDecl* v)
+	RecordDecl(const std::vector<FieldDecl*>& flds, VariantDecl* v)
 	    : FieldCollection(TK_Record, Record, flds), variant(v) { };
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
@@ -445,23 +445,6 @@ namespace Types
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
-    protected:
-	llvm::Type* GetLlvmType() const override;
-    private:
-	VariantDecl* variant;
-    };
-
-    class ObjectDecl : public FieldCollection
-    {
-    public:
-	ObjectDecl(const std::vector<FieldDecl>& flds, VariantDecl* v)
-	    : FieldCollection(TK_Object, Object, flds), variant(v) { };
-	bool isIntegral() const override { return false; }
-	void DoDump(std::ostream& out) const override;
-	size_t Size() const override;
-	VariantDecl* Variant() { return variant; }
-	bool SameAs(const TypeDecl* ty) const override;
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
@@ -478,11 +461,32 @@ namespace Types
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
+	PrototypeAST* Proto() { return proto; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
 	PrototypeAST* proto;
+    };
+
+    class ObjectDecl : public FieldCollection
+    {
+    public:
+	ObjectDecl(const std::vector<FieldDecl*>& flds, const std::vector<MemberFuncDecl*> mf, VariantDecl* v)
+	    : FieldCollection(TK_Object, Object, flds), variant(v), membfuncs(mf) { };
+	bool isIntegral() const override { return false; }
+	void DoDump(std::ostream& out) const override;
+	size_t Size() const override;
+	VariantDecl* Variant() { return variant; }
+	bool SameAs(const TypeDecl* ty) const override;
+	int MembFunc(const std::string& nm) const;
+	MemberFuncDecl* GetMembFunc(int index) const;
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
+    protected:
+	llvm::Type* GetLlvmType() const override;
+    private:
+	VariantDecl* variant;
+	std::vector<MemberFuncDecl*> membfuncs;
     };
 
     class FuncPtrDecl : public CompoundDecl

@@ -553,7 +553,7 @@ namespace Types
 	out << "Variant ";
 	for(auto f : fields)
 	{
-	    f.DoDump(out);
+	    f->DoDump(out);
 	    std::cerr << std::endl;
 	}
     }
@@ -569,8 +569,8 @@ namespace Types
 	size_t elt = 0;
 	for(auto f : fields)
 	{
-	    llvm::Type* ty = f.LlvmType();
-	    if (llvm::isa<PointerDecl>(f.FieldType()) && !f.hasLlvmType())
+	    llvm::Type* ty = f->LlvmType();
+	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->hasLlvmType())
 	    {
 		if (!opaqueType)
 		{
@@ -594,7 +594,7 @@ namespace Types
 	    elt++;
 	}
 
-	llvm::Type* ty = fields[maxAlignElt].LlvmType();
+	llvm::Type* ty = fields[maxAlignElt]->LlvmType();
 	std::vector<llvm::Type*> fv{ty};
 	if (maxAlignElt != maxSizeElt)
 	{
@@ -623,16 +623,16 @@ namespace Types
 	for(auto f : fields)
 	{
 	    // Check for special record type
-	    if (f.Name() == "")
+	    if (f->Name() == "")
 	    {
-		RecordDecl* rd = llvm::dyn_cast<RecordDecl>(f.FieldType());
+		RecordDecl* rd = llvm::dyn_cast<RecordDecl>(f->FieldType());
 		assert(rd && "Expected record declarataion here!");
 		if (rd->Element(name) >= 0)
 		{
 		    return i;
 		}
 	    }
-	    if (f.Name() == name)
+	    if (f->Name() == name)
 	    {
 		return i;
 	    }
@@ -674,7 +674,7 @@ namespace Types
 	out << "Record ";
 	for(auto f : fields)
 	{
-	    f.DoDump(out);
+	    f->DoDump(out);
 	    out << std::endl;
 	}
 	if (variant)
@@ -688,7 +688,7 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 	for(auto f : fields)
 	{
-	    if (llvm::isa<PointerDecl>(f.FieldType()) && !f.FieldType()->hasLlvmType())
+	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
 	    {
 		if (!opaqueType)
 		{
@@ -696,7 +696,7 @@ namespace Types
 		}
 		return opaqueType;
 	    }
-	    fv.push_back(f.LlvmType());
+	    fv.push_back(f->LlvmType());
 	}
 	if (variant)
 	{
@@ -726,7 +726,7 @@ namespace Types
 	out << " ";
 	for(auto f : fields)
 	{
-	    f.DoDump(out);
+	    f->DoDump(out);
 	    out << std::endl;
 	}
 	if (variant)
@@ -735,16 +735,32 @@ namespace Types
 	}
     }
 
+    int ObjectDecl::MembFunc(const std::string& nm) const
+    {
+	for(int i = 0; i < (int)membfuncs.size();  i++)
+	{
+	    if (membfuncs[i]->Proto()->Name() == nm)
+	    {
+		return i;
+	    }
+	}
+	return -1;
+    }
+
+    MemberFuncDecl* ObjectDecl::GetMembFunc(int index) const
+    {
+	assert(index >= 0 && index < (int)membfuncs.size() && "Expected index to be in range");
+	return membfuncs[index];
+    }
+
     llvm::Type* ObjectDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
 	for(auto f : fields)
 	{
-	    if (llvm::isa<MemberFuncDecl>(f.FieldType()))
-	    {
-		continue;
-	    }
-	    if (llvm::isa<PointerDecl>(f.FieldType()) && !f.FieldType()->hasLlvmType())
+	    assert(!llvm::isa<MemberFuncDecl>(f->FieldType()) && "Should not have member functions now");
+
+	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
 	    {
 		if (!opaqueType)
 		{
@@ -752,7 +768,7 @@ namespace Types
 		}
 		return opaqueType;
 	    }
-	    fv.push_back(f.LlvmType());
+	    fv.push_back(f->LlvmType());
 	}
 	if (variant)
 	{

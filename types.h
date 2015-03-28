@@ -472,8 +472,8 @@ namespace Types
     class ObjectDecl : public FieldCollection
     {
     public:
-	ObjectDecl(const std::vector<FieldDecl*>& flds, const std::vector<MemberFuncDecl*> mf, VariantDecl* v)
-	    : FieldCollection(TK_Object, Object, flds), variant(v), membfuncs(mf) { };
+	ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, const std::vector<MemberFuncDecl*> mf, VariantDecl* v)
+	    : FieldCollection(TK_Object, Object, flds), name(nm), variant(v), membfuncs(mf) { };
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	size_t Size() const override;
@@ -481,10 +481,12 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(int index) const;
+	std::string Name() { return name; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
+	std::string name;
 	VariantDecl* variant;
 	std::vector<MemberFuncDecl*> membfuncs;
     };

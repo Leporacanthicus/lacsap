@@ -682,7 +682,7 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	if (Types::TypeDecl* ty = ParseType())
+	if (Types::TypeDecl* ty = ParseType(nm))
 	{
 	    if (!AddType(nm,  ty))
 	    {
@@ -771,7 +771,7 @@ Types::PointerDecl* Parser::ParsePointerType()
     }
     else
     {
-	Types::TypeDecl *ty = ParseType();
+	Types::TypeDecl *ty = ParseType("");
 	return new Types::PointerDecl(ty);
     }
 }
@@ -809,7 +809,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     {
 	return 0;
     }
-    Types::TypeDecl* ty = ParseType();
+    Types::TypeDecl* ty = ParseType("");
     if (!ty)
     {
 	return 0;
@@ -878,29 +878,31 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    {
 		return 0;
 	    }
-	    Types::TypeDecl* ty = ParseType();
-	    if (!ty)
+	    if (Types::TypeDecl* ty = ParseType(""))
 	    {
-	    return 0;
-	    }
-	    for(auto n : names)
-	    {
-		for(auto f : fields)
+		for(auto n : names)
 		{
-		    if (n == f->Name())
+		    for(auto f : fields)
 		    {
-			Error(std::string("Duplicate field name '") + n + "' in record");
+			if (n == f->Name())
+			{
+			    Error(std::string("Duplicate field name '") + n + "' in record");
+			    return 0;
+			}
+		    }
+		    fields.push_back(new Types::FieldDecl(n, ty));
+		}
+		if (CurrentToken().GetToken() != Token::RightParen)
+		{
+		    if (!Expect(Token::Semicolon, true))
+		    {
 			return 0;
 		    }
 		}
-		fields.push_back(new Types::FieldDecl(n, ty));
 	    }
-	    if (CurrentToken().GetToken() != Token::RightParen)
+	    else
 	    {
-		if (!Expect(Token::Semicolon, true))
-		{
-		    return 0;
-		}
+		return 0;
 	    }
 	} while(CurrentToken().GetToken() != Token::RightParen);
 	if (!Expect(Token::RightParen, true))
@@ -947,7 +949,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		    return false;
 		}
 	    }
-	    markerTy = ParseType();
+	    markerTy = ParseType("");
 	    if (!markerTy->isIntegral())
 	    {
 		Error("Expect variant selector to be integral type");
@@ -1008,7 +1010,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		assert(0 && "Should have at least one name declared?");
 		return false;
 	    }
-	    if (Types::TypeDecl* ty = ParseType())
+	    if (Types::TypeDecl* ty = ParseType(""))
 	    {
 		for(auto n : names)
 		{
@@ -1072,7 +1074,7 @@ Types::FileDecl* Parser::ParseFileDecl()
 	return 0;
     }
 
-    Types::TypeDecl* type = ParseType();
+    Types::TypeDecl* type = ParseType("");
 
     return new Types::FileDecl(type);
 }
@@ -1129,7 +1131,7 @@ Types::StringDecl* Parser::ParseStringDecl()
     return new Types::StringDecl(size);
 }
 
-Types::ObjectDecl* Parser::ParseObjectDecl()
+Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 {
     if (!Expect(Token::Object, true))
     {
@@ -1160,10 +1162,10 @@ Types::ObjectDecl* Parser::ParseObjectDecl()
 	return 0;
     }
 
-    return new Types::ObjectDecl(fields, mf, variant);
+    return new Types::ObjectDecl(name, fields, mf, variant);
 }
 
-Types::TypeDecl* Parser::ParseType()
+Types::TypeDecl* Parser::ParseType(const std::string& name)
 {
     Token::TokenType tt = CurrentToken().GetToken();
     if (tt == Token::Packed)
@@ -1203,7 +1205,7 @@ Types::TypeDecl* Parser::ParseType()
 	return ParseRecordDecl();
 
     case Token::Object:
-	return ParseObjectDecl();
+	return ParseObjectDecl(name);
 
     case Token::File:
 	return ParseFileDecl();
@@ -1384,7 +1386,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     return expr;
 }
 
-VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
     if(!Expect(Token::Period, true))
     {
@@ -1415,7 +1417,22 @@ VariableExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    if (elem >= 0)
 	    {
 		type = od->GetMembFunc(elem);
+		std::string funcName = od->Name() + "$" + name;
+		NamedObject* def = nameStack.Find(funcName);
 
+		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
+		std::vector<ExprAST* > args;
+		if (!ParseArgs(funcDef, args))
+		{
+		    return 0;
+		}
+		
+		if (ExprAST* expr = MakeCallExpr(def, funcName, args))
+		{
+		    NextToken();
+		    return expr;
+		}
+		return 0;
 	    }
 	    else
 	    {
@@ -1511,6 +1528,8 @@ bool Parser::IsCall(Types::TypeDecl* type)
 
 bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 {
+    TRACE();
+
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
 	// Get past the '(' and fetch the next one. 
@@ -1575,9 +1594,45 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
     return true;
 }
 
+ExprAST* Parser::MakeCallExpr(NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args)
+{
+    TRACE();
+
+    const PrototypeAST* proto = 0;
+    ExprAST* expr = 0;
+    if (const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def))
+    {
+	proto = funcDef->Proto();
+	expr = new FunctionExprAST(CurrentToken().Loc(), funcName, funcDef->Type());
+    }
+    else if (llvm::dyn_cast_or_null<const VarDef>(def))
+    {
+	if (def->Type()->Type() == Types::Pointer)
+	{
+	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
+	    assert(fp && "Expected function pointer here...");
+	    proto = fp->Proto();
+	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
+	}
+    }
+    if (expr)
+    {
+	if (FunctionAST* fn = proto->Function())
+	{
+	    for(auto u : fn->UsedVars())
+	    {
+		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
+	    }
+	}
+	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
+    }
+    return 0;
+}
 
 ExprAST* Parser::ParseIdentifierExpr()
 {
+    TRACE();
+
     Token token = CurrentToken();
     TranslateToken(token) ;
     std::string idName = token.GetIdentName();
@@ -1605,7 +1660,6 @@ ExprAST* Parser::ParseIdentifierExpr()
 	 
 	if (!IsCall(type))
 	{
-
 	    VariableExprAST* expr;
 	    if (WithDef *w = llvm::dyn_cast<WithDef>(def))
 	    {
@@ -1637,7 +1691,17 @@ ExprAST* Parser::ParseIdentifierExpr()
 		    break;
 
 		case Token::Period:
-		    expr = ParseFieldExpr(expr, type);
+		    if (ExprAST* tmp = ParseFieldExpr(expr, type))
+		    {
+			if (VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(tmp))
+			{
+			    expr = v;
+			}
+			else
+			{
+			    return tmp;
+			}
+		    }
 		    break;
 
 		default:
@@ -1656,39 +1720,9 @@ ExprAST* Parser::ParseIdentifierExpr()
 	return 0;
     }
 
-    const PrototypeAST* proto = 0;
-    ExprAST* expr = 0;
-    if (funcDef)
+    if (ExprAST* expr = MakeCallExpr(def, idName, args))
     {
-	proto = funcDef->Proto();
-	expr = new FunctionExprAST(CurrentToken().Loc(), idName, funcDef->Type());
-    }
-    else if (def)
-    {
-	const VarDef* varDef = llvm::dyn_cast<const VarDef>(def);
-	if (!varDef)
-	{
-	    assert(0 && "Expected variable definition!");
-	    return 0;
-	}
-	if (def->Type()->Type() == Types::Pointer)
-	{
-	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
-	    assert(fp && "Expected function pointer here...");
-	    proto = fp->Proto();
-	    expr = new VariableExprAST(CurrentToken().Loc(), idName, def->Type());
-	}
-    }
-    if (expr)
-    {
-	if (FunctionAST* fn = proto->Function())
-	{
-	    for(auto u : fn->UsedVars())
-	    {
-		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
-	    }
-	}
-	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
+	return expr;
     }
 
     assert(isBuiltin && "Should be a builtin function if we get here");
@@ -1781,25 +1815,27 @@ VarDeclAST* Parser::ParseVarDecls()
 	if (CurrentToken().GetToken() == Token::Colon)
 	{
 	    NextToken(); 
-	    Types::TypeDecl* type = ParseType();
-	    if (!type)
+	    if (Types::TypeDecl* type = ParseType(""))
 	    {
-		return 0;
-	    }
-	    for(auto n : names)
-	    {
-		VarDef v(n, type);
-		varList.push_back(v);
-		if (!nameStack.Add(n, new VarDef(n, type)))
+		for(auto n : names)
 		{
-		    Error(std::string("Name ") + n + " is already defined");
+		    VarDef v(n, type);
+		    varList.push_back(v);
+		    if (!nameStack.Add(n, new VarDef(n, type)))
+		    {
+			Error(std::string("Name ") + n + " is already defined");
+		    }
 		}
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return 0;
+		}
+		names.clear();
 	    }
-	    if (!Expect(Token::Semicolon, true))
+	    else
 	    {
 		return 0;
 	    }
-	    names.clear();
 	}
 	else
 	{
@@ -1851,7 +1887,7 @@ PrototypeAST* Parser::ParsePrototype()
 		{
 		    return 0;
 		}
-		funcName = CurrentToken().GetIdentName();
+		funcName = funcName + "$" + CurrentToken().GetIdentName();
 		NextToken();
 	    }
 	}
@@ -1895,20 +1931,26 @@ PrototypeAST* Parser::ParsePrototype()
 		if (CurrentToken().GetToken() == Token::Colon)
 		{
 		    NextToken();
-		    Types::TypeDecl* type = ParseType();
-		    for(auto n : names)
+		    if (Types::TypeDecl* type = ParseType(""))
 		    {
-			VarDef v(n, type, isRef);
-			args.push_back(v);
-		    }
-		    isRef = false;
-		    names.clear();
-		    if (CurrentToken().GetToken() != Token::RightParen)
-		    {
-			if (!Expect(Token::Semicolon, true))
+			for(auto n : names)
 			{
-			    return 0;
+			    VarDef v(n, type, isRef);
+			    args.push_back(v);
 			}
+			isRef = false;
+			names.clear();
+			if (CurrentToken().GetToken() != Token::RightParen)
+			{
+			    if (!Expect(Token::Semicolon, true))
+			    {
+				return 0;
+			    }
+			}
+		    }
+		    else
+		    {
+			return 0;
 		    }
 		}
 		else

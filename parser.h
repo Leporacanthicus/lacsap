@@ -37,8 +37,8 @@ private:
     ExprAST* ParseSizeOfExpr();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
-    VariableExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
+    ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
 
     // Control flow functionality
     ExprAST* ParseRepeat();
@@ -75,8 +75,8 @@ private:
     Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
     Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);
     Types::TypeDecl*    ParseSimpleType();
-    Types::ObjectDecl*  ParseObjectDecl();
-    Types::TypeDecl*    ParseType();
+    Types::ObjectDecl*  ParseObjectDecl(const std::string& name);
+    Types::TypeDecl*    ParseType(const std::string& name);
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
@@ -106,15 +106,15 @@ private:
     VariableExprAST*  ErrorV(const std::string& msg);
 
     // Helper functions for expression evaluation.
-    bool IsCall(Types::TypeDecl* type);
-
+    bool     IsCall(Types::TypeDecl* type);
+    ExprAST* MakeCallExpr(NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args);
     // Helper functions for identifier access/checking.
     EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);
     bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
-
+    
 private:
     typedef StackWrapper<NamedObject*> NameWrapper;
     Lexer&      lexer;

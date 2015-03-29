@@ -402,14 +402,14 @@ namespace Types
     public:
 	FieldCollection(TypeKind k, SimpleTypes t, const std::vector<FieldDecl*>& flds)
 	    : TypeDecl(k, t), fields(flds), opaqueType(0) { }
-	int Element(const std::string& name) const;
-	const FieldDecl* GetElement(unsigned int n) const
+        virtual int Element(const std::string& name) const;
+	virtual const FieldDecl* GetElement(unsigned int n) const
 	{
 	    assert(n < fields.size() && "Out of range field");
 	    return fields[n];
 	}
 	void EnsureSized() const;
-	int FieldCount() const { return fields.size(); }
+	virtual int FieldCount() const { return fields.size(); }
 	bool isIntegral() const override { return false; }
 	bool isCompound() const override { return true; }
 	bool SameAs(const TypeDecl* ty) const override;
@@ -464,7 +464,8 @@ namespace Types
 	PrototypeAST* Proto() { return proto; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
-	llvm::Type* GetLlvmType() const override;
+	// We don't actually have an LLVM type for member functions.
+	llvm::Type* GetLlvmType() const override { return 0; }
     private:
 	PrototypeAST* proto;
     };
@@ -472,20 +473,27 @@ namespace Types
     class ObjectDecl : public FieldCollection
     {
     public:
-	ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, const std::vector<MemberFuncDecl*> mf, VariantDecl* v)
-	    : FieldCollection(TK_Object, Object, flds), name(nm), variant(v), membfuncs(mf) { };
+	ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
+		   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base)
+	    : FieldCollection(TK_Object, Object, flds), baseobj(base), name(nm), variant(v), membfuncs(mf) { };
+	    
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
+        int Element(const std::string& name) const override;
+	const FieldDecl* GetElement(unsigned int n) const override;
+        int FieldCount() const override;
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
+	int MembFuncCount() const;
 	int MembFunc(const std::string& nm) const;
-	MemberFuncDecl* GetMembFunc(int index) const;
-	std::string Name() { return name; }
+	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
+	std::string Name() const { return name; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
+	ObjectDecl* baseobj;
 	std::string name;
 	VariantDecl* variant;
 	std::vector<MemberFuncDecl*> membfuncs;

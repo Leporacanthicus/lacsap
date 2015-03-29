@@ -1137,6 +1137,27 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
     {
 	return 0;
     }
+    Types::ObjectDecl* base = 0;
+    // Find derived class, if available.
+    if (CurrentToken().GetToken() == Token::LeftParen)
+    {
+	NextToken();
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
+	std::string baseName = CurrentToken().GetIdentName();
+	if (!(base = llvm::dyn_cast_or_null<Types::ObjectDecl>(GetTypeDecl(baseName))))
+	{
+	    Error("Expected object as base");
+	    return 0;
+	}   
+	NextToken();
+	if (!Expect(Token::RightParen, true))
+	{
+	    return 0;
+	}
+    }
     
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
@@ -1162,7 +1183,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	return 0;
     }
 
-    return new Types::ObjectDecl(name, fields, mf, variant);
+    return new Types::ObjectDecl(name, fields, mf, variant, base);
 }
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)
@@ -1416,8 +1437,10 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    elem = od->MembFunc(name);
 	    if (elem >= 0)
 	    {
-		type = od->GetMembFunc(elem);
-		std::string funcName = od->Name() + "$" + name;
+		std::string objname;
+		Types::MemberFuncDecl* membfunc = od->GetMembFunc(elem, objname);
+		(void) membfunc; // Will be needed later when we do virtual functions!
+		std::string funcName = objname + "$" + name;
 		NamedObject* def = nameStack.Find(funcName);
 
 		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);

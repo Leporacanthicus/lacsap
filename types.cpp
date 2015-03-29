@@ -735,6 +735,11 @@ namespace Types
 	}
     }
 
+    int ObjectDecl::MembFuncCount() const
+    {
+	return membfuncs.size() + (baseobj?baseobj->MembFuncCount():0);
+    }
+
     int ObjectDecl::MembFunc(const std::string& nm) const
     {
 	for(int i = 0; i < (int)membfuncs.size();  i++)
@@ -744,20 +749,63 @@ namespace Types
 		return i;
 	    }
 	}
-	return -1;
+	return baseobj?baseobj->MembFunc(nm):-1;
     }
 
-    MemberFuncDecl* ObjectDecl::GetMembFunc(int index) const
+    MemberFuncDecl* ObjectDecl::GetMembFunc(int index, std::string& objname) const
     {
-	assert(index >= 0 && index < (int)membfuncs.size() && "Expected index to be in range");
-	return membfuncs[index];
+	int b = (baseobj?baseobj->MembFuncCount():0);
+	if (index < b)
+	{
+	    assert(baseobj && "Huh - no base object?");
+	    return baseobj->GetMembFunc(index, objname);
+	}
+	assert(index >= b && index-b < (int)membfuncs.size() && "Expected index to be in range");
+	objname = Name();
+	return membfuncs[index-b];
     }
+
+    int ObjectDecl::Element(const std::string& name) const
+    {
+	/* Shadowing overrides outer elemnts */
+	int elem = FieldCollection::Element(name);
+	if (elem >= 0)
+	{
+	    return elem;
+	}
+	return (baseobj)?baseobj->Element(name):-1;
+    }
+
+    const FieldDecl* ObjectDecl::GetElement(unsigned int n) const
+    {
+	int b = baseobj?baseobj->FieldCount():0;
+	if (n < (unsigned)b)
+	{
+	    return baseobj->GetElement(n);
+	}
+	else
+	{
+	    assert(n < b + fields.size() && "Out of range field");
+	    return fields[n - b];
+	}
+    }
+
+    int ObjectDecl::FieldCount() const
+    {
+	return fields.size() + (baseobj?baseobj->FieldCount(): 0);
+    }
+    
 
     llvm::Type* ObjectDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
-	for(auto f : fields)
+	std::vector<FieldDecl*> allFields = fields;
+	
+	int fc = FieldCount();
+	for(int i = 0; i < fc; i++)
 	{
+	    const FieldDecl* f = GetElement(i);
+
 	    assert(!llvm::isa<MemberFuncDecl>(f->FieldType()) && "Should not have member functions now");
 
 	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
@@ -790,11 +838,6 @@ namespace Types
     void MemberFuncDecl::DoDump(std::ostream& out) const
     {
 	out << "Member function"; proto->dump(out);
-    }
-
-    llvm::Type* MemberFuncDecl::GetLlvmType() const
-    {
-	return 0;
     }
 
     bool MemberFuncDecl::SameAs(const TypeDecl* ty) const

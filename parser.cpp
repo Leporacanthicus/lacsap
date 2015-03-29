@@ -2016,15 +2016,27 @@ PrototypeAST* Parser::ParsePrototype()
 
 ExprAST* Parser::ParseStatement()
 {
-    ExprAST* expr = ParsePrimary();
-    if (CurrentToken().GetToken() == Token::Assign)
+    if (ExprAST* expr = ParsePrimary())
     {
-	Location loc = CurrentToken().Loc();
-	NextToken();
-	ExprAST* rhs = ParseExpression();
-	expr = new AssignExprAST(loc, expr, rhs);
+	if (CurrentToken().GetToken() == Token::Assign)
+	{
+	    Location loc = CurrentToken().Loc();
+	    NextToken();
+	    ExprAST* rhs = ParseExpression();
+	    if (rhs)
+	    {
+		expr = new AssignExprAST(loc, expr, rhs);
+	    }
+	    else
+	    {
+		// TODO: Error recovery.
+		return 0;
+	    }
+	}
+	return expr;
     }
-    return expr;
+    // TODO: Error recovery.
+    return 0;
 }
 
 BlockAST* Parser::ParseBlock()

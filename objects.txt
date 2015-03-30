@@ -1,5 +1,10 @@
 Random order Todo List for "objects":
 
 Member functions
+  Basic parsing/calling. - Done.
+  Add extra "this" argument.
+  Virtual functions.
+  Static functions.
+
 Inheritance
-Virtual functions
+Constructors, Destructors.

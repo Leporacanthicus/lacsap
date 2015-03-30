@@ -116,8 +116,6 @@ const Token& Parser::CurrentToken() const
 
 const Token& Parser::NextToken(const char* file, int line)
 {
-    (void)file;
-    (void)line;
     if (nextTokenValid)
     {
 	curToken = nextToken;
@@ -171,11 +169,7 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
 
 bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
 {
-    if (CurrentToken().GetToken() != Token::End && !Expect(Token::Semicolon, true, file, line))
-    {
-	return false;
-    }
-    return true;
+    return !(CurrentToken().GetToken() != Token::End && !Expect(Token::Semicolon, true, file, line));
 }
 
 #define NextToken() NextToken(__FILE__, __LINE__)
@@ -239,23 +233,16 @@ ExprAST* Parser::ParseSizeOfExpr()
 
 const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
-    if (NamedObject* def = nameStack.Find(name))
+    if (ConstDef *constDef = llvm::dyn_cast_or_null<ConstDef>(nameStack.Find(name)))
     {
-	if (ConstDef *constDef = llvm::dyn_cast<ConstDef>(def))
-	{
-	    return constDef->ConstValue();
-	}
+	return constDef->ConstValue();
     }
     return 0;
 }
 
 EnumDef* Parser::GetEnumValue(const std::string& name)
 {
-    if (NamedObject* def = nameStack.Find(name))
-    {
-	return llvm::dyn_cast<EnumDef>(def);
-    }
-    return 0;
+    return llvm::dyn_cast_or_null<EnumDef>(nameStack.Find(name));
 }
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
@@ -690,8 +677,7 @@ void Parser::ParseTypeDef()
 	    }
 	    if (ty->Type() == Types::PointerIncomplete)
 	    {
-		Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(ty);
-		incomplete.push_back(pd);
+		incomplete.push_back(llvm::dyn_cast<Types::PointerDecl>(ty));
 	    }	    
 	    if (!Expect(Token::Semicolon, true))
 	    {
@@ -771,8 +757,7 @@ Types::PointerDecl* Parser::ParsePointerType()
     }
     else
     {
-	Types::TypeDecl *ty = ParseType("");
-	return new Types::PointerDecl(ty);
+	return new Types::PointerDecl(ParseType(""));
     }
 }
 
@@ -1449,7 +1434,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 		{
 		    return 0;
 		}
-		
+
 		if (ExprAST* expr = MakeCallExpr(def, funcName, args))
 		{
 		    NextToken();
@@ -1736,9 +1721,8 @@ ExprAST* Parser::ParseIdentifierExpr()
 	}
     }
 
-    const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::vector<ExprAST* > args;
-    if (!ParseArgs(funcDef, args))
+    if (!ParseArgs(llvm::dyn_cast_or_null<const FuncDef>(def), args))
     {
 	return 0;
     }
@@ -1879,26 +1863,27 @@ VarDeclAST* Parser::ParseVarDecls()
 //   procedure classname.name{ args... }
 PrototypeAST* Parser::ParsePrototype()
 {
-    // Consume "function" or "procedure"
     assert(CurrentToken().GetToken() == Token::Procedure ||
 	   CurrentToken().GetToken() == Token::Function && 
 	   "Expected function or procedure token");
 
     bool isFunction = CurrentToken().GetToken() == Token::Function;
 
+    // Consume "function" or "procedure"
     NextToken();
     if (!Expect(Token::Identifier, false))
     {
 	return 0;
     }
     Types::ObjectDecl* od = 0;
-    std::string funcName = CurrentToken().GetIdentName();
     // Get function name.
+    std::string funcName = CurrentToken().GetIdentName();
     if (!Expect(Token::Identifier, true))
     {
 	return 0;
     }
     // Is it a member function?
+    // FIXME: Nested classes, should we do this again?
     if (CurrentToken().GetToken() == Token::Period)
     {
 	NextToken();
@@ -2183,7 +2168,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
 	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack);
-	    proto->AddExtraArgs(fn->UsedVars()); 
+	    proto->AddExtraArgsLast(fn->UsedVars());
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
 	    return fn;
@@ -2242,8 +2227,7 @@ ExprAST* Parser::ParseIfExpr()
     {
 	if (Expect(Token::Else, true))
 	{
-	    elseExpr = ParseStmtOrBlock();
-	    if (!elseExpr)
+	    if (!(elseExpr = ParseStmtOrBlock()))
 	    {
 		return 0;
 	    }
@@ -2327,15 +2311,17 @@ ExprAST* Parser::ParseRepeat()
     Location loc2 = CurrentToken().Loc();
     while(CurrentToken().GetToken() != Token::Until)
     {
-	ExprAST* stmt = ParseStatement();
-	if (!stmt)
+	if (ExprAST* stmt = ParseStatement())
+	{
+	    v.push_back(stmt);
+	    if(CurrentToken().GetToken() == Token::Semicolon)
+	    {
+		NextToken();
+	    }
+	}
+	else
 	{
 	    return 0;
-	}
-	v.push_back(stmt);
-	if(CurrentToken().GetToken() == Token::Semicolon)
-	{
-	    NextToken();
 	}
     }
     if (!Expect(Token::Until, true))
@@ -2497,7 +2483,7 @@ ExprAST* Parser::ParseWithBlock()
     do
     {
 	ExprAST* e = ParseIdentifierExpr();
-	if (VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(e))
+	if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
 	{
 	    vars.push_back(v);
 	    if (CurrentToken().GetToken() != Token::Do)

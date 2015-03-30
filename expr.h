@@ -420,7 +420,8 @@ public:
     void SetIsForward(bool v) { isForward = v; }
     void SetFunction(FunctionAST* fun) { function = fun; }
     FunctionAST* Function() const { return function; }
-    void AddExtraArgs(const std::vector<VarDef>& extra);
+    void AddExtraArgsLast(const std::vector<VarDef>& extra);
+    void AddExtraArgsFirst(const std::vector<VarDef>& extra);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
     Types::TypeDecl* Type() const override { return resultType; }
 private:

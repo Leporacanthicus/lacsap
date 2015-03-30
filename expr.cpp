@@ -1509,13 +1509,28 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
 }
 
-void PrototypeAST::AddExtraArgs(const std::vector<VarDef>& extra)
+void PrototypeAST::AddExtraArgsLast(const std::vector<VarDef>& extra)
 {
     for(auto v : extra)
     {
 	VarDef tmp = VarDef(v.Name(), v.Type(), true);
 	args.push_back(tmp);
     }
+}
+
+void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
+{
+    std::vector<VarDef> newArgs;
+    for(auto v : extra)
+    {
+	VarDef tmp = VarDef(v.Name(), v.Type(), true);
+	newArgs.push_back(tmp);
+    }
+    for(auto v : args)
+    {
+	newArgs.push_back(v);
+    }
+    args.swap(newArgs);
 }
 
 void FunctionAST::DoDump(std::ostream& out) const

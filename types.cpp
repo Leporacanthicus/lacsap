@@ -765,6 +765,15 @@ namespace Types
 	return membfuncs[index-b];
     }
 
+    void ObjectDecl::UpdateMemberFuncs()
+    {
+	for(auto& m : membfuncs)
+	{
+	    std::vector<VarDef> v{VarDef("Self", this, true)};
+	    m->Proto()->AddExtraArgsFirst(v);
+	}
+    }
+
     int ObjectDecl::Element(const std::string& name) const
     {
 	/* Shadowing overrides outer elemnts */

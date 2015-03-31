@@ -297,12 +297,9 @@ std::string ExprAST::ToString()
 void ExprAST::EnsureSized() const
 {
     TRACE();
-    if (Type())
+    if (Types::FieldCollection* fc = llvm::dyn_cast_or_null<Types::FieldCollection>(Type()))
     {
-	if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(Type()))
-	{
-	    fc->EnsureSized();
-	}
+	fc->EnsureSized();
     }
 }
 
@@ -1513,8 +1510,7 @@ void PrototypeAST::AddExtraArgsLast(const std::vector<VarDef>& extra)
 {
     for(auto v : extra)
     {
-	VarDef tmp = VarDef(v.Name(), v.Type(), true);
-	args.push_back(tmp);
+	args.push_back(VarDef(v.Name(), v.Type(), true));
     }
 }
 
@@ -1523,8 +1519,7 @@ void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
     std::vector<VarDef> newArgs;
     for(auto v : extra)
     {
-	VarDef tmp = VarDef(v.Name(), v.Type(), true);
-	newArgs.push_back(tmp);
+	newArgs.push_back(VarDef(v.Name(), v.Type(), true));
     }
     for(auto v : args)
     {
@@ -2832,8 +2827,7 @@ llvm::Value* SetExprAST::Address()
     for(auto v : values)
     {
 	// If we have a "range", then make a loop.
-	RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v);
-	if (r)
+	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
 	{
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();

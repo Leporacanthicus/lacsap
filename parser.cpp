@@ -1168,7 +1168,9 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	return 0;
     }
 
-    return new Types::ObjectDecl(name, fields, mf, variant, base);
+    Types::ObjectDecl *o = new Types::ObjectDecl(name, fields, mf, variant, base);
+    o->UpdateMemberFuncs();
+    return o;
 }
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)

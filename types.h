@@ -488,6 +488,7 @@ namespace Types
 	int MembFuncCount() const;
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
+	void UpdateMemberFuncs();
 	std::string Name() const { return name; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:

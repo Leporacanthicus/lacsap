@@ -398,15 +398,14 @@ class PrototypeAST : public ExprAST
 {
 public:
     PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar)
-	: ExprAST(w, EK_Prototype), name(nm), args(ar), isForward(false), function(0)
-    {
-	resultType = new Types::VoidDecl;
-    }
+	: ExprAST(w, EK_Prototype, Types::GetVoidType()), name(nm), args(ar), isForward(false),
+	  function(0)
+    { }
     PrototypeAST(const Location& w,
 		 const std::string& nm,
 		 const std::vector<VarDef>& ar,
 		 Types::TypeDecl* resTy)
-	: ExprAST(w, EK_Prototype), name(nm), args(ar), resultType(resTy), isForward(false), function(0)
+	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), isForward(false), function(0)
     {
 	assert(resTy && "Type must not be null!");
     }
@@ -423,11 +422,9 @@ public:
     void AddExtraArgsLast(const std::vector<VarDef>& extra);
     void AddExtraArgsFirst(const std::vector<VarDef>& extra);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
-    Types::TypeDecl* Type() const override { return resultType; }
 private:
     std::string         name;
     std::vector<VarDef> args;
-    Types::TypeDecl*    resultType;
     bool                isForward;
     FunctionAST*        function;
 };

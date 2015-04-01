@@ -1430,7 +1430,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 
 	argTypes.push_back(argTy);
     }
-    llvm::Type* resTy = resultType->LlvmType();
+    llvm::Type* resTy = type->LlvmType();
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     std::string actualName;
     /* Don't mangle our 'main' functions name, as we call that from C */
@@ -1496,9 +1496,9 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    ErrorF(std::string("Duplicate variable name ") + args[idx].Name());
 	}
     }
-    if (resultType->Type() != Types::Void)
+    if (type->Type() != Types::Void)
     {
-	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, resultType));
+	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, type));
 	if(!variables.Add(name, a))
 	{
 	    ErrorF(std::string("Duplicate function result name ") + name);

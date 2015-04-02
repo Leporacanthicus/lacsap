@@ -1317,6 +1317,7 @@ llvm::Value* CallExprAST::CodeGen()
 		    {
 			return 0;
 		    }
+		    // TODO: This should be redundant.
 		    v = TypeConvert(v, viter->Type()->LlvmType());
 		}
 	    }
@@ -1478,6 +1479,8 @@ llvm::Function* PrototypeAST::CodeGen()
 
 void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 {
+    TRACE();
+
     unsigned idx = 0;
     for(llvm::Function::arg_iterator ai = fn->arg_begin(); idx < args.size(); idx++, ai++)
     {

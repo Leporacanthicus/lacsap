@@ -715,6 +715,16 @@ namespace Types
 	return this == ty;
     }
 
+
+    ObjectDecl::ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
+			   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base)
+	: FieldCollection(TK_Object, Object, flds), baseobj(base), name(nm), variant(v), 
+	  membfuncs(mf) 
+    { 
+	UpdateMemberFuncs();
+    }
+
+
     size_t ObjectDecl::Size() const
     {
 	EnsureSized();
@@ -767,10 +777,11 @@ namespace Types
 
     void ObjectDecl::UpdateMemberFuncs()
     {
+	std::vector<VarDef> v{VarDef("self", this, true)};
 	for(auto& m : membfuncs)
 	{
-	    std::vector<VarDef> v{VarDef("Self", this, true)};
 	    m->Proto()->AddExtraArgsFirst(v);
+	    m->Proto()->SetHasSelf(true);
 	}
     }
 

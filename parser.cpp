@@ -1168,9 +1168,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	return 0;
     }
 
-    Types::ObjectDecl *o = new Types::ObjectDecl(name, fields, mf, variant, base);
-    o->UpdateMemberFuncs();
-    return o;
+    return new Types::ObjectDecl(name, fields, mf, variant, base);
 }
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)
@@ -1394,6 +1392,50 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     return expr;
 }
 
+ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
+			      NamedObject* def,
+			      const std::string& funcName,
+			      std::vector<ExprAST*>& args)
+{
+    TRACE();
+
+    const PrototypeAST* proto = 0;
+    ExprAST* expr = 0;
+    if (const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def))
+    {
+	proto = funcDef->Proto();
+	expr = new FunctionExprAST(CurrentToken().Loc(), funcName, funcDef->Type());
+    }
+    else if (llvm::dyn_cast_or_null<const VarDef>(def))
+    {
+	if (def->Type()->Type() == Types::Pointer)
+	{
+	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
+	    assert(fp && "Expected function pointer here...");
+	    proto = fp->Proto();
+	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
+	}
+    }
+    if (expr)
+    {
+	if (proto->HasSelf())
+	{
+	    std::cout << "Adding 'self' argument" << std::endl;
+	    assert(self && "Should have a 'self' expression here");
+	    args.insert(args.begin(), self);
+	}
+	if (FunctionAST* fn = proto->Function())
+	{
+	    for(auto u : fn->UsedVars())
+	    {
+		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
+	    }
+	}
+	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
+    }
+    return 0;
+}
+
 ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
     if(!Expect(Token::Period, true))
@@ -1437,10 +1479,10 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 		    return 0;
 		}
 
-		if (ExprAST* expr = MakeCallExpr(def, funcName, args))
+		if (ExprAST* call = MakeCallExpr(expr, def, funcName, args))
 		{
 		    NextToken();
-		    return expr;
+		    return call;
 		}
 		return 0;
 	    }
@@ -1604,41 +1646,6 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
     return true;
 }
 
-ExprAST* Parser::MakeCallExpr(NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args)
-{
-    TRACE();
-
-    const PrototypeAST* proto = 0;
-    ExprAST* expr = 0;
-    if (const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def))
-    {
-	proto = funcDef->Proto();
-	expr = new FunctionExprAST(CurrentToken().Loc(), funcName, funcDef->Type());
-    }
-    else if (llvm::dyn_cast_or_null<const VarDef>(def))
-    {
-	if (def->Type()->Type() == Types::Pointer)
-	{
-	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
-	    assert(fp && "Expected function pointer here...");
-	    proto = fp->Proto();
-	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
-	}
-    }
-    if (expr)
-    {
-	if (FunctionAST* fn = proto->Function())
-	{
-	    for(auto u : fn->UsedVars())
-	    {
-		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
-	    }
-	}
-	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
-    }
-    return 0;
-}
-
 ExprAST* Parser::ParseIdentifierExpr()
 {
     TRACE();
@@ -1729,7 +1736,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	return 0;
     }
 
-    if (ExprAST* expr = MakeCallExpr(def, idName, args))
+    if (ExprAST* expr = MakeCallExpr(NULL, def, idName, args))
     {
 	return expr;
     }
@@ -1884,6 +1891,8 @@ PrototypeAST* Parser::ParsePrototype()
     {
 	return 0;
     }
+
+    Types::MemberFuncDecl* membfunc = 0;
     // Is it a member function?
     // FIXME: Nested classes, should we do this again?
     if (CurrentToken().GetToken() == Token::Period)
@@ -1897,7 +1906,20 @@ PrototypeAST* Parser::ParsePrototype()
 		{
 		    return 0;
 		}
-		funcName = funcName + "$" + CurrentToken().GetIdentName();
+		std::string m = CurrentToken().GetIdentName();
+		std::string objname;
+		int elem;
+
+		if ((elem = od->MembFunc(m)) >= 0)
+		{
+		    membfunc = od->GetMembFunc(elem, objname);
+		}
+		if (!membfunc || funcName != objname)
+		{
+		    Error(std::string("Member function") + m + " not found");
+		    return 0;
+		}
+		funcName = funcName + "$" + m;
 		NextToken();
 	    }
 	}
@@ -1998,7 +2020,18 @@ PrototypeAST* Parser::ParsePrototype()
     {
 	return 0;
     }
-    return new PrototypeAST(CurrentToken().Loc(), funcName, args);
+
+    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args);
+    // Fixme: Need to check for "virtual" keyword here.
+    // Fixme: Need to check for "static" keyword here.
+    if (od) 	// Fixme: And not static 
+    {
+	std::vector<VarDef> v{VarDef("self", od, true)};
+	proto->AddExtraArgsFirst(v);
+	proto->SetHasSelf(true);
+	
+    }
+    return proto;
 }
 
 ExprAST* Parser::ParseStatement()
@@ -2093,6 +2126,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     NameWrapper usedWrapper(usedVariables);
     for(auto v : proto->Args())
     {
+	v.dump(std::cout);
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
 	    return ErrorF(std::string("Duplicate name ") + v.Name()); 

@@ -49,8 +49,8 @@ private:
     ExprAST* ParseWithBlock();
 
     // I/O functions
-    ExprAST*      ParseWrite();
-    ExprAST*      ParseRead();
+    ExprAST* ParseWrite();
+    ExprAST* ParseRead();
 
     // Statements, blocks and calls
     ExprAST*      ParseStatement();
@@ -62,9 +62,9 @@ private:
     bool          ParseProgram();
 
     // Type declarations and defintitions
-    void          ParseTypeDef();
-    void          ParseConstDef();
-    void          TranslateToken(Token& token);
+    void ParseTypeDef();
+    void ParseConstDef();
+    void TranslateToken(Token& token);
 
     const Constants::ConstDecl* ParseConstExpr();
     const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
@@ -80,7 +80,8 @@ private:
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();
     Types::ArrayDecl*   ParseArrayDecl();
-    bool                ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
+    bool                ParseFields(std::vector<Types::FieldDecl*>& fields, 
+				    Types::VariantDecl*& variant,
 				    Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();
     Types::FileDecl*    ParseFileDecl();
@@ -107,7 +108,10 @@ private:
 
     // Helper functions for expression evaluation.
     bool     IsCall(Types::TypeDecl* type);
-    ExprAST* MakeCallExpr(NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args);
+    ExprAST* MakeCallExpr(VariableExprAST* expr,
+			  NamedObject* def,
+			  const std::string& funcName,
+			  std::vector<ExprAST*>& args);
     // Helper functions for identifier access/checking.
     EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);

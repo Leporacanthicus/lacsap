@@ -92,7 +92,7 @@ public:
 	if (verbosity > 1)
 	{
 	    std::cerr << "Not found" << std::endl;
-	    dump(std::cerr);
+	    dump();
 	}
 	return 0;
     }
@@ -124,6 +124,7 @@ public:
     }
 
     void dump(std::ostream& out) const;
+    void dump() const { dump(std::cerr); }
 private:
     StackType stack;
 };

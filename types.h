@@ -474,9 +474,8 @@ namespace Types
     {
     public:
 	ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
-		   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base)
-	    : FieldCollection(TK_Object, Object, flds), baseobj(base), name(nm), variant(v), membfuncs(mf) { };
-	    
+		   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base);
+
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
         int Element(const std::string& name) const override;

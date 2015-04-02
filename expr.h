@@ -398,14 +398,15 @@ class PrototypeAST : public ExprAST
 {
 public:
     PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar)
-	: ExprAST(w, EK_Prototype, Types::GetVoidType()), name(nm), args(ar), isForward(false),
-	  function(0)
+	: ExprAST(w, EK_Prototype, Types::GetVoidType()), name(nm), args(ar), function(0), 
+	  isForward(false), hasSelf(false)
     { }
     PrototypeAST(const Location& w,
 		 const std::string& nm,
 		 const std::vector<VarDef>& ar,
 		 Types::TypeDecl* resTy)
-	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), isForward(false), function(0)
+	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), function(0), isForward(false),
+	  hasSelf(false)
     {
 	assert(resTy && "Type must not be null!");
     }
@@ -415,8 +416,10 @@ public:
     void CreateArgumentAlloca(llvm::Function* fn);
     std::string Name() const { return name; }
     const std::vector<VarDef>& Args() const { return args; }
-    bool IsForward() { return isForward; }
+    bool IsForward() const { return isForward; }
+    bool HasSelf() const { return hasSelf; }
     void SetIsForward(bool v) { isForward = v; }
+    void SetHasSelf(bool v) { hasSelf = v; }
     void SetFunction(FunctionAST* fun) { function = fun; }
     FunctionAST* Function() const { return function; }
     void AddExtraArgsLast(const std::vector<VarDef>& extra);
@@ -425,8 +428,9 @@ public:
 private:
     std::string         name;
     std::vector<VarDef> args;
-    bool                isForward;
     FunctionAST*        function;
+    bool                isForward;
+    bool                hasSelf;
 };
 
 class FunctionAST : public ExprAST

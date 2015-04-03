@@ -702,7 +702,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	
 	return builder.CreateCall3(f, lV, rV, setWords, "calltmp");
     }
-
 }
 
 static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)

@@ -137,7 +137,7 @@ static int Compile(const std::string& filename)
     int e = p.GetErrors();
     if (e > 0)
     {
-	std::cerr << "Errors in parsing: " << e << ". Exiting..." << std::endl;
+	std::cerr << "Errors in parsing: " << e << ".\nExiting..." << std::endl;
 	return 1;
     }
 
@@ -147,13 +147,13 @@ static int Compile(const std::string& filename)
     e = sema.GetErrors();
     if (e > 0)
     {
-	std::cerr << "Errors in analysis: " << e << ". Exiting..." << std::endl;
+	std::cerr << "Errors in analysis: " << e << ".\nExiting..." << std::endl;
 	return 1;
     }
 
     if (!CodeGen(ast))
     {
-	std::cerr << "Code generation failed..." << std::endl;
+	std::cerr << "Code generation failed...\nExiting..." << std::endl;
 	return 1;
     }
     mpm->run(*theModule);

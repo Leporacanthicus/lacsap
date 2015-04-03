@@ -1420,7 +1420,6 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     {
 	if (proto->HasSelf())
 	{
-	    std::cout << "Adding 'self' argument" << std::endl;
 	    assert(self && "Should have a 'self' expression here");
 	    args.insert(args.begin(), self);
 	}

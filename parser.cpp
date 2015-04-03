@@ -2126,7 +2126,6 @@ FunctionAST* Parser::ParseDefinition(int level)
     NameWrapper usedWrapper(usedVariables);
     for(auto v : proto->Args())
     {
-	v.dump(std::cout);
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
 	    return ErrorF(std::string("Duplicate name ") + v.Name()); 

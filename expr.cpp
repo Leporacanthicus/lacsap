@@ -1628,7 +1628,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	builder.CreateRet(retVal);
     }
 
-    TRACE();
     verifyFunction(*theFunction);
     return theFunction;
 }
@@ -3058,13 +3057,12 @@ void TypeCastAST::DoDump(std::ostream& out) const
 
 llvm::Value* TypeCastAST::CodeGen()
 {
-    Types::TypeDecl* current = expr->Type();
-
     if (type->Type() == Types::Real)
     {
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
     
+    Types::TypeDecl* current = expr->Type();
     if (type->isIntegral() && current->isIntegral())
     {
 	if (type->isUnsigned())
@@ -3073,6 +3071,12 @@ llvm::Value* TypeCastAST::CodeGen()
 	}
 	return builder.CreateSExt(expr->CodeGen(), type->LlvmType());
 
+    }
+    if (current->Type() == Types::Array && current->SubType()->Type() == Types::Char && 
+	type->Type() == Types::String)
+    {
+	llvm::Type* ty;
+	return MakeStringFromExpr(expr, ty);
     }
     dump();
     assert(0 && "Expected to get something out of this function");
@@ -3108,5 +3112,3 @@ void BuiltinExprAST::accept(Visitor& v)
     bif->accept(v);
     v.visit(this);
 }
-
-

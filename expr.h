@@ -396,6 +396,7 @@ class FunctionAST;
 
 class PrototypeAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar)
 	: ExprAST(w, EK_Prototype, Types::GetVoidType()), name(nm), args(ar), function(0), 
@@ -468,6 +469,7 @@ private:
 
 class CallExprAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     CallExprAST(const Location& w, ExprAST* c, std::vector<ExprAST*> a, const PrototypeAST* p)
 	: ExprAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
@@ -679,8 +681,8 @@ public:
 class TypeCastAST : public ExprAST
 {
 public:
-    TypeCastAST(const Location& w, ExprAST* e, Types::TypeDecl* t)
-	: ExprAST(w, EK_TypeCastExpr, t), expr(e) {};
+    TypeCastAST(const Location& w, ExprAST* e, const Types::TypeDecl* t)
+	: ExprAST(w, EK_TypeCastExpr, const_cast<Types::TypeDecl*>(t)), expr(e) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_TypeCastExpr; }

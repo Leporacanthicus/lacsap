@@ -11,12 +11,13 @@ public:
     TypeCheckVisitor(Semantics* s) : sema(s) {};
     virtual void visit(ExprAST* expr);
 private:
-    void CheckBinExpr(BinaryExprAST *b);
-    void CheckAssignExpr(AssignExprAST *a);
-    void CheckRangeExpr(RangeExprAST *r);
-    void CheckSetExpr(SetExprAST *s);
-    void CheckArrayExpr(ArrayExprAST *a);
-    void CheckBuiltinExpr(BuiltinExprAST *b);
+    void CheckBinExpr(BinaryExprAST* b);
+    void CheckAssignExpr(AssignExprAST* a);
+    void CheckRangeExpr(RangeExprAST* r);
+    void CheckSetExpr(SetExprAST* s);
+    void CheckArrayExpr(ArrayExprAST* a);
+    void CheckBuiltinExpr(BuiltinExprAST* b);
+    void CheckCallExpr(CallExprAST* c);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -131,6 +132,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     {
 	CheckBuiltinExpr(b);
     }
+    else if (CallExprAST* c = llvm::dyn_cast<CallExprAST>(expr))
+    {
+	CheckCallExpr(c);
+    }
 }
 
 void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
@@ -223,14 +228,14 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
 	if (lty->isIntegral())
 	{
-	    ExprAST *e = b->lhs;
+	    ExprAST* e = b->lhs;
 	    ty = new Types::RealDecl;
 	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 	    lty = ty;
 	}
 	if (rty->isIntegral())
 	{
-	    ExprAST *e = b->rhs;
+	    ExprAST* e = b->rhs;
 	    if (!ty)
 	    {
 		ty = new Types::RealDecl;
@@ -261,7 +266,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(b->rhs))
     {
-	Types::Range *r = lty->GetRange();
+	Types::Range* r = lty->GetRange();
 	long v = llvm::dyn_cast<IntegerExprAST>(b->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
@@ -272,7 +277,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (llvm::isa<Types::RangeDecl>(rty) && llvm::isa<IntegerExprAST>(b->lhs))
     {
-	Types::Range *r = rty->GetRange();
+	Types::Range* r = rty->GetRange();
 	long v = llvm::dyn_cast<IntegerExprAST>(b->lhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
@@ -289,12 +294,12 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    {
 		if (lty != ty)
 		{
-		    ExprAST *e = b->lhs;
+		    ExprAST* e = b->lhs;
 		    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 		}
 		if (rty != ty)
 		{
-		    ExprAST *e = b->rhs;
+		    ExprAST* e = b->rhs;
 		    b->rhs = new TypeCastAST(e->Loc(), e, ty);
 		}
 	    }
@@ -311,8 +316,8 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 {
     TRACE();
 
-    Types::TypeDecl *lty = a->lhs->Type();
-    Types::TypeDecl *rty = a->rhs->Type();
+    Types::TypeDecl* lty = a->lhs->Type();
+    Types::TypeDecl* rty = a->rhs->Type();
 
     if (lty->Type() == Types::Set && rty->Type() == Types::Set)
     {
@@ -345,7 +350,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 
     if (llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(a->rhs))
     {
-	Types::Range *r = lty->GetRange();
+	Types::Range* r = lty->GetRange();
 	long v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
@@ -432,6 +437,34 @@ void TypeCheckVisitor::CheckBuiltinExpr(BuiltinExprAST* b)
     if (!b->bif->Semantics())
     {
 	Error(b, "Invalid use of builtin function");
+    }
+}
+
+void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
+{
+    TRACE();
+    if (c->args.size() != c->proto->args.size())
+    {
+	Error(c, std::string("Incorrect number of arguments in call to ") + c->proto->Name());
+	return;
+    }
+    int idx = 0;
+    const std::vector<VarDef>& parg = c->proto->args;
+    for(auto& a : c->args)
+    {
+	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
+	{
+	    if (*ty != *a->Type())
+	    {
+		ExprAST* e = a;
+		a = new TypeCastAST(e->Loc(), e, ty);
+	    }
+	    idx++;
+	}
+	else
+	{
+	    Error(a, "Incompatible type");
+	}
     }
 }
 

@@ -2016,6 +2016,8 @@ PrototypeAST* Parser::ParsePrototype()
 	}
     }
 
+    PrototypeAST* proto = 0;
+    Types::TypeDecl* resultType;
     // If we have a function, expect ": type".
     if (isFunction)
     {
@@ -2023,20 +2025,23 @@ PrototypeAST* Parser::ParsePrototype()
 	{
 	    return 0;
 	}
-	Types::TypeDecl* resultType = ParseSimpleType();
-	if (!Expect(Token::Semicolon, true))
+        resultType = ParseSimpleType();
+	if (!resultType)
 	{
 	    return 0;
 	}
-	return new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType);
     }
-	
+    else
+    {
+	resultType = Types::GetVoidType();
+    }
+    
     if (!Expect(Token::Semicolon, true))
     {
 	return 0;
     }
 
-    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args);
+    proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
     if (od && !membfunc->IsStatic())
     {
 	std::vector<VarDef> v{VarDef("self", od, true)};
@@ -2143,6 +2148,11 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    return ErrorF(std::string("Duplicate name ") + v.Name()); 
 	}
+    }
+    if (proto->HasSelf())
+    {
+	VariableExprAST* v = new VariableExprAST(Location("", 0, 0), "self", proto->BaseObj());
+	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
     VarDeclAST*               varDecls = 0;
@@ -2506,7 +2516,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	else
 	{
 	    ExprAST* e;
-	    if (llvm::isa<Types::RecordDecl>(fields))
+	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ObjectDecl>(fields))
 	    {
 		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
 	    }

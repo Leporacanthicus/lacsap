@@ -183,10 +183,12 @@ const TokenEntry tokenTable[] =
     { Token::Period,        false, -1, "." },
     { Token::DotDot,        false, -1, ".." },
     { Token::Uparrow,       false, -1, "^" },
-    { Token::Identifier,    false, -1, "identifier" },
+    { Token::Static,        true,  -1, "static" },
+    { Token::Virtual,       true,  -1, "virtual" },
     { Token::LineNumber,    true,  -1, "__LINE__" },
     { Token::FileName,      true,  -1, "__FILE__" },
     { Token::SizeOf,        true,  -1, "sizeof" },
+    { Token::Identifier,    false, -1, "identifier" },
     { Token::Unknown,       false, -1, "Unknown" },
     { Token::EndOfFile,     false, -1, "EOF" },
 };

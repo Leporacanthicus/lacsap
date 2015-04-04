@@ -109,6 +109,8 @@ public:
 	Case,
 	Otherwise,
 	With,
+	Virtual,
+	Static,
 
 	// Specials
 	LineNumber,

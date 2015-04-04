@@ -965,7 +965,26 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		  CurrentToken().GetToken() == Token::Procedure))
 	{
 	    PrototypeAST* p = ParsePrototype();
-	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p);
+	    int f = 0;
+	    if (CurrentToken().GetToken() == Token::Static)
+	    {
+		f |= Types::MemberFuncDecl::Static;
+		NextToken();
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return false;
+		}
+	    }
+	    if (CurrentToken().GetToken() == Token::Virtual)
+	    {
+		f |= Types::MemberFuncDecl::Virtual;
+		NextToken();
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return false;
+		}
+	    }
+	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p, f);
 	    fields.push_back(new Types::FieldDecl(p->Name(), m));
 	}
 	else
@@ -1020,6 +1039,10 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    return false;
 	}
     } while(CurrentToken().GetToken() != Token::End);
+    if (!Expect(Token::End, true))
+    {
+	return false;
+    }
     return true;
 }
 
@@ -1032,10 +1055,6 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
     if (!ParseFields(fields, variant, Token::Record))
-    {
-	return 0;
-    }
-    if (!Expect(Token::End, true))
     {
 	return 0;
     }
@@ -1150,6 +1169,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
     {
 	return 0;
     }
+
     std::vector<Types::MemberFuncDecl*> mf;
     for(auto f = fields.begin(); f != fields.end(); )
     {
@@ -1162,10 +1182,6 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	{
 	    f++;
 	}
-    }
-    if (!Expect(Token::End, true))
-    {
-	return 0;
     }
 
     return new Types::ObjectDecl(name, fields, mf, variant, base);
@@ -1915,7 +1931,7 @@ PrototypeAST* Parser::ParsePrototype()
 		}
 		if (!membfunc || funcName != objname)
 		{
-		    Error(std::string("Member function") + m + " not found");
+		    Error(std::string("Member function '") + m + "' not found in '"  + funcName + "'.");
 		    return 0;
 		}
 		funcName = funcName + "$" + m;
@@ -2021,9 +2037,7 @@ PrototypeAST* Parser::ParsePrototype()
     }
 
     PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args);
-    // Fixme: Need to check for "virtual" keyword here.
-    // Fixme: Need to check for "static" keyword here.
-    if (od) 	// Fixme: And not static 
+    if (od && !membfunc->IsStatic())
     {
 	std::vector<VarDef> v{VarDef("self", od, true)};
 	proto->AddExtraArgsFirst(v);

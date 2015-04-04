@@ -455,19 +455,27 @@ namespace Types
     class MemberFuncDecl : public TypeDecl
     {
     public:
-	MemberFuncDecl(PrototypeAST* p)
-	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p) {}
+	enum Flags
+	{
+	    Static  = 1 << 0,
+	    Virtual = 1 << 1,
+	};
+	MemberFuncDecl(PrototypeAST* p, int f)
+	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p), flags(f) {}
 
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
 	PrototypeAST* Proto() { return proto; }
+	bool IsStatic() { return flags & Static; }
+	bool IsVirtual() { return flags & Virtual; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
 	// We don't actually have an LLVM type for member functions.
 	llvm::Type* GetLlvmType() const override { return 0; }
     private:
 	PrototypeAST* proto;
+	int flags;
     };
 
     class ObjectDecl : public FieldCollection

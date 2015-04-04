@@ -752,11 +752,12 @@ namespace Types
 
     int ObjectDecl::MembFunc(const std::string& nm) const
     {
+	int b = (baseobj?baseobj->MembFuncCount():0);
 	for(int i = 0; i < (int)membfuncs.size();  i++)
 	{
 	    if (membfuncs[i]->Proto()->Name() == nm)
 	    {
-		return i;
+		return i + b;
 	    }
 	}
 	return baseobj?baseobj->MembFunc(nm):-1;
@@ -780,8 +781,11 @@ namespace Types
 	std::vector<VarDef> v{VarDef("self", this, true)};
 	for(auto& m : membfuncs)
 	{
-	    m->Proto()->AddExtraArgsFirst(v);
-	    m->Proto()->SetHasSelf(true);
+	    if (!m->IsStatic())
+	    {
+		m->Proto()->AddExtraArgsFirst(v);
+		m->Proto()->SetHasSelf(true);
+	    }
 	}
     }
 

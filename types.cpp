@@ -787,11 +787,12 @@ namespace Types
 
     int ObjectDecl::Element(const std::string& name) const
     {
+	int b = (baseobj?baseobj->FieldCount():0);
 	/* Shadowing overrides outer elemnts */
 	int elem = FieldCollection::Element(name);
 	if (elem >= 0)
 	{
-	    return elem;
+	    return elem+b;
 	}
 	return (baseobj)?baseobj->Element(name):-1;
     }
@@ -815,6 +816,18 @@ namespace Types
 	return fields.size() + (baseobj?baseobj->FieldCount(): 0);
     }
     
+    const TypeDecl* ObjectDecl::CompatibleType(const TypeDecl *ty) const
+    {
+	if (*ty == *this)
+	{
+	    return this;
+	}
+	if (const ObjectDecl* od = llvm::dyn_cast<ObjectDecl>(ty))
+	{
+	    return (od->baseobj)?CompatibleType(od->baseobj):0;
+	}
+	return 0;
+    }
 
     llvm::Type* ObjectDecl::GetLlvmType() const
     {

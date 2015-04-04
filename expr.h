@@ -685,6 +685,8 @@ public:
 	: ExprAST(w, EK_TypeCastExpr, const_cast<Types::TypeDecl*>(t)), expr(e) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
+    llvm::Value* Address();
+    ExprAST* Expr() { return expr; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_TypeCastExpr; }
 private:
     ExprAST* expr;

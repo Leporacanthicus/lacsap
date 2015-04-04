@@ -489,6 +489,7 @@ namespace Types
 	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
 	void UpdateMemberFuncs();
 	std::string Name() const { return name; }
+	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -525,7 +526,6 @@ namespace Types
 	} FileFields;
 	FileDecl(TypeDecl* ty)
 	    : CompoundDecl(TK_File, File, ty) {}
-	TypeDecl* SubType() const override { return baseType; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_File; }
     protected:

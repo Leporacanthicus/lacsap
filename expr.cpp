@@ -477,8 +477,7 @@ llvm::Value* FieldExprAST::Address()
     if (llvm::Value* v = expr->Address())
     {
 	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
-	v = builder.CreateGEP(v, ind, "valueindex");
-	return v;
+	return builder.CreateGEP(v, ind, "valueindex");
     }
     return ErrorV("Expression did not form an address");
 }
@@ -499,13 +498,10 @@ llvm::Value* VariantFieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    //TODO: This needs fixing up.
     llvm::Value* v = expr->Address();
     std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
     v = builder.CreateGEP(v, ind, "valueindex");
-    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
-
-    return v;
+    return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
 
 void PointerExprAST::DoDump(std::ostream& out) const
@@ -860,6 +856,7 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 
 Types::TypeDecl* BinaryExprAST::Type() const
 {
+    // TODO: Clean this up - most of it is probably not needed
     Token::TokenType tt = oper.GetToken();
     if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
     {
@@ -1272,32 +1269,43 @@ llvm::Value* CallExprAST::CodeGen()
     }
 
     std::vector<llvm::Value*> argsV;
-    std::vector<VarDef>::const_iterator viter = vdef.begin();
     std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
     unsigned index = 0;
     for(auto i : args)
     {
-	index++;
 	llvm::Value* v = 0;
+
 	VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
-	if (viter->IsRef())
+	if (vdef[index].IsRef())
 	{
-	    if (!vi)
+	    if (vi)
 	    {
-		// TODO: Need to detect this better.
-		return ErrorV("Args declared with 'var' must be a variable!");
+		v = vi->Address();
 	    }
-	    v = vi->Address();
+	    else
+	    {
+		TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
+
+		if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
+		{
+		    return ErrorV("Argument declared with 'var' must be a variable!");
+		}
+		v = tc->Address();
+		if (!v)
+		{
+		    return 0;
+		}
+	    }
 	}
 	else
 	{
 	    StringExprAST* sv = llvm::dyn_cast<StringExprAST>(i);
-	    if (llvm::isa<Types::StringDecl>(viter->Type()) &&
+	    if (llvm::isa<Types::StringDecl>(vdef[index].Type()) &&
 		sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
 	    {
 		if (sv && sv->Type()->SubType()->Type() == Types::Char)
 		{
-		    v = CreateTempAlloca(viter->Type()->LlvmType());
+		    v = CreateTempAlloca(vdef[index].Type()->LlvmType());
 		    TempStringFromStringExpr(v, sv);
 		}
 	    }
@@ -1307,7 +1315,7 @@ llvm::Value* CallExprAST::CodeGen()
 		if (vi && vi->Type()->isCompound())
 		{
 		    v = LoadOrMemcpy(vi->Address(), vi->Type());
-		    argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
+		    argAttr.push_back(std::make_pair(index+1, llvm::Attribute::ByVal));
 		}
 		else
 		{
@@ -1316,24 +1324,18 @@ llvm::Value* CallExprAST::CodeGen()
 		    {
 			return 0;
 		    }
-		    // TODO: This should be redundant.
-		    v = TypeConvert(v, viter->Type()->LlvmType());
 		}
 	    }
 	}
 	if (vi && llvm::isa<Types::StringDecl>(vi->Type()) &&
-	    llvm::isa<Types::StringDecl>(viter->Type()))
+	    llvm::isa<Types::StringDecl>(vdef[index].Type()))
 	{
-	    llvm::Type* strTy = viter->Type()->LlvmType();
+	    llvm::Type* strTy = vdef[index].Type()->LlvmType();
 	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
 	}
-	if (!v)
-	{
-	    return ErrorV("Invalid argument for " + proto->Name() + " (" + i->ToString() + ")");
-	}
-	
+	assert(v && "Expect argument here");
 	argsV.push_back(v);
-	viter++;
+	index++;
     }
     llvm::CallInst* inst = 0;
     if (proto->Type()->Type() == Types::Void)
@@ -3079,6 +3081,16 @@ llvm::Value* TypeCastAST::CodeGen()
     }
     dump();
     assert(0 && "Expected to get something out of this function");
+}
+
+llvm::Value* TypeCastAST::Address()
+{
+    if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
+    {
+	llvm::Value* a = ae->Address();
+	return builder.CreateBitCast(a, llvm::PointerType::getUnqual(type->LlvmType()));
+    }
+    return 0;
 }
 
 llvm::Value* SizeOfExprAST::CodeGen()

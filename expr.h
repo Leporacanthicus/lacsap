@@ -401,8 +401,8 @@ public:
     PrototypeAST(const Location& w,
 		 const std::string& nm,
 		 const std::vector<VarDef>& ar,
-		 Types::TypeDecl* resTy = Types::GetVoidType(),
-		 Types::ObjectDecl* obj = 0)
+		 Types::TypeDecl* resTy,
+		 Types::ObjectDecl* obj)
 	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), function(0), baseobj(obj),
 	  isForward(false), hasSelf(false)
     {

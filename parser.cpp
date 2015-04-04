@@ -132,7 +132,7 @@ const Token& Parser::NextToken(const char* file, int line)
     return curToken;
 }
 
-const Token& Parser::PeekToken(const char* file, int line) 
+const Token& Parser::PeekToken(const char* file, int line)
 {
     if (nextTokenValid)
     {
@@ -156,7 +156,7 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
-	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() + 
+	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
 	      "'.", file, line);
 	return false;
     }
@@ -304,7 +304,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 
     if (tt != Token::Unknown && token.GetToken() != tt)
     {
-	Error("Expected token to match type"); 
+	Error("Expected token to match type");
 	tt = Token::Unknown;
 	return 0;
     }
@@ -397,8 +397,8 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
     return ParseRange(type);
 }
 
-Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, 
-					     const Token& binOp, 
+Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
+					     const Token& binOp,
 					     const Constants::ConstDecl* rhs)
 {
     switch(binOp.GetToken())
@@ -506,7 +506,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    }
 	    cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
 	    break;
-	    
+
 	case Token::Integer:
 	{
 	    long v = CurrentToken().GetIntVal();
@@ -517,7 +517,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    cd = new Constants::IntConstDecl(loc,  v * mul);
 	    break;
 	}
-	    
+
 	case Token::Real:
 	    if (unaryToken == Token::Not)
 	    {
@@ -526,7 +526,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    }
 	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
 	    break;
-	    
+
 	case Token::Char:
 	    if (unaryToken != Token::Unknown)
 	    {
@@ -565,7 +565,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		    cd = new Constants::IntConstDecl(loc, ed->Value());
 		}
 	    }
-	    else 
+	    else
 	    {
 		cd = GetConstDecl(CurrentToken().GetIdentName());
 		assert(cd && "Expected to get an identifier!");
@@ -592,7 +592,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		    }
 		    else
 		    {
-			Error("Can't negate the type of " + CurrentToken().GetIdentName() + 
+			Error("Can't negate the type of " + CurrentToken().GetIdentName() +
 			      " only integer and real types can be negated");
 			return 0;
 		    }
@@ -634,7 +634,7 @@ void Parser::ParseConstDef()
 	    return;
 	}
 	const Constants::ConstDecl *cd = ParseConstExpr();
-	if (!cd) 
+	if (!cd)
 	{
 	    Error("Invalid constant value");
 	}
@@ -678,7 +678,7 @@ void Parser::ParseTypeDef()
 	    if (ty->Type() == Types::PointerIncomplete)
 	    {
 		incomplete.push_back(llvm::dyn_cast<Types::PointerDecl>(ty));
-	    }	    
+	    }
 	    if (!Expect(Token::Semicolon, true))
 	    {
 		return;
@@ -752,7 +752,7 @@ Types::PointerDecl* Parser::ParsePointerType()
 	{
 	    return new Types::PointerDecl(ty);	
 	}
-	// Otherwise, forward declare... 
+	// Otherwise, forward declare...
 	return new Types::PointerDecl(name);
     }
     else
@@ -789,8 +789,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	    NextToken();
 	}
     }
-    if (!Expect(Token::RightSquare, true) || 
-	!Expect(Token::Of, true))
+    if (!Expect(Token::RightSquare, true) || !Expect(Token::Of, true))
     {
 	return 0;
     }
@@ -838,11 +837,11 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	{
 	    return 0;
 	}
-	std::vector<Types::FieldDecl*> fields; 
-	do 
+	std::vector<Types::FieldDecl*> fields;
+	do
 	{
 	    std::vector<std::string> names;
-	    do 
+	    do
 	    {
 		// TODO: Fix up to reduce duplication of this code. It's in several places now.
 		if (!Expect(Token::Identifier, false))
@@ -918,13 +917,13 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
     do
     {
 	std::vector<std::string> names;
-	// Parse Variant part if we have a "case". 
+	// Parse Variant part if we have a "case".
 	if (CurrentToken().GetToken() == Token::Case)
 	{
 	    NextToken();
 	    std::string marker = "";
 	    Types::TypeDecl* markerTy;
-	    if (CurrentToken().GetToken() == Token::Identifier && 
+	    if (CurrentToken().GetToken() == Token::Identifier &&
 		PeekToken().GetToken() == Token::Colon)
 	    {
 		marker = CurrentToken().GetIdentName();
@@ -960,7 +959,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		return false;
 	    }
 	}
-	else if (isObject && 
+	else if (isObject &&
 		 (CurrentToken().GetToken() == Token::Function ||
 		  CurrentToken().GetToken() == Token::Procedure))
 	{
@@ -1155,14 +1154,14 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	{
 	    Error("Expected object as base");
 	    return 0;
-	}   
+	}
 	NextToken();
 	if (!Expect(Token::RightParen, true))
 	{
 	    return 0;
 	}
     }
-    
+
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
     if (!ParseFields(fields, variant, Token::Object))
@@ -1314,28 +1313,28 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 	    return 0;
 	}
 
-	// If the new operator binds less tightly, take it as LHS of 
-	// the next operator. 
+	// If the new operator binds less tightly, take it as LHS of
+	// the next operator.
 	int nextPrec = CurrentToken().Precedence();
 	if (tokPrec < nextPrec)
 	{
 	    rhs = ParseBinOpRHS(tokPrec+1, rhs);
-	    if (!rhs) 
+	    if (!rhs)
 	    {
 		return 0;
 	    }
 	}
 
-	// Now combine to new lhs. 
+	// Now combine to new lhs.
 	lhs = new BinaryExprAST(binOp, lhs, rhs);
     }
 }
 
 ExprAST* Parser::ParseUnaryOp()
 {
-    assert((CurrentToken().GetToken() == Token::Minus || 
-	    CurrentToken().GetToken() == Token::Plus || 
-	    CurrentToken().GetToken() == Token::Not) && 
+    assert((CurrentToken().GetToken() == Token::Minus ||
+	    CurrentToken().GetToken() == Token::Plus ||
+	    CurrentToken().GetToken() == Token::Not) &&
 	   "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
@@ -1476,7 +1475,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    type = od->GetElement(elem)->FieldType();
 	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
 	}
-	else 
+	else
 	{
 	    elem = od->MembFunc(name);
 	    if (elem >= 0)
@@ -1535,10 +1534,10 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    const Types::FieldDecl* fd = v->GetElement(elem);
 	    type = fd->FieldType();
 	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
-	    // If name is empty, we have a made up struct. Dig another level down. 
+	    // If name is empty, we have a made up struct. Dig another level down.
 	    if (fd->Name() == "")
 	    {
-		Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType()); 
+		Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
 		assert(r && "Expect record declarataion");
 		elem = r->Element(name);
 		if (elem >= 0)
@@ -1585,7 +1584,7 @@ bool Parser::IsCall(Types::TypeDecl* type)
     {
 	return true;
     }
-    if ((ty == Types::Procedure || ty == Types::Function) && 
+    if ((ty == Types::Procedure || ty == Types::Function) &&
 	CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -1599,7 +1598,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
-	// Get past the '(' and fetch the next one. 
+	// Get past the '(' and fetch the next one.
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return false;
@@ -1617,7 +1616,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 		    return false;
 		}
 		Types::TypeDecl* td = funcArgs[argNo].Type();
-		if (td->Type() == Types::Pointer && 
+		if (td->Type() == Types::Pointer &&
 		    (td->SubType()->Type() == Types::Function ||
 		     td->SubType()->Type() == Types::Procedure))
 		{
@@ -1641,7 +1640,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 	    {
 		arg = ParseExpression();
 	    }
-	    if (!arg) 
+	    if (!arg)
 	    {
 		return false;
 	    }
@@ -1686,10 +1685,10 @@ ExprAST* Parser::ParseIdentifierExpr()
     if (def)
     {
 	// If type is not function, not procedure, or the next thing is an assignment
-	// then we want a "variable" with this name. 
+	// then we want a "variable" with this name.
 	Types::TypeDecl* type = def->Type();
 	assert(type && "Expect type here...");
-	 
+
 	if (!IsCall(type))
 	{
 	    VariableExprAST* expr;
@@ -1701,7 +1700,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    {
 		expr = new VariableExprAST(CurrentToken().Loc(), idName, type);
 		// Only add defined variables.
-		// Ignore result - we may be adding the same variable 
+		// Ignore result - we may be adding the same variable
 		// several times, but we don't really care.
 		usedVariables.Add(idName, def);
 	    }
@@ -1845,7 +1844,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	NextToken();
 	if (CurrentToken().GetToken() == Token::Colon)
 	{
-	    NextToken(); 
+	    NextToken();
 	    if (Types::TypeDecl* type = ParseType(""))
 	    {
 		for(auto n : names)
@@ -1888,7 +1887,7 @@ VarDeclAST* Parser::ParseVarDecls()
 PrototypeAST* Parser::ParsePrototype()
 {
     assert(CurrentToken().GetToken() == Token::Procedure ||
-	   CurrentToken().GetToken() == Token::Function && 
+	   CurrentToken().GetToken() == Token::Function &&
 	   "Expected function or procedure token");
 
     bool isFunction = CurrentToken().GetToken() == Token::Function;
@@ -2035,7 +2034,7 @@ PrototypeAST* Parser::ParsePrototype()
     {
 	resultType = Types::GetVoidType();
     }
-    
+
     if (!Expect(Token::Semicolon, true))
     {
 	return 0;
@@ -2112,7 +2111,7 @@ BlockAST* Parser::ParseBlock()
 FunctionAST* Parser::ParseDefinition(int level)
 {
     Location loc = CurrentToken().Loc();
-    Types::SimpleTypes functionType = 
+    Types::SimpleTypes functionType =
 	CurrentToken().GetToken() == Token::Function?Types::Function:Types::Procedure;
     PrototypeAST* proto = ParsePrototype();
     if (!proto)
@@ -2146,7 +2145,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
-	    return ErrorF(std::string("Duplicate name ") + v.Name()); 
+	    return ErrorF(std::string("Duplicate name ") + v.Name());
 	}
     }
     if (proto->HasSelf())
@@ -2201,7 +2200,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 	    break;
 	}
-	   
+
 	case Token::Begin:
 	{
 	    if (body)
@@ -2415,7 +2414,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    prevTT = CurrentToken().GetToken();
 	    isFirst = false;
 	}
-	else if (CurrentToken().GetToken() != Token::Otherwise && 
+	else if (CurrentToken().GetToken() != Token::Otherwise &&
 		 prevTT != CurrentToken().GetToken())
 	{
 	    return Error("Type of case labels must not change type");
@@ -2426,7 +2425,7 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Integer:
 	    lab.push_back(CurrentToken().GetIntVal());
 	    break;
-	    
+
 	case Token::Identifier:
 	{
 	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
@@ -2885,7 +2884,7 @@ std::vector<ExprAST*> Parser::Parse()
 	case Token::EndOfFile:
 	    // TODO: Is this not an error?
 	    return v;
-	    
+
 	case Token::Semicolon:
 	    NextToken();
 	    break;
@@ -2900,7 +2899,7 @@ std::vector<ExprAST*> Parser::Parse()
 	    break;
 
 	case Token::Type:
-	    ParseTypeDef();   
+	    ParseTypeDef();
 	    // Generates no AST, so need to "continue" here
 	    continue;
 
@@ -2908,14 +2907,15 @@ std::vector<ExprAST*> Parser::Parse()
 	    ParseConstDef();
 	    // No AST from constdef, so continue.
 	    continue;
-	    
+
 	case Token::Begin:
 	{
 	    Location loc = CurrentToken().Loc();
 	    BlockAST* body = ParseBlock();
 	    // Parse the "main" of the program - we call that
 	    // "__PascalMain" so we can call it from C-code.
-	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>());
+	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>(),
+						   Types::GetVoidType(), 0);
 	    FunctionAST* fun = new FunctionAST(loc, proto, 0, body);
 	    curAst = fun;
 	    if (!Expect(Token::Period, true))

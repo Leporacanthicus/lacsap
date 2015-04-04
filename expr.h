@@ -398,14 +398,10 @@ class PrototypeAST : public ExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar)
-	: ExprAST(w, EK_Prototype, Types::GetVoidType()), name(nm), args(ar), function(0), 
-	  isForward(false), hasSelf(false)
-    { }
     PrototypeAST(const Location& w,
 		 const std::string& nm,
 		 const std::vector<VarDef>& ar,
-		 Types::TypeDecl* resTy)
+		 Types::TypeDecl* resTy = Types::GetVoidType())
 	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), function(0), isForward(false),
 	  hasSelf(false)
     {

@@ -1033,10 +1033,10 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    {
 		return false;
 	    }
-	}
-	if (!ExpectSemicolonOrEnd())
-	{
-	    return false;
+	    if (!ExpectSemicolonOrEnd())
+	    {
+		return false;
+	    }
 	}
     } while(CurrentToken().GetToken() != Token::End);
     if (!Expect(Token::End, true))

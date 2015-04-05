@@ -284,6 +284,8 @@ struct
     { "Basic", "minmax",        "minmax.pas",      "< minmax.in" },
     { "Basic", "sign",          "sign.pas",        "< sign.in" },
     { "Basic", "course",        "course.pas",      "< course.in" },
+    { "Basic", "loop",          "loop.pas",        "" },
+    { "Basic", "obj",           "obj.pas",         "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

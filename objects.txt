@@ -8,5 +8,8 @@ Member functions
   Check prototype against object prototype (and whilst at it, for forward decls)
 
 Inheritance
-Constructors, Destructors.
-Inherited keyword.
+  Constructors, Destructors.
+  Inherited keyword.
+
+Improvements
+  Move shortname calculation into a function.

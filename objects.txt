@@ -2,9 +2,11 @@ Random order Todo List for "objects":
 
 Member functions
   Basic parsing/calling. - Done.
-  Add extra "this" argument.
+  Add extra "self" argument - Done
   Virtual functions.
-  Static functions.
+  Static functions - Done.
+  Check prototype against object prototype (and whilst at it, for forward decls)
 
 Inheritance
 Constructors, Destructors.
+Inherited keyword.

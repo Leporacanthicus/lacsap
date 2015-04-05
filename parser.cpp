@@ -1488,6 +1488,8 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 
 		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
 		std::vector<ExprAST* > args;
+		NextToken();
+
 		if (!ParseArgs(funcDef, args))
 		{
 		    return 0;
@@ -1495,7 +1497,6 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 
 		if (ExprAST* call = MakeCallExpr(expr, def, funcName, args))
 		{
-		    NextToken();
 		    return call;
 		}
 		return 0;
@@ -2124,13 +2125,18 @@ FunctionAST* Parser::ParseDefinition(int level)
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
+    std::string shortname;
     if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
     {
+	std::string::size_type pos;
+	if ((pos = name.find_last_of('$')) != std::string::npos)
+	{
+	    shortname = name.substr(pos + 1);
+	}
 	if (!nameStack.Add(name, nmObj))
 	{
 	    return ErrorF(std::string("Name '") + name + "' already exists...");
 	}
-	
 	if (CurrentToken().GetToken() == Token::Forward)
 	{
 	    NextToken();
@@ -2141,17 +2147,27 @@ FunctionAST* Parser::ParseDefinition(int level)
 
     NameWrapper wrapper(nameStack);
     NameWrapper usedWrapper(usedVariables);
+    if (proto->HasSelf())
+    {
+	VariableExprAST* v = new VariableExprAST(Location("", 0, 0), "self", proto->BaseObj());
+	ExpandWithNames(proto->BaseObj(), v, 0);
+    }
+
+    /* For member functions: Add short name inside the wrapper */
+    if (shortname != "")
+    {
+	if (!nameStack.Add(shortname, nmObj))
+	{
+	    assert(0 && "Duplicate internal name?");
+	}
+    }
+
     for(auto v : proto->Args())
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
 	    return ErrorF(std::string("Duplicate name ") + v.Name());
 	}
-    }
-    if (proto->HasSelf())
-    {
-	VariableExprAST* v = new VariableExprAST(Location("", 0, 0), "self", proto->BaseObj());
-	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
     VarDeclAST*               varDecls = 0;

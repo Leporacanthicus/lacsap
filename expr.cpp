@@ -1502,8 +1502,14 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
     if (type->Type() != Types::Void)
     {
-	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(name, type));
-	if(!variables.Add(name, a))
+	std::string shortname = name;
+	std::string::size_type pos = name.find_last_of('$');
+	if (pos != std::string::npos)
+	{
+	    shortname = shortname.substr(pos+1);
+	}
+	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(shortname, type));
+	if(!variables.Add(shortname, a))
 	{
 	    ErrorF(std::string("Duplicate function result name ") + name);
 	}
@@ -1623,7 +1629,13 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
     else
     {
-	llvm::Value* v = variables.Find(proto->Name());
+	std::string shortname = proto->Name();
+	std::string::size_type pos = shortname.find_last_of('$');
+	if (pos != std::string::npos)
+	{
+	    shortname = shortname.substr(pos+1);
+	}
+	llvm::Value* v = variables.Find(shortname);
 	assert(v);
 	llvm::Value* retVal = builder.CreateLoad(v);
 	builder.CreateRet(retVal);
@@ -1782,7 +1794,7 @@ llvm::Value* AssignExprAST::CodeGen()
     llvm::Value* dest = lhsv->Address();
     if (!dest)
     {
-	return ErrorV(std::string("Unknown variable name ") + lhsv->Name());
+	return ErrorV(std::string("Unknown variable name '") + lhsv->Name() + "'");
     }
 
     // If rhs is a simple variable, and "large", then use memcpy on it!

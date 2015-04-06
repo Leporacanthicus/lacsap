@@ -375,7 +375,8 @@ public:
     void accept(Visitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
 private:
     llvm::Value* AssignStr();
-    ExprAST* lhs, *rhs;
+    ExprAST* lhs;
+    ExprAST* rhs;
 };
 
 class VarDeclAST : public ExprAST
@@ -436,16 +437,7 @@ private:
 class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b)
-	: ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b)
-    {
-	assert((proto->IsForward() || body) && "Function should have body");
-	if (!proto->IsForward())
-	{
-	    proto->SetFunction(this);
-	}
-	parent = 0;
-    }
+    FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b);
     void DoDump(std::ostream& out) const override;
     llvm::Function* CodeGen() override;
     llvm::Function* CodeGen(const std::string& namePrefix);

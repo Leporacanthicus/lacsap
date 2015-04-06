@@ -172,10 +172,25 @@ bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
     return !(CurrentToken().GetToken() != Token::End && !Expect(Token::Semicolon, true, file, line));
 }
 
+// Skip token, and check that it's matching what we expect.
+// This is used when we (should) have already checked the token, so asserting is fine.
+void Parser::AssertToken(Token::TokenType type, const char *file, int line)
+{
+    if (CurrentToken().GetToken() != type)
+    {
+	Token t(type, Location("", 0, 0));
+	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
+	      "'.", file, line);
+	assert(0 && "Unexpected token");
+    }
+    NextToken(file, line);
+}
+
 #define NextToken() NextToken(__FILE__, __LINE__)
 #define PeekToken() PeekToken(__FILE__, __LINE__)
 #define ExpectSemicolonOrEnd() ExpectSemicolonOrEnd(__FILE__, __LINE__)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
+#define AssertToken(t) AssertToken(t, __FILE__, __LINE__)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 {
@@ -200,10 +215,7 @@ ExprAST* Parser::ParseNilExpr()
 
 ExprAST* Parser::ParseSizeOfExpr()
 {
-    if (!Expect(Token::SizeOf, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::SizeOf);
     if (!Expect(Token::LeftParen, true))
     {
 	return 0;
@@ -617,10 +629,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 
 void Parser::ParseConstDef()
 {
-    if (!Expect(Token::Const, true))
-    {
-	return;
-    }
+    AssertToken(Token::Const);
     do
     {
 	if (!Expect(Token::Identifier, false))
@@ -653,10 +662,7 @@ void Parser::ParseConstDef()
 void Parser::ParseTypeDef()
 {
     std::vector<Types::PointerDecl*> incomplete;
-    if (!Expect(Token::Type, true))
-    {
-	return;
-    }
+    AssertToken(Token::Type);
     do
     {
 	if (!Expect(Token::Identifier, false))
@@ -707,10 +713,7 @@ void Parser::ParseTypeDef()
 
 Types::EnumDecl* Parser::ParseEnumDef()
 {
-    if (!Expect(Token::LeftParen, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::LeftParen);
     std::vector<std::string> values;
     while(CurrentToken().GetToken() != Token::RightParen)
     {
@@ -728,10 +731,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    }
 	}
     }
-    if (!Expect(Token::RightParen, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::RightParen);
     return new Types::EnumDecl(values);
 }
 
@@ -763,10 +763,7 @@ Types::PointerDecl* Parser::ParsePointerType()
 
 Types::ArrayDecl* Parser::ParseArrayDecl()
 {
-    if (!Expect(Token::Array, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Array);
     if (!Expect(Token::LeftSquare, true))
     {
 	return 0;
@@ -889,9 +886,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		return 0;
 	    }
 	} while(CurrentToken().GetToken() != Token::RightParen);
-	if (!Expect(Token::RightParen, true))
-	{
-	}
+	AssertToken(Token::RightParen);
 	if (!ExpectSemicolonOrEnd())
 	{
 	    return 0;
@@ -949,7 +944,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	    Types::TypeDecl* type;
 	    variant =  ParseVariantDecl(type);
-	    if(!variant)
+	    if (!variant)
 	    {
 		return false;
 	    }
@@ -1038,19 +1033,13 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	}
     } while(CurrentToken().GetToken() != Token::End);
-    if (!Expect(Token::End, true))
-    {
-	return false;
-    }
+    AssertToken(Token::End);
     return true;
 }
 
 Types::RecordDecl* Parser::ParseRecordDecl()
 {
-    if (!Expect(Token::Record, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Record);
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
     if (!ParseFields(fields, variant, Token::Record))
@@ -1067,11 +1056,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 
 Types::FileDecl* Parser::ParseFileDecl()
 {
-    if (!Expect(Token::File, true))
-    {
-	return 0;
-    }
-
+    AssertToken(Token::File);
     if (!Expect(Token::Of, true))
     {
 	return 0;
@@ -1084,10 +1069,7 @@ Types::FileDecl* Parser::ParseFileDecl()
 
 Types::SetDecl* Parser::ParseSetDecl()
 {
-    if (!Expect(Token::Set, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Set);
     if (!Expect(Token::Of, true))
     {
 	return 0;
@@ -1104,10 +1086,7 @@ Types::SetDecl* Parser::ParseSetDecl()
 
 Types::StringDecl* Parser::ParseStringDecl()
 {
-    if (!Expect(Token::String, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::String);
 
     unsigned size = 255;
 
@@ -1136,10 +1115,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 
 Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 {
-    if (!Expect(Token::Object, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Object);
     Types::ObjectDecl* base = 0;
     // Find derived class, if available.
     if (CurrentToken().GetToken() == Token::LeftParen)
@@ -1338,7 +1314,6 @@ ExprAST* Parser::ParseUnaryOp()
 	   "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
-
     NextToken();
 
     if (ExprAST* rhs = ParsePrimary())
@@ -1452,10 +1427,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
 
 ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    if(!Expect(Token::Period, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Period);
     if (!Expect(Token::Identifier, false))
     {
 	return 0;
@@ -1563,10 +1535,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    if (!Expect(Token::Uparrow, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Uparrow);
     if (type->Type() == Types::File)
     {
 	type = type->SubType();
@@ -1585,7 +1554,7 @@ bool Parser::IsCall(Types::TypeDecl* type)
     {
 	return true;
     }
-    if ((ty == Types::Procedure || ty == Types::Function) &&
+    if ((ty == Types::Procedure || ty == Types::Function || ty == Types::MemberFunc) &&
 	CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -1675,13 +1644,9 @@ ExprAST* Parser::ParseIdentifierExpr()
 	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
     bool isBuiltin = false;
-    if (!def)
+    if (!def && !(isBuiltin = Builtin::IsBuiltin(idName)))
     {
-	isBuiltin = Builtin::IsBuiltin(idName);
-	if (!isBuiltin)
-	{
-	    return Error(std::string("Undefined name '") + idName + "'");
-	}
+	return Error(std::string("Undefined name '") + idName + "'");
     }
     if (def)
     {
@@ -1750,7 +1715,6 @@ ExprAST* Parser::ParseIdentifierExpr()
     {
 	return 0;
     }
-
     if (ExprAST* expr = MakeCallExpr(NULL, def, idName, args))
     {
 	return expr;
@@ -1768,23 +1732,19 @@ ExprAST* Parser::ParseIdentifierExpr()
 
 ExprAST* Parser::ParseParenExpr()
 {
-    NextToken();
-    if (ExprAST* v = ParseExpression())
+    AssertToken(Token::LeftParen);
+    ExprAST* v;
+    if ((v = ParseExpression()) && Expect(Token::RightParen, true))
     {
-	if (Expect(Token::RightParen, true))
-	{
-	    return v;
-	}
+	return v;
     }
     return 0;
 }
 
 ExprAST* Parser::ParseSetExpr()
 {
-    if (!Expect(Token::LeftSquare, true))
-    {
-	return 0;
-    }
+    TRACE();
+    AssertToken(Token::LeftSquare);
 
     Location loc = CurrentToken().Loc();
     std::vector<ExprAST*> values;
@@ -1827,10 +1787,8 @@ ExprAST* Parser::ParseSetExpr()
 
 VarDeclAST* Parser::ParseVarDecls()
 {
-    if (!Expect(Token::Var, true))
-    {
-	return 0;
-    }
+    TRACE();
+    AssertToken(Token::Var);
 
     std::vector<VarDef> varList;
     std::vector<std::string> names;
@@ -2009,11 +1967,7 @@ PrototypeAST* Parser::ParsePrototype()
 		}
 	    }
 	}
-	// Eat ')' at end of argument list.
-	if (!Expect(Token::RightParen, true))
-	{
-	    return 0;
-	}
+	AssertToken(Token::RightParen);
     }
 
     PrototypeAST* proto = 0;
@@ -2079,10 +2033,8 @@ ExprAST* Parser::ParseStatement()
 
 BlockAST* Parser::ParseBlock()
 {
-    if (!Expect(Token::Begin, true))
-    {
-	return 0;
-    }
+    TRACE();
+    AssertToken(Token::Begin);
 
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
@@ -2102,10 +2054,7 @@ BlockAST* Parser::ParseBlock()
 	    return 0;
 	}
     }
-    if (!Expect(Token::End, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::End);
     return new BlockAST(loc, v);
 }
 
@@ -2121,7 +2070,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     }
     std::string      name = proto->Name();
     Types::TypeDecl* ty = new Types::FunctionDecl(functionType, proto->Type());
-    NamedObject*     nmObj = new FuncDef(name, ty, proto);
+    NamedObject* nmObj = new FuncDef(name, ty, proto);
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -2156,10 +2105,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     /* For member functions: Add short name inside the wrapper */
     if (shortname != "")
     {
-	if (!nameStack.Add(shortname, nmObj))
-	{
-	    assert(0 && "Duplicate internal name?");
-	}
+	nameStack.Add(shortname, nmObj);
     }
 
     for(auto v : proto->Args())
@@ -2274,11 +2220,9 @@ ExprAST* Parser::ParseStmtOrBlock()
 
 ExprAST* Parser::ParseIfExpr()
 {
+    TRACE();
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::If, true))
-    {
-	assert(0 && "Huh? Expected if");
-    }
+    AssertToken(Token::If);
     ExprAST* cond = ParseExpression();
     if (!cond || !Expect(Token::Then, true))
     {
@@ -2298,12 +2242,10 @@ ExprAST* Parser::ParseIfExpr()
     ExprAST* elseExpr = 0;
     if (CurrentToken().GetToken() == Token::Else)
     {
-	if (Expect(Token::Else, true))
+	AssertToken(Token::Else);
+	if (!(elseExpr = ParseStmtOrBlock()))
 	{
-	    if (!(elseExpr = ParseStmtOrBlock()))
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
     }
     return new IfExprAST(loc, cond, then, elseExpr);
@@ -2312,10 +2254,7 @@ ExprAST* Parser::ParseIfExpr()
 ExprAST* Parser::ParseForExpr()
 {
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::For, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::For);
     if (CurrentToken().GetToken() != Token::Identifier)
     {
 	return Error("Expected identifier name, got " + CurrentToken().ToString());
@@ -2357,12 +2296,9 @@ ExprAST* Parser::ParseForExpr()
 
 ExprAST* Parser::ParseWhile()
 {
+    TRACE();
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::While, true))
-    {
-	return 0;
-    }
-
+    AssertToken(Token::While);
     ExprAST* cond = ParseExpression();
     if (!cond || !Expect(Token::Do, true))
     {
@@ -2375,11 +2311,9 @@ ExprAST* Parser::ParseWhile()
 
 ExprAST* Parser::ParseRepeat()
 {
+    TRACE();
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::Repeat, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Repeat);
     std::vector<ExprAST*> v;
     Location loc2 = CurrentToken().Loc();
     while(CurrentToken().GetToken() != Token::Until)
@@ -2397,21 +2331,16 @@ ExprAST* Parser::ParseRepeat()
 	    return 0;
 	}
     }
-    if (!Expect(Token::Until, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Until);
     ExprAST* cond = ParseExpression();
     return new RepeatExprAST(loc, cond, new BlockAST(loc2, v));
 }
 
 ExprAST* Parser::ParseCaseExpr()
 {
+    TRACE();
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::Case, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Case);
     ExprAST* expr = ParseExpression();
     if (!Expect(Token::Of, true))
     {
@@ -2548,10 +2477,7 @@ ExprAST* Parser::ParseWithBlock()
 {
     TRACE();
     Location loc = CurrentToken().Loc();
-    if (!Expect(Token::With, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::With);
     std::vector<VariableExprAST*> vars;
     do
     {
@@ -2572,11 +2498,7 @@ ExprAST* Parser::ParseWithBlock()
 	    return Error("With statement must contain only variable expression");
 	}
     } while(CurrentToken().GetToken() != Token::Do);
-    if (!Expect(Token::Do, true))
-    {
-	return 0;
-    }
-
+    AssertToken(Token::Do);
     NameWrapper wrapper(nameStack);
     for(auto v : vars)
     {

@@ -1538,6 +1538,16 @@ void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
     args.swap(newArgs);
 }
 
+FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b)
+    : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0)
+{
+    assert((proto->IsForward() || body) && "Function should have body");
+    if (!proto->IsForward())
+    {
+	proto->SetFunction(this);
+    }
+}
+
 void FunctionAST::DoDump(std::ostream& out) const
 {
     out << "Function: " << std::endl;

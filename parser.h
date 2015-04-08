@@ -33,7 +33,6 @@ private:
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseUnaryOp();
     ExprAST* ParseSetExpr();
-    ExprAST* ParseNilExpr();
     ExprAST* ParseSizeOfExpr();
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);

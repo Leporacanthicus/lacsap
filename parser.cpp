@@ -204,15 +204,6 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     return 0;
 }
 
-ExprAST* Parser::ParseNilExpr()
-{
-    if (Expect(Token::Nil, true))
-    {
-	return new NilExprAST(CurrentToken().Loc());
-    }
-    return 0;
-}
-
 ExprAST* Parser::ParseSizeOfExpr()
 {
     AssertToken(Token::SizeOf);
@@ -226,7 +217,7 @@ ExprAST* Parser::ParseSizeOfExpr()
 	if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
 	{
 	    expr = new SizeOfExprAST(CurrentToken().Loc(), ty);
-	    NextToken();
+	    AssertToken(Token::Identifier);
 	}
     }
     if (!expr)
@@ -292,7 +283,7 @@ Types::TypeDecl* Parser::ParseSimpleType()
     }
     if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
     {
-	NextToken();
+	AssertToken(Token::Identifier);
 	return ty;
     }
     return ErrorT("Identifier does not name a type");
@@ -401,7 +392,7 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 	    {
 		return ErrorR("Type used as index specification should be integral type");
 	    }
-	    NextToken();
+	    AssertToken(Token::Identifier);
 	    return new Types::RangeDecl(type->GetRange(), type->Type());
 	}
     }
@@ -501,7 +492,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    break;
 
 	case Token::LeftParen:
-	    NextToken();
+	    AssertToken(Token::LeftParen);
 	    cd = ParseConstExpr();
 	    // We don't eat the right paren here, it gets eaten later.
 	    if (!Expect(Token::RightParen, false))
@@ -637,7 +628,7 @@ void Parser::ParseConstDef()
 	    return;
 	}
 	std::string nm = CurrentToken().GetIdentName();
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (!Expect(Token::Equal, true))
 	{
 	    return;
@@ -670,7 +661,7 @@ void Parser::ParseTypeDef()
 	    return;
 	}
 	std::string nm = CurrentToken().GetIdentName();
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (!Expect(Token::Equal, true))
 	{
 	    return;
@@ -722,7 +713,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    return 0;
 	}
 	values.push_back(CurrentToken().GetIdentName());
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (CurrentToken().GetToken() != Token::RightParen)
 	{
 	    if (!Expect(Token::Comma, true))
@@ -737,17 +728,14 @@ Types::EnumDecl* Parser::ParseEnumDef()
 
 Types::PointerDecl* Parser::ParsePointerType()
 {
-    if (!Expect(Token::Uparrow, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Uparrow);
     // If the name is an "identifier" then it's a name of a not yet declared type.
     // We need to forward declare it, and backpatch later.
     if (CurrentToken().GetToken() == Token::Identifier)
     {
 	std::string name = CurrentToken().GetIdentName();
 	// Is it a known type?
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
 	    return new Types::PointerDecl(ty);	
@@ -783,19 +771,19 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	}
 	if (CurrentToken().GetToken() == Token::Comma)
 	{
-	    NextToken();
+	    AssertToken(Token::Comma);
 	}
     }
-    if (!Expect(Token::RightSquare, true) || !Expect(Token::Of, true))
+    AssertToken(Token::RightSquare);
+    if (!Expect(Token::Of, true))
     {
 	return 0;
     }
-    Types::TypeDecl* ty = ParseType("");
-    if (!ty)
+    if (Types::TypeDecl* ty = ParseType(""))
     {
-	return 0;
+	return new Types::ArrayDecl(ty, rv);
     }
-    return new Types::ArrayDecl(ty, rv);
+    return 0;
 }
 
 Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
@@ -826,10 +814,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		}
 	    }
 	} while (CurrentToken().GetToken() != Token::Colon);
-	if (!Expect(Token::Colon, true))
-	{
-	    return 0;
-	}
+	AssertToken(Token::Colon);
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
@@ -846,19 +831,13 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		    return 0;
 		}
 		names.push_back(CurrentToken().GetIdentName());
-		NextToken();
-		if (CurrentToken().GetToken() != Token::Colon)
+		AssertToken(Token::Identifier);
+		if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
 		{
-		    if (!Expect(Token::Comma, true))
-		    {
 			return 0;
-		    }
 		}
 	    } while(CurrentToken().GetToken() != Token::Colon);
-	    if (!Expect(Token::Colon, true))
-	    {
-		return 0;
-	    }
+	    AssertToken(Token::Colon);
 	    if (Types::TypeDecl* ty = ParseType(""))
 	    {
 		for(auto n : names)
@@ -871,14 +850,13 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 			    return 0;
 			}
 		    }
-		    fields.push_back(new Types::FieldDecl(n, ty));
+		    // Variants can't be static, can they?
+		    fields.push_back(new Types::FieldDecl(n, ty, false));
 		}
-		if (CurrentToken().GetToken() != Token::RightParen)
+		if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Semicolon, true))
 		{
-		    if (!Expect(Token::Semicolon, true))
-		    {
-			return 0;
-		    }
+		    TRACE();
+		    return 0;
 		}
 	    }
 	    else
@@ -897,7 +875,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	}
 	else
 	{
-	    variants.push_back(new Types::FieldDecl("", new Types::RecordDecl(fields, 0)));
+	    variants.push_back(new Types::FieldDecl("", new Types::RecordDecl(fields, 0), false));
 	}
     } while (CurrentToken().GetToken() != Token::End);
     return new Types::VariantDecl(variants);
@@ -922,11 +900,8 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		PeekToken().GetToken() == Token::Colon)
 	    {
 		marker = CurrentToken().GetIdentName();
-		NextToken();
-		if (!Expect(Token::Colon, true))
-		{
-		    return false;
-		}
+		AssertToken(Token::Identifier);
+		AssertToken(Token::Colon);
 	    }
 	    markerTy = ParseType("");
 	    if (!markerTy->isIntegral())
@@ -936,15 +911,14 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	    if (marker != "")
 	    {
-		fields.push_back(new Types::FieldDecl(marker, markerTy));
+		fields.push_back(new Types::FieldDecl(marker, markerTy, false));
 	    }
 	    if (!Expect(Token::Of, true))
 	    {
 		return false;
 	    }
 	    Types::TypeDecl* type;
-	    variant =  ParseVariantDecl(type);
-	    if (!variant)
+	    if (!(variant =  ParseVariantDecl(type)))
 	    {
 		return false;
 	    }
@@ -979,57 +953,60 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		}
 	    }
 	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p, f);
-	    fields.push_back(new Types::FieldDecl(p->Name(), m));
+	    fields.push_back(new Types::FieldDecl(p->Name(), m, false));
 	}
 	else
 	{
-	    do
+	    /* Cope with empty objects - but not empty Record! */
+	    if (!isObject || CurrentToken().GetToken() != Token::End)
 	    {
-		if (!Expect(Token::Identifier, false))
+		do
 		{
-		    return false;
-		}
-		names.push_back(CurrentToken().GetIdentName());
-		NextToken();
-		if (CurrentToken().GetToken() != Token::Colon)
-		{
-		    if (!Expect(Token::Comma, true))
+		    if (!Expect(Token::Identifier, false))
 		    {
 			return false;
 		    }
-		}
-	    } while(CurrentToken().GetToken() != Token::Colon);
-	    if (!Expect(Token::Colon, true))
-	    {
-		return false;
-	    }
-	    if (names.size() == 0)
-	    {
-		assert(0 && "Should have at least one name declared?");
-		return false;
-	    }
-	    if (Types::TypeDecl* ty = ParseType(""))
-	    {
-		for(auto n : names)
-		{
-		    for(auto f : fields)
+		    names.push_back(CurrentToken().GetIdentName());
+		    AssertToken(Token::Identifier);
+		    if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
 		    {
-			if (n == f->Name())
-			{
-			    Error(std::string("Duplicate field name '") + n + "' in record");
-			    return false;
-			}
+			return false;
 		    }
-		    fields.push_back(new Types::FieldDecl(n, ty));
+		} while(CurrentToken().GetToken() != Token::Colon);
+		AssertToken(Token::Colon);
+		assert(names.size() != 0 && "Should have some names here...");
+		if (Types::TypeDecl* ty = ParseType(""))
+		{
+		    for(auto n : names)
+		    {
+			for(auto f : fields)
+			{
+			    if (n == f->Name())
+			    {
+				Error(std::string("Duplicate field name '") + n + "' in record");
+				return false;
+			    }
+			}
+			bool isStatic = false;
+			if (isObject &&
+			    CurrentToken().GetToken() == Token::Semicolon &&
+			    PeekToken().GetToken() == Token::Static)
+			{
+			    isStatic = true;
+			    AssertToken(Token::Semicolon);
+			    AssertToken(Token::Static);
+			}
+			fields.push_back(new Types::FieldDecl(n, ty, isStatic));
+		    }
 		}
-	    }
-	    else
-	    {
-		return false;
-	    }
-	    if (!ExpectSemicolonOrEnd())
-	    {
-		return false;
+		else
+		{
+		    return false;
+		}
+		if (!ExpectSemicolonOrEnd())
+		{
+		    return false;
+		}
 	    }
 	}
     } while(CurrentToken().GetToken() != Token::End);
@@ -1062,9 +1039,11 @@ Types::FileDecl* Parser::ParseFileDecl()
 	return 0;
     }
 
-    Types::TypeDecl* type = ParseType("");
-
-    return new Types::FileDecl(type);
+    if (Types::TypeDecl* type = ParseType(""))
+    {
+	return new Types::FileDecl(type);
+    }
+    return 0;
 }
 
 Types::SetDecl* Parser::ParseSetDecl()
@@ -1120,7 +1099,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
     // Find derived class, if available.
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
-	NextToken();
+	AssertToken(Token::LeftParen);
 	if (!Expect(Token::Identifier, false))
 	{
 	    return 0;
@@ -1131,7 +1110,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	    Error("Expected object as base");
 	    return 0;
 	}
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (!Expect(Token::RightParen, true))
 	{
 	    return 0;
@@ -1330,12 +1309,11 @@ ExprAST* Parser::ParseUnaryOp()
 
 ExprAST* Parser::ParseExpression()
 {
-    ExprAST* lhs = ParsePrimary();
-    if (!lhs)
+    if (ExprAST* lhs = ParsePrimary())
     {
-	return 0;
+	return ParseBinOpRHS(0, lhs);
     }
-    return ParseBinOpRHS(0, lhs);
+    return 0;
 }
 
 VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
@@ -1362,18 +1340,12 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    type = adecl->SubType();
 	    adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
 	}
-	if (CurrentToken().GetToken() != Token::RightSquare)
+	if (CurrentToken().GetToken() != Token::RightSquare && (!Expect(Token::Comma, true) || !adecl))
 	{
-	    if (!Expect(Token::Comma, true) || !adecl)
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
     }
-    if (!Expect(Token::RightSquare, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::RightSquare);
     if (indices.size())
     {
 	expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
@@ -1592,10 +1564,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
 	// Get past the '(' and fetch the next one.
-	if (!Expect(Token::LeftParen, true))
-	{
-	    return false;
-	}
+	AssertToken(Token::LeftParen);
 	unsigned argNo = 0;
 	while (CurrentToken().GetToken() != Token::RightParen)
 	{
@@ -1640,7 +1609,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 	    args.push_back(arg);
 	    if (CurrentToken().GetToken() == Token::Comma)
 	    {
-		NextToken();
+		AssertToken(Token::Comma);
 	    }
 	    else if (!Expect(Token::RightParen, false))
 	    {
@@ -1648,7 +1617,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 	    }
 	    argNo++;
 	}
-	NextToken();
+	AssertToken(Token::RightParen);
     }
     return true;
 }
@@ -1794,18 +1763,12 @@ ExprAST* Parser::ParseSetExpr()
 	    }
 	    values.push_back(v);
 	}
-	if (CurrentToken().GetToken() != Token::RightSquare)
+	if (CurrentToken().GetToken() != Token::RightSquare && !Expect(Token::Comma, true))
 	{
-	    if (!Expect(Token::Comma, true))
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
     } while(CurrentToken().GetToken() != Token::RightSquare);
-    if (!Expect(Token::RightSquare, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::RightSquare);
     Types::TypeDecl* type = NULL;
     if (!values.empty())
     {
@@ -1829,10 +1792,10 @@ VarDeclAST* Parser::ParseVarDecls()
 	    return 0;
 	}
 	names.push_back(CurrentToken().GetIdentName());
-	NextToken();
+	AssertToken(Token::Identifier);
 	if (CurrentToken().GetToken() == Token::Colon)
 	{
-	    NextToken();
+	    AssertToken(Token::Colon);
 	    if (Types::TypeDecl* type = ParseType(""))
 	    {
 		for(auto n : names)
@@ -1889,17 +1852,14 @@ PrototypeAST* Parser::ParsePrototype()
     Types::ObjectDecl* od = 0;
     // Get function name.
     std::string funcName = CurrentToken().GetIdentName();
-    if (!Expect(Token::Identifier, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::Identifier);
 
     Types::MemberFuncDecl* membfunc = 0;
     // Is it a member function?
     // FIXME: Nested classes, should we do this again?
     if (CurrentToken().GetToken() == Token::Period)
     {
-	NextToken();
+	AssertToken(Token::Period);
 	if (Types::TypeDecl* ty = GetTypeDecl(funcName))
 	{
 	    if ((od = llvm::dyn_cast<Types::ObjectDecl>(ty)))
@@ -1909,6 +1869,7 @@ PrototypeAST* Parser::ParsePrototype()
 		    return 0;
 		}
 		std::string m = CurrentToken().GetIdentName();
+		AssertToken(Token::Identifier);
 		std::string objname;
 		int elem;
 
@@ -1922,7 +1883,6 @@ PrototypeAST* Parser::ParsePrototype()
 		    return 0;
 		}
 		funcName = funcName + "$" + m;
-		NextToken();
 	    }
 	}
 	if (!od)
@@ -1935,7 +1895,7 @@ PrototypeAST* Parser::ParsePrototype()
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
 	std::vector<std::string> names;
-	NextToken();
+	AssertToken(Token::LeftParen);
 	bool isRef = false;
 	while(CurrentToken().GetToken() != Token::RightParen)
 	{
@@ -1964,7 +1924,7 @@ PrototypeAST* Parser::ParsePrototype()
 		names.push_back(arg);
 		if (CurrentToken().GetToken() == Token::Colon)
 		{
-		    NextToken();
+		    AssertToken(Token::Colon);
 		    if (Types::TypeDecl* type = ParseType(""))
 		    {
 			for(auto n : names)
@@ -1974,12 +1934,10 @@ PrototypeAST* Parser::ParsePrototype()
 			}
 			isRef = false;
 			names.clear();
-			if (CurrentToken().GetToken() != Token::RightParen)
+			if (CurrentToken().GetToken() != Token::RightParen &&
+			    !Expect(Token::Semicolon, true))
 			{
-			    if (!Expect(Token::Semicolon, true))
-			    {
-				return 0;
-			    }
+			    return 0;
 			}
 		    }
 		    else
@@ -2042,7 +2000,7 @@ ExprAST* Parser::ParseStatement()
 	if (CurrentToken().GetToken() == Token::Assign)
 	{
 	    Location loc = CurrentToken().Loc();
-	    NextToken();
+	    AssertToken(Token::Assign);
 	    ExprAST* rhs = ParseExpression();
 	    if (rhs)
 	    {
@@ -2289,7 +2247,7 @@ ExprAST* Parser::ParseForExpr()
 	return Error("Expected identifier name, got " + CurrentToken().ToString());
     }
     std::string varName = CurrentToken().GetIdentName();
-    NextToken();
+    AssertToken(Token::Identifier);
     if (!Expect(Token::Assign, true))
     {
 	return 0;
@@ -2465,10 +2423,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
 	}
     } while(CurrentToken().GetToken() != Token::End);
-    if (!Expect(Token::End, true))
-    {
-	return 0;
-    }
+    AssertToken(Token::End);
     return new CaseExprAST(loc, expr, labels, otherwise);
 }
 
@@ -2525,12 +2480,9 @@ ExprAST* Parser::ParseWithBlock()
 	if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
 	{
 	    vars.push_back(v);
-	    if (CurrentToken().GetToken() != Token::Do)
+	    if (CurrentToken().GetToken() != Token::Do && !Expect(Token::Comma, true))
 	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return 0;
-		}
+		return 0;
 	    }
 	}
 	else
@@ -2634,18 +2586,12 @@ ExprAST* Parser::ParseWrite()
 		}
 		args.push_back(wa);
 	    }
-	    if (CurrentToken().GetToken() != Token::RightParen)
+	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
 	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return 0;
-		}
+		return 0;
 	    }
 	}
-	if(!Expect(Token::RightParen, true))
-	{
-	    return 0;
-	}
+	AssertToken(Token::RightParen);
 	if (args.size() < 1 && !isWriteln)
 	{
 	    return Error("Expected at least one expression for output in write");
@@ -2709,18 +2655,12 @@ ExprAST* Parser::ParseRead()
 	    {
 		args.push_back(expr);
 	    }
-	    if (CurrentToken().GetToken() != Token::RightParen)
+	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
 	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return 0;
-		}
+		return 0;
 	    }
 	}
-	if(!Expect(Token::RightParen, true))
-	{
-	    return 0;
-	}
+	AssertToken(Token::RightParen);
 	if (args.size() < 1 && !isReadln)
 	{
 	    return Error("Expected at least one variable in read statement");
@@ -2737,7 +2677,8 @@ ExprAST* Parser::ParsePrimary()
     switch(token.GetToken())
     {
     case Token::Nil:
-	return ParseNilExpr();
+	AssertToken(Token::Nil);
+	return new NilExprAST(CurrentToken().Loc());
 
     case Token::Real:
 	return ParseRealExpr(token);
@@ -2812,25 +2753,22 @@ bool Parser::ParseProgram()
 	return false;
     }
     moduleName = CurrentToken().GetIdentName();
-    NextToken();
+    AssertToken(Token::Identifier);
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
-	NextToken();
+	AssertToken(Token::LeftParen);
 	do
 	{
 	    if (!Expect(Token::Identifier, true))
 	    {
 		return false;
 	    }
-	    if (CurrentToken().GetToken() != Token::RightParen)
+	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
 	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return false;
-		}
+		return false;
 	    }
 	} while(CurrentToken().GetToken() != Token::RightParen);
-	NextToken();
+	AssertToken(Token::RightParen);
     }
     return true;
 }

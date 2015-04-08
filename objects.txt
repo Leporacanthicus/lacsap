@@ -7,6 +7,9 @@ Member functions
   Static functions - Done.
   Check prototype against object prototype (and whilst at it, for forward decls)
 
+Member variables
+  Static member variables.
+
 Inheritance
   Constructors, Destructors.
   Inherited keyword.

@@ -381,20 +381,22 @@ namespace Types
     class FieldDecl : public CompoundDecl
     {
     public:
-	FieldDecl(const std::string& nm, TypeDecl* ty)
-	    : CompoundDecl(TK_Field, Field, ty), name(nm) {}
+	FieldDecl(const std::string& nm, TypeDecl* ty, bool stat)
+	    : CompoundDecl(TK_Field, Field, ty), name(nm), isStatic(stat) {}
     public:
 	const std::string& Name() const { return name; }
 	TypeDecl* FieldType() const { return baseType; }
 	void DoDump(std::ostream& out) const override;
 	bool isIntegral() const override { return baseType->isIntegral(); }
 	bool isCompound() const override { return baseType->isCompound(); }
+	bool IsStatic() const { return isStatic; }
 	bool SameAs(const TypeDecl* ty) const override { return baseType->SameAs(ty); }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
 	std::string name;
+	bool isStatic;
     };
 
     class FieldCollection : public TypeDecl

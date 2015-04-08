@@ -21,6 +21,7 @@ public:
 	NK_Enum,
 	NK_Builtin,
 	NK_With,
+	NK_MembFunc,
     };
     NamedObject(NamedKind k, const std::string& nm) 
 	: kind(k), name(nm)
@@ -125,6 +126,22 @@ public:
 private:
     ExprAST*         actual;
     Types::TypeDecl* type;
+};
+
+class MembFuncDef : public NamedObject
+{
+public:
+    MembFuncDef(const std::string& nm, int idx, Types::ObjectDecl* o)
+	: NamedObject(NK_MembFunc, nm), index(idx), obj(o)
+    {
+    }
+    Types::TypeDecl* Type() const override { return obj; }
+    int Index() const { return index; }
+    void dump(std::ostream& out) const override;
+    static bool classof(const NamedObject* e) { return e->getKind() == NK_MembFunc; }
+private:
+    int index;
+    Types::ObjectDecl* obj;
 };
 
 #endif

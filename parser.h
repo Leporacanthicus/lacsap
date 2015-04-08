@@ -108,7 +108,7 @@ private:
     VariableExprAST*  ErrorV(const std::string& msg);
 
     // Helper functions for expression evaluation.
-    bool     IsCall(Types::TypeDecl* type);
+    bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(VariableExprAST* expr,
 			  NamedObject* def,
 			  const std::string& funcName,

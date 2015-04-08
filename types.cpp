@@ -733,7 +733,7 @@ namespace Types
 
     void ObjectDecl::DoDump(std::ostream& out) const
     {
-	out << " ";
+	out << "Object: " << Name();
 	for(auto f : fields)
 	{
 	    f->DoDump(out);

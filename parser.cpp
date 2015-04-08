@@ -1401,10 +1401,23 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
 	if (def->Type()->Type() == Types::Pointer)
 	{
 	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
-	    assert(fp && "Expected function pointer here...");
+	    if (!fp)
+	    {
+		return Error("Expected function pointer");;
+	    }
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
 	}
+    }
+    else if (MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
+    {
+	std::string objname;
+	Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(m->Type());
+	Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
+	proto = mf->Proto();
+	std::string fname = objname + "$" + proto->Name();
+	self = new VariableExprAST(CurrentToken().Loc(), "self", od);
+	expr = new FunctionExprAST(CurrentToken().Loc(), fname, mf->Proto()->Type());
     }
     if (expr)
     {
@@ -1545,14 +1558,24 @@ VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl
     return new PointerExprAST(CurrentToken().Loc(), expr, type);
 }
 
-bool Parser::IsCall(Types::TypeDecl* type)
+bool Parser::IsCall(const NamedObject* def)
 {
+    assert(def && "Expected def to be non-NULL");
+
+    Types::TypeDecl* type = def->Type();
     Types::SimpleTypes ty = type->Type();
     if (ty == Types::Pointer &&
 	(type->SubType()->Type() == Types::Function ||
 	 type->SubType()->Type() == Types::Procedure))
     {
 	return true;
+    }
+    if (ty == Types::Object && llvm::isa<MembFuncDef>(def))
+    {
+	if (CurrentToken().GetToken() != Token::Assign)
+	{
+	    return true;
+	}
     }
     if ((ty == Types::Procedure || ty == Types::Function || ty == Types::MemberFunc) &&
 	CurrentToken().GetToken() != Token::Assign)
@@ -1650,12 +1673,10 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
     if (def)
     {
-	// If type is not function, not procedure, or the next thing is an assignment
-	// then we want a "variable" with this name.
 	Types::TypeDecl* type = def->Type();
 	assert(type && "Expect type here...");
 
-	if (!IsCall(type))
+	if (!IsCall(def))
 	{
 	    VariableExprAST* expr;
 	    if (WithDef *w = llvm::dyn_cast<WithDef>(def))
@@ -1664,6 +1685,13 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    }
 	    else
 	    {
+		if (MembFuncDef* m = llvm::dyn_cast<MembFuncDef>(def))
+		{
+		    Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(type);
+		    std::string objname;
+		    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
+		    type = mf->Proto()->Type();
+		}
 		expr = new VariableExprAST(CurrentToken().Loc(), idName, type);
 		// Only add defined variables.
 		// Ignore result - we may be adding the same variable
@@ -1715,6 +1743,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     {
 	return 0;
     }
+
     if (ExprAST* expr = MakeCallExpr(NULL, def, idName, args))
     {
 	return expr;
@@ -2469,6 +2498,17 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 		e = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    }
 	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->FieldType()));
+	}
+    }
+    if (Types::ObjectDecl* od = const_cast<Types::ObjectDecl*>(llvm::dyn_cast<Types::ObjectDecl>(fields)))
+    {
+	int count = od->MembFuncCount();
+	for(int i = 0; i < count; i++)
+	{
+	    std::string objname;
+	    Types::MemberFuncDecl* mf = const_cast<Types::MemberFuncDecl*>(od->GetMembFunc(i, objname));
+	    std::string name = mf->Proto()->Name();
+	    nameStack.Add(name, new MembFuncDef(name, i, od));
 	}
     }
 }

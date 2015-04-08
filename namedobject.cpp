@@ -42,4 +42,11 @@ void WithDef::dump(std::ostream& out) const
     out << std::endl; 
 }
 
+void MembFuncDef::dump(std::ostream& out) const
+{
+    out << "Membfunc: " << Name() << " Index:" << Index(); 
+    obj->dump(out);
+    out << std::endl;
+}
+
 

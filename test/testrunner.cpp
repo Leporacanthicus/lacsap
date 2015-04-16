@@ -286,6 +286,7 @@ struct
     { "Basic", "course",        "course.pas",      "< course.in" },
     { "Basic", "loop",          "loop.pas",        "" },
     { "Basic", "obj",           "obj.pas",         "" },
+    { "Basic", "Static Fields", "sf.pas",          "" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

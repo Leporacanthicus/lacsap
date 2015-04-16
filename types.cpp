@@ -801,18 +801,22 @@ namespace Types
 	return (baseobj)?baseobj->Element(name):-1;
     }
 
-    const FieldDecl* ObjectDecl::GetElement(unsigned int n) const
+    const FieldDecl* ObjectDecl::GetElement(unsigned int n, std::string& objname) const
     {
 	int b = baseobj?baseobj->FieldCount():0;
 	if (n < (unsigned)b)
 	{
-	    return baseobj->GetElement(n);
+	    return baseobj->GetElement(n, objname);
 	}
-	else
-	{
-	    assert(n < b + fields.size() && "Out of range field");
-	    return fields[n - b];
-	}
+	assert(n < b + fields.size() && "Out of range field");
+	objname = Name();
+	return fields[n - b];
+    }
+
+    const FieldDecl* ObjectDecl::GetElement(unsigned int n) const
+    {
+	std::string objname;
+	return GetElement(n, objname);
     }
 
     int ObjectDecl::FieldCount() const

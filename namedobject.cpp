@@ -4,7 +4,7 @@
 void VarDef::dump(std::ostream& out) const
 {
     out << "Name: " << Name() << " Type: ";
-    type->dump(out);
+    Type()->dump(out);
     std::cerr << std::endl;
 }
 
@@ -18,7 +18,7 @@ void FuncDef::dump(std::ostream& out) const
 void TypeDef::dump(std::ostream& out) const
 {
     out << "Type: " << Name() << " type : ";
-    type->dump(out);
+    Type()->dump(out);
     out << std::endl;
 }
 
@@ -38,14 +38,14 @@ void WithDef::dump(std::ostream& out) const
     out << "With: " << Name() << " Actual: ";
     actual->dump(out);
     out << " Type: ";
-    type->dump(out);
+    Type()->dump(out);
     out << std::endl; 
 }
 
 void MembFuncDef::dump(std::ostream& out) const
 {
     out << "Membfunc: " << Name() << " Index:" << Index(); 
-    obj->dump(out);
+    Type()->dump(out);
     out << std::endl;
 }
 

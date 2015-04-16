@@ -1094,6 +1094,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 
 Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 {
+    Location loc = CurrentToken().Loc();
     AssertToken(Token::Object);
     Types::ObjectDecl* base = 0;
     // Find derived class, if available.
@@ -1125,6 +1126,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
     }
 
     std::vector<Types::MemberFuncDecl*> mf;
+    std::vector<VarDef> vars;
     for(auto f = fields.begin(); f != fields.end(); )
     {
 	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->FieldType()))
@@ -1134,8 +1136,17 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	}
 	else
 	{
+	    if ((*f)->IsStatic())
+	    {
+		std::string vname = name + "$" + (*f)->Name();
+		vars.push_back(VarDef(vname, (*f)->FieldType()));
+	    }
 	    f++;
 	}
+    }
+    if (vars.size())
+    {
+	ast.push_back(new VarDeclAST(loc, vars));
     }
 
     return new Types::ObjectDecl(name, fields, mf, variant, base);
@@ -1429,8 +1440,19 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	typedesc = "object";
 	if (elem >= 0)
 	{
-	    type = od->GetElement(elem)->FieldType();
-	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	    std::string objname;
+	    const Types::FieldDecl* fd = od->GetElement(elem, objname);
+	    
+	    type = fd->FieldType();
+	    if (fd->IsStatic())
+	    {
+		std::string vname = objname + "$" + fd->Name();
+		e = new VariableExprAST(CurrentToken().Loc(), vname, type);
+	    }
+	    else
+	    {
+		e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	    }
 	}
 	else
 	{
@@ -1622,6 +1644,32 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
     return true;
 }
 
+VariableExprAST* Parser::ParseStaticMember(TypeDef* def, Types::TypeDecl*& type)
+{
+    if (!Expect(Token::Period, true) && !Expect(Token::Identifier, false))
+    {
+	return 0;
+    }
+    std::string field = CurrentToken().GetIdentName();
+    AssertToken(Token::Identifier);
+
+    Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(def->Type());
+    int elem;
+    if ((elem = od->Element(field)) >= 0)
+    {
+	std::string objname;
+	const Types::FieldDecl* fd = od->GetElement(elem, objname);
+	if (fd->IsStatic())
+	{
+	    type = fd->FieldType();
+	    std::string name = objname + "$" + field;
+	    return new VariableExprAST(CurrentToken().Loc(), name, type);
+	}
+	return ErrorV(std::string("Expected static variable '") + field + "'");
+    }
+    return ErrorV(std::string("Expected member variabe name '") + field + "'");
+}
+
 ExprAST* Parser::ParseIdentifierExpr()
 {
     TRACE();
@@ -1629,7 +1677,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     Token token = CurrentToken();
     TranslateToken(token) ;
     std::string idName = token.GetIdentName();
-    NextToken();
+    AssertToken(Token::Identifier);
     NamedObject* def = nameStack.Find(idName);
     if (EnumDef *enumDef = llvm::dyn_cast_or_null<EnumDef>(def))
     {
@@ -1647,7 +1695,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 
 	if (!IsCall(def))
 	{
-	    VariableExprAST* expr;
+	    VariableExprAST* expr = 0;
 	    if (WithDef *w = llvm::dyn_cast<WithDef>(def))
 	    {
 		expr = llvm::dyn_cast<VariableExprAST>(w->Actual());
@@ -1661,11 +1709,21 @@ ExprAST* Parser::ParseIdentifierExpr()
 		    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
 		    type = mf->Proto()->Type();
 		}
-		expr = new VariableExprAST(CurrentToken().Loc(), idName, type);
-		// Only add defined variables.
-		// Ignore result - we may be adding the same variable
-		// several times, but we don't really care.
-		usedVariables.Add(idName, def);
+		else if (TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
+		{
+		    if ((ty->Type()->Type() == Types::Object))
+		    {
+			expr = ParseStaticMember(ty, type);
+		    }
+		}
+		if (!expr)
+		{
+		    expr = new VariableExprAST(CurrentToken().Loc(), idName, type);
+		    // Only add defined variables.
+		    // Ignore result - we may be adding the same variable
+		    // several times, but we don't really care.
+		    usedVariables.Add(idName, def);
+		}
 	    }
 	    assert(expr && "Expected expression here");
 	    assert(type && "Type is supposed to be set here");
@@ -2141,9 +2199,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	case Token::Function:
 	case Token::Procedure:
 	{
-	    FunctionAST* fn = ParseDefinition(level+1);
-	    assert(fn && "Expected to get a function definition");
-	    if (fn)
+	    if (FunctionAST* fn = ParseDefinition(level+1))
 	    {
 		subFunctions.push_back(fn);
 	    }
@@ -2776,12 +2832,11 @@ bool Parser::ParseProgram()
 std::vector<ExprAST*> Parser::Parse()
 {
     TIME_TRACE();
-    std::vector<ExprAST*> v;
 
     NextToken();
     if(!ParseProgram())
     {
-	return v;
+	return ast;
     }
 
     VarDef input("input", Types::GetTextType(), false, true);
@@ -2790,7 +2845,7 @@ std::vector<ExprAST*> Parser::Parse()
     nameStack.Add("output", new VarDef(output));
     std::vector<VarDef> varList{input, output};
 
-    v.push_back(new VarDeclAST(Location("", 0, 0), varList));
+    ast.push_back(new VarDeclAST(Location("", 0, 0), varList));
 
     for(;;)
     {
@@ -2798,8 +2853,9 @@ std::vector<ExprAST*> Parser::Parse()
 	switch(CurrentToken().GetToken())
 	{
 	case Token::EndOfFile:
-	    // TODO: Is this not an error?
-	    return v;
+	    Error("Unexpected end of file");
+	    ast.clear();
+	    return ast;
 
 	case Token::Semicolon:
 	    NextToken();
@@ -2833,12 +2889,13 @@ std::vector<ExprAST*> Parser::Parse()
 	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
 	    FunctionAST* fun = new FunctionAST(loc, proto, 0, body);
-	    curAst = fun;
+	    ast.push_back(fun);
 	    if (!Expect(Token::Period, true))
 	    {
-		v.clear();
-		return v;
+		ast.clear();
+		return ast;
 	    }
+	    return ast;
 	    break;
 	}
 
@@ -2849,7 +2906,7 @@ std::vector<ExprAST*> Parser::Parse()
 
 	if (curAst)
 	{
-	    v.push_back(curAst);
+	    ast.push_back(curAst);
 	}
     }
 }

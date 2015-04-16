@@ -5,7 +5,7 @@ Member functions
   Add extra "self" argument - Done
   Virtual functions.
   Static functions - Done.
-  Check prototype against object prototype (and whilst at it, for forward decls)
+  Check prototype against object prototype (and whilst at it, for forward decls)  
 
 Member variables
   Static member variables.

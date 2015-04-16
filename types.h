@@ -490,6 +490,7 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
         int Element(const std::string& name) const override;
 	const FieldDecl* GetElement(unsigned int n) const override;
+	const FieldDecl* GetElement(unsigned int n, std::string& objname) const;
         int FieldCount() const override;
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }

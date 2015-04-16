@@ -38,6 +38,7 @@ private:
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
+    VariableExprAST* ParseStaticMember(TypeDef* def, Types::TypeDecl*& type);
 
     // Control flow functionality
     ExprAST* ParseRepeat();
@@ -129,6 +130,7 @@ private:
     int         errCnt;
     Stack<NamedObject*> nameStack;
     Stack<NamedObject*> usedVariables;
+    std::vector<ExprAST*> ast;
 };
 
 #endif

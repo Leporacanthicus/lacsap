@@ -2166,7 +2166,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     bool                      typeDecls = false;
     bool                      constDecls = false;
     std::vector<FunctionAST*> subFunctions;
-    do
+    for(;;)
     {
 	switch(CurrentToken().GetToken())
 	{
@@ -2208,12 +2208,9 @@ FunctionAST* Parser::ParseDefinition(int level)
 
 	case Token::Begin:
 	{
-	    if (body)
-	    {
-		return ErrorF("Multiple body declarations for function?");
-	    }
-	    body = ParseBlock();
-	    if (!body)
+	    assert(!body && "Multiple body declarations for function?");
+
+	    if (!(body = ParseBlock()))
 	    {
 		return 0;
 	    }
@@ -2240,7 +2237,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    assert(0 && "Unexpected token");
 	    return ErrorF("Unexpected token");
 	}
-    } while(1);
+    }
     return 0;
 }
 
@@ -2674,10 +2671,7 @@ ExprAST* Parser::ParseRead()
 	{
 	    return Error("Read must have arguments.");
 	}
-	else
-	{
-	    file = new VariableExprAST(loc, "input", Types::GetTextType());
-	}
+	file = new VariableExprAST(loc, "input", Types::GetTextType());
     }
     else
     {

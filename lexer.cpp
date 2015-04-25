@@ -154,10 +154,7 @@ Token Lexer::NumberToken()
     {
 	return Token(Token::Real, w, std::stod(num));
     }
-    else
-    {
-	return Token(Token::Integer, w, (long)std::stoul(num, 0, base));
-    }
+    return Token(Token::Integer, w, (long)std::stoul(num, 0, base));
 }
 
 // String or character. 
@@ -168,18 +165,16 @@ Token Lexer::StringToken()
     Location w = Where();
     int quote = CurChar();
     int ch = NextChar();
-    while(true)
+    for(;;)
     {
 	if (ch == quote)
 	{
-	    if (PeekChar() == quote)
-	    {
-		NextChar();
-	    }
-	    else
+	    if (PeekChar() != quote)
 	    {
 		break;
 	    }
+	    NextChar();
+
 	}
 	str += ch;
 	ch = NextChar();

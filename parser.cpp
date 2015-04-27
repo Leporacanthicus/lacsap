@@ -2483,8 +2483,7 @@ ExprAST* Parser::ParseCaseExpr()
 void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
 {
     TRACE();
-    int count = fields->FieldCount();
-    for(int i = 0; i < count; i++)
+    for(int i = 0; i < fields->FieldCount(); i++)
     {
 	const Types::FieldDecl *f = fields->GetElement(i);
 	Types::TypeDecl* ty = f->FieldType();
@@ -2582,10 +2581,7 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return Error("Write must have arguments.");
 	}
-	else
-	{
-	    file = new VariableExprAST(loc, "output", Types::GetTextType());
-	}
+	file = new VariableExprAST(loc, "output", Types::GetTextType());
     }
     else
     {

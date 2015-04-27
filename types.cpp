@@ -849,6 +849,11 @@ namespace Types
 
 	    assert(!llvm::isa<MemberFuncDecl>(f->FieldType()) && "Should not have member functions now");
 
+	    if (f->IsStatic())
+	    {
+		continue;
+	    }
+
 	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
 	    {
 		if (!opaqueType)

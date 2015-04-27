@@ -22,7 +22,7 @@ namespace Types
 	
 	Variant,
 	Record,
-	Object,
+	Class,
 
         Set,
 	SubRange,
@@ -82,7 +82,7 @@ namespace Types
 	    TK_File,
 	    TK_Set,
 	    TK_Variant,
-	    TK_Object,
+	    TK_Class,
 	    TK_MemberFunc,
 	};
 	TypeDecl(TypeKind k, SimpleTypes t)
@@ -418,7 +418,7 @@ namespace Types
 	static bool classof(const TypeDecl* e)
 	{
 	    return e->getKind() == TK_Variant || e->getKind() == TK_Record || 
-		e->getKind() == TK_Object;
+		e->getKind() == TK_Class;
 	}
     protected:
 	std::vector<FieldDecl*> fields;
@@ -480,11 +480,11 @@ namespace Types
 	int flags;
     };
 
-    class ObjectDecl : public FieldCollection
+    class ClassDecl : public FieldCollection
     {
     public:
-	ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
-		   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base);
+	ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
+		  const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base);
 
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
@@ -501,11 +501,11 @@ namespace Types
 	void UpdateMemberFuncs();
 	std::string Name() const { return name; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Object; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
-	ObjectDecl* baseobj;
+	ClassDecl* baseobj;
 	std::string name;
 	VariantDecl* variant;
 	std::vector<MemberFuncDecl*> membfuncs;

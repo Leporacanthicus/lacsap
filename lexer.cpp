@@ -365,6 +365,5 @@ Token Lexer::GetToken()
     }
     // We really shouldn't get here!
     std::cerr << "ch=" << ch << std::endl;
-    assert(0);
     return Token(Token::Unknown, w);
 }

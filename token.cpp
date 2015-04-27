@@ -139,7 +139,7 @@ const TokenEntry tokenTable[] =
     { Token::Of,            true,  -1, "of" },
     { Token::Packed,        true,  -1, "packed" },
     { Token::Record,        true,  -1, "record" },
-    { Token::Object,        true,  -1, "object" },
+    { Token::Class,         true,  -1, "class" },
     { Token::Type,          true,  -1, "type" },
     { Token::File,          true,  -1, "file" },
     { Token::String,        true,  -1, "string" },

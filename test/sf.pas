@@ -1,12 +1,12 @@
 program StaticFieldsForever;
  
 type 
-  Ts1 = object 
+  Ts1 = class 
     f1 : longint;
     f2 : longint; static; 
   end; 
  
-  Ts2 = object (Ts1)
+  Ts2 = class(Ts1)
   end; 
  
 var 

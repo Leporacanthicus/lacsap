@@ -885,7 +885,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
 			 Token::TokenType type)
 {
-    bool isObject = type == Token::Object;
+    bool isClass = type == Token::Class;
     variant = 0;
     do
     {
@@ -928,7 +928,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		return false;
 	    }
 	}
-	else if (isObject &&
+	else if (isClass &&
 		 (CurrentToken().GetToken() == Token::Function ||
 		  CurrentToken().GetToken() == Token::Procedure))
 	{
@@ -957,8 +957,8 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	}
 	else
 	{
-	    /* Cope with empty objects - but not empty Record! */
-	    if (!isObject || CurrentToken().GetToken() != Token::End)
+	    /* Cope with empty classes - but not empty Record! */
+	    if (!isClass || CurrentToken().GetToken() != Token::End)
 	    {
 		do
 		{
@@ -988,7 +988,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			    }
 			}
 			bool isStatic = false;
-			if (isObject &&
+			if (isClass &&
 			    CurrentToken().GetToken() == Token::Semicolon &&
 			    PeekToken().GetToken() == Token::Static)
 			{
@@ -1092,11 +1092,11 @@ Types::StringDecl* Parser::ParseStringDecl()
     return new Types::StringDecl(size);
 }
 
-Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
+Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 {
     Location loc = CurrentToken().Loc();
-    AssertToken(Token::Object);
-    Types::ObjectDecl* base = 0;
+    AssertToken(Token::Class);
+    Types::ClassDecl* base = 0;
     // Find derived class, if available.
     if (CurrentToken().GetToken() == Token::LeftParen)
     {
@@ -1106,9 +1106,9 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	    return 0;
 	}
 	std::string baseName = CurrentToken().GetIdentName();
-	if (!(base = llvm::dyn_cast_or_null<Types::ObjectDecl>(GetTypeDecl(baseName))))
+	if (!(base = llvm::dyn_cast_or_null<Types::ClassDecl>(GetTypeDecl(baseName))))
 	{
-	    Error("Expected object as base");
+	    Error("Expected class as base");
 	    return 0;
 	}
 	AssertToken(Token::Identifier);
@@ -1120,7 +1120,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
-    if (!ParseFields(fields, variant, Token::Object))
+    if (!ParseFields(fields, variant, Token::Class))
     {
 	return 0;
     }
@@ -1149,7 +1149,7 @@ Types::ObjectDecl* Parser::ParseObjectDecl(const std::string &name)
 	ast.push_back(new VarDeclAST(loc, vars));
     }
 
-    return new Types::ObjectDecl(name, fields, mf, variant, base);
+    return new Types::ClassDecl(name, fields, mf, variant, base);
 }
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)
@@ -1191,8 +1191,8 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
     case Token::Record:
 	return ParseRecordDecl();
 
-    case Token::Object:
-	return ParseObjectDecl(name);
+    case Token::Class:
+	return ParseClassDecl(name);
 
     case Token::File:
 	return ParseFileDecl();
@@ -1395,7 +1395,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     else if (MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
     {
 	std::string objname;
-	Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(m->Type());
+	Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(m->Type());
 	Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
 	proto = mf->Proto();
 	std::string fname = objname + "$" + proto->Name();
@@ -1434,7 +1434,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     VariableExprAST* e = 0;
     Types::VariantDecl* v = 0;
     unsigned fc = 0;
-    if (Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(type))
+    if (Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(type))
     {
 	int elem = od->Element(name);
 	typedesc = "object";
@@ -1564,7 +1564,7 @@ bool Parser::IsCall(const NamedObject* def)
     {
 	return true;
     }
-    if (ty == Types::Object && llvm::isa<MembFuncDef>(def))
+    if (ty == Types::Class && llvm::isa<MembFuncDef>(def))
     {
 	if (CurrentToken().GetToken() != Token::Assign)
 	{
@@ -1653,7 +1653,7 @@ VariableExprAST* Parser::ParseStaticMember(TypeDef* def, Types::TypeDecl*& type)
     std::string field = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
 
-    Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(def->Type());
+    Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
     int elem;
     if ((elem = od->Element(field)) >= 0)
     {
@@ -1704,14 +1704,14 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    {
 		if (MembFuncDef* m = llvm::dyn_cast<MembFuncDef>(def))
 		{
-		    Types::ObjectDecl* od = llvm::dyn_cast<Types::ObjectDecl>(type);
+		    Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(type);
 		    std::string objname;
 		    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
 		    type = mf->Proto()->Type();
 		}
 		else if (TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
 		{
-		    if ((ty->Type()->Type() == Types::Object))
+		    if ((ty->Type()->Type() == Types::Class))
 		    {
 			expr = ParseStaticMember(ty, type);
 		    }
@@ -1907,7 +1907,7 @@ PrototypeAST* Parser::ParsePrototype()
     {
 	return 0;
     }
-    Types::ObjectDecl* od = 0;
+    Types::ClassDecl* od = 0;
     // Get function name.
     std::string funcName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
@@ -1920,7 +1920,7 @@ PrototypeAST* Parser::ParsePrototype()
 	AssertToken(Token::Period);
 	if (Types::TypeDecl* ty = GetTypeDecl(funcName))
 	{
-	    if ((od = llvm::dyn_cast<Types::ObjectDecl>(ty)))
+	    if ((od = llvm::dyn_cast<Types::ClassDecl>(ty)))
 	    {
 		if (!Expect(Token::Identifier, false))
 		{
@@ -2496,7 +2496,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	else
 	{
 	    ExprAST* e;
-	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ObjectDecl>(fields))
+	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ClassDecl>(fields))
 	    {
 		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
 	    }
@@ -2507,7 +2507,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->FieldType()));
 	}
     }
-    if (Types::ObjectDecl* od = const_cast<Types::ObjectDecl*>(llvm::dyn_cast<Types::ObjectDecl>(fields)))
+    if (Types::ClassDecl* od = const_cast<Types::ClassDecl*>(llvm::dyn_cast<Types::ClassDecl>(fields)))
     {
 	int count = od->MembFuncCount();
 	for(int i = 0; i < count; i++)

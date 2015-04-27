@@ -75,7 +75,7 @@ private:
     Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
     Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);
     Types::TypeDecl*    ParseSimpleType();
-    Types::ObjectDecl*  ParseObjectDecl(const std::string& name);
+    Types::ClassDecl*   ParseClassDecl(const std::string& name);
     Types::TypeDecl*    ParseType(const std::string& name);
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType();

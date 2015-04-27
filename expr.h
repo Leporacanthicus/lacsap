@@ -403,7 +403,7 @@ public:
 		 const std::string& nm,
 		 const std::vector<VarDef>& ar,
 		 Types::TypeDecl* resTy,
-		 Types::ObjectDecl* obj)
+		 Types::ClassDecl* obj)
 	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), function(0), baseobj(obj),
 	  isForward(false), hasSelf(false)
     {
@@ -423,13 +423,13 @@ public:
     FunctionAST* Function() const { return function; }
     void AddExtraArgsLast(const std::vector<VarDef>& extra);
     void AddExtraArgsFirst(const std::vector<VarDef>& extra);
-    Types::ObjectDecl* BaseObj() const { return baseobj; }
+    Types::ClassDecl* BaseObj() const { return baseobj; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
 private:
     std::string         name;
     std::vector<VarDef> args;
     FunctionAST*        function;
-    Types::ObjectDecl*  baseobj;
+    Types::ClassDecl*   baseobj;
     bool                isForward;
     bool                hasSelf;
 };

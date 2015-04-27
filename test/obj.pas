@@ -1,18 +1,19 @@
 program obj;
 
 type
-   myobj = object
+   myobj = class
      i:	 integer;
      s:	 string;
      procedure p;
      procedure q;
      function f(x :integer) : integer;
-   end;	     
-   myderived = object(myobj)
+   end;
+     
+   myderived = class(myobj)
      j: integer;
    end;
 
-   derived2 = object(myderived)
+   derived2 = class(myderived)
      k: integer;
      procedure r; static;
    end;

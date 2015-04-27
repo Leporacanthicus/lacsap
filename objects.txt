@@ -14,5 +14,7 @@ Inheritance
   Constructors, Destructors.
   Inherited keyword.
 
+  Private, Public
+
 Improvements
   Move shortname calculation into a function.

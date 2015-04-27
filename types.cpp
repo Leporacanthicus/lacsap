@@ -149,8 +149,8 @@ namespace Types
 	    return "Variant";
 	case FuncPtr:
 	    return "FuncPtr";
-	case Object:
-	    return "Object";
+	case Class:
+	    return "Class";
 	case MemberFunc:
 	    return "MemberFunc";
 	}
@@ -716,22 +716,22 @@ namespace Types
     }
 
 
-    ObjectDecl::ObjectDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
-			   const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ObjectDecl* base)
-	: FieldCollection(TK_Object, Object, flds), baseobj(base), name(nm), variant(v), 
+    ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
+			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
+	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), 
 	  membfuncs(mf) 
     { 
 	UpdateMemberFuncs();
     }
 
 
-    size_t ObjectDecl::Size() const
+    size_t ClassDecl::Size() const
     {
 	EnsureSized();
 	return TypeDecl::Size();
     }
 
-    void ObjectDecl::DoDump(std::ostream& out) const
+    void ClassDecl::DoDump(std::ostream& out) const
     {
 	out << "Object: " << Name();
 	for(auto f : fields)
@@ -745,14 +745,14 @@ namespace Types
 	}
     }
 
-    int ObjectDecl::MembFuncCount() const
+    int ClassDecl::MembFuncCount() const
     {
-	return membfuncs.size() + (baseobj?baseobj->MembFuncCount():0);
+	return membfuncs.size() + (baseobj ? baseobj->MembFuncCount() : 0);
     }
 
-    int ObjectDecl::MembFunc(const std::string& nm) const
+    int ClassDecl::MembFunc(const std::string& nm) const
     {
-	int b = (baseobj?baseobj->MembFuncCount():0);
+	int b = baseobj ? baseobj->MembFuncCount() : 0;
 	for(int i = 0; i < (int)membfuncs.size();  i++)
 	{
 	    if (membfuncs[i]->Proto()->Name() == nm)
@@ -760,12 +760,12 @@ namespace Types
 		return i + b;
 	    }
 	}
-	return baseobj?baseobj->MembFunc(nm):-1;
+	return baseobj ? baseobj->MembFunc(nm) : -1;
     }
 
-    MemberFuncDecl* ObjectDecl::GetMembFunc(int index, std::string& objname) const
+    MemberFuncDecl* ClassDecl::GetMembFunc(int index, std::string& objname) const
     {
-	int b = (baseobj?baseobj->MembFuncCount():0);
+	int b = baseobj ? baseobj->MembFuncCount() : 0;
 	if (index < b)
 	{
 	    assert(baseobj && "Huh - no base object?");
@@ -776,7 +776,7 @@ namespace Types
 	return membfuncs[index-b];
     }
 
-    void ObjectDecl::UpdateMemberFuncs()
+    void ClassDecl::UpdateMemberFuncs()
     {
 	std::vector<VarDef> v{VarDef("self", this, true)};
 	for(auto& m : membfuncs)
@@ -789,21 +789,21 @@ namespace Types
 	}
     }
 
-    int ObjectDecl::Element(const std::string& name) const
+    int ClassDecl::Element(const std::string& name) const
     {
-	int b = (baseobj?baseobj->FieldCount():0);
+	int b = baseobj ? baseobj->FieldCount() : 0;
 	/* Shadowing overrides outer elemnts */
 	int elem = FieldCollection::Element(name);
 	if (elem >= 0)
 	{
 	    return elem+b;
 	}
-	return (baseobj)?baseobj->Element(name):-1;
+	return (baseobj) ? baseobj->Element(name) : -1;
     }
 
-    const FieldDecl* ObjectDecl::GetElement(unsigned int n, std::string& objname) const
+    const FieldDecl* ClassDecl::GetElement(unsigned int n, std::string& objname) const
     {
-	int b = baseobj?baseobj->FieldCount():0;
+	int b = baseobj ? baseobj->FieldCount() : 0;
 	if (n < (unsigned)b)
 	{
 	    return baseobj->GetElement(n, objname);
@@ -813,31 +813,31 @@ namespace Types
 	return fields[n - b];
     }
 
-    const FieldDecl* ObjectDecl::GetElement(unsigned int n) const
+    const FieldDecl* ClassDecl::GetElement(unsigned int n) const
     {
 	std::string objname;
 	return GetElement(n, objname);
     }
 
-    int ObjectDecl::FieldCount() const
+    int ClassDecl::FieldCount() const
     {
-	return fields.size() + (baseobj?baseobj->FieldCount(): 0);
+	return fields.size() + (baseobj ? baseobj->FieldCount(): 0);
     }
     
-    const TypeDecl* ObjectDecl::CompatibleType(const TypeDecl *ty) const
+    const TypeDecl* ClassDecl::CompatibleType(const TypeDecl *ty) const
     {
 	if (*ty == *this)
 	{
 	    return this;
 	}
-	if (const ObjectDecl* od = llvm::dyn_cast<ObjectDecl>(ty))
+	if (const ClassDecl* od = llvm::dyn_cast<ClassDecl>(ty))
 	{
-	    return (od->baseobj)?CompatibleType(od->baseobj):0;
+	    return (od->baseobj) ? CompatibleType(od->baseobj) : 0;
 	}
 	return 0;
     }
 
-    llvm::Type* ObjectDecl::GetLlvmType() const
+    llvm::Type* ClassDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
 	std::vector<FieldDecl*> allFields = fields;
@@ -876,14 +876,14 @@ namespace Types
 	return llvm::StructType::create(fv);
     }
 
-    bool ObjectDecl::SameAs(const TypeDecl* ty) const
+    bool ClassDecl::SameAs(const TypeDecl* ty) const
     {
 	return this == ty;
     }
 
     void MemberFuncDecl::DoDump(std::ostream& out) const
     {
-	out << "Member function"; proto->dump(out);
+	out << "Member function "; proto->dump(out);
     }
 
     bool MemberFuncDecl::SameAs(const TypeDecl* ty) const

@@ -40,7 +40,7 @@ public:
 	Array,
 	Of,
 	Record,
-	Object,
+	Class,
 	Identifier,
 	Const,
 	File,

@@ -92,11 +92,11 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	return;
     }
 
-    llvm::formatted_raw_ostream FOS(Out->os());
+    llvm::raw_pwrite_stream *OS = &Out->os();
 
     llvm::AnalysisID StartAfterID = 0;
     llvm::AnalysisID StopAfterID = 0;
-    if (tm->addPassesToEmitFile(PM, FOS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false,
+    if (tm->addPassesToEmitFile(PM, *OS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false,
 				StartAfterID, StopAfterID))
     {
 	std::cerr << objname << ": target does not support generation of this"

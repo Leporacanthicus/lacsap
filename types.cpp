@@ -873,6 +873,12 @@ namespace Types
 	    opaqueType->setBody(fv);
 	    return opaqueType;
 	}
+	if (!fv.size())
+	{
+	    llvm::StructType* ty = llvm::StructType::create(llvm::getGlobalContext());
+	    ty->setBody(llvm::None);
+	    return ty;
+	}
 	return llvm::StructType::create(fv);
     }
 

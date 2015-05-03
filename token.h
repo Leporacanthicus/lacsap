@@ -110,6 +110,7 @@ public:
 	Otherwise,
 	With,
 	Virtual,
+	Override,
 	Static,
 
 	// Specials

@@ -459,8 +459,9 @@ namespace Types
     public:
 	enum Flags
 	{
-	    Static  = 1 << 0,
-	    Virtual = 1 << 1,
+	    Static   = 1 << 0,
+	    Virtual  = 1 << 1,
+	    Override = 1 << 2,
 	};
 	MemberFuncDecl(PrototypeAST* p, int f)
 	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p), flags(f) {}
@@ -471,6 +472,7 @@ namespace Types
 	PrototypeAST* Proto() { return proto; }
 	bool IsStatic() { return flags & Static; }
 	bool IsVirtual() { return flags & Virtual; }
+	bool IsOverride() { return flags & Virtual; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
 	// We don't actually have an LLVM type for member functions.

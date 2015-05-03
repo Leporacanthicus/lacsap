@@ -185,6 +185,7 @@ const TokenEntry tokenTable[] =
     { Token::Uparrow,       false, -1, "^" },
     { Token::Static,        true,  -1, "static" },
     { Token::Virtual,       true,  -1, "virtual" },
+    { Token::Override,      true,  -1, "override" },
     { Token::LineNumber,    true,  -1, "__LINE__" },
     { Token::FileName,      true,  -1, "__FILE__" },
     { Token::SizeOf,        true,  -1, "sizeof" },

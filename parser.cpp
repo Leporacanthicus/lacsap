@@ -952,6 +952,15 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		    return false;
 		}
 	    }
+	    if (CurrentToken().GetToken() == Token::Override)
+	    {
+		f |= Types::MemberFuncDecl::Override;
+		NextToken();
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return false;
+		}
+	    }
 	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p, f);
 	    fields.push_back(new Types::FieldDecl(p->Name(), m, false));
 	}

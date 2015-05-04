@@ -2219,11 +2219,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    assert(!body && "Multiple body declarations for function?");
 
-	    if (!(body = ParseBlock()))
-	    {
-		return 0;
-	    }
-	    if (!Expect(Token::Semicolon, true))
+	    if (!(body = ParseBlock()) || !Expect(Token::Semicolon, true))
 	    {
 		return 0;
 	    }
@@ -2391,7 +2387,7 @@ ExprAST* Parser::ParseCaseExpr()
     Location loc = CurrentToken().Loc();
     AssertToken(Token::Case);
     ExprAST* expr = ParseExpression();
-    if (!Expect(Token::Of, true))
+    if (!expr  || !Expect(Token::Of, true))
     {
 	return 0;
     }

@@ -54,7 +54,7 @@ BEGIN
 END;
    
 BEGIN { Split }
-   { Set up the pointers for the hight and low sections, and
+   { Set up the pointers for the high and low sections, and
     get the pivot value. }
    pivot := arr[start];
    left := first + 1;

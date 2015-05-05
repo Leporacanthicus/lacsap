@@ -64,7 +64,7 @@ private:
     // Type declarations and defintitions
     void ParseTypeDef();
     void ParseConstDef();
-    void TranslateToken(Token& token);
+    Token TranslateToken(const Token& token);
 
     const Constants::ConstDecl* ParseConstExpr();
     const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
@@ -94,6 +94,7 @@ private:
     // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
     void AssertToken(Token::TokenType type, const char* file, int line);
+    bool AcceptToken(Token::TokenType type, const char* file, int line);
     bool ExpectSemicolonOrEnd(const char* file, int line);
 
     // General helper functions

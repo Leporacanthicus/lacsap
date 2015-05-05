@@ -722,7 +722,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 {
     AssertToken(Token::LeftParen);
     std::vector<std::string> values;
-    while(CurrentToken().GetToken() != Token::RightParen)
+    while(!AcceptToken(Token::RightParen))
     {
 	if (!Expect(Token::Identifier, false))
 	{
@@ -738,7 +738,6 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    }
 	}
     }
-    AssertToken(Token::RightParen);
     return new Types::EnumDecl(values);
 }
 
@@ -774,7 +773,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     }
     std::vector<Types::RangeDecl*> rv;
     Types::TypeDecl* type = NULL;
-    while(CurrentToken().GetToken() != Token::RightSquare)
+    while(!AcceptToken(Token::RightSquare))
     {
 	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
 	{
@@ -785,12 +784,8 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	{
 	    return 0;
 	}
-	if (CurrentToken().GetToken() == Token::Comma)
-	{
-	    AssertToken(Token::Comma);
-	}
+	AcceptToken(Token::Comma);
     }
-    AssertToken(Token::RightSquare);
     if (!Expect(Token::Of, true))
     {
 	return 0;
@@ -829,8 +824,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		    return 0;
 		}
 	    }
-	} while (CurrentToken().GetToken() != Token::Colon);
-	AssertToken(Token::Colon);
+	} while (!AcceptToken(Token::Colon));
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
@@ -852,8 +846,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		{
 			return 0;
 		}
-	    } while(CurrentToken().GetToken() != Token::Colon);
-	    AssertToken(Token::Colon);
+	    } while(!AcceptToken(Token::Colon));
 	    if (Types::TypeDecl* ty = ParseType(""))
 	    {
 		for(auto n : names)
@@ -879,8 +872,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    {
 		return 0;
 	    }
-	} while(CurrentToken().GetToken() != Token::RightParen);
-	AssertToken(Token::RightParen);
+	} while(!AcceptToken(Token::RightParen));
 	if (!ExpectSemicolonOrEnd())
 	{
 	    return 0;
@@ -1853,9 +1845,8 @@ VarDeclAST* Parser::ParseVarDecls()
 	}
 	names.push_back(CurrentToken().GetIdentName());
 	AssertToken(Token::Identifier);
-	if (CurrentToken().GetToken() == Token::Colon)
+	if (AcceptToken( Token::Colon))
 	{
-	    AssertToken(Token::Colon);
 	    if (Types::TypeDecl* type = ParseType(""))
 	    {
 		for(auto n : names)
@@ -1917,9 +1908,8 @@ PrototypeAST* Parser::ParsePrototype()
     Types::MemberFuncDecl* membfunc = 0;
     // Is it a member function?
     // FIXME: Nested classes, should we do this again?
-    if (CurrentToken().GetToken() == Token::Period)
+    if (AcceptToken(Token::Period))
     {
-	AssertToken(Token::Period);
 	if (Types::TypeDecl* ty = GetTypeDecl(funcName))
 	{
 	    if ((od = llvm::dyn_cast<Types::ClassDecl>(ty)))
@@ -1952,10 +1942,10 @@ PrototypeAST* Parser::ParsePrototype()
 	}
     }
     std::vector<VarDef> args;
-    if (CurrentToken().GetToken() == Token::LeftParen)
+    if (AcceptToken(Token::LeftParen))
     {
 	std::vector<std::string> names;
-	AssertToken(Token::LeftParen);
+	bool isRef = false;
 	while(!AcceptToken(Token::RightParen))
 	{
 	    if (CurrentToken().GetToken() == Token::Function ||
@@ -1968,7 +1958,10 @@ PrototypeAST* Parser::ParsePrototype()
 	    }
 	    else
 	    {
-		bool isRef = AcceptToken(Token::Var);
+		if (AcceptToken(Token::Var))
+		{
+		    isRef = true;
+		}
 		if (!Expect(Token::Identifier, false))
 		{
 		    return 0;
@@ -1986,6 +1979,7 @@ PrototypeAST* Parser::ParsePrototype()
 			    VarDef v(n, type, isRef);
 			    args.push_back(v);
 			}
+			isRef = false;
 			names.clear();
 			if (CurrentToken().GetToken() != Token::RightParen &&
 			    !Expect(Token::Semicolon, true))
@@ -2049,10 +2043,9 @@ ExprAST* Parser::ParseStatement()
 {
     if (ExprAST* expr = ParsePrimary())
     {
-	if (CurrentToken().GetToken() == Token::Assign)
+	if (AcceptToken(Token::Assign))
 	{
 	    Location loc = CurrentToken().Loc();
-	    AssertToken(Token::Assign);
 	    ExprAST* rhs = ParseExpression();
 	    if (rhs)
 	    {
@@ -2078,7 +2071,7 @@ BlockAST* Parser::ParseBlock()
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
     Location loc = CurrentToken().Loc();
-    while(CurrentToken().GetToken() != Token::End)
+    while(!AcceptToken(Token::End))
     {
 	if (ExprAST* ast = ParseStatement())
 	{
@@ -2093,7 +2086,6 @@ BlockAST* Parser::ParseBlock()
 	    return 0;
 	}
     }
-    AssertToken(Token::End);
     return new BlockAST(loc, v);
 }
 
@@ -2269,9 +2261,8 @@ ExprAST* Parser::ParseIfExpr()
     }
 
     ExprAST* elseExpr = 0;
-    if (CurrentToken().GetToken() == Token::Else)
+    if (AcceptToken(Token::Else))
     {
-	AssertToken(Token::Else);
 	if (!(elseExpr = ParseStmtOrBlock()))
 	{
 	    return 0;
@@ -2460,8 +2451,7 @@ ExprAST* Parser::ParseCaseExpr()
 	default:
 	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
 	}
-    } while(CurrentToken().GetToken() != Token::End);
-    AssertToken(Token::End);
+    } while(!AcceptToken(Token::End));
     return new CaseExprAST(loc, expr, labels, otherwise);
 }
 
@@ -2526,8 +2516,7 @@ ExprAST* Parser::ParseWithBlock()
 	{
 	    return Error("With statement must contain only variable expression");
 	}
-    } while(CurrentToken().GetToken() != Token::Do);
-    AssertToken(Token::Do);
+    } while(!AcceptToken(Token::Do));
     NameWrapper wrapper(nameStack);
     for(auto v : vars)
     {
@@ -2779,9 +2768,8 @@ bool Parser::ParseProgram()
     }
     moduleName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
-    if (CurrentToken().GetToken() == Token::LeftParen)
+    if (AcceptToken(Token::LeftParen))
     {
-	AssertToken(Token::LeftParen);
 	do
 	{
 	    if (!Expect(Token::Identifier, true))
@@ -2792,8 +2780,7 @@ bool Parser::ParseProgram()
 	    {
 		return false;
 	    }
-	} while(CurrentToken().GetToken() != Token::RightParen);
-	AssertToken(Token::RightParen);
+	} while(!AcceptToken(Token::RightParen));
     }
     return true;
 }

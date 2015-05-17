@@ -65,6 +65,7 @@ VarStack variables;
 MangleStack mangles;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
+static std::vector<VTableAST*> vtableBackPatchList;
 
 static bool IsConstant(ExprAST* e)
 {
@@ -379,11 +380,11 @@ llvm::Value* VariableExprAST::Address()
 {
     TRACE();
     llvm::Value* v = variables.Find(name);
-    EnsureSized();
     if (!v)
     {
-	return ErrorV(std::string("Unknown variable name '") + name + "'");
+	return ErrorV("Unknown variable name '" + name + "'");
     }
+    EnsureSized();
     return v;
 }
 
@@ -476,7 +477,7 @@ llvm::Value* FieldExprAST::Address()
     EnsureSized();
     if (llvm::Value* v = expr->Address())
     {
-	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
+	std::vector<llvm::Value*> ind = {MakeIntegerConstant(0), MakeIntegerConstant(element)};
 	return builder.CreateGEP(v, ind, "valueindex");
     }
     return ErrorV("Expression did not form an address");
@@ -2582,7 +2583,27 @@ llvm::Value* VarDeclAST::CodeGen()
 	{
 	    llvm::Type* ty = var.Type()->LlvmType();
 	    assert(ty && "Type should have a value");
-	    llvm::Constant* init = llvm::Constant::getNullValue(ty);
+	    llvm::Constant* init;
+	    llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);
+	    if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type()))
+	    {
+		std::string name = "vtable_" + cd->Name();
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable(name, true);
+		llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
+		std::vector<llvm::Constant*> vtable(sty->getNumElements());
+		vtable[0] = gv;
+		unsigned i = 1;
+		while(llvm::Constant *c = nullValue->getAggregateElement(i))
+		{
+		    vtable[i] = c;
+		    i++;
+		}
+		init = llvm::ConstantStruct::get(sty, vtable);
+	    }
+	    else
+	    {
+		init = nullValue;
+	    }
 	    llvm::GlobalValue::LinkageTypes linkage = (var.IsExternal()?
 						       llvm::GlobalValue::ExternalLinkage:
 						       llvm::Function::InternalLinkage);
@@ -3127,7 +3148,6 @@ void SizeOfExprAST::DoDump(std::ostream& out) const
     out << ")" << std::endl;
 }
 
-
 void BuiltinExprAST::DoDump(std::ostream& out) const
 {
     out << "Builtin(";
@@ -3144,4 +3164,91 @@ void BuiltinExprAST::accept(Visitor& v)
 {
     bif->accept(v);
     v.visit(this);
+}
+
+void VTableAST::DoDump(std::ostream& out) const
+{
+    out << "VTable(";
+    type->dump();
+    out << ")" << std::endl;
+}
+
+llvm::Value* VTableAST::CodeGen()
+{
+    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
+    assert(ty && "Huh? No vtable?");
+    std::vector<llvm::Constant*> vtInit = GetInitializer();
+
+    std::string name = "vtable_" + classDecl->Name();
+    llvm::Constant* init = (vtInit.size())?llvm::ConstantStruct::get(ty, vtInit):0;
+    vtable = new llvm::GlobalVariable(*theModule, ty, true, llvm::Function::InternalLinkage, init, name);
+    if (!init)
+    {
+	vtableBackPatchList.push_back(this);
+    }
+    return vtable;
+}
+
+std::vector<llvm::Constant*> VTableAST::GetInitializer()
+{
+    std::vector<llvm::Constant*> vtInit;
+    for(size_t i = 0; i < classDecl->MembFuncCount(); i++)
+    {
+	std::string objname;
+	Types::MemberFuncDecl *m = classDecl->GetMembFunc(i, objname);
+	if (m->IsVirtual() || m->IsOverride())
+	{
+	    std::string name = "P." + objname + "$" + m->Proto()->Name();
+	    if (llvm::Constant* c = theModule->getFunction(name))
+	    {
+		vtInit.push_back(c);
+	    }
+	    else
+	    {
+		vtInit.clear();
+		break;
+	    }
+	}
+    }
+    return vtInit;
+}
+
+void VTableAST::Fixup()
+{
+    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
+    std::vector<llvm::Constant*> vtInit = GetInitializer();
+    assert(vtInit.size() && "Should have something to initialize here");
+
+    llvm::Constant* init = llvm::ConstantStruct::get(ty, vtInit);
+    vtable->setInitializer(init);
+}
+
+void BackPatch()
+{
+    for(auto v : vtableBackPatchList)
+    {
+	v->Fixup();
+    }
+}
+
+void VirtFunctionAST::DoDump(std::ostream& out) const
+{
+    out << "VirtFunctionAST: " << std::endl;
+}
+
+llvm::Value* VirtFunctionAST::CodeGen()
+{
+    llvm::Value* v = Address();
+    return builder.CreateLoad(v);
+}
+
+llvm::Value* VirtFunctionAST::Address()
+{
+    llvm::Value* v = self->Address();
+    std::vector<llvm::Value*> ind = {MakeIntegerConstant(0), MakeIntegerConstant(0)};
+    v = builder.CreateGEP(v, ind, "vtable");
+    ind[1] = MakeIntegerConstant(index);
+    v = builder.CreateLoad(v);
+    v = builder.CreateGEP(v, ind, "mfunc");
+    return v;
 }

@@ -719,7 +719,7 @@ namespace Types
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
 	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), 
-	  membfuncs(mf) 
+	  membfuncs(mf), vtableType(0)
     { 
 	UpdateMemberFuncs();
     }
@@ -745,14 +745,27 @@ namespace Types
 	}
     }
 
-    int ClassDecl::MembFuncCount() const
+    size_t ClassDecl::MembFuncCount() const
     {
-	return membfuncs.size() + (baseobj ? baseobj->MembFuncCount() : 0);
+	return membfuncs.size() - OverrideCount() + (baseobj ? baseobj->MembFuncCount() : 0);
+    }
+
+    size_t ClassDecl::OverrideCount() const
+    {
+	int count = 0;
+	for(auto m : membfuncs)
+	{
+	    if (m->IsOverride())
+	    {
+		count++;
+	    }
+	}
+	return count;
     }
 
     int ClassDecl::MembFunc(const std::string& nm) const
     {
-	int b = baseobj ? baseobj->MembFuncCount() : 0;
+	int b = baseobj ? baseobj->MembFuncCount() - OverrideCount() : 0;
 	for(int i = 0; i < (int)membfuncs.size();  i++)
 	{
 	    if (membfuncs[i]->Proto()->Name() == nm)
@@ -765,7 +778,7 @@ namespace Types
 
     MemberFuncDecl* ClassDecl::GetMembFunc(int index, std::string& objname) const
     {
-	int b = baseobj ? baseobj->MembFuncCount() : 0;
+	int b = baseobj ? baseobj->MembFuncCount() - OverrideCount() : 0;
 	if (index < b)
 	{
 	    assert(baseobj && "Huh - no base object?");
@@ -775,6 +788,50 @@ namespace Types
 	objname = Name();
 	return membfuncs[index-b];
     }
+
+    llvm::Type* ClassDecl::VTableType(bool opaque) const
+    {
+	if (vtableType && (opaque || !vtableType->isOpaque()))
+	{
+	    return vtableType;
+	}
+
+	std::vector<llvm::Type*> vt;
+	bool needed = false;
+	int index = 0;
+	for(size_t i = 0; i < MembFuncCount(); i++)
+	{
+	    std::string objname;
+	    MemberFuncDecl *m = GetMembFunc(i, objname);
+	    if (m->IsVirtual() || m->IsOverride())
+	    {
+		if (!opaque)
+		{
+		    FuncPtrDecl* fp = new FuncPtrDecl(m->Proto());
+		    vt.push_back(fp->LlvmType());
+		    m->VirtIndex(index);
+		    index++;
+		}
+		needed = true;
+	    }
+	}
+	if (!needed)
+	{
+	    return (baseobj) ? baseobj->VTableType(opaque) : 0;
+	}
+
+	if (!vtableType)
+	{
+	    vtableType = llvm::StructType::create(llvm::getGlobalContext());
+	}
+	if (!opaque)
+	{
+	    assert(vt.size() && "Expected some functions here...");
+	    vtableType->setBody(vt);
+	}
+	return vtableType;
+    }
+
 
     void ClassDecl::UpdateMemberFuncs()
     {
@@ -840,7 +897,11 @@ namespace Types
     llvm::Type* ClassDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
-	std::vector<FieldDecl*> allFields = fields;
+
+	if (VTableType(true))
+	{
+	    fv.push_back(llvm::PointerType::getUnqual(vtableType));
+	}
 	
 	int fc = FieldCount();
 	for(int i = 0; i < fc; i++)
@@ -854,7 +915,8 @@ namespace Types
 		continue;
 	    }
 
-	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
+	    if (llvm::isa<PointerDecl>(f->FieldType()) && f->FieldType()->Type() == PointerIncomplete &&
+		!f->FieldType()->hasLlvmType())
 	    {
 		if (!opaqueType)
 		{
@@ -908,7 +970,12 @@ namespace Types
 	std::vector<llvm::Type*> argTys;
 	for(auto v : proto->Args())
 	{
-	    argTys.push_back(v.Type()->LlvmType());
+	    llvm::Type* ty = v.Type()->LlvmType();
+	    if (v.IsRef() || v.Type()->isCompound() )
+	    {
+		ty = llvm::PointerType::getUnqual(ty);
+	    }
+	    argTys.push_back(ty);
 	}
 	llvm::Type*  ty = llvm::FunctionType::get(resty, argTys, false);
 	return llvm::PointerType::getUnqual(ty);

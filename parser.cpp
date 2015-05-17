@@ -289,7 +289,7 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 {
     if (!nameStack.Add(name, new ConstDef(name, cd)))
     {
-	Error(std::string("Name ") + name + " is already declared as a constant");
+	Error("Name " + name + " is already declared as a constant");
 	return false;
     }
     return true;
@@ -686,7 +686,7 @@ void Parser::ParseTypeDef()
 	{
 	    if (!AddType(nm,  ty))
 	    {
-		Error(std::string("Name ") + nm + " is already in use.");
+		Error("Name " + nm + " is already in use.");
 	    }
 	    if (ty->Type() == Types::PointerIncomplete)
 	    {
@@ -813,7 +813,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    }
 	    if (std::find(variantsSeen.begin(), variantsSeen.end(), v) != variantsSeen.end())
 	    {
-		Error(std::string("Value already used: ") + std::to_string(v) + " in variant declaration");
+		Error("Value already used: " + std::to_string(v) + " in variant declaration");
 		return 0;
 	    }
 	    variantsSeen.push_back(v);
@@ -855,7 +855,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		    {
 			if (n == f->Name())
 			{
-			    Error(std::string("Duplicate field name '") + n + "' in record");
+			    Error("Duplicate field name '" + n + "' in record");
 			    return 0;
 			}
 		    }
@@ -995,7 +995,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			{
 			    if (n == f->Name())
 			    {
-				Error(std::string("Duplicate field name '") + n + "' in record");
+				Error("Duplicate field name '" + n + "' in record");
 				return false;
 			    }
 			}
@@ -1135,11 +1135,16 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 
     std::vector<Types::MemberFuncDecl*> mf;
     std::vector<VarDef> vars;
+    bool needVtable = false;
     for(auto f = fields.begin(); f != fields.end(); )
     {
 	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->FieldType()))
 	{
 	    mf.push_back(m);
+	    if (m->IsVirtual() || m->IsOverride())
+	    {
+		needVtable = true;
+	    }
 	    f = fields.erase(f);
 	}
 	else
@@ -1157,7 +1162,13 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 	ast.push_back(new VarDeclAST(loc, vars));
     }
 
-    return new Types::ClassDecl(name, fields, mf, variant, base);
+    auto cd = new Types::ClassDecl(name, fields, mf, variant, base);
+    // For now, we generate vtable whether we need it or not.
+    if (needVtable)
+    {
+	ast.push_back(new VTableAST(loc, cd));
+    }
+    return cd;
 }
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)
@@ -1390,24 +1401,33 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     {
 	if (def->Type()->Type() == Types::Pointer)
 	{
-	    Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type());
-	    if (!fp)
+	    if(Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
+	    {
+		proto = fp->Proto();
+		expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
+	    }
+	    else
 	    {
 		return Error("Expected function pointer");;
 	    }
-	    proto = fp->Proto();
-	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
 	}
     }
     else if (MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
     {
 	std::string objname;
-	Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(m->Type());
-	Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
+	Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
+	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index(), objname);
 	proto = mf->Proto();
-	std::string fname = objname + "$" + proto->Name();
-	self = new VariableExprAST(CurrentToken().Loc(), "self", od);
-	expr = new FunctionExprAST(CurrentToken().Loc(), fname, mf->Proto()->Type());
+	if (mf->IsVirtual() || mf->IsOverride())
+	{
+	    int index = mf->VirtIndex();
+	    expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, mf->Proto()->Type());
+	}
+	else
+	{
+	    std::string fname = objname + "$" + proto->Name();
+	    expr = new FunctionExprAST(CurrentToken().Loc(), fname, mf->Proto()->Type());
+	}
     }
     if (expr)
     {
@@ -1541,7 +1561,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     }
     if (!e)
     {
-	return ErrorV(std::string("Can't find element ") + name + " in " + typedesc);
+	return ErrorV("Can't find element " + name + " in " + typedesc);
     }
     NextToken();
     return e;
@@ -1665,9 +1685,9 @@ VariableExprAST* Parser::ParseStaticMember(TypeDef* def, Types::TypeDecl*& type)
 	    std::string name = objname + "$" + field;
 	    return new VariableExprAST(CurrentToken().Loc(), name, type);
 	}
-	return ErrorV(std::string("Expected static variable '") + field + "'");
+	return ErrorV("Expected static variable '" + field + "'");
     }
-    return ErrorV(std::string("Expected member variabe name '") + field + "'");
+    return ErrorV("Expected member variabe name '" + field + "'");
 }
 
 ExprAST* Parser::ParseIdentifierExpr()
@@ -1929,7 +1949,7 @@ PrototypeAST* Parser::ParsePrototype()
 		}
 		if (!membfunc || funcName != objname)
 		{
-		    Error(std::string("Member function '") + m + "' not found in '"  + funcName + "'.");
+		    Error("Member function '" + m + "' not found in '"  + funcName + "'.");
 		    return 0;
 		}
 		funcName = funcName + "$" + m;
@@ -2003,7 +2023,6 @@ PrototypeAST* Parser::ParsePrototype()
 	}
     }
 
-    PrototypeAST* proto = 0;
     Types::TypeDecl* resultType;
     // If we have a function, expect ": type".
     if (isFunction)
@@ -2012,8 +2031,7 @@ PrototypeAST* Parser::ParsePrototype()
 	{
 	    return 0;
 	}
-        resultType = ParseSimpleType();
-	if (!resultType)
+	if (!(resultType = ParseSimpleType()))
 	{
 	    return 0;
 	}
@@ -2028,7 +2046,7 @@ PrototypeAST* Parser::ParsePrototype()
 	return 0;
     }
 
-    proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
+    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
     if (od && !membfunc->IsStatic())
     {
 	std::vector<VarDef> v{VarDef("self", od, true)};
@@ -2099,9 +2117,9 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	return 0;
     }
-    std::string      name = proto->Name();
+    std::string name = proto->Name();
     Types::TypeDecl* ty = new Types::FunctionDecl(functionType, proto->Type());
-    NamedObject* nmObj = new FuncDef(name, ty, proto);
+    NamedObject* nmObj;
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -2112,6 +2130,14 @@ FunctionAST* Parser::ParseDefinition(int level)
 	if ((pos = name.find_last_of('$')) != std::string::npos)
 	{
 	    shortname = name.substr(pos + 1);
+	}
+	if (proto->BaseObj())
+	{
+	    nmObj = new MembFuncDef(shortname, 0, proto->BaseObj());
+	}
+	else
+	{
+	    nmObj = new FuncDef(name, ty, proto);
 	}
 	if (!nameStack.Add(name, nmObj))
 	{

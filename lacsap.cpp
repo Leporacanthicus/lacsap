@@ -77,6 +77,7 @@ bool CodeGen(std::vector<ExprAST*> ast)
 	    return false;
 	}
     }
+    BackPatch();
     return true;
 }
 

@@ -64,6 +64,8 @@ public:
 	EK_RangeCheckExpr,
 	EK_TypeCastExpr,
 	EK_SizeOfExpr,
+	EK_VTableExpr,
+	EK_VirtFunction,        /* 40 */
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -687,12 +689,41 @@ class SizeOfExprAST : public ExprAST
 {
 public:
     SizeOfExprAST(const Location& w, Types::TypeDecl* t)
-	: ExprAST(w, EK_SizeOfExpr, t) {};
+	: ExprAST(w, EK_SizeOfExpr, t) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     Types::TypeDecl* Type() const override { return new Types::IntegerDecl; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_SizeOfExpr; }
 };
+
+class VTableAST : public ExprAST
+{
+public:
+    VTableAST(const Location& w, Types::ClassDecl* cd)
+	: ExprAST(w, EK_VTableExpr, cd), classDecl(cd), vtable(0) {}
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_VTableExpr; }
+    std::vector<llvm::Constant*> GetInitializer();
+    void Fixup();
+private:
+    Types::ClassDecl* classDecl;
+    llvm::GlobalVariable* vtable;
+};
+
+class VirtFunctionAST : public AddressableAST
+{
+public:
+    VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
+	: AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf) {}
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    llvm::Value* Address() override;
+private:
+    int index;
+    VariableExprAST* self;
+};
+  
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
@@ -701,5 +732,7 @@ llvm::Value* ErrorV(const std::string& msg);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
 bool FileIsText(llvm::Value* f);
 llvm::Value* MakeAddressable(ExprAST* e);
+void BackPatch();
+
 
 #endif

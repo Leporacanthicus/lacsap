@@ -109,7 +109,7 @@ namespace Types
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 	llvm::Type* LlvmType() const;
-	bool hasLlvmType() { return !!ltype; }
+	bool hasLlvmType() { return ltype; }
 	void dump(std::ostream& out) const { DoDump(out); }
 	void dump() const;
 	virtual void DoDump(std::ostream& out) const = 0;
@@ -153,9 +153,8 @@ namespace Types
     class IntegerDecl : public BasicTypeDecl
     {
     public:
-	IntegerDecl() : BasicTypeDecl(TK_Integer, Integer)
-	{
-	}
+	IntegerDecl()
+	    : BasicTypeDecl(TK_Integer, Integer) { }
         std::string to_string() const override { return "integer"; };
 	bool isIntegral() const override { return true; }
 	unsigned Bits() const override { return 32; }
@@ -168,9 +167,8 @@ namespace Types
     class Int64Decl : public BasicTypeDecl
     {
     public:
-	Int64Decl() : BasicTypeDecl(TK_Int64, Int64)
-	{
-	}
+	Int64Decl()
+	    : BasicTypeDecl(TK_Int64, Int64) { }
         std::string to_string() const override { return "longint"; };
 	bool isIntegral() const override { return true; }
 	unsigned Bits() const override { return 64; }
@@ -472,7 +470,9 @@ namespace Types
 	PrototypeAST* Proto() { return proto; }
 	bool IsStatic() { return flags & Static; }
 	bool IsVirtual() { return flags & Virtual; }
-	bool IsOverride() { return flags & Virtual; }
+	bool IsOverride() { return flags & Override; }
+	int VirtIndex() const { return index; }
+	void VirtIndex(int n) { index = n; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
 	// We don't actually have an LLVM type for member functions.
@@ -480,6 +480,7 @@ namespace Types
     private:
 	PrototypeAST* proto;
 	int flags;
+	int index;
     };
 
     class ClassDecl : public FieldCollection
@@ -497,12 +498,14 @@ namespace Types
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
-	int MembFuncCount() const;
+	size_t MembFuncCount() const;
+	size_t OverrideCount() const;
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
 	void UpdateMemberFuncs();
 	std::string Name() const { return name; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	llvm::Type* VTableType(bool opaque) const;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -511,6 +514,7 @@ namespace Types
 	std::string name;
 	VariantDecl* variant;
 	std::vector<MemberFuncDecl*> membfuncs;
+	mutable llvm::StructType* vtableType;
     };
 
     class FuncPtrDecl : public CompoundDecl

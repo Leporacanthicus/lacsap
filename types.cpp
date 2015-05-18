@@ -789,6 +789,17 @@ namespace Types
 	return membfuncs[index-b];
     }
 
+    size_t ClassDecl::NumVirtFuncs() const
+    {
+	size_t count = (baseobj) ? baseobj->NumVirtFuncs() : 0;
+	for(size_t i = 0; i < MembFuncCount(); i++)
+	{
+	    std::string objname;
+	    count += GetMembFunc(i, objname)->IsVirtual();
+	}
+	return count;
+    }
+
     llvm::Type* ClassDecl::VTableType(bool opaque) const
     {
 	if (vtableType && (opaque || !vtableType->isOpaque()))
@@ -798,21 +809,36 @@ namespace Types
 
 	std::vector<llvm::Type*> vt;
 	bool needed = false;
-	int index = 0;
+	int index = (baseobj) ? baseobj->NumVirtFuncs() : 0;
 	for(size_t i = 0; i < MembFuncCount(); i++)
 	{
 	    std::string objname;
 	    MemberFuncDecl *m = GetMembFunc(i, objname);
-	    if (m->IsVirtual() || m->IsOverride())
+	    if (m->IsVirtual())
 	    {
-		if (!opaque)
-		{
-		    FuncPtrDecl* fp = new FuncPtrDecl(m->Proto());
-		    vt.push_back(fp->LlvmType());
-		    m->VirtIndex(index);
-		    index++;
-		}
+		m->VirtIndex(index);
+		index++;
 		needed = true;
+	    }
+	    else if (m->IsOverride())
+	    {
+		int elem = (baseobj) ? baseobj->MembFunc(m->Proto()->Name()) : -1;
+		if (elem < 0)
+		{
+		    return ErrorT("Huh? Overriding function " + m->Proto()->Name() +
+				  " that is not a virtual function in the baseclass!");
+		}
+		std::string objname;
+		/* We need to continue digging here for multi-level functions */
+		MemberFuncDecl* mf = baseobj->GetMembFunc(elem, objname);
+		m->VirtIndex(mf->VirtIndex());
+		needed = true;
+	    }
+
+	    if (!opaque && (m->IsOverride() || m->IsVirtual()))
+	    {
+		FuncPtrDecl* fp = new FuncPtrDecl(m->Proto());
+		vt.push_back(fp->LlvmType());
 	    }
 	}
 	if (!needed)
@@ -1186,4 +1212,3 @@ bool operator==(const Types::EnumValue& a, const Types::EnumValue& b)
 {
     return (a.value == b.value && a.name == b.name);
 }
-

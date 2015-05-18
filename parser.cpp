@@ -1418,6 +1418,8 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
 	Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
 	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index(), objname);
 	proto = mf->Proto();
+	// Make sure we enumerate the index of virtual functions
+	(void) cd->VTableType(true);
 	if (mf->IsVirtual() || mf->IsOverride())
 	{
 	    int index = mf->VirtIndex();
@@ -1705,7 +1707,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     bool isBuiltin = false;
     if (!def && !(isBuiltin = Builtin::IsBuiltin(idName)))
     {
-	return Error(std::string("Undefined name '") + idName + "'");
+	return Error("Undefined name '" + idName + "'");
     }
     if (def)
     {
@@ -1875,7 +1877,7 @@ VarDeclAST* Parser::ParseVarDecls()
 		    varList.push_back(v);
 		    if (!nameStack.Add(n, new VarDef(n, type)))
 		    {
-			Error(std::string("Name ") + n + " is already defined");
+			Error("Name '" + n + "' is already defined");
 		    }
 		}
 		if (!Expect(Token::Semicolon, true))
@@ -2131,9 +2133,14 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    shortname = name.substr(pos + 1);
 	}
-	if (proto->BaseObj())
+	if (Types::ClassDecl* cd = proto->BaseObj())
 	{
-	    nmObj = new MembFuncDef(shortname, 0, proto->BaseObj());
+	    int elem = cd->MembFunc(shortname);
+	    if (elem < 0)
+	    {
+		return ErrorF("Name '" + shortname + "' doesn't appear to be a member function...");
+	    }
+	    nmObj = new MembFuncDef(shortname, elem, proto->BaseObj());
 	}
 	else
 	{
@@ -2141,7 +2148,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 	if (!nameStack.Add(name, nmObj))
 	{
-	    return ErrorF(std::string("Name '") + name + "' already exists...");
+	    return ErrorF("Name '" + name + "' already exists...");
 	}
 	if (AcceptToken(Token::Forward))
 	{
@@ -2168,7 +2175,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
-	    return ErrorF(std::string("Duplicate name ") + v.Name());
+	    return ErrorF("Duplicate name " + v.Name());
 	}
     }
 

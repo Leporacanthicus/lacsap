@@ -503,6 +503,7 @@ namespace Types
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
 	void UpdateMemberFuncs();
+	size_t NumVirtFuncs() const;
 	std::string Name() const { return name; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	llvm::Type* VTableType(bool opaque) const;

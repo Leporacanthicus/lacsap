@@ -427,7 +427,7 @@ llvm::Value* ArrayExprAST::Address()
     EnsureSized();
     if (!v)
     {
-	return ErrorV(std::string("Unknown variable name '") + name + "'");
+	return ErrorV("Unknown variable name '" + name + "'");
     }
     llvm::Value* totalIndex = 0;
     for(size_t i = 0; i < indices.size(); i++)
@@ -559,7 +559,7 @@ llvm::Value* FunctionExprAST::CodeGen()
 	std::string actualName = mm->Name();
 	return theModule->getFunction(actualName);
     }
-    return ErrorV(std::string("Name ") + name + " could not be found...");
+    return ErrorV("Name " + name + " could not be found...");
 }
 
 llvm::Value* FunctionExprAST::Address()
@@ -663,7 +663,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return inl;
     }
 
-    std::string func = std::string("__Set") + name;
+    std::string func = "__Set" + name;
     Types::TypeDecl* type = rhs->Type();
     assert(*type == *lhs->Type() && "Expect both sides to have same type" );
 
@@ -759,8 +759,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     std::vector<llvm::Type*> argTypes{pty, pty};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    std::string func = std::string("__Str") + name;
-    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__Str" + name, ft);
 
     return builder.CreateCall2(f, lV, rV, twine);
 }
@@ -796,7 +795,6 @@ llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
 llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 {
     TRACE();
-    std::string func = std::string("__Arr") + name;
 
     llvm::Value* rV = MakeAddressable(rhs);
     llvm::Value* lV = MakeAddressable(lhs);
@@ -814,7 +812,7 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     rV = builder.CreateBitCast(rV, pty);
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__Arr" + name, ft);
 
     return builder.CreateCall3(f, lV, rV, MakeIntegerConstant(size), "calltmp");
 }
@@ -1158,7 +1156,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateICmpSGE(l, r, "ge");
 
 	default:
-	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
     else if (rty->isDoubleTy())
@@ -1188,7 +1186,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateFCmpOGE(l, r, "ge");
 
 	default:
-	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
     else
@@ -1225,7 +1223,7 @@ llvm::Value* UnaryExprAST::CodeGen()
 	case Token::Not:
 	    return builder.CreateNot(r, "not");
 	default:
-	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
     else if (rty == llvm::Type::DoubleTyID)
@@ -1235,10 +1233,10 @@ llvm::Value* UnaryExprAST::CodeGen()
 	case Token::Minus:
 	    return builder.CreateFNeg(r, "minus");
 	default:
-	    return ErrorV(std::string("Unknown token: ") + oper.ToString());
+	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
-    return ErrorV(std::string("Unknown type: ") + oper.ToString());
+    return ErrorV("Unknown type: " + oper.ToString());
 }
 
 void CallExprAST::DoDump(std::ostream& out) const
@@ -1259,14 +1257,14 @@ llvm::Value* CallExprAST::CodeGen()
     llvm::Value* calleF = callee->CodeGen();
     if (!calleF)
     {
-	return ErrorV(std::string("Unknown function ") + proto->Name() + " referenced");
+	return ErrorV("Unknown function " + proto->Name() + " referenced");
     }	
 
     const std::vector<VarDef>& vdef = proto->Args();
     if (vdef.size() != args.size())
     {
 	proto->dump();
-	return ErrorV(std::string("Incorrect number of arguments for ") + proto->Name() + ".");
+	return ErrorV("Incorrect number of arguments for " + proto->Name() + ".");
     }
 
     std::vector<llvm::Value*> argsV;
@@ -1419,7 +1417,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	index++;
 	if (!ty)
 	{
-	    return ErrorF(std::string("Invalid type for argument") + i.Name() + "...");
+	    return ErrorF("Invalid type for argument" + i.Name() + "...");
 	}
 	
 	if (i.IsRef() || ty->isCompound() )
@@ -1450,7 +1448,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     {
 	if (!mangles.Add(name, new MangleMap(actualName)))
 	{
-	    return ErrorF(std::string("Name ") + name + " already in use?");
+	    return ErrorF("Name " + name + " already in use?");
 	}
     }
 
@@ -1458,12 +1456,12 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     llvm::Function* f = llvm::dyn_cast<llvm::Function>(cf);
     if (!f->empty())
     {
-	return ErrorF(std::string("redefinition of function: ") + name);
+	return ErrorF("redefinition of function: " + name);
     }
 
     if (f->arg_size() != args.size())
     {
-	return ErrorF(std::string("Change in number of arguemts for function: ") + name);
+	return ErrorF("Change in number of arguemts for function: " + name);
     }
 
     for(auto v : argAttr)
@@ -1498,7 +1496,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	}
 	if (!variables.Add(args[idx].Name(), a))
 	{
-	    ErrorF(std::string("Duplicate variable name ") + args[idx].Name());
+	    ErrorF("Duplicate variable name " + args[idx].Name());
 	}
     }
     if (type->Type() != Types::Void)
@@ -1512,7 +1510,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(shortname, type));
 	if(!variables.Add(shortname, a))
 	{
-	    ErrorF(std::string("Duplicate function result name ") + name);
+	    ErrorF("Duplicate function result name " + name);
 	}
     }
 }
@@ -1805,7 +1803,7 @@ llvm::Value* AssignExprAST::CodeGen()
     llvm::Value* dest = lhsv->Address();
     if (!dest)
     {
-	return ErrorV(std::string("Unknown variable name '") + lhsv->Name() + "'");
+	return ErrorV("Unknown variable name '" + lhsv->Name() + "'");
     }
 
     // If rhs is a simple variable, and "large", then use memcpy on it!
@@ -2278,9 +2276,8 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
     {
 	suffix = "nl";
     }
-    std::string name = std::string("__write_") + suffix;
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__write_" + suffix, ft);
 
     return f;
 }
@@ -2296,9 +2293,8 @@ static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
 
-    std::string name = std::string("__write_bin");
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__write_bin", ft);
 
     return f;
 }
@@ -2487,9 +2483,8 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    return ErrorF("Invalid type argument for read");
 	}
     }
-    std::string name = std::string("__read_") + suffix;
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__read_" + suffix, ft);
 
     return f;
 }
@@ -2502,9 +2497,8 @@ static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
 
-    std::string name = std::string("__read_bin");
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+    llvm::Constant* f = theModule->getOrInsertFunction("__read_bin", ft);
 
     return f;
 }
@@ -2585,10 +2579,10 @@ llvm::Value* VarDeclAST::CodeGen()
 	    assert(ty && "Type should have a value");
 	    llvm::Constant* init;
 	    llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);
-	    if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type()))
+	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
+	    if (cd && cd->VTableType(true))
 	    {
-		std::string name = "vtable_" + cd->Name();
-		llvm::GlobalVariable* gv = theModule->getGlobalVariable(name, true);
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable" + cd->Name(), true);
 		llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
 		std::vector<llvm::Constant*> vtable(sty->getNumElements());
 		vtable[0] = gv;
@@ -2622,7 +2616,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	}
 	if (!variables.Add(var.Name(), v))
 	{
-	    return ErrorV(std::string("Duplicate name ") + var.Name() + "!");
+	    return ErrorV("Duplicate name " + var.Name() + "!");
 	}
     }
     return v;
@@ -2630,7 +2624,7 @@ llvm::Value* VarDeclAST::CodeGen()
 
 void LabelExprAST::DoDump(std::ostream& out) const
 {
-    bool first = false;
+    bool first = true;
     for(auto l : labelValues)
     {
 	if (!first)
@@ -2638,6 +2632,7 @@ void LabelExprAST::DoDump(std::ostream& out) const
 	    out << ", ";
 	}
 	out << l;
+	first = false;
     }
     out << ": ";
     stmt->dump(out);
@@ -2811,7 +2806,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 
     llvm::Constant* init = llvm::ConstantArray::get(aty, llvm::ArrayRef<llvm::Constant*>(initArr, size));
     llvm::GlobalValue::LinkageTypes linkage = llvm::Function::InternalLinkage;
-    std::string name(std::string("P") + std::to_string(index) + ".set");
+    std::string name("P" + std::to_string(index) + ".set");
     llvm::GlobalVariable* gv = new llvm::GlobalVariable(*theModule, ty, false, linkage,
 							init, name);
 
@@ -3191,7 +3186,7 @@ llvm::Value* VTableAST::CodeGen()
 
 std::vector<llvm::Constant*> VTableAST::GetInitializer()
 {
-    std::vector<llvm::Constant*> vtInit;
+    std::vector<llvm::Constant*> vtInit(classDecl->NumVirtFuncs());
     for(size_t i = 0; i < classDecl->MembFuncCount(); i++)
     {
 	std::string objname;
@@ -3201,7 +3196,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 	    std::string name = "P." + objname + "$" + m->Proto()->Name();
 	    if (llvm::Constant* c = theModule->getFunction(name))
 	    {
-		vtInit.push_back(c);
+		vtInit[m->VirtIndex()] = c;
 	    }
 	    else
 	    {

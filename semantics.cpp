@@ -445,7 +445,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
     TRACE();
     if (c->args.size() != c->proto->args.size())
     {
-	Error(c, std::string("Incorrect number of arguments in call to ") + c->proto->Name());
+	Error(c, "Incorrect number of arguments in call to " + c->proto->Name());
 	return;
     }
     int idx = 0;

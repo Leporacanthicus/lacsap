@@ -462,12 +462,14 @@ namespace Types
 	    Override = 1 << 2,
 	};
 	MemberFuncDecl(PrototypeAST* p, int f)
-	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p), flags(f) {}
+	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p), flags(f), index(-1) {}
 
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
 	PrototypeAST* Proto() { return proto; }
+	std::string LongName() const { return longname; }
+	void LongName(const std::string& name) { longname = name; }
 	bool IsStatic() { return flags & Static; }
 	bool IsVirtual() { return flags & Virtual; }
 	bool IsOverride() { return flags & Override; }
@@ -481,6 +483,7 @@ namespace Types
 	PrototypeAST* proto;
 	int flags;
 	int index;
+	std::string longname;
     };
 
     class ClassDecl : public FieldCollection
@@ -499,10 +502,8 @@ namespace Types
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
 	size_t MembFuncCount() const;
-	size_t OverrideCount() const;
 	int MembFunc(const std::string& nm) const;
-	MemberFuncDecl* GetMembFunc(int index, std::string& objname) const;
-	void UpdateMemberFuncs();
+	MemberFuncDecl* GetMembFunc(size_t index) const;
 	size_t NumVirtFuncs() const;
 	std::string Name() const { return name; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;

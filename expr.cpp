@@ -1252,12 +1252,12 @@ void CallExprAST::DoDump(std::ostream& out) const
 llvm::Value* CallExprAST::CodeGen()
 {
     TRACE();
-    assert(proto && "Function prototype should be set in this case!");
+    assert(proto && "Function prototype should be set");
 
     llvm::Value* calleF = callee->CodeGen();
     if (!calleF)
     {
-	return ErrorV("Unknown function " + proto->Name() + " referenced");
+	return ErrorV("Unknown function '" + proto->Name() + "' referenced");
     }	
 
     const std::vector<VarDef>& vdef = proto->Args();
@@ -1289,8 +1289,8 @@ llvm::Value* CallExprAST::CodeGen()
 		{
 		    return ErrorV("Argument declared with 'var' must be a variable!");
 		}
-		v = tc->Address();
-		if (!v)
+
+		if (!(v = tc->Address()))
 		{
 		    return 0;
 		}
@@ -1318,8 +1318,7 @@ llvm::Value* CallExprAST::CodeGen()
 		}
 		else
 		{
-		    v = i->CodeGen();
-		    if (!v)
+		    if (!(v = i->CodeGen()))
 		    {
 			return 0;
 		    }
@@ -2582,7 +2581,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
 	    if (cd && cd->VTableType(true))
 	    {
-		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable" + cd->Name(), true);
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
 		llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
 		std::vector<llvm::Constant*> vtable(sty->getNumElements());
 		vtable[0] = gv;
@@ -3189,11 +3188,10 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
     std::vector<llvm::Constant*> vtInit(classDecl->NumVirtFuncs());
     for(size_t i = 0; i < classDecl->MembFuncCount(); i++)
     {
-	std::string objname;
-	Types::MemberFuncDecl *m = classDecl->GetMembFunc(i, objname);
+	Types::MemberFuncDecl *m = classDecl->GetMembFunc(i);
 	if (m->IsVirtual() || m->IsOverride())
 	{
-	    std::string name = "P." + objname + "$" + m->Proto()->Name();
+	    std::string name = "P." + m->LongName();
 	    if (llvm::Constant* c = theModule->getFunction(name))
 	    {
 		vtInit[m->VirtIndex()] = c;
@@ -3210,7 +3208,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 
 void VTableAST::Fixup()
 {
-    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
+    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(true));
     std::vector<llvm::Constant*> vtInit = GetInitializer();
     assert(vtInit.size() && "Should have something to initialize here");
 

@@ -1414,11 +1414,14 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     }
     else if (MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
     {
-	std::string objname;
 	Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
-	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index(), objname);
+	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index());
 	proto = mf->Proto();
 	// Make sure we enumerate the index of virtual functions
+	if (!self && proto->HasSelf())
+	{
+	    self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
+	}
 	(void) cd->VTableType(true);
 	if (mf->IsVirtual() || mf->IsOverride())
 	{
@@ -1427,7 +1430,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
 	}
 	else
 	{
-	    std::string fname = objname + "$" + proto->Name();
+	    std::string fname = mf->LongName();
 	    expr = new FunctionExprAST(CurrentToken().Loc(), fname, mf->Proto()->Type());
 	}
     }
@@ -1488,11 +1491,8 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    elem = od->MembFunc(name);
 	    if (elem >= 0)
 	    {
-		std::string objname;
-		Types::MemberFuncDecl* membfunc = od->GetMembFunc(elem, objname);
-		(void) membfunc; // Will be needed later when we do virtual functions!
-		std::string funcName = objname + "$" + name;
-		NamedObject* def = nameStack.Find(funcName);
+		Types::MemberFuncDecl* membfunc = od->GetMembFunc(elem);
+		NamedObject* def = nameStack.Find(membfunc->LongName());
 
 		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
 		std::vector<ExprAST* > args;
@@ -1503,7 +1503,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 		    return 0;
 		}
 
-		if (ExprAST* call = MakeCallExpr(expr, def, funcName, args))
+		if (ExprAST* call = MakeCallExpr(expr, def, membfunc->LongName(), args))
 		{
 		    return call;
 		}
@@ -1726,8 +1726,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		if (MembFuncDef* m = llvm::dyn_cast<MembFuncDef>(def))
 		{
 		    Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(type);
-		    std::string objname;
-		    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index(), objname);
+		    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index());
 		    type = mf->Proto()->Type();
 		}
 		else if (TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
@@ -1942,19 +1941,18 @@ PrototypeAST* Parser::ParsePrototype()
 		}
 		std::string m = CurrentToken().GetIdentName();
 		AssertToken(Token::Identifier);
-		std::string objname;
 		int elem;
 
 		if ((elem = od->MembFunc(m)) >= 0)
 		{
-		    membfunc = od->GetMembFunc(elem, objname);
+		    membfunc = od->GetMembFunc(elem);
 		}
-		if (!membfunc || funcName != objname)
+		if (!membfunc)
 		{
 		    Error("Member function '" + m + "' not found in '"  + funcName + "'.");
 		    return 0;
 		}
-		funcName = funcName + "$" + m;
+		funcName = membfunc->LongName();
 	    }
 	}
 	if (!od)
@@ -2520,8 +2518,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	int count = od->MembFuncCount();
 	for(int i = 0; i < count; i++)
 	{
-	    std::string objname;
-	    Types::MemberFuncDecl* mf = const_cast<Types::MemberFuncDecl*>(od->GetMembFunc(i, objname));
+	    Types::MemberFuncDecl* mf = const_cast<Types::MemberFuncDecl*>(od->GetMembFunc(i));
 	    std::string name = mf->Proto()->Name();
 	    nameStack.Add(name, new MembFuncDef(name, i, od));
 	}

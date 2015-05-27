@@ -703,9 +703,9 @@ public:
 	: ExprAST(w, EK_VTableExpr, cd), classDecl(cd), vtable(0) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_VTableExpr; }
     std::vector<llvm::Constant*> GetInitializer();
     void Fixup();
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_VTableExpr; }
 private:
     Types::ClassDecl* classDecl;
     llvm::GlobalVariable* vtable;
@@ -719,6 +719,9 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
+    int Index() const { return index; }
+    VariableExprAST* Self() { return self; }
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_VirtFunction; }
 private:
     int index;
     VariableExprAST* self;

@@ -443,13 +443,14 @@ void TypeCheckVisitor::CheckBuiltinExpr(BuiltinExprAST* b)
 void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 {
     TRACE();
-    if (c->args.size() != c->proto->args.size())
+    const PrototypeAST* proto = c->proto;
+    if (c->args.size() != proto->args.size())
     {
 	Error(c, "Incorrect number of arguments in call to " + c->proto->Name());
 	return;
     }
     int idx = 0;
-    const std::vector<VarDef>& parg = c->proto->args;
+    const std::vector<VarDef>& parg = proto->args;
     for(auto& a : c->args)
     {
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))

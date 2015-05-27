@@ -718,10 +718,37 @@ namespace Types
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
-	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), 
-	  membfuncs(mf), vtableType(0)
+	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
     { 
-	UpdateMemberFuncs();
+	if(baseobj)
+	{
+	    membfuncs = baseobj->membfuncs;
+	}
+
+	std::vector<VarDef> self{VarDef("self", this, true)};
+	for(auto i : mf)
+	{
+	    if (!i->IsStatic())
+	    {
+		i->Proto()->AddExtraArgsFirst(self);
+		i->Proto()->SetHasSelf(true);
+	    }
+	    i->LongName(name + "$" + i->Proto()->Name());
+	    bool found = false;
+	    for(auto& j : membfuncs)
+	    {
+		if (j->Proto()->Name() == i->Proto()->Name())
+		{
+		    j = i;
+		    found = true;
+		    break;
+		}
+	    }
+	    if (!found)
+	    {
+		membfuncs.push_back(i);
+	    }
+	}
     }
 
 
@@ -743,59 +770,38 @@ namespace Types
 	{
 	    variant->DoDump(out);
 	}
+	out << std::endl;
     }
 
     size_t ClassDecl::MembFuncCount() const
     {
-	return membfuncs.size() - OverrideCount() + (baseobj ? baseobj->MembFuncCount() : 0);
-    }
-
-    size_t ClassDecl::OverrideCount() const
-    {
-	int count = 0;
-	for(auto m : membfuncs)
-	{
-	    if (m->IsOverride())
-	    {
-		count++;
-	    }
-	}
-	return count;
+	return membfuncs.size();
     }
 
     int ClassDecl::MembFunc(const std::string& nm) const
     {
-	int b = baseobj ? baseobj->MembFuncCount() - OverrideCount() : 0;
-	for(int i = 0; i < (int)membfuncs.size();  i++)
+	for(size_t i = 0; i < membfuncs.size();  i++)
 	{
 	    if (membfuncs[i]->Proto()->Name() == nm)
 	    {
-		return i + b;
+		return i;
 	    }
 	}
-	return baseobj ? baseobj->MembFunc(nm) : -1;
+	return -1;
     }
 
-    MemberFuncDecl* ClassDecl::GetMembFunc(int index, std::string& objname) const
+    MemberFuncDecl* ClassDecl::GetMembFunc(size_t index) const
     {
-	int b = baseobj ? baseobj->MembFuncCount() - OverrideCount() : 0;
-	if (index < b)
-	{
-	    assert(baseobj && "Huh - no base object?");
-	    return baseobj->GetMembFunc(index, objname);
-	}
-	assert(index >= b && index-b < (int)membfuncs.size() && "Expected index to be in range");
-	objname = Name();
-	return membfuncs[index-b];
+	assert(index < membfuncs.size() && "Expected index to be in range");
+	return membfuncs[index];
     }
 
     size_t ClassDecl::NumVirtFuncs() const
     {
-	size_t count = (baseobj) ? baseobj->NumVirtFuncs() : 0;
-	for(size_t i = 0; i < MembFuncCount(); i++)
+	size_t count = 0;
+	for(auto mf : membfuncs)
 	{
-	    std::string objname;
-	    count += GetMembFunc(i, objname)->IsVirtual();
+	    count += mf->IsVirtual() || mf->IsOverride();
 	}
 	return count;
     }
@@ -809,14 +815,15 @@ namespace Types
 
 	std::vector<llvm::Type*> vt;
 	bool needed = false;
-	int index = (baseobj) ? baseobj->NumVirtFuncs() : 0;
-	for(size_t i = 0; i < MembFuncCount(); i++)
+	int index =  0;
+	for(auto m : membfuncs)
 	{
-	    std::string objname;
-	    MemberFuncDecl *m = GetMembFunc(i, objname);
 	    if (m->IsVirtual())
 	    {
-		m->VirtIndex(index);
+		if (m->VirtIndex() == -1)
+		{
+		    m->VirtIndex(index);
+		}
 		index++;
 		needed = true;
 	    }
@@ -825,14 +832,14 @@ namespace Types
 		int elem = (baseobj) ? baseobj->MembFunc(m->Proto()->Name()) : -1;
 		if (elem < 0)
 		{
-		    return ErrorT("Huh? Overriding function " + m->Proto()->Name() +
+		    return ErrorT("Overriding function " + m->Proto()->Name() +
 				  " that is not a virtual function in the baseclass!");
 		}
-		std::string objname;
 		/* We need to continue digging here for multi-level functions */
-		MemberFuncDecl* mf = baseobj->GetMembFunc(elem, objname);
+		MemberFuncDecl* mf = baseobj->GetMembFunc(elem);
 		m->VirtIndex(mf->VirtIndex());
 		needed = true;
+		index++;
 	    }
 
 	    if (!opaque && (m->IsOverride() || m->IsVirtual()))
@@ -856,20 +863,6 @@ namespace Types
 	    vtableType->setBody(vt);
 	}
 	return vtableType;
-    }
-
-
-    void ClassDecl::UpdateMemberFuncs()
-    {
-	std::vector<VarDef> v{VarDef("self", this, true)};
-	for(auto& m : membfuncs)
-	{
-	    if (!m->IsStatic())
-	    {
-		m->Proto()->AddExtraArgsFirst(v);
-		m->Proto()->SetHasSelf(true);
-	    }
-	}
     }
 
     int ClassDecl::Element(const std::string& name) const
@@ -913,9 +906,9 @@ namespace Types
 	{
 	    return this;
 	}
-	if (const ClassDecl* od = llvm::dyn_cast<ClassDecl>(ty))
+	if (const ClassDecl* cd = llvm::dyn_cast<ClassDecl>(ty))
 	{
-	    return (od->baseobj) ? CompatibleType(od->baseobj) : 0;
+	    return (cd->baseobj) ? CompatibleType(cd->baseobj) : 0;
 	}
 	return 0;
     }
@@ -936,21 +929,21 @@ namespace Types
 
 	    assert(!llvm::isa<MemberFuncDecl>(f->FieldType()) && "Should not have member functions now");
 
-	    if (f->IsStatic())
+	    if (!f->IsStatic())
 	    {
-		continue;
-	    }
-
-	    if (llvm::isa<PointerDecl>(f->FieldType()) && f->FieldType()->Type() == PointerIncomplete &&
-		!f->FieldType()->hasLlvmType())
-	    {
-		if (!opaqueType)
+		if (llvm::isa<PointerDecl>(f->FieldType()) &&
+		    f->FieldType()->Type() == PointerIncomplete &&
+		    !f->FieldType()->hasLlvmType())
 		{
-		    opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		    if (!opaqueType)
+		    {
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+			opaqueType->setName(Name());
+		    }
+		    return opaqueType;
 		}
-		return opaqueType;
+		fv.push_back(f->LlvmType());
 	    }
-	    fv.push_back(f->LlvmType());
 	}
 	if (variant)
 	{
@@ -965,6 +958,7 @@ namespace Types
 	{
 	    llvm::StructType* ty = llvm::StructType::create(llvm::getGlobalContext());
 	    ty->setBody(llvm::None);
+	    ty->setName(Name());
 	    return ty;
 	}
 	return llvm::StructType::create(fv);

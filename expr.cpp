@@ -817,30 +817,6 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     return builder.CreateCall3(f, lV, rV, MakeIntegerConstant(size), "calltmp");
 }
 
-static llvm::Value* TypeConvert(llvm::Value* v, llvm::Type* ty, bool isNil = false)
-{
-    llvm::Type* currentTy = v->getType();
-    if (ty->isDoubleTy() && currentTy->isIntegerTy())
-    {
-	return builder.CreateSIToFP(v, ty, "tofp");
-    }
-    if (currentTy->isIntegerTy() && ty->isIntegerTy())
-    {
-	unsigned size = ty->getPrimitiveSizeInBits();
-	unsigned curSize = currentTy->getPrimitiveSizeInBits();
-	if (curSize > 1 && size > curSize)
-	{
-	    v = builder.CreateSExt(v, ty);
-	}
-    }
-
-    if (ty->isPointerTy() && isNil)
-    {
-	return builder.CreateBitCast(v, ty);
-    }
-    return v;
-}
-
 void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 {
     if (type == ty)
@@ -1073,24 +1049,16 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     assert(l && r && "Should have a value for both sides");
 
-    bool isRhsNil = llvm::isa<NilExprAST>(rhs);
-
     llvm::Type* lty = l->getType();
-    // If it's a divide operation, result is real, so convert to real.
-    // Fixme: Should move to semantics?
-    if (oper.GetToken() == Token::Divide)
+    if (llvm::isa<NilExprAST>(rhs))
     {
-	lty = Types::GetType(Types::Real);
+	r = builder.CreateBitCast(r, lty);
     }
-
-    r = TypeConvert(r, lty, isRhsNil);
     llvm::Type* rty = r->getType();
-    l = TypeConvert(l, rty);
-    lty = l->getType();
 
     assert(rty == lty && "Expect same types");
 
-    // Can compare for (un)equality with pointers and integers
+    // Can compare for (in)equality with pointers and integers
     if (rty->isIntegerTy() || rty->isPointerTy())
     {
 	switch(oper.GetToken())
@@ -1324,12 +1292,6 @@ llvm::Value* CallExprAST::CodeGen()
 		    }
 		}
 	    }
-	}
-	if (vi && llvm::isa<Types::StringDecl>(vi->Type()) &&
-	    llvm::isa<Types::StringDecl>(vdef[index].Type()))
-	{
-	    llvm::Type* strTy = vdef[index].Type()->LlvmType();
-	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
 	}
 	assert(v && "Expect argument here");
 	argsV.push_back(v);
@@ -1991,7 +1953,6 @@ llvm::Value* ForExprAST::CodeGen()
 	return 0;
     }
 
-    startV = TypeConvert(startV, var->getType()->getContainedType(0));
     llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
 
     builder.CreateStore(startV, var);
@@ -2301,7 +2262,6 @@ static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
-    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     llvm::Value* f = file->Address();
 
     bool isText = FileIsText(f);
@@ -2400,8 +2360,7 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV("Argument for write should be a variable");
 	    }
 	    v = vexpr->Address();
-	    v = builder.CreateBitCast(v, voidPtrTy);
-	    argsV.push_back(v);
+	    argsV.push_back(builder.CreateBitCast(v,  Types::GetVoidPtrType()));
 	    llvm::Type* ty = v->getType();
 	    fn = CreateWriteBinFunc(ty, f->getType());
 	}
@@ -2493,8 +2452,7 @@ static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
     llvm::Type* resTy = Types::GetType(Types::Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
     assert(vTy && "Type should not be NULL!");
-    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
+    std::vector<llvm::Type*> argTypes{fty, Types::GetVoidPtrType()};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__read_bin", ft);
@@ -2505,7 +2463,6 @@ static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
-    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     llvm::Value* f = file->Address();
 
     bool isText = FileIsText(f);
@@ -2528,7 +2485,7 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	if (!isText)
 	{
-	    v = builder.CreateBitCast(v, voidPtrTy);
+	    v = builder.CreateBitCast(v, Types::GetVoidPtrType());
 	}
 	argsV.push_back(v);
 	llvm::Constant* fn;
@@ -3073,8 +3030,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 					  intTy,
 					  intTy };
 
-    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    llvm::FunctionType* ft = llvm::FunctionType::get(voidPtrTy, argTypes, false);
+    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetVoidPtrType(), argTypes, false);
     llvm::Constant* fn = theModule->getOrInsertFunction("range_error", ft);
 
     builder.CreateCall(fn, args, "");

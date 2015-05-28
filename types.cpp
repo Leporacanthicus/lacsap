@@ -720,7 +720,7 @@ namespace Types
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
 	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
     { 
-	if(baseobj)
+	if (baseobj)
 	{
 	    membfuncs = baseobj->membfuncs;
 	}
@@ -750,7 +750,6 @@ namespace Types
 	    }
 	}
     }
-
 
     size_t ClassDecl::Size() const
     {
@@ -855,7 +854,7 @@ namespace Types
 
 	if (!vtableType)
 	{
-	    vtableType = llvm::StructType::create(llvm::getGlobalContext());
+	    vtableType = llvm::StructType::create(llvm::getGlobalContext(), "vtable_" + Name());
 	}
 	if (!opaque)
 	{
@@ -937,8 +936,7 @@ namespace Types
 		{
 		    if (!opaqueType)
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
-			opaqueType->setName(Name());
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), Name());
 		    }
 		    return opaqueType;
 		}
@@ -956,12 +954,11 @@ namespace Types
 	}
 	if (!fv.size())
 	{
-	    llvm::StructType* ty = llvm::StructType::create(llvm::getGlobalContext());
+	    llvm::StructType* ty = llvm::StructType::create(llvm::getGlobalContext(), Name());
 	    ty->setBody(llvm::None);
-	    ty->setName(Name());
 	    return ty;
 	}
-	return llvm::StructType::create(fv);
+	return llvm::StructType::create(fv, Name());
     }
 
     bool ClassDecl::SameAs(const TypeDecl* ty) const
@@ -1041,8 +1038,7 @@ namespace Types
     {
 	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
 	std::vector<llvm::Type*> fv{GetType(Integer), ty};
-	llvm::StructType* st = llvm::StructType::create(fv);
-	st->setName(name);
+	llvm::StructType* st = llvm::StructType::create(fv, name);
 	return st;
     }
 

@@ -725,7 +725,7 @@ namespace Types
 	    membfuncs = baseobj->membfuncs;
 	}
 
-	std::vector<VarDef> self{VarDef("self", this, true)};
+	std::vector<VarDef> self = {VarDef("self", this, true)};
 	for(auto i : mf)
 	{
 	    if (!i->IsStatic())
@@ -810,6 +810,11 @@ namespace Types
 	if (vtableType && (opaque || !vtableType->isOpaque()))
 	{
 	    return vtableType;
+	}
+
+	if (baseobj)
+	{
+	    (void) baseobj->VTableType(opaque);
 	}
 
 	std::vector<llvm::Type*> vt;

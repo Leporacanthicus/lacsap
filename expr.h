@@ -714,8 +714,7 @@ private:
 class VirtFunctionAST : public AddressableAST
 {
 public:
-    VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
-	: AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf) {}
+    VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     llvm::Value* Address() override;

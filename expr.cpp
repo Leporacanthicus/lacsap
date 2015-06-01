@@ -1708,11 +1708,7 @@ llvm::Value* AssignExprAST::AssignStr()
 
     llvm::Value* dest = lhsv->Address();
 
-    if (rhs->Type()->Type() == Types::Char)
-    {
-	return TempStringFromChar(dest, rhs);
-    }
-    else if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
 	return TempStringFromStringExpr(dest, srhs);
     }
@@ -1790,29 +1786,6 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	return ErrorV("Could not produce expression for assignment");
     }
-
-    llvm::Type* leftType = dest->getType()->getContainedType(0);
-    llvm::Type::TypeID lty = dest->getType()->getContainedType(0)->getTypeID();
-    llvm::Type::TypeID rty = v->getType()->getTypeID();
-
-    if (rty == llvm::Type::IntegerTyID &&
-	lty == llvm::Type::DoubleTyID)
-    {
-	v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
-	rty = v->getType()->getTypeID();
-    }
-
-    if (rty == llvm::Type::IntegerTyID && lty == llvm::Type::IntegerTyID)
-    {
-	unsigned lsize = leftType->getPrimitiveSizeInBits();
-	unsigned rsize = v->getType()->getPrimitiveSizeInBits();
-	if (lsize > 1 && rsize > 1 && lsize > rsize)
-	{
-	    v = builder.CreateSExt(v, leftType);
-	}
-    }
-
-    assert(rty == lty && "Types must be the same in assignment.");
 
     builder.CreateStore(v, dest);
 
@@ -3061,10 +3034,11 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
-    if (current->Type() == Types::Array && current->SubType()->Type() == Types::Char && 
+    if (((current->Type() == Types::Array && current->SubType()->Type() == Types::Char) ||
+	 current->Type() == Types::Char ) && 
 	type->Type() == Types::String)
     {
-	llvm::Type* ty;
+	llvm::Type* ty = NULL;
 	return MakeStringFromExpr(expr, ty);
     }
     dump();

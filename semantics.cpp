@@ -381,9 +381,15 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	Error(a, "String assignment from incompatible string constant");
     }
 
-    if (lty->AssignableType(rty) == NULL)
+    const Types::TypeDecl* ty = lty->AssignableType(rty);
+    if (!ty)
     {
 	Error(a, "Incompatible type in assignment");
+    }
+    if (*ty != *rty)
+    {
+	ExprAST* e = a->rhs;
+	a->rhs = new TypeCastAST(e->Loc(), e, ty);
     }
 }
 

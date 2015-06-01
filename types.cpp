@@ -242,7 +242,7 @@ namespace Types
     {
 	if (SameAs(ty) || ty->Type() == Integer)
 	{
-	    return ty;
+	    return this;
 	}
 	return 0;
     }
@@ -265,7 +265,7 @@ namespace Types
     {
 	if (SameAs(ty) || ty->Type() == Integer || ty->Type() == Int64)
 	{
-	    return ty;
+	    return this;
 	}
 	return 0;
     }

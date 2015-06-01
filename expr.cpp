@@ -1050,10 +1050,6 @@ llvm::Value* BinaryExprAST::CodeGen()
     assert(l && r && "Should have a value for both sides");
 
     llvm::Type* lty = l->getType();
-    if (llvm::isa<NilExprAST>(rhs))
-    {
-	r = builder.CreateBitCast(r, lty);
-    }
     llvm::Type* rty = r->getType();
 
     assert(rty == lty && "Expect same types");
@@ -1804,11 +1800,6 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	v = builder.CreateSIToFP(v, Types::GetType(Types::Real), "tofp");
 	rty = v->getType()->getTypeID();
-    }
-
-    if (lty == llvm::Type::PointerTyID && llvm::isa<NilExprAST>(rhs))
-    {
-	v = builder.CreateBitCast(v, dest->getType()->getContainedType(0));
     }
 
     if (rty == llvm::Type::IntegerTyID && lty == llvm::Type::IntegerTyID)
@@ -3065,6 +3056,10 @@ llvm::Value* TypeCastAST::CodeGen()
 	}
 	return builder.CreateSExt(expr->CodeGen(), type->LlvmType());
 
+    }
+    if (llvm::isa<Types::PointerDecl>(type))
+    {
+	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
     if (current->Type() == Types::Array && current->SubType()->Type() == Types::Char && 
 	type->Type() == Types::String)

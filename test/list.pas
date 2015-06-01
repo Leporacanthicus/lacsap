@@ -40,7 +40,7 @@ var
 
 begin
    t := head;
-   while t <> nil do
+   while nil <> t do
    begin
       writeln(t^.x : 1);
       t := t^.next;

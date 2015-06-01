@@ -254,13 +254,17 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	 (llvm::isa<Types::PointerDecl>(rty) && llvm::isa<NilExprAST>(b->lhs))) &&
 	(op == Token::Equal || op == Token::NotEqual))
     {
-	if (llvm::isa<Types::PointerDecl>(lty))
+	if (llvm::isa<NilExprAST>(b->rhs))
 	{
 	    ty = lty;
+	    ExprAST* e = b->rhs;
+	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
 	}
 	else
 	{
 	    ty = rty;
+	    ExprAST* e = b->lhs;
+	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 	}
     }
 
@@ -345,6 +349,8 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     // Note difference to binary expression: only allowed on rhs!
     if (llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(a->rhs))
     {
+	ExprAST* e = a->rhs;
+	a->rhs = new TypeCastAST(e->Loc(), e, lty);
 	return;
     }
 

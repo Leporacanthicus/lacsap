@@ -24,9 +24,7 @@ private:
     // Simple expression parsing
     ExprAST* ParseExpression();
     ExprAST* ParseIdentifierExpr();
-    ExprAST* ParseRealExpr(Token token);
     ExprAST* ParseIntegerExpr(Token token);
-    ExprAST* ParseCharExpr(Token token);
     ExprAST* ParseStringExpr(Token token);
     ExprAST* ParseParenExpr();
     ExprAST* ParsePrimary();

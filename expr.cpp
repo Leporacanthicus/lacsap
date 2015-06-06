@@ -100,14 +100,11 @@ bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 	ty = ty->getContainedType(0);
 	const llvm::DataLayout dl(theModule);
 	recSize = dl.getTypeAllocSize(ty);
-    }
-    else
-    {
-	return false;
+	isText = st->getName().substr(0, 4) == "text";
+	return true;
     }
 
-    isText = st->getName().substr(0, 4) == "text";
-    return true;
+    return false;
 }
 
 bool FileIsText(llvm::Value* f)
@@ -115,11 +112,7 @@ bool FileIsText(llvm::Value* f)
     bool isText;
     int  recSize;
 
-    if (FileInfo(f, recSize, isText))
-    {
-	return isText;
-    }
-    return false;
+    return (FileInfo(f, recSize, isText) && isText);
 }
 
 static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, llvm::Type* ty, const std::string& name)
@@ -171,19 +164,17 @@ llvm::Value* MakeAddressable(ExprAST* e)
 	assert(v && "Expect address to be non-zero");
 	return v;
     }
-    else
-    {
-	llvm::Value* store = e->CodeGen();
-	if (store->getType()->isPointerTy())
-	{
-	    return store;
-	}
 
-	llvm::Value* v = CreateTempAlloca(store->getType());
-	assert(v && "Expect address to be non-zero");
-	builder.CreateStore(store, v);
-	return v;
+    llvm::Value* store = e->CodeGen();
+    if (store->getType()->isPointerTy())
+    {
+	return store;
     }
+    
+    llvm::Value* v = CreateTempAlloca(store->getType());
+    assert(v && "Expect address to be non-zero");
+    builder.CreateStore(store, v);
+    return v;
 }
 
 void ExprAST::dump(std::ostream& out) const
@@ -278,14 +269,10 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 	builder.CreateMemCpy(dest, src, size, std::max(align, MIN_ALIGN));
 	return dest;
     }
-    else
-    {
-	llvm::Value* v = builder.CreateLoad(src);
-	builder.CreateStore(v, dest);
-	return dest;
-    }
-    assert(0 && "We don't want to get here!");
-    return 0;
+
+    llvm::Value* v = builder.CreateLoad(src);
+    builder.CreateStore(v, dest);
+    return dest;
 }
 
 std::string ExprAST::ToString()
@@ -689,16 +676,14 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	builder.CreateCall4(f, v, lV, rV, setWords);
 	return builder.CreateLoad(v);
     }
-    else
-    {
-	llvm::Type* resTy = Types::GetType(Types::Boolean);
-	std::vector<llvm::Type*> argTypes{pty, pty, intTy};
-	
-	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-	
-	return builder.CreateCall3(f, lV, rV, setWords, "calltmp");
-    }
+
+    llvm::Type* resTy = Types::GetType(Types::Boolean);
+    std::vector<llvm::Type*> argTypes{pty, pty, intTy};
+    
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
+    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+    
+    return builder.CreateCall3(f, lV, rV, setWords, "calltmp");
 }
 
 static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
@@ -715,6 +700,7 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
 	}
 	v = CreateTempAlloca(ty);
 	TempStringFromChar(v, e);
+	return v;
     }
     else if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
     {
@@ -725,18 +711,17 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
 	}
 	v = CreateTempAlloca(sd->LlvmType());
 	TempStringFromStringExpr(v, se);
+	return v;
     }
-    else
+
+    if (!ty)
     {
-	if (!ty)
-	{
-	    ty = e->Type()->LlvmType();
-	}
-	v = MakeAddressable(e);
-	if (ty != strTy)
-	{
-	    v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
-	}
+	ty = e->Type()->LlvmType();
+    }
+    v = MakeAddressable(e);
+    if (ty != strTy)
+    {
+	v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
     }
     return v;
 }
@@ -844,7 +829,6 @@ Types::TypeDecl* BinaryExprAST::Type() const
     }
 
     Types::TypeDecl* lType = lhs->Type();
-
     assert(lType && "Should have types here...");
 
     // Last resort, return left type.
@@ -884,7 +868,8 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
     }
-    else if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
+    
+    if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
     {
 	switch(oper.GetToken())
 	{
@@ -923,10 +908,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    return ErrorV("Unknown operator on set");
 	}
     }
-    else
-    {
-	return ErrorV("Invalid arguments in set operation");
-    }
+    return ErrorV("Invalid arguments in set operation");
 }
 
 llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
@@ -985,12 +967,11 @@ llvm::Value* BinaryExprAST::CodeGen()
 	{
 	    return CallStrCat(lhs, rhs);
 	}
-	else
-	{
-	    return MakeStrCompare(oper, CallStrFunc("Compare"));
-	}
+
+	return MakeStrCompare(oper, CallStrFunc("Compare"));
     }
-    else if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
+    
+    if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
 	// But only if they are the same size.
@@ -1121,14 +1102,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
-    else
-    {
-	l->dump();
-	oper.dump(std::cout);
-	r->dump();
-	assert(0 && "Should not get here!");
-	return ErrorV("Huh?");
-    }
+
+    l->dump();
+    oper.dump(std::cout);
+    r->dump();
+    assert(0 && "Should not get here!");
+    return ErrorV("Huh?");
 }
 
 void UnaryExprAST::DoDump(std::ostream& out) const
@@ -1680,13 +1659,10 @@ llvm::Value* AssignExprAST::AssignStr()
     {
 	return TempStringFromStringExpr(dest, srhs);
     }
-    else if (llvm::isa<Types::StringDecl>(rhs->Type()))
-    {
-	return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
-    }
+    
+    assert(llvm::isa<Types::StringDecl>(rhs->Type()));
 
-    assert(0 && "Unknown type");
-    return 0;
+    return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
 }
 
 llvm::Value* AssignExprAST::CodeGen()
@@ -2217,6 +2193,7 @@ llvm::Value* WriteAST::CodeGen()
 		{
 		    v = MakeAddressable(arg.expr);
 		}
+
 		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
@@ -2374,9 +2351,7 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	}
     }
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__read_" + suffix, ft);
-
-    return f;
+    return theModule->getOrInsertFunction("__read_" + suffix, ft);
 }
 
 static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
@@ -2384,12 +2359,10 @@ static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
     llvm::Type* resTy = Types::GetType(Types::Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
     assert(vTy && "Type should not be NULL!");
-    std::vector<llvm::Type*> argTypes{fty, Types::GetVoidPtrType()};
+    std::vector<llvm::Type*> argTypes = {fty, Types::GetVoidPtrType()};
 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__read_bin", ft);
-
-    return f;
+    return theModule->getOrInsertFunction("__read_bin", ft);
 }
 
 llvm::Value* ReadAST::CodeGen()

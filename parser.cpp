@@ -141,11 +141,10 @@ const Token& Parser::PeekToken(const char* file, int line)
     {
 	return nextToken;
     }
-    else
-    {
-	nextTokenValid = true;
-	nextToken = lexer.GetToken();
-    }
+
+    nextTokenValid = true;
+    nextToken = lexer.GetToken();
+
     if (verbosity > 1)
     {
 	std::cerr << "peeking: ";
@@ -687,6 +686,7 @@ void Parser::ParseTypeDef()
 	    if (!AddType(nm,  ty))
 	    {
 		Error("Name " + nm + " is already in use.");
+		return;
 	    }
 	    if (ty->Type() == Types::PointerIncomplete)
 	    {
@@ -758,10 +758,8 @@ Types::PointerDecl* Parser::ParsePointerType()
 	// Otherwise, forward declare...
 	return new Types::PointerDecl(name);
     }
-    else
-    {
-	return new Types::PointerDecl(ParseType(""));
-    }
+
+    return new Types::PointerDecl(ParseType(""));
 }
 
 Types::ArrayDecl* Parser::ParseArrayDecl()
@@ -1238,31 +1236,14 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
 {
     long val = token.GetIntVal();
     Location loc = token.Loc();
-    ExprAST* result;
+    const char* type = "integer";
+
     if (val < std::numeric_limits<unsigned int>::min() || val > std::numeric_limits<unsigned int>::max())
     {
-	result = new IntegerExprAST(loc, val, GetTypeDecl("longint"));
-    }
-    else
-    {
-	result = new IntegerExprAST(loc, val, GetTypeDecl("integer"));
+	type = "longint";
     }
     NextToken();
-    return result;
-}
-
-ExprAST* Parser::ParseCharExpr(Token token)
-{
-    ExprAST* result = new CharExprAST(token.Loc(), token.GetIntVal(), GetTypeDecl("char"));
-    NextToken();
-    return result;
-}
-
-ExprAST* Parser::ParseRealExpr(Token token)
-{
-    ExprAST* result = new RealExprAST(token.Loc(), token.GetRealVal(), GetTypeDecl("real"));
-    NextToken();
-    return result;
+    return new IntegerExprAST(loc, val, GetTypeDecl(type));
 }
 
 ExprAST* Parser::ParseStringExpr(Token token)
@@ -1272,11 +1253,10 @@ ExprAST* Parser::ParseStringExpr(Token token)
     {
 	len = 1;
     }
-    std::vector<Types::RangeDecl*> rv{new Types::RangeDecl(new Types::Range(0, len), Types::Integer)};
+    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), Types::Integer)};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
-    ExprAST* result = new StringExprAST(token.Loc(), token.GetStrVal(), ty);
     NextToken();
-    return result;
+    return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
 }
 
 ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
@@ -2725,13 +2705,15 @@ ExprAST* Parser::ParsePrimary()
 	return new NilExprAST(CurrentToken().Loc());
 
     case Token::Real:
-	return ParseRealExpr(token);
+	NextToken();
+	return new RealExprAST(token.Loc(), token.GetRealVal(), GetTypeDecl("real"));
 
     case Token::Integer:
 	return ParseIntegerExpr(token);
 
     case Token::Char:
-	return ParseCharExpr(token);
+	NextToken();
+	return new CharExprAST(token.Loc(), token.GetIntVal(), GetTypeDecl("char"));
 
     case Token::StringLiteral:
 	return ParseStringExpr(token);

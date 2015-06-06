@@ -844,40 +844,8 @@ Types::TypeDecl* BinaryExprAST::Type() const
     }
 
     Types::TypeDecl* lType = lhs->Type();
-    Types::TypeDecl* rType = rhs->Type();
 
-    if (!rType && lType && lType->Type() == Types::Set)
-    {
-	return lType;
-    }
-
-    assert(rType && lType && "Should have types here...");
-
-    // If both are the same, then return this type.
-    if (rType->Type() == lType->Type())
-    {
-	return rType;
-    }
-
-    // If either side is string, then make it string!
-    if (rType->Type() == Types::String)
-    {
-	return rType;
-    }
-    if (lType->Type() == Types::String)
-    {
-	return lType;
-    }
-
-    // If either side is real, return that type, no matter what the other side is.
-    if (rType->Type() == Types::Real)
-    {
-	return rType;
-    }
-    if (lType->Type() == Types::Real)
-    {
-	return lType;
-    }
+    assert(lType && "Should have types here...");
 
     // Last resort, return left type.
     return lType;

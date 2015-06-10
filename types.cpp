@@ -154,6 +154,8 @@ namespace Types
 	case MemberFunc:
 	    return "MemberFunc";
 	}
+	assert(0 && "Unknown type");
+	return "Unknown";
     }
 
     void TypeDecl::dump() const
@@ -469,7 +471,7 @@ namespace Types
     {
 	unsigned s = range->Size();
 	unsigned b = 1;
-	while(s < (1 << b))
+	while(s < (1u << b))
 	{
 	    b++;
 	}
@@ -525,7 +527,7 @@ namespace Types
     {
 	unsigned s = values.size();
 	unsigned b = 1;
-	while(s < (1 << b))
+	while(s < (1u << b))
 	{
 	    b++;
 	}
@@ -1191,7 +1193,7 @@ namespace Types
 	}
 	return textType;
     }
-};
+}
 
 bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty)
 {

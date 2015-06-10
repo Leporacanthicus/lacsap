@@ -154,7 +154,7 @@ Token Lexer::NumberToken()
     {
 	return Token(Token::Real, w, std::stod(num));
     }
-    return Token(Token::Integer, w, (long)std::stoul(num, 0, base));
+    return Token(Token::Integer, w, (uint64_t)std::stoull(num, 0, base));
 }
 
 // String or character. 
@@ -182,7 +182,7 @@ Token Lexer::StringToken()
     NextChar();
     if (str.size() == 1)
     {
-	return Token(Token::Char, w, (long)str[0]);
+	return Token(Token::Char, w, (uint64_t)str[0]);
     }
     return Token(Token::StringLiteral, w, str);
 }
@@ -342,7 +342,7 @@ Token Lexer::GetToken()
 	{
 	    if (tt == Token::LineNumber)
 	    {
-		return Token(Token::Integer, w, w.LineNumber());
+	      return Token(Token::Integer, w, (uint64_t)w.LineNumber());
 	    }
 	    else if (tt == Token::FileName)
 	    {

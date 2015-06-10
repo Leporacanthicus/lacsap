@@ -559,7 +559,7 @@ namespace Builtin
 
 	llvm::Constant* f = theModule->getOrInsertFunction("__random", ft);
 
-	return builder.CreateCall(f, "calltmp");
+	return builder.CreateCall(f, std::vector<llvm::Value*>(), "calltmp");
     }
 
     bool BuiltinFunctionRandom::Semantics()
@@ -643,11 +643,12 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__new", ft);
 
-	llvm::Value* aSize = MakeIntegerConstant(size);
+	std::vector<llvm::Value*> argv = { MakeIntegerConstant(size) };
 
-	llvm::Value* retVal = builder.CreateCall(f, aSize, "new");
+	llvm::Value* retVal = builder.CreateCall(f, argv, "new");
 
 	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	//TODO: Fix this to be a proper TypeCast...
 	retVal = builder.CreateBitCast(retVal, pd->LlvmType(), "cast");
 	llvm::Value* pA = var->Address();
 	return builder.CreateStore(retVal, pA);
@@ -668,15 +669,14 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Value* a = args[0]->CodeGen();
-	llvm::Type* ty = a->getType();
-	std::vector<llvm::Type*> argTypes = {ty};
+	std::vector<llvm::Value*> argv = { args[0]->CodeGen() };
+	llvm::Type* ty = argv[0]->getType();
+	std::vector<llvm::Type*> argTypes = { ty };
 	
-	std::string name = "__dispose";
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
+	llvm::Constant* f = theModule->getOrInsertFunction("__dispose", ft);
 
-	return builder.CreateCall(f, a);
+	return builder.CreateCall(f, argv);
     }
 
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
@@ -684,12 +684,13 @@ namespace Builtin
 	VariableExprAST* fvar;
 	fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	llvm::Value* faddr = fvar->Address();
-	std::vector<llvm::Type*> argTypes = {faddr->getType()};
+	std::vector<llvm::Value*> argv = { faddr };
+	std::vector<llvm::Type*> argTypes = { faddr->getType() };
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Type()->LlvmType(), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(std::string("__") + funcname, ft);
 
-	return builder.CreateCall(f, faddr, "");
+	return builder.CreateCall(f, faddr);
     }
 
     bool BuiltinFunctionFile::Semantics()
@@ -766,13 +767,13 @@ namespace Builtin
 	llvm::Value* isText = MakeIntegerConstant(textFile);
 	llvm::Value* aSize = MakeIntegerConstant(recSize); 
 
-	std::vector<llvm::Value*> argsV{faddr, filename, aSize, isText};
+	std::vector<llvm::Value*> argsV = { faddr, filename, aSize, isText };
 
 	std::string name = "__assign";
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
-	return builder.CreateCall(f, argsV, "");
+	return builder.CreateCall(f, argsV);
     }
 
     bool BuiltinFunctionAssign::Semantics()
@@ -803,7 +804,9 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__StrCopy", ft);
 
-	return builder.CreateCall3(f, str, start, len, "copy");
+	std::vector<llvm::Value*> argsV = { str, start, len };
+
+	return builder.CreateCall(f, argsV, "copy");
     }
 
     bool BuiltinFunctionCopy::Semantics()
@@ -828,7 +831,7 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__Clock", ft);
 
-	return builder.CreateCall(f, "clock");
+	return builder.CreateCall(f, std::vector<llvm::Value*>(), "clock");
     }
 
     bool BuiltinFunctionClock::Semantics()
@@ -840,8 +843,8 @@ namespace Builtin
     {
 	llvm::Value* message = args[0]->CodeGen();
 	llvm::Type* ty = message->getType();
-	std::vector<llvm::Type*> argTypes = {ty};
-	std::vector<llvm::Value*> argsV = {message};
+	std::vector<llvm::Type*> argTypes = { ty };
+	std::vector<llvm::Value*> argsV = { message };
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__Panic", ft);
@@ -920,7 +923,7 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("llvm.readcyclecounter", ft);
 
-	return builder.CreateCall(f, "cycles");
+	return builder.CreateCall(f, std::vector<llvm::Value*>(), "cycles");
     }
 
     llvm::Value* BuiltinFunctionFloat2Arg::CodeGen(llvm::IRBuilder<>& builder)
@@ -929,13 +932,13 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 
-	std::vector<llvm::Value*> arg = {a, b};
-	std::vector<llvm::Type*> argTypes = {realTy, realTy};
+	std::vector<llvm::Value*> argsV = { a, b };
+	std::vector<llvm::Type*> argTypes = { realTy, realTy };
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(realTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(funcname, ft);
 	
-	return builder.CreateCall(f, arg);
+	return builder.CreateCall(f, argsV);
     }
 
     bool BuiltinFunctionFloat2Arg::Semantics()
@@ -949,7 +952,7 @@ namespace Builtin
 	    if (args[0]->Type()->isIntegral())
 	    {
 		ExprAST* e = args[0];
-		args[0] = new TypeCastAST(Location("",0,0), e, RealType());
+		args[0] = new TypeCastAST(Location("", 0, 0), e, RealType());
 	    }
 	    else
 	    {
@@ -961,7 +964,7 @@ namespace Builtin
 	    if (args[1]->Type()->isIntegral())
 	    {
 		ExprAST* e = args[1];
-		args[1] = new TypeCastAST(Location("",0,0), e, RealType());
+		args[1] = new TypeCastAST(Location("", 0, 0), e, RealType());
 		return true;
 	    }
 	    return false;
@@ -1001,7 +1004,7 @@ namespace Builtin
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Integer), argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__ParamCount", ft);
 
-	return builder.CreateCall(f, "paramcount");
+	return builder.CreateCall(f, std::vector<llvm::Value*>(),  "paramcount");
     }
 
     bool BuiltinFunctionParamcount::Semantics()

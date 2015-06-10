@@ -9,7 +9,6 @@
 #include "builtin.h"
 #include <llvm/IR/Value.h>
 #include <llvm/IR/Function.h>
-#include <llvm/PassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
@@ -108,7 +107,7 @@ private:
 class IntegerExprAST : public ExprAST
 {
 public:
-    IntegerExprAST(const Location& w, long v, Types::TypeDecl* ty)
+    IntegerExprAST(const Location& w, uint64_t v, Types::TypeDecl* ty)
 	: ExprAST(w, EK_IntegerExpr, ty), val(v) {}
     IntegerExprAST(const Location& w, ExprKind ek, long v, Types::TypeDecl* ty)
 	: ExprAST(w, ek, ty), val(v) {}
@@ -120,7 +119,7 @@ public:
 	return e->getKind() == EK_IntegerExpr || e->getKind() == EK_CharExpr;
     }
 protected:
-    long val;
+    uint64_t val;
 };
 
 class CharExprAST : public IntegerExprAST
@@ -729,7 +728,7 @@ private:
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);
-llvm::Value* MakeConstant(long val, llvm::Type* ty);
+llvm::Value* MakeConstant(uint64_t val, llvm::Type* ty);
 llvm::Value* ErrorV(const std::string& msg);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
 bool FileIsText(llvm::Value* f);

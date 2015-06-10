@@ -7,7 +7,6 @@ type
 		  x    : integer;
 	       end;
 
-
 var
    head	: Link;
    i	: integer;

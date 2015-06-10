@@ -39,12 +39,12 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
 
 Token::Token(TokenType t, const Location& w, const std::string& str): type(t), where(w), strVal(str)
 {
-    assert(t ==  Token::Identifier || Token::StringLiteral &&
+    assert((t ==  Token::Identifier || Token::StringLiteral) &&
 	   "Invalid token for string argument");
     assert((t == Token::StringLiteral || str != "") && "String should not be empty for identifier");
 }
 
-Token::Token(TokenType t, const Location& w, long v) : type(t), where(w), intVal(v)
+Token::Token(TokenType t, const Location& w, uint64_t v) : type(t), where(w), intVal(v)
 {
     assert(t == Token::Integer || t == Token::Char);
 }

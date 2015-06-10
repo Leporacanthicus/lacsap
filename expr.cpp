@@ -115,7 +115,7 @@ bool FileIsText(llvm::Value* f)
     return (FileInfo(f, recSize, isText) && isText);
 }
 
-static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, llvm::Type* ty, const std::string& name)
+static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty, const std::string& name)
 {
     TRACE();
    /* Save where we were... */
@@ -125,10 +125,13 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, llvm::Type* ty, c
     llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
     assert(ty && "Must have type passed in");
 
-    llvm::AllocaInst* a = bld.CreateAlloca(ty, 0, name);
-    if (a->getAlignment() < MIN_ALIGN)
+    llvm::Type* type = ty->LlvmType();
+
+    llvm::AllocaInst* a = bld.CreateAlloca(type, 0, name);
+    size_t align = std::max(ty->AlignSize(), MIN_ALIGN);
+    if (a->getAlignment() < align)
     {
-	a->setAlignment(MIN_ALIGN);
+	a->setAlignment(align);
     }
 
     // Now go back to where we were...
@@ -143,12 +146,10 @@ static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 	fc->EnsureSized();
     }
 
-    llvm::Type* ty = var.Type()->LlvmType();
-
-    return CreateNamedAlloca(fn, ty, var.Name());
+    return CreateNamedAlloca(fn, var.Type(), var.Name());
 }
 
-static llvm::AllocaInst* CreateTempAlloca(llvm::Type* ty)
+static llvm::AllocaInst* CreateTempAlloca(Types::TypeDecl* ty)
 {
     /* Get the "entry" block */
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
@@ -171,7 +172,7 @@ llvm::Value* MakeAddressable(ExprAST* e)
 	return store;
     }
     
-    llvm::Value* v = CreateTempAlloca(store->getType());
+    llvm::Value* v = CreateTempAlloca(e->Type());
     assert(v && "Expect address to be non-zero");
     builder.CreateStore(store, v);
     return v;
@@ -202,7 +203,7 @@ static llvm::Function* ErrorF(const std::string& msg)
     return 0;
 }
 
-llvm::Value* MakeConstant(long val, llvm::Type* ty)
+llvm::Value* MakeConstant(uint64_t val, llvm::Type* ty)
 {
     return llvm::ConstantInt::get(ty, val);
 }
@@ -212,7 +213,7 @@ llvm::Value* MakeIntegerConstant(int val)
     return MakeConstant(val, Types::GetType(Types::Integer));
 }
 
-llvm::Value* MakeInt64Constant(long val)
+llvm::Value* MakeInt64Constant(uint64_t val)
 {
     return MakeConstant(val, Types::GetType(Types::Int64));
 }
@@ -261,7 +262,7 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 
 static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 {
-    llvm::Value* dest = CreateTempAlloca(ty->LlvmType());
+    llvm::Value* dest = CreateTempAlloca(ty);
     size_t size = ty->Size();
     if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
     {
@@ -624,7 +625,7 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsS
 	size_t words = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
 	assert(rV && lV && "Should have generated values for left and right set");
 
-	llvm::Value* v = CreateTempAlloca(type->LlvmType());
+	llvm::Value* v = CreateTempAlloca(type);
 	for(size_t i = 0; i < words; i++)
 	{
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(i)};
@@ -669,11 +670,13 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	llvm::Type* resTy = Types::GetType(Types::Void);
 	std::vector<llvm::Type*> argTypes{pty, pty, pty, intTy};
 	
-	llvm::Value* v = CreateTempAlloca(type->LlvmType());
+	llvm::Value* v = CreateTempAlloca(type);
 	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+
 	
-	builder.CreateCall4(f, v, lV, rV, setWords);
+	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
+	builder.CreateCall(f, args);
 	return builder.CreateLoad(v);
     }
 
@@ -682,57 +685,38 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-    
-    return builder.CreateCall3(f, lV, rV, setWords, "calltmp");
+
+    std::vector<llvm::Value*> args = { lV, rV, setWords };
+    return builder.CreateCall(f, args, "calltmp");
 }
 
-static llvm::Value* MakeStringFromExpr(ExprAST* e, llvm::Type*& ty)
+static llvm::Value* MakeStringFromExpr(ExprAST* e)
 {
     TRACE();
     llvm::Value* v;
-    llvm::Type* strTy = Types::GetStringType()->LlvmType();
+    Types::StringDecl* sd = Types::GetStringType();
     if (e->Type()->Type() == Types::Char)
     {
-	Types::StringDecl* sd = Types::GetStringType();
-	if (!ty)
-	{
-	    ty = sd->LlvmType();
-	}
-	v = CreateTempAlloca(ty);
+	v = CreateTempAlloca(sd);
 	TempStringFromChar(v, e);
 	return v;
     }
     else if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
     {
-	Types::StringDecl* sd = Types::GetStringType();
-	if (!ty)
-	{
-	    ty = sd->LlvmType();
-	}
-	v = CreateTempAlloca(sd->LlvmType());
+	v = CreateTempAlloca(sd);
 	TempStringFromStringExpr(v, se);
 	return v;
     }
 
-    if (!ty)
-    {
-	ty = e->Type()->LlvmType();
-    }
-    v = MakeAddressable(e);
-    if (ty != strTy)
-    {
-	v = builder.CreateBitCast(v, llvm::PointerType::getUnqual(strTy));
-    }
-    return v;
+    return MakeAddressable(e);
 }
 
 static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, llvm::Type* resTy,
 				const std::string& twine)
 {
     TRACE();
-    llvm::Type* ty = NULL;
-    llvm::Value* rV = MakeStringFromExpr(rhs, ty);
-    llvm::Value* lV = MakeStringFromExpr(lhs, ty);
+    llvm::Value* rV = MakeStringFromExpr(rhs);
+    llvm::Value* lV = MakeStringFromExpr(lhs);
 
     if (!rV || !lV)
     {
@@ -746,27 +730,30 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__Str" + name, ft);
 
-    return builder.CreateCall2(f, lV, rV, twine);
+    std::vector<llvm::Value*> args = { lV, rV };
+
+    return builder.CreateCall(f, args, twine);
 }
 
 static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 {
     TRACE();
-    llvm::Type* ty = NULL;
-    llvm::Value* rV = MakeStringFromExpr(rhs, ty);
-    llvm::Value* lV = MakeStringFromExpr(lhs, ty);
+    llvm::Value* rV = MakeStringFromExpr(rhs);
+    llvm::Value* lV = MakeStringFromExpr(lhs);
 
     llvm::Type* strTy = Types::GetStringType()->LlvmType();
 
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
     std::vector<llvm::Type*> argTypes{pty, pty, pty};
 
-    llvm::Value* v = CreateTempAlloca(strTy);
+    llvm::Value* v = CreateTempAlloca(Types::GetStringType());
 
     llvm::Type* resTy = Types::GetType(Types::Void);
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__StrConcat", ft);
-    builder.CreateCall3(f, v, lV, rV, "");
+    
+    std::vector<llvm::Value*> args = { v, lV, rV };
+    builder.CreateCall(f, args, "");
     return v;
 }
 
@@ -799,7 +786,8 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__Arr" + name, ft);
 
-    return builder.CreateCall3(f, lV, rV, MakeIntegerConstant(size), "calltmp");
+    std::vector<llvm::Value*> args = { lV, rV,  MakeIntegerConstant(size) };
+    return builder.CreateCall(f, args, "calltmp");
 }
 
 void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
@@ -1215,7 +1203,7 @@ llvm::Value* CallExprAST::CodeGen()
 	    {
 		if (sv && sv->Type()->SubType()->Type() == Types::Char)
 		{
-		    v = CreateTempAlloca(vdef[index].Type()->LlvmType());
+		    v = CreateTempAlloca(vdef[index].Type());
 		    TempStringFromStringExpr(v, sv);
 		}
 	    }
@@ -2467,7 +2455,7 @@ llvm::Value* VarDeclAST::CodeGen()
 								init, var.Name());
 	    const llvm::DataLayout dl(theModule);
 	    size_t al = dl.getPrefTypeAlignment(ty);
-	    al = std::max(4ul, al);
+	    al = std::max(size_t(4), al);
 	    gv->setAlignment(al);
 	    v = gv;
 	}
@@ -2709,10 +2697,7 @@ llvm::Value* SetExprAST::Address()
 	return MakeConstantSet(type);
     }
 
-    llvm::Type* ty = type->LlvmType();
-    assert(ty && "Expect type for set to work");
-
-    llvm::Value* setV = CreateTempAlloca(ty);
+    llvm::Value* setV = CreateTempAlloca(type);
     assert(setV && "Expect CreateTempAlloca() to work");
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
@@ -2735,7 +2720,9 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* high = r->High();
 	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
-	    llvm::Value* loopVar = CreateTempAlloca(Types::GetType(Types::Integer));
+	    Types::TypeDecl* type = new Types::IntegerDecl();
+
+	    llvm::Value* loopVar = CreateTempAlloca(type);
 
 	    if (!low || !high)
 	    {
@@ -2979,8 +2966,7 @@ llvm::Value* TypeCastAST::CodeGen()
 	 current->Type() == Types::Char ) && 
 	type->Type() == Types::String)
     {
-	llvm::Type* ty = NULL;
-	return MakeStringFromExpr(expr, ty);
+	return MakeStringFromExpr(expr);
     }
     dump();
     assert(0 && "Expected to get something out of this function");

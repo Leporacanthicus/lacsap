@@ -6,4 +6,6 @@
 
 void CreateBinary(llvm::Module *module, const std::string& fileName, EmitType emit);
 
+llvm::Module* CreateModule();
+
 #endif

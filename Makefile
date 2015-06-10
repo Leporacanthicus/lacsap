@@ -8,10 +8,9 @@ CXX  = clang++
 CC  = clang
 LD  = ${CXX}
 
-
-CXXFLAGS  = -g -Wall -Werror -Wextra -Wno-unused-private-field -std=c++11 -O0
-CXXFLAGS += -fstandalone-debug -fno-exceptions -fno-rtti
-CXXFLAGS += -Qunused-arguments
+CXXFLAGS  = -g -Wall -Werror -Wextra -std=c++11 -O0
+CXXFLAGS += -fno-exceptions -fno-rtti
+CXXFLAGS += -Qunused-arguments -fstandalone-debug
 CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 #CXX_EXTRA = --analyze
 
@@ -28,7 +27,7 @@ SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
 all: lacsap .depends tests runtime_lib
 
-.cpp.o: 
+.cpp.o:
 	${CXX} ${CXXFLAGS} ${CXX_EXTRA} -c -o $@ $<
 
 lacsap: ${OBJECTS} .depends

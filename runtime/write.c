@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include "runtime.h"
 
 /*******************************************
@@ -12,10 +14,10 @@ void __write_int(File* file, int v, int width)
     fprintf(f, "%*d", width, v);
 }
 
-void __write_int64(File* file, long v, int width)
+void __write_int64(File* file, int64_t v, int width)
 {
     FILE* f = getFile(file);
-    fprintf(f, "%*ld", width, v);
+    fprintf(f, "%*"PRId64, width, v);
 }
 
 void __write_real(File* file, double v, int width, int precision)

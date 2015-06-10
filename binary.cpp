@@ -13,7 +13,9 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Pass.h>
-#include <llvm/PassManager.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/DataLayout.h>
 #include <iostream>
 #include <system_error>
 
@@ -42,12 +44,10 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     llvm::InitializeAllAsmPrinters();
     llvm::InitializeAllAsmParsers();
 
-    llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
-
-    module->setTargetTriple(triple.getTriple());
-
     std::string error;
-    const llvm::Target *target = llvm::TargetRegistry::lookupTarget("", triple, error);
+    llvm::Triple triple = Triple(module->getTargetTriple());
+    const llvm::Target *target =
+	llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
 
     if (!target)
     {
@@ -72,7 +72,9 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     }
 
     llvm::TargetOptions options;
-    llvm::TargetMachine* tm = target->createTargetMachine(triple.getTriple(), MCPU, FeaturesStr, options);
+    std::unique_ptr<llvm::TargetMachine> tm
+	(target->createTargetMachine(triple.getTriple(), MCPU,
+				     FeaturesStr, options));
 
     if (!tm)
     {
@@ -80,7 +82,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	return;
     }
 
-    llvm::PassManager PM;
+    llvm::legacy::PassManager PM;
     llvm::TargetLibraryInfoWrapperPass *TLI =
 	new llvm::TargetLibraryInfoWrapperPass(triple);
     PM.add(TLI);
@@ -100,7 +102,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 				StartAfterID, StopAfterID))
     {
 	std::cerr << objname << ": target does not support generation of this"
-	       << " file type!\n";
+	    " file type!\n";
 	return;
     }
     PM.run(*module);
@@ -126,29 +128,88 @@ void CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
     {
 	std::string objname = replace_ext(filename, ".pas", ".o");
 	std::string exename = replace_ext(filename, ".pas", "");
+	std::string modelStr;
+	if (model == m32)
+	{
+	    modelStr = "-m32";
+	}
 	CreateObject(module, objname);
 	std::string verboseflags;
 	if (verbosity)
 	{
 	    verboseflags = "-v ";
 	}
-	std::string cmd = "clang " + verboseflags + objname + " -L. -lruntime -lm -o " + exename;
+	std::string cmd = "clang " + modelStr + " " + verboseflags + objname +
+	    " -L. -lruntime" + modelStr + " -lm -o " + exename;
 	if (verbosity)
 	{
 	    std::cerr << "Executing final link command: " << cmd << std::endl;
 	}
-	system(cmd.c_str());
+	int res = system(cmd.c_str());
+	if (res != 0)
+	{
+	    std::cerr << "Error: " << res << std::endl;
+	}
 	return;
     }
-    if (emit == LlvmIr)
+    assert(emit == LlvmIr && "Expect LLVM IR here..");
+
+    std::string irName = replace_ext(filename, ".pas", ".ll");
+    std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(irName));
+    llvm::formatted_raw_ostream FOS(Out->os());
+    module->print(FOS, 0);
+    Out->keep();
+    return;
+}
+
+
+llvm::Module* CreateModule()
+{
+    llvm::InitializeNativeTarget();
+
+    llvm::Module* module = new llvm::Module("TheModule",
+					    llvm::getGlobalContext());
+
+    llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
+    if (model == m32)
     {
-	std::string irName = replace_ext(filename, ".pas", ".ll");
-	std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(irName));
-	llvm::formatted_raw_ostream FOS(Out->os());
-	module->print(FOS, 0);
-	Out->keep();
-	return;
+	triple = triple.get32BitArchVariant();
+    }
+    else
+    {
+	triple = triple.get64BitArchVariant();
+    }
+    module->setTargetTriple(triple.getTriple());
+    std::string error;
+    const llvm::Target *target =
+	llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
+    if (!target)
+    {
+	std::cerr << "Error, could not find target: " << error << std::endl;
+	return 0;
     }
 
-    assert(0 && "Unknown emit type");
+    std::string FeaturesStr;
+    if (MAttrs.size())
+    {
+	SubtargetFeatures Features;
+	for (unsigned i = 0; i != MAttrs.size(); ++i)
+	{
+	    Features.AddFeature(MAttrs[i]);
+	}
+	FeaturesStr = Features.getString();
+    }
+
+    llvm::TargetOptions options;
+    std::unique_ptr<llvm::TargetMachine> tm
+	(target->createTargetMachine(triple.getTriple(), MCPU,
+				     FeaturesStr, options));
+    if (!tm)
+    {
+	std::cerr << "Could not create TargetMachine" << std::endl;
+	return 0;
+    }
+    const llvm::DataLayout* dl = tm->getDataLayout();
+    module->setDataLayout(*dl);
+    return module;
 }

@@ -3,6 +3,7 @@
 !test
 !runtime
 *.o
+*.o32
 *.bc
 *.s
 *.a

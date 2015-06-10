@@ -367,6 +367,12 @@ int main(int argc, char **argv)
 	runTestCases(tc, res, "-O2");
 	runSomeTests = true;
     }
+    if (mode == "full" || mode == "-m32")
+    {
+	runTestCases(tc, res, "-m32");
+	runSomeTests = true;
+    }
+
     if (!runSomeTests)
     {
 	runTestCases(tc, res, mode);

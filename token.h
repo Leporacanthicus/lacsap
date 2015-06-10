@@ -4,7 +4,7 @@
 #include <cassert>
 #include <string>
 #include <fstream>
-
+#include <cstdint>
 
 class Location
 {
@@ -12,11 +12,11 @@ public:
     Location(const std::string& file, int line, int column);
     std::string to_string() const;
     std::string FileName() const { return fname; }
-    long LineNumber() const { return lineNum; }
+    unsigned int LineNumber() const { return lineNum; }
 private:
     std::string fname;
-    int lineNum;
-    int column;
+    unsigned int lineNum;
+    unsigned int column;
 };
 
 std::ostream& operator<<(std::ostream &os, const Location& loc);
@@ -126,7 +126,7 @@ public:
 	
     Token(TokenType t, const Location& w);
     Token(TokenType t, const Location& w, const std::string& str);
-    Token(TokenType t, const Location& w, long v);
+    Token(TokenType t, const Location& w, uint64_t v);
     Token(TokenType t, const Location& w, double v);
 
     static TokenType KeyWordToToken(const std::string& str);
@@ -140,10 +140,10 @@ public:
 	return strVal; 
     }
 
-    long GetIntVal() const 
+    uint64_t GetIntVal() const 
     { 
-	assert(type == Token::Integer ||
-	       type == Token::Char &&
+	assert((type == Token::Integer ||
+		type == Token::Char) &&
 	       "Request for integer value from wrong type???");
 	return intVal; 
     }
@@ -179,7 +179,7 @@ private:
     
     // Values. 
     std::string strVal; 
-    long        intVal;
+    uint64_t    intVal;
     double      realVal;
 };
 

@@ -6,7 +6,7 @@ extern int c_argc;
 
 String __ParamStr(int n)
 {
-    String s = {};
+    String s = {0, ""};
     if (n < c_argc)
     {
 	size_t len = strlen(c_argv[n]);

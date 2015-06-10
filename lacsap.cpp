@@ -11,21 +11,20 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Analysis/Passes.h>
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Support/CommandLine.h>
 
-llvm::PassManager* mpm;
-llvm::Module* theModule = new llvm::Module("TheModule", llvm::getGlobalContext());
+llvm::legacy::PassManager* mpm;
+llvm::Module* theModule;
 
 int      verbosity;
 bool     timetrace;
 bool     disableMemcpyOpt;
 OptLevel optimization;
 bool     rangeCheck;
+Model    model = m64;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string>    InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -59,6 +58,14 @@ static llvm::cl::opt<bool, true>     RangeCheck("Cr",
 						llvm::cl::desc("Enable range checking"),
 						llvm::cl::location(rangeCheck));
 
+static llvm::cl::opt<Model, true> ModelSetting(llvm::cl::desc("Model:"),
+					       llvm::cl::values(
+								clEnumVal(m32, "32-bit model"),
+								clEnumVal(m64, "64-bit model"),
+								clEnumValEnd),
+					       llvm::cl::location(model));
+
+
 void DumpModule(llvm::Module* module)
 {
     module->dump(); 
@@ -83,9 +90,7 @@ bool CodeGen(std::vector<ExprAST*> ast)
 
 void OptimizerInit()
 {
-    mpm = new llvm::PassManager();
-
-    llvm::InitializeNativeTarget();
+    mpm = new llvm::legacy::PassManager();
 
     if (OptimizationLevel > O0)
     {
@@ -102,7 +107,7 @@ void OptimizerInit()
 	// Simplify the control flow graph (deleting unreachable blocks, etc).
 	mpm->add(llvm::createCFGSimplificationPass());
         // Memory copying opts. 
-	mpm->add(llvm::createMemCpyOptPass());
+	//	mpm->add(llvm::createMemCpyOptPass());
 	// Merge constants.
 	mpm->add(llvm::createConstantMergePass());
 	// dead code removal:
@@ -122,12 +127,14 @@ void OptimizerInit()
 static int Compile(const std::string& filename)
 {
     TIME_TRACE();
+    theModule = CreateModule();
     std::vector<ExprAST*> ast;
     Lexer                 lex(filename);
 
     Builtin::InitBuiltins();
     if (!lex.Good())
     {
+	std::cerr << "Could not open " << filename << std::endl;
 	return 1;
     }
     Parser p(lex);

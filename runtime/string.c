@@ -56,7 +56,6 @@ String __StrCopy(String* str, int start, int len)
     assert(start >= 1);
     assert(len >= 0);
     
-    String result;
     if (start > str->len) 
     {
 	len = 0;
@@ -64,8 +63,13 @@ String __StrCopy(String* str, int start, int len)
     if (start + len > str->len)
     {
 	len = str->len - start;
+	if (len < 0)
+	{
+	    len = 0;
+	}
     }
-    result.len = len;
+
+    String result = { len, "" };
     memcpy(result.str, &str->str[start], len);
     return result;
 }

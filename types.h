@@ -364,7 +364,7 @@ namespace Types
 	FunctionDecl(SimpleTypes procOrFunc, TypeDecl* resType) 
 	    : CompoundDecl(TK_Function, procOrFunc, resType)
 	{
-	    assert(procOrFunc == Function || procOrFunc == Procedure &&
+	    assert((procOrFunc == Function || procOrFunc == Procedure) &&
 		   "Expected Function or Procedure type");
 	}
 	void DoDump(std::ostream& out) const override;
@@ -609,7 +609,7 @@ namespace Types
     TypeDecl* GetVoidType();
     TextDecl* GetTextType();
     StringDecl* GetStringType();
-};
+} // Namespace Types
 
 bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty);
 inline bool operator!=(const Types::TypeDecl& lty, const Types::TypeDecl& rty) { return !(lty == rty); }

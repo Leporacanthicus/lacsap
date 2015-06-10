@@ -5,7 +5,7 @@
 
 Token Constants::IntConstDecl::Translate() const
 {
-    return Token(Token::Integer, loc, value);
+    return Token(Token::Integer, loc, static_cast<uint64_t>(value));
 }
 
 void Constants::IntConstDecl::dump() const
@@ -25,7 +25,7 @@ void Constants::RealConstDecl::dump() const
 
 Token Constants::CharConstDecl::Translate() const
 {
-    return Token(Token::Char, loc, (long)value);
+    return Token(Token::Char, loc, static_cast<uint64_t>(value));
 }
 
 void Constants::CharConstDecl::dump() const

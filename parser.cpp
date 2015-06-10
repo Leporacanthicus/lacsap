@@ -527,7 +527,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 
 	case Token::Integer:
 	{
-	    long v = CurrentToken().GetIntVal();
+	    uint64_t v = CurrentToken().GetIntVal();
 	    if (unaryToken == Token::Not)
 	    {
 		v = ~v;
@@ -561,7 +561,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    {
 		if (ed->Type()->Type() == Types::Boolean)
 		{
-		    long v = ed->Value();
+		    uint64_t v = ed->Value();
 		    if (unaryToken == Token::Not)
 		    {
 			v = !v;
@@ -1225,7 +1225,6 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 
     case Token::String:
 	return ParseStringDecl();
-	break;
 
     default:
 	return ErrorT("Can't understand type");
@@ -1234,11 +1233,11 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
-    long val = token.GetIntVal();
+    uint64_t val = token.GetIntVal();
     Location loc = token.Loc();
     const char* type = "integer";
 
-    if (val < std::numeric_limits<unsigned int>::min() || val > std::numeric_limits<unsigned int>::max())
+    if (val > std::numeric_limits<unsigned int>::max())
     {
 	type = "longint";
     }
@@ -1889,8 +1888,8 @@ VarDeclAST* Parser::ParseVarDecls()
 //   procedure classname.name{ args... }
 PrototypeAST* Parser::ParsePrototype()
 {
-    assert(CurrentToken().GetToken() == Token::Procedure ||
-	   CurrentToken().GetToken() == Token::Function &&
+    assert((CurrentToken().GetToken() == Token::Procedure ||
+	    CurrentToken().GetToken() == Token::Function) &&
 	   "Expected function or procedure token");
 
     bool isFunction = CurrentToken().GetToken() == Token::Function;
@@ -2552,8 +2551,8 @@ ExprAST* Parser::ParseWrite()
     Location loc = CurrentToken().Loc();
     bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
 
-    assert(CurrentToken().GetToken() == Token::Write ||
-	   CurrentToken().GetToken() == Token::Writeln &&
+    assert((CurrentToken().GetToken() == Token::Write ||
+	    CurrentToken().GetToken() == Token::Writeln) &&
 	   "Expected write or writeln keyword here");
     NextToken();
 
@@ -2634,8 +2633,8 @@ ExprAST* Parser::ParseRead()
     Location loc = CurrentToken().Loc();
     bool isReadln = CurrentToken().GetToken() == Token::Readln;
 
-    assert(CurrentToken().GetToken() == Token::Read ||
-	   CurrentToken().GetToken() == Token::Readln &&
+    assert((CurrentToken().GetToken() == Token::Read ||
+	    CurrentToken().GetToken() == Token::Readln) &&
 	   "Expected read or readln keyword here");
     NextToken();
 

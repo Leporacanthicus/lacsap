@@ -334,8 +334,10 @@ int main(int argc, char **argv)
 {
     std::vector<TestCase*> tc; 
     TestResult res;
-    bool runSomeTests = false;
     std::string mode = "full";
+    std::vector<std::string> optimizations = { "", "-O0", "-O1", "-O2" };
+    std::vector<std::string> models = { "", "-m32", "-m64" };
+    std::vector<std::string> others = { "", "-Cr" };
 
     if (argc >= 2)
     {
@@ -347,36 +349,24 @@ int main(int argc, char **argv)
 	tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
     }
 
-    if (mode == "full" || mode == "-O0")
+    if (mode == "full")
     {
-	runTestCases(tc, res, "-O0");
-	runSomeTests = true;
-    }
-    if (mode == "full" || mode == "-O1")
-    {
-	runTestCases(tc, res, "-O1");
-	runSomeTests = true;
-    }
-    if (mode == "full" || mode == "-O1 -Cr")
-    {
-	runTestCases(tc, res, "-O1 -Cr");
-	runSomeTests = true;
-    }
-    if (mode == "full" || mode == "-O2")
-    {
-	runTestCases(tc, res, "-O2");
-	runSomeTests = true;
-    }
-    if (mode == "full" || mode == "-m32")
-    {
-	runTestCases(tc, res, "-m32");
-	runSomeTests = true;
-    }
-
-    if (!runSomeTests)
+	for(auto opt : optimizations)
+	{
+	    for(auto model : models)
+	    {
+		for(auto other : others)
+		{
+		    runTestCases(tc, res, opt + " " + model + " " + other);
+		}
+	    }
+	}
+    }	
+    else
     {
 	runTestCases(tc, res, mode);
     }
+
     res.Report();
 
     for(auto i : tc)

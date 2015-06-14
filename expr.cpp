@@ -2459,8 +2459,16 @@ llvm::Value* VarDeclAST::CodeGen()
 	    v = gv;
 	}
 	else
-	{
+	{	
 	    v = CreateAlloca(func, var);
+	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
+	    if (cd && cd->VTableType(true))
+	    {
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
+		std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+		llvm::Value* dest = builder.CreateGEP(v, ind, "vtable");
+		builder.CreateStore(gv, dest);
+	    }
 	}
 	if (!variables.Add(var.Name(), v))
 	{

@@ -311,18 +311,12 @@ namespace Types
 
     llvm::Type* ArrayDecl::GetLlvmType() const
     {
-	size_t nelems = 0;
+	assert(ranges.size() && "Expect ranges to contain something");
+	size_t nelems = 1;
 	for(auto r : ranges)
 	{
 	    assert(r->GetRange()->Size() && "Expectig range to have a non-zero size!");
-	    if (!nelems)
-	    {
-		nelems = r->GetRange()->Size();
-	    }
-	    else
-	    {
-		nelems *= r->GetRange()->Size();
-	    }
+	    nelems *= r->GetRange()->Size();
 	}
 	assert(nelems && "Expect number of elements to be non-zero!");
 	llvm::Type* ty = baseType->LlvmType();

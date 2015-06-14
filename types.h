@@ -65,7 +65,7 @@ namespace Types
 
 	virtual TypeKind Type() const { return kind; }
 	virtual ~TypeDecl() { }
-	virtual bool isIntegral() const = 0;
+	virtual bool isIntegral() const { return false; }
 	virtual bool isCompound() const { return false; }
 	virtual bool isStringLike() const { return false; }
 	virtual bool isUnsigned() const { return false; }
@@ -97,7 +97,6 @@ namespace Types
 	using TypeDecl::TypeDecl;
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override { return kind == ty->Type(); }
-	bool isIntegral() const override { return false; }
     };
 
     class CharDecl : public BasicTypeDecl
@@ -171,7 +170,6 @@ namespace Types
 	    : TypeDecl(tk), baseType(b) { }
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isCompound() const override { return true; }
-	bool isIntegral() const override { return false; }
 	TypeDecl* SubType() const override { return baseType; }
 	static bool classof(const TypeDecl* e);
     protected:
@@ -369,7 +367,6 @@ namespace Types
 	}
 	void EnsureSized() const;
 	virtual int FieldCount() const { return fields.size(); }
-	bool isIntegral() const override { return false; }
 	bool isCompound() const override { return true; }
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e)
@@ -398,7 +395,6 @@ namespace Types
     public:
 	RecordDecl(const std::vector<FieldDecl*>& flds, VariantDecl* v)
 	    : FieldCollection(TK_Record, flds), variant(v) { };
-	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }
@@ -423,7 +419,6 @@ namespace Types
 	MemberFuncDecl(PrototypeAST* p, int f)
 	    : TypeDecl(TK_MemberFunc), proto(p), flags(f), index(-1) {}
 
-	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
 	PrototypeAST* Proto() { return proto; }
@@ -451,7 +446,6 @@ namespace Types
 	ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
 		  const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base);
 
-	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
         int Element(const std::string& name) const override;
 	const FieldDecl* GetElement(unsigned int n) const override;
@@ -482,7 +476,6 @@ namespace Types
     {
     public:
 	FuncPtrDecl(PrototypeAST* func);
-	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	PrototypeAST* Proto() const { return proto; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }

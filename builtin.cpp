@@ -82,7 +82,7 @@ namespace Builtin
 					  const std::vector<ExprAST*>& args)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	llvm::Type* ty = Types::GetType(Types::Real);
+	llvm::Type* ty = Types::GetType(Types::TypeDecl::TK_Real);
 	std::vector<llvm::Type*> argTypes = {ty};
 	llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 
@@ -409,11 +409,12 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() == Types::Char || args[0]->Type()->Type() == Types::Enum)
+	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Char ||
+	    args[0]->Type()->Type() == Types::TypeDecl::TK_Enum)
 	{
 	    return false;
 	}
-	if (!(args[0]->Type()->isIntegral()) && args[0]->Type()->Type() != Types::Real)
+	if (!(args[0]->Type()->isIntegral()) && args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    return false;
 	}
@@ -426,11 +427,11 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (!(args[0]->Type()->isIntegral()) && args[0]->Type()->Type() != Types::Real)
+	if (!(args[0]->Type()->isIntegral()) && args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    return false;
 	}
-	if (!(args[1]->Type()->isIntegral()) && args[1]->Type()->Type() != Types::Real)
+	if (!(args[1]->Type()->isIntegral()) && args[1]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    return false;
 	}
@@ -458,7 +459,7 @@ namespace Builtin
     {
 	llvm::Value* v = args[0]->CodeGen();
 	v = builder.CreateAnd(v, MakeIntegerConstant(1));
-	return builder.CreateBitCast(v, Types::GetType(Types::Boolean));
+	return builder.CreateBitCast(v, Types::GetType(Types::TypeDecl::TK_Boolean));
     }
 
     bool BuiltinFunctionOdd::Semantics()
@@ -477,7 +478,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	if (a->getType()->getTypeID() == llvm::Type::IntegerTyID)
+	if (args[0]->Type()->isIntegral())
 	{
 	    return builder.CreateMul(a, a, "sqr");
 	}
@@ -490,11 +491,12 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() == Types::Char || args[0]->Type()->Type() == Types::Enum)
+	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Char ||
+	    args[0]->Type()->Type() == Types::TypeDecl::TK_Enum)
 	{
 	    return false;
 	}
-	if (!args[0]->Type()->isIntegral() && args[0]->Type()->Type() != Types::Real)
+	if (!args[0]->Type()->isIntegral() && args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    return false;
 	}
@@ -512,7 +514,7 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() != Types::Real)
+	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    // Implicit typecast.
 	    if (args[0]->Type()->isIntegral())
@@ -529,7 +531,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionRound::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = CallRuntimeFPFunc(builder, "llvm.round.f64", args);
-	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
+	return builder.CreateFPToSI(v, Types::GetType(Types::TypeDecl::TK_Integer), "to.int");
     }
 
     bool BuiltinFunctionRound::Semantics()
@@ -538,7 +540,7 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() != Types::Real)
+	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    return false;
 	}
@@ -548,13 +550,13 @@ namespace Builtin
     llvm::Value* BuiltinFunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = args[0]->CodeGen();
-	return builder.CreateFPToSI(v, Types::GetType(Types::Integer), "to.int");
+	return builder.CreateFPToSI(v, Types::GetType(Types::TypeDecl::TK_Integer), "to.int");
     }
 
     llvm::Value* BuiltinFunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
     {
 	std::vector<llvm::Type*> argTypes;
-	llvm::Type* ty = Types::GetType(Types::Real);
+	llvm::Type* ty = Types::GetType(Types::TypeDecl::TK_Real);
 	llvm::FunctionType* ft = llvm::FunctionType::get(ty, argTypes, false);
 
 	llvm::Constant* f = theModule->getOrInsertFunction("__random", ft);
@@ -571,7 +573,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionChr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateTrunc(a, Types::GetType(Types::Char), "chr");
+	return builder.CreateTrunc(a, Types::GetType(Types::TypeDecl::TK_Char), "chr");
     }
 
     bool BuiltinFunctionChr::Semantics()
@@ -590,7 +592,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionOrd::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateZExt(a, Types::GetType(Types::Integer), "ord");
+	return builder.CreateZExt(a, Types::GetType(Types::TypeDecl::TK_Integer), "ord");
     }
 
     bool BuiltinFunctionOrd::Semantics()
@@ -635,7 +637,7 @@ namespace Builtin
     {
 	Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
 	size_t size = pd->SubType()->Size();
-	llvm::Type* ty = Types::GetType(Types::Integer);
+	llvm::Type* ty = Types::GetType(Types::TypeDecl::TK_Integer);
 	std::vector<llvm::Type*> argTypes = {ty};
 
 	// Result is "void *"
@@ -673,7 +675,8 @@ namespace Builtin
 	llvm::Type* ty = argv[0]->getType();
 	std::vector<llvm::Type*> argTypes = { ty };
 	
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Void),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__dispose", ft);
 
 	return builder.CreateCall(f, argv);
@@ -728,7 +731,7 @@ namespace Builtin
 	v = builder.CreateGEP(v, ind, "str_0");
 	v = builder.CreateLoad(v, "len");
 
-	return builder.CreateZExt(v, Types::GetType(Types::Integer), "extend");
+	return builder.CreateZExt(v, Types::GetType(Types::TypeDecl::TK_Integer), "extend");
     }
 
     bool BuiltinFunctionLength::Semantics()
@@ -737,7 +740,7 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() != Types::String)
+	if (args[0]->Type()->Type() != Types::TypeDecl::TK_String)
 	{
 	    return false;
 	}
@@ -755,7 +758,7 @@ namespace Builtin
 
 	llvm::Value* filename = args[1]->CodeGen();
 	llvm::Type* ty = filename->getType();
-	llvm::Type* intTy = Types::GetType(Types::Integer);
+	llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
 	std::vector<llvm::Type*> argTypes = {faddr->getType(), ty, intTy, intTy};
 
 	bool textFile;
@@ -770,7 +773,8 @@ namespace Builtin
 	std::vector<llvm::Value*> argsV = { faddr, filename, aSize, isText };
 
 	std::string name = "__assign";
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Void),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction(name, ft);
 
 	return builder.CreateCall(f, argsV);
@@ -815,9 +819,9 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() != Types::String ||
-	    args[1]->Type()->Type() != Types::Integer ||
-	    args[2]->Type()->Type() != Types::Integer)
+	if (args[0]->Type()->Type() != Types::TypeDecl::TK_String ||
+	    args[1]->Type()->Type() != Types::TypeDecl::TK_Integer ||
+	    args[2]->Type()->Type() != Types::TypeDecl::TK_Integer)
 	{
 	    return false;
 	}
@@ -828,7 +832,8 @@ namespace Builtin
     {
 	std::vector<llvm::Type*> argTypes;
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Int64),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__Clock", ft);
 
 	return builder.CreateCall(f, std::vector<llvm::Value*>(), "clock");
@@ -846,7 +851,8 @@ namespace Builtin
 	std::vector<llvm::Type*> argTypes = { ty };
 	std::vector<llvm::Value*> argsV = { message };
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Void), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Void),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__Panic", ft);
 
 	return builder.CreateCall(f,  argsV);
@@ -920,7 +926,8 @@ namespace Builtin
     {
 	std::vector<llvm::Type*> argTypes;
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Int64), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Int64),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("llvm.readcyclecounter", ft);
 
 	return builder.CreateCall(f, std::vector<llvm::Value*>(), "cycles");
@@ -928,7 +935,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionFloat2Arg::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Type* realTy = Types::GetType(Types::Real);
+	llvm::Type* realTy = Types::GetType(Types::TypeDecl::TK_Real);
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 
@@ -947,7 +954,7 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (args[0]->Type()->Type() != Types::Real)
+	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    if (args[0]->Type()->isIntegral())
 	    {
@@ -959,7 +966,7 @@ namespace Builtin
 		return false;
 	    }
 	}
-	if (args[1]->Type()->Type() != Types::Real)
+	if (args[1]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    if (args[1]->Type()->isIntegral())
 	    {
@@ -1001,7 +1008,8 @@ namespace Builtin
     {
 	std::vector<llvm::Type*> argTypes = {};
 
-	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::Integer), argTypes, false);
+	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetType(Types::TypeDecl::TK_Integer),
+							 argTypes, false);
 	llvm::Constant* f = theModule->getOrInsertFunction("__ParamCount", ft);
 
 	return builder.CreateCall(f, std::vector<llvm::Value*>(),  "paramcount");
@@ -1014,8 +1022,8 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionMax::CodeGen(llvm::IRBuilder<>& builder)
     {
-	if (args[0]->Type()->Type() == Types::Real ||
-	    args[1]->Type()->Type() == Types::Real)
+	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real ||
+	    args[1]->Type()->Type() == Types::TypeDecl::TK_Real)
 	{
 	    BuiltinFunctionFloat2Arg max("llvm.maxnum.f64", args);
 	    return max.CodeGen(builder);
@@ -1037,8 +1045,8 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionMin::CodeGen(llvm::IRBuilder<>& builder)
     {
-	if (args[0]->Type()->Type() == Types::Real ||
-	    args[1]->Type()->Type() == Types::Real)
+	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real ||
+	    args[1]->Type()->Type() == Types::TypeDecl::TK_Real)
 	{
 	    BuiltinFunctionFloat2Arg min("llvm.minnum.f64", args);
 	    return min.CodeGen(builder);
@@ -1060,7 +1068,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionSign::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = args[0]->CodeGen();
-	if (args[0]->Type()->Type() == Types::Real)
+	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real)
 	{
 	    llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
 	    llvm::Value* one = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(1.0));

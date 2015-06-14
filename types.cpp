@@ -20,27 +20,27 @@ namespace Types
 	return 0;
     }
 
-    llvm::Type* GetType(SimpleTypes type)
+    llvm::Type* GetType(TypeDecl::TypeKind type)
     {
 	switch(type)
 	{
-	case Enum:
-	case Integer:
+	case TypeDecl::TK_Enum:
+	case TypeDecl::TK_Integer:
 	    return llvm::Type::getInt32Ty(llvm::getGlobalContext());
 
-	case Int64:
+	case TypeDecl::TK_Int64:
 	    return llvm::Type::getInt64Ty(llvm::getGlobalContext());
 
-	case Real:
+	case TypeDecl::TK_Real:
 	    return llvm::Type::getDoubleTy(llvm::getGlobalContext());
 
-	case Char:
+	case TypeDecl::TK_Char:
 	    return llvm::Type::getInt8Ty(llvm::getGlobalContext());
 
-	case Boolean:
+	case TypeDecl::TK_Boolean:
 	    return llvm::Type::getInt1Ty(llvm::getGlobalContext());
 
-	case Void:
+	case TypeDecl::TK_Void:
 	    return llvm::Type::getVoidTy(llvm::getGlobalContext());
 
 	default:
@@ -49,25 +49,54 @@ namespace Types
 	}
 	return 0;
     }
-
-    std::string TypeDecl::to_string() const
+    static const char* TypeToStr(TypeDecl::TypeKind t)
     {
-	std::stringstream ss;
-	ss << "Type: " << (int)type << std::endl;
-	return ss.str();
-    }
-
-    bool TypeDecl::isIntegral() const
-    {
-	switch(type)
+	switch(t)
 	{
-	case Integer:
-	case Int64:
-	case Char:
-	    return true;
+	case TypeDecl::TK_Integer:
+	    return "Integer";
+	case TypeDecl::TK_Int64:
+	    return "Int64";
+	case TypeDecl::TK_Real:
+	    return "Real";
+	case TypeDecl::TK_Char:
+	    return "Char";
+	case TypeDecl::TK_Boolean:
+	    return "Boolean";
+	case TypeDecl::TK_Array:
+	    return "Array";
+	case TypeDecl::TK_Function:
+	    return "Function";
+	case TypeDecl::TK_Record:
+	    return "Record";
+	case TypeDecl::TK_Set:
+	    return "Set";
+	case TypeDecl::TK_Range:
+	    return "Range";
+	case TypeDecl::TK_Enum:
+	    return "Enum";
+	case TypeDecl::TK_Pointer:
+	    return "Pointer";
+	case TypeDecl::TK_Void:
+	    return "Void";
+	case TypeDecl::TK_Field:
+	    return "Field";
+	case TypeDecl::TK_File:
+	    return "File";
+	case TypeDecl::TK_String:
+	    return "String";
+	case TypeDecl::TK_Variant:
+	    return "Variant";
+	case TypeDecl::TK_FuncPtr:
+	    return "FuncPtr";
+	case TypeDecl::TK_Class:
+	    return "Class";
+	case TypeDecl::TK_MemberFunc:
+	    return "MemberFunc";
 	default:
-	    return false;
+	    break;
 	}
+	return "Unknown";
     }
 
     size_t TypeDecl::Size() const
@@ -85,11 +114,11 @@ namespace Types
     Range* TypeDecl::GetRange() const
     {
 	assert(isIntegral());
-	switch(type)
+	switch(kind)
 	{
-	case Char:
+	case TK_Char:
 	    return new Range(0, UCHAR_MAX);
-	case Integer:
+	case TK_Integer:
 	    return new Range(INT_MIN, INT_MAX);
 	default:
 	    return 0;
@@ -105,59 +134,6 @@ namespace Types
 	return 0;
     }
 
-    static const char* TypeToStr(SimpleTypes t)
-    {
-	switch(t)
-	{
-	case Integer:
-	    return "Integer";
-	case Int64:
-	    return "Int64";
-	case Real:
-	    return "Real";
-	case Char:
-	    return "Char";
-	case Boolean:
-	    return "Boolean";
-	case Array:
-	    return "Array";
-	case Function:
-	    return "Function";
-	case Procedure:
-	    return "Procedure";
-	case Record:
-	    return "Record";
-	case Set:
-	    return "Set";
-	case SubRange:
-	    return "SubRange";
-	case Enum:
-	    return "Enum";
-	case Pointer:
-	    return "Pointer";
-	case PointerIncomplete:
-	    return "PointerIncomplete";
-	case Void:
-	    return "Void";
-	case Field:
-	    return "Field";
-	case File:
-	    return "File";
-	case String:
-	    return "String";
-	case Variant:
-	    return "Variant";
-	case FuncPtr:
-	    return "FuncPtr";
-	case Class:
-	    return "Class";
-	case MemberFunc:
-	    return "MemberFunc";
-	}
-	assert(0 && "Unknown type");
-	return "Unknown";
-    }
-
     void TypeDecl::dump() const
     {
 	DoDump(std::cerr);
@@ -165,7 +141,7 @@ namespace Types
 
     void BasicTypeDecl::DoDump(std::ostream& out) const
     {
-	out << "Type: " << TypeToStr(type);
+	out << "Type: " << TypeToStr(kind);
     }
 
     llvm::Type* TypeDecl::LlvmType() const
@@ -188,7 +164,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == String)
+	if (ty->Type() == TK_String)
 	{
 	    return ty;
 	}
@@ -202,11 +178,11 @@ namespace Types
 
     const TypeDecl* IntegerDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (ty->Type() == Integer)
+	if (ty->Type() == TK_Integer)
 	{
 	    return this;
 	}
-	if (ty->Type() == Int64 || ty->Type() == Real)
+	if (ty->Type() == TK_Int64 || ty->Type() == TK_Real)
 	{
 	    return ty;
 	}
@@ -229,11 +205,11 @@ namespace Types
 
     const TypeDecl* Int64Decl::CompatibleType(const TypeDecl* ty) const
     {
-	if (ty->Type() == Int64 || ty->Type() == Integer)
+	if (ty->Type() == TK_Int64 || ty->Type() == TK_Integer)
 	{
 	    return this;
 	}
-	if (ty->Type() == Real)
+	if (ty->Type() == TK_Real)
 	{
 	    return ty;
 	}
@@ -242,7 +218,7 @@ namespace Types
 
     const TypeDecl* Int64Decl::AssignableType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == Integer)
+	if (SameAs(ty) || ty->Type() == TK_Integer)
 	{
 	    return this;
 	}
@@ -256,7 +232,7 @@ namespace Types
 
     const TypeDecl* RealDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == Int64 || ty->Type() == Integer)
+	if (SameAs(ty) || ty->Type() == TK_Int64 || ty->Type() == TK_Integer)
 	{
 	    return this;
 	}
@@ -265,7 +241,7 @@ namespace Types
 
     const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == Integer || ty->Type() == Int64)
+	if (SameAs(ty) || ty->Type() == TK_Integer || ty->Type() == TK_Int64)
 	{
 	    return this;
 	}
@@ -308,16 +284,12 @@ namespace Types
     bool CompoundDecl::SameAs(const TypeDecl* ty) const
     {
         // Both need to be pointers!
-	if (type != ty->Type())
+	if (Type() != ty->Type())
 	{
 	    return false;
 	}
 	const CompoundDecl* cty = llvm::dyn_cast<CompoundDecl>(ty);
-	if (*cty->SubType() != *baseType)
-	{
-	    return false;
-	}
-	return true;
+        return cty && *cty->SubType() == *baseType;
     }
 
     llvm::Type* PointerDecl::GetLlvmType() const
@@ -401,7 +373,7 @@ namespace Types
 
     bool SimpleCompoundDecl::SameAs(const TypeDecl* ty) const
     {
-	if (type != ty->Type())
+	if (Type() != ty->Type())
 	{
 	    return false;
 	}
@@ -433,7 +405,7 @@ namespace Types
     {
 	if (const RangeDecl* rty = llvm::dyn_cast<RangeDecl>(ty))
 	{
-	    if (rty->type != type || *range != *rty->range)
+	    if (rty->Type() != Type() || *range != *rty->range)
 	    {
 		return false;
 	    }
@@ -451,7 +423,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == Integer || ty->Type() == Int64|| ty->Type() == Real)
+	if (ty->Type() == TK_Integer || ty->Type() == TK_Int64|| ty->Type() == TK_Real)
 	{
 	    return ty;
 	}
@@ -499,12 +471,11 @@ namespace Types
 	}
     }
 
-
     bool EnumDecl::SameAs(const TypeDecl* ty) const
     {
 	if (const EnumDecl* ety = llvm::dyn_cast<EnumDecl>(ty))
 	{
-	    if (ety->type != type || values.size() != ety->values.size())
+	    if (ety->Type() != Type() || values.size() != ety->values.size())
 	    {
 		return false;
 	    }
@@ -601,7 +572,7 @@ namespace Types
 	if (maxAlignElt != maxSizeElt)
 	{
 	    size_t nelems = maxSize - maxAlignSize;
-	    llvm::Type* ty = llvm::ArrayType::get(GetType(Char), nelems);
+	    llvm::Type* ty = llvm::ArrayType::get(GetType(TK_Char), nelems);
 	    fv.push_back(ty);
 	}
 	return llvm::StructType::create(fv);
@@ -645,7 +616,7 @@ namespace Types
 
     bool FieldCollection::SameAs(const TypeDecl* ty) const
     {
-	if (type != ty->Type())
+	if (Type() != ty->Type())
 	{
 	    return false;
 	}
@@ -720,7 +691,7 @@ namespace Types
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
-	: FieldCollection(TK_Class, Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
+	: FieldCollection(TK_Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
     { 
 	if (baseobj)
 	{
@@ -937,15 +908,16 @@ namespace Types
 
 	    if (!f->IsStatic())
 	    {
-		if (llvm::isa<PointerDecl>(f->FieldType()) &&
-		    f->FieldType()->Type() == PointerIncomplete &&
-		    !f->FieldType()->hasLlvmType())
+		if (PointerDecl* pd = llvm::dyn_cast<PointerDecl>(f->FieldType()))
 		{
-		    if (!opaqueType)
+		    if (pd->IsIncomplete() && !pd->hasLlvmType())
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), Name());
+			if (!opaqueType)
+			{
+			    opaqueType = llvm::StructType::create(llvm::getGlobalContext(), Name());
+			}
+			return opaqueType;
 		    }
-		    return opaqueType;
 		}
 		fv.push_back(f->LlvmType());
 	    }
@@ -1006,14 +978,9 @@ namespace Types
     }
 
     FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
-	: CompoundDecl(TK_FuncPtr, FuncPtr, 0), proto(func)
+	: CompoundDecl(TK_FuncPtr, 0), proto(func)
     {
-	SimpleTypes t = Function;
-	if (proto->Type()->Type() == Void)
-	{
-	    t = Procedure;
-	}
-	baseType = new FunctionDecl(t, proto->Type());
+	baseType = new FunctionDecl(proto->Type());
     }
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
@@ -1044,7 +1011,7 @@ namespace Types
     llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType)
     {
 	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	std::vector<llvm::Type*> fv{GetType(Integer), ty};
+	std::vector<llvm::Type*> fv{GetType(TypeDecl::TK_Integer), ty};
 	llvm::StructType* st = llvm::StructType::create(fv, name);
 	return st;
     }
@@ -1071,7 +1038,7 @@ namespace Types
     }
 
     SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty)
-	: CompoundDecl(TK_Set, Set, ty), range(r)
+	: CompoundDecl(TK_Set, ty), range(r)
     {
 	assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
 	assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
@@ -1086,7 +1053,7 @@ namespace Types
     {
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(Integer));
+	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(TK_Integer));
 	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
@@ -1129,11 +1096,11 @@ namespace Types
 
     const TypeDecl* StringDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == Char)
+	if (SameAs(ty) || ty->Type() == TK_Char)
 	{
 	    return this;
 	}
-	if (ty->Type() == Array)
+	if (ty->Type() == TK_Array)
 	{
 	    const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty);
 	    if (aty->Ranges().size() != 1)

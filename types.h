@@ -9,34 +9,6 @@ class PrototypeAST;
 
 namespace Types
 {
-    enum SimpleTypes
-    {
-	Integer,
-	Int64,
-	Real,
-	Char,
-	Boolean,
-	Array,
-	Function,
-	Procedure,
-	
-	Variant,
-	Record,
-	Class,
-
-        Set,
-	SubRange,
-	Enum,
-	Pointer,
-	PointerIncomplete,
-	Void,
-	Field,
-	File,
-	String,
-	FuncPtr,
-	MemberFunc,
-    };
-
     /* Range is either created by the user, or calculated on basetype */
     class Range
     {
@@ -85,19 +57,14 @@ namespace Types
 	    TK_Class,
 	    TK_MemberFunc,
 	};
-	TypeDecl(TypeKind k, SimpleTypes t)
-	    : kind(k), type(t), ltype(0)
+
+	TypeDecl(TypeKind k)
+	    : kind(k), ltype(0)
 	{
 	}
 
-	TypeDecl(SimpleTypes t)
-	    : kind(TK_Type), type(t), ltype(0)
-	{
-	}
-
-	virtual SimpleTypes Type() const { return type; }
+	virtual TypeKind Type() const { return kind; }
 	virtual ~TypeDecl() { }
-	virtual std::string to_string() const;
 	virtual bool isIntegral() const = 0;
 	virtual bool isCompound() const { return false; }
 	virtual bool isStringLike() const { return false; }
@@ -121,7 +88,6 @@ namespace Types
 	virtual llvm::Type* GetLlvmType() const = 0;
     protected:
 	const TypeKind kind;
-	SimpleTypes type;
 	mutable llvm::Type* ltype;
     };
 
@@ -130,17 +96,16 @@ namespace Types
     public:
 	using TypeDecl::TypeDecl;
 	void DoDump(std::ostream& out) const override;
-	bool SameAs(const TypeDecl* ty) const override { return type == ty->Type(); }
+	bool SameAs(const TypeDecl* ty) const override { return kind == ty->Type(); }
 	bool isIntegral() const override { return false; }
     };
 
     class CharDecl : public BasicTypeDecl
     {
     public:
-	CharDecl() : BasicTypeDecl(TK_Char, Char)
+	CharDecl() : BasicTypeDecl(TK_Char)
 	{
 	}
-        std::string to_string() const override { return "char"; }
 	bool isIntegral() const override { return true; }
 	bool isUnsigned() const override { return true; }
 	bool isStringLike() const override { return true; }
@@ -154,8 +119,7 @@ namespace Types
     {
     public:
 	IntegerDecl()
-	    : BasicTypeDecl(TK_Integer, Integer) { }
-        std::string to_string() const override { return "integer"; };
+	    : BasicTypeDecl(TK_Integer) { }
 	bool isIntegral() const override { return true; }
 	unsigned Bits() const override { return 32; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
@@ -168,8 +132,7 @@ namespace Types
     {
     public:
 	Int64Decl()
-	    : BasicTypeDecl(TK_Int64, Int64) { }
-        std::string to_string() const override { return "longint"; };
+	    : BasicTypeDecl(TK_Int64) { }
 	bool isIntegral() const override { return true; }
 	unsigned Bits() const override { return 64; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
@@ -181,10 +144,8 @@ namespace Types
     class RealDecl : public BasicTypeDecl
     {
     public:
-	RealDecl() : BasicTypeDecl(TK_Real, Real)
-	{
-	}
-        std::string to_string() const override { return "real"; };
+        RealDecl()
+	    : BasicTypeDecl(TK_Real) { }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 64; }
@@ -195,10 +156,9 @@ namespace Types
     class VoidDecl : public BasicTypeDecl
     {
     public:
-	VoidDecl() : BasicTypeDecl(TK_Void, Void)
+	VoidDecl() : BasicTypeDecl(TK_Void)
 	{
 	}
-        std::string to_string() const override { return "real"; };
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return 0; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -207,10 +167,8 @@ namespace Types
     class CompoundDecl : public TypeDecl
     {
     public:
-	CompoundDecl(TypeKind tk, SimpleTypes ty, TypeDecl *b) 
-	    : TypeDecl(tk, ty), baseType(b)
-	{
-	}
+	CompoundDecl(TypeKind tk, TypeDecl *b) 
+	    : TypeDecl(tk), baseType(b) { }
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isCompound() const override { return true; }
 	bool isIntegral() const override { return false; }
@@ -223,23 +181,23 @@ namespace Types
     class SimpleCompoundDecl : public TypeDecl
     {
     public:
-	SimpleCompoundDecl(TypeKind k, SimpleTypes t, SimpleTypes b)
-	    : TypeDecl(k, t), baseType(b) {}
+	SimpleCompoundDecl(TypeKind k, TypeKind b)
+	    : TypeDecl(k), baseType(b) {}
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isIntegral() const override { return true; }
-	SimpleTypes Type() const override { return baseType; }
+	TypeKind Type() const override { return baseType; }
 	static bool classof(const TypeDecl* e);
     protected:
 	llvm::Type* GetLlvmType() const override;
     protected:
-	SimpleTypes baseType;
+	TypeKind baseType;
     };
 
     class RangeDecl : public SimpleCompoundDecl
     {
     public:
-	RangeDecl(Range* r, SimpleTypes base)
-	    : SimpleCompoundDecl(TK_Range, SubRange, base), range(r)
+	RangeDecl(Range* r, TypeKind base)
+	    : SimpleCompoundDecl(TK_Range, base), range(r)
 	{
 	    assert(r && "Range should be specified");
 	}
@@ -262,18 +220,18 @@ namespace Types
     {
     public:
 	ArrayDecl(TypeDecl* b, const std::vector<RangeDecl*>& r)
-	    : CompoundDecl(TK_Array, Array, b), ranges(r)
+	    : CompoundDecl(TK_Array, b), ranges(r)
 	{
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeDecl*>& r)
-	    : CompoundDecl(tk,  String, b), ranges(r)
+	    : CompoundDecl(tk, b), ranges(r)
 	{
 	    assert(tk == TK_String && "Expected this to be a string...");
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	const std::vector<RangeDecl*>& Ranges() const { return ranges; }
-	bool isStringLike() const override { return (baseType->Type() == Char); }
+	bool isStringLike() const override { return (baseType->Type() == TK_Char); }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e)
@@ -301,8 +259,8 @@ namespace Types
     class EnumDecl : public SimpleCompoundDecl
     {
     public:
-	EnumDecl(const std::vector<std::string>& nmv, SimpleTypes ty = Enum)
-	    : SimpleCompoundDecl(TK_Enum, Enum, ty)
+	EnumDecl(const std::vector<std::string>& nmv, TypeKind ty = TK_Enum)
+	    : SimpleCompoundDecl(TK_Enum, ty)
 	{
 	    assert(nmv.size() && "Must have names in the enum type.");
 	    SetValues(nmv);
@@ -324,7 +282,8 @@ namespace Types
     class BoolDecl : public EnumDecl
     {
     public:
-	BoolDecl() : EnumDecl(std::vector<std::string>{"false", "true"}, Boolean)
+	BoolDecl() :
+	    EnumDecl(std::vector<std::string>{"false", "true"}, TK_Boolean)
 	{
 	}
     protected:
@@ -339,33 +298,33 @@ namespace Types
     {
     public:
 	PointerDecl(const std::string& nm)
-	    : CompoundDecl(TK_Pointer, PointerIncomplete, 0), name(nm) {}
+	    : CompoundDecl(TK_Pointer, 0), name(nm), incomplete(true) {}
 	PointerDecl(TypeDecl* ty)
-	    : CompoundDecl(TK_Pointer, Pointer, ty), name("") {}
+	    : CompoundDecl(TK_Pointer, ty), name(""), incomplete(false) {}
     public:
 	const std::string& Name() { return name; }
 	void SetSubType(TypeDecl* t)
 	{
 	    assert(t && "Type should be non-NULL");
 	    baseType = t; 
-	    type = Pointer;
+	    incomplete = false;
 	}
+	bool IsIncomplete() const { return incomplete; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
 	std::string name;
+	bool incomplete;
     };
 
     class FunctionDecl : public CompoundDecl
     {
     public:
-	FunctionDecl(SimpleTypes procOrFunc, TypeDecl* resType) 
-	    : CompoundDecl(TK_Function, procOrFunc, resType)
+	FunctionDecl(TypeDecl* resType) 
+	    : CompoundDecl(TK_Function, resType)
 	{
-	    assert((procOrFunc == Function || procOrFunc == Procedure) &&
-		   "Expected Function or Procedure type");
 	}
 	void DoDump(std::ostream& out) const override;
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override
@@ -380,7 +339,7 @@ namespace Types
     {
     public:
 	FieldDecl(const std::string& nm, TypeDecl* ty, bool stat)
-	    : CompoundDecl(TK_Field, Field, ty), name(nm), isStatic(stat) {}
+	    : CompoundDecl(TK_Field, ty), name(nm), isStatic(stat) {}
     public:
 	const std::string& Name() const { return name; }
 	TypeDecl* FieldType() const { return baseType; }
@@ -400,8 +359,8 @@ namespace Types
     class FieldCollection : public TypeDecl
     {
     public:
-	FieldCollection(TypeKind k, SimpleTypes t, const std::vector<FieldDecl*>& flds)
-	    : TypeDecl(k, t), fields(flds), opaqueType(0) { }
+	FieldCollection(TypeKind k, const std::vector<FieldDecl*>& flds)
+	    : TypeDecl(k), fields(flds), opaqueType(0) { }
         virtual int Element(const std::string& name) const;
 	virtual const FieldDecl* GetElement(unsigned int n) const
 	{
@@ -427,7 +386,7 @@ namespace Types
     {
     public:
 	VariantDecl(const std::vector<FieldDecl*>& flds)
-	    : FieldCollection(TK_Variant, Variant, flds) { };
+	    : FieldCollection(TK_Variant, flds) { };
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Variant; }
     protected:
@@ -438,7 +397,7 @@ namespace Types
     {
     public:
 	RecordDecl(const std::vector<FieldDecl*>& flds, VariantDecl* v)
-	    : FieldCollection(TK_Record, Record, flds), variant(v) { };
+	    : FieldCollection(TK_Record, flds), variant(v) { };
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	size_t Size() const override;
@@ -462,7 +421,7 @@ namespace Types
 	    Override = 1 << 2,
 	};
 	MemberFuncDecl(PrototypeAST* p, int f)
-	    : TypeDecl(TK_MemberFunc, MemberFunc), proto(p), flags(f), index(-1) {}
+	    : TypeDecl(TK_MemberFunc), proto(p), flags(f), index(-1) {}
 
 	bool isIntegral() const override { return false; }
 	void DoDump(std::ostream& out) const override;
@@ -544,7 +503,7 @@ namespace Types
 	    Buffer,
 	} FileFields;
 	FileDecl(TypeDecl* ty)
-	    : CompoundDecl(TK_File, File, ty) {}
+	    : CompoundDecl(TK_File, ty) {}
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_File; }
     protected:
@@ -593,7 +552,7 @@ namespace Types
     public:
 	StringDecl(unsigned size)
 	    : ArrayDecl(TK_String, new CharDecl, 
-			std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), Integer)))
+			std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), TK_Integer)))
 	{
 	    assert(size > 0 && "Zero size not allowed");
 	}
@@ -603,7 +562,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
     };
 
-    llvm::Type* GetType(SimpleTypes type);
+    llvm::Type* GetType(TypeDecl::TypeKind type);
     llvm::Type* GetVoidPtrType();
     llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType);
     TypeDecl* GetVoidType();

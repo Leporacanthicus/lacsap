@@ -210,22 +210,22 @@ llvm::Value* MakeConstant(uint64_t val, llvm::Type* ty)
 
 llvm::Value* MakeIntegerConstant(int val)
 {
-    return MakeConstant(val, Types::GetType(Types::Integer));
+    return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Integer));
 }
 
 llvm::Value* MakeInt64Constant(uint64_t val)
 {
-    return MakeConstant(val, Types::GetType(Types::Int64));
+    return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Int64));
 }
 
 static llvm::Value* MakeBooleanConstant(int val)
 {
-    return MakeConstant(val, Types::GetType(Types::Boolean));
+    return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Boolean));
 }
 
 static llvm::Value* MakeCharConstant(int val)
 {
-    return MakeConstant(val, Types::GetType(Types::Char));
+    return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Char));
 }
 
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
@@ -246,7 +246,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
-    if (rhs->Type()->Type() != Types::Char)
+    if (rhs->Type()->Type() != Types::TypeDecl::TK_Char)
     {
 	return ErrorV("Expected char value");
     }
@@ -570,7 +570,7 @@ static int StringishScore(ExprAST* e)
     {
 	return 3;
     }
-    if (e->Type()->Type() == Types::Char)
+    if (e->Type()->Type() == Types::TypeDecl::TK_Char)
     {
 	return 1;
     }
@@ -663,11 +663,11 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     assert(rV && lV && "Should have generated values for left and right set");
 
     llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());
-    llvm::Type* intTy = Types::GetType(Types::Integer);
+    llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
     llvm::Value* setWords = MakeIntegerConstant(llvm::dyn_cast<Types::SetDecl>(type)->SetWords());
     if (resTyIsSet)
     {
-	llvm::Type* resTy = Types::GetType(Types::Void);
+	llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
 	std::vector<llvm::Type*> argTypes{pty, pty, pty, intTy};
 	
 	llvm::Value* v = CreateTempAlloca(type);
@@ -680,7 +680,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return builder.CreateLoad(v);
     }
 
-    llvm::Type* resTy = Types::GetType(Types::Boolean);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Boolean);
     std::vector<llvm::Type*> argTypes{pty, pty, intTy};
     
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
@@ -695,7 +695,7 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e)
     TRACE();
     llvm::Value* v;
     Types::StringDecl* sd = Types::GetStringType();
-    if (e->Type()->Type() == Types::Char)
+    if (e->Type()->Type() == Types::TypeDecl::TK_Char)
     {
 	v = CreateTempAlloca(sd);
 	TempStringFromChar(v, e);
@@ -748,19 +748,19 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 
     llvm::Value* v = CreateTempAlloca(Types::GetStringType());
 
-    llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     llvm::Constant* f = theModule->getOrInsertFunction("__StrConcat", ft);
     
     std::vector<llvm::Value*> args = { v, lV, rV };
-    builder.CreateCall(f, args, "");
+    builder.CreateCall(f, args);
     return v;
 }
 
 llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
 {
     TRACE();
-    llvm::Type* resTy = Types::GetType(Types::Integer);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Integer);
     return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
 }
 
@@ -776,8 +776,8 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 	return 0;
     }
     // Result is integer.
-    llvm::Type* resTy = Types::GetType(Types::Integer);
-    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Integer);
+    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
     std::vector<llvm::Type*> argTypes{pty, pty, resTy};
 
     lV = builder.CreateBitCast(lV, pty);
@@ -837,7 +837,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value* setV = rhsA->Address();
 	Types::TypeDecl* type = rhs->Type();
 	int start = type->GetRange()->GetStart();
-	l = builder.CreateZExt(l, Types::GetType(Types::Integer), "zext.l");
+	l = builder.CreateZExt(l, Types::GetType(Types::TypeDecl::TK_Integer), "zext.l");
 	l = builder.CreateSub(l, MakeIntegerConstant(start));
 	llvm::Value* index;
 	if (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() > 1)
@@ -854,7 +854,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 
 	llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
-	return builder.CreateTrunc(bit, Types::GetType(Types::Boolean));
+	return builder.CreateTrunc(bit, Types::GetType(Types::TypeDecl::TK_Boolean));
     }
     
     if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
@@ -963,8 +963,8 @@ llvm::Value* BinaryExprAST::CodeGen()
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
 	// But only if they are the same size.
-	if (lhs->Type()->SubType()->Type() == Types::Char &&
-	    rhs->Type()->SubType()->Type() == Types::Char)
+	if (lhs->Type()->SubType()->Type() == Types::TypeDecl::TK_Char &&
+	    rhs->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
 	{
 	    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
 	    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
@@ -1201,7 +1201,7 @@ llvm::Value* CallExprAST::CodeGen()
 	    if (llvm::isa<Types::StringDecl>(vdef[index].Type()) &&
 		sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
 	    {
-		if (sv && sv->Type()->SubType()->Type() == Types::Char)
+		if (sv && sv->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
 		{
 		    v = CreateTempAlloca(vdef[index].Type());
 		    TempStringFromStringExpr(v, sv);
@@ -1229,7 +1229,7 @@ llvm::Value* CallExprAST::CodeGen()
 	index++;
     }
     llvm::CallInst* inst = 0;
-    if (proto->Type()->Type() == Types::Void)
+    if (proto->Type()->Type() == Types::TypeDecl::TK_Void)
     {
 	inst = builder.CreateCall(calleF, argsV, "");
     }
@@ -1391,7 +1391,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    ErrorF("Duplicate variable name " + args[idx].Name());
 	}
     }
-    if (type->Type() != Types::Void)
+    if (type->Type() != Types::TypeDecl::TK_Void)
     {
 	std::string shortname = name;
 	std::string::size_type pos = name.find_last_of('$');
@@ -1524,7 +1524,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	return 0;
     }
 
-    if (proto->Type()->Type() == Types::Void)
+    if (proto->Type()->Type() == Types::TypeDecl::TK_Void)
     {
 	builder.CreateRetVoid();
     }
@@ -1669,10 +1669,10 @@ llvm::Value* AssignExprAST::CodeGen()
 	return AssignStr();
     }
 
-    if (llvm::isa<StringExprAST>(rhs) && lhs->Type()->Type() == Types::Array)
+    if (llvm::isa<StringExprAST>(rhs) && lhs->Type()->Type() == Types::TypeDecl::TK_Array)
     {
 	Types::ArrayDecl* arr = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
-	if (arr->SubType()->Type() == Types::Char)
+	if (arr->SubType()->Type() == Types::TypeDecl::TK_Char)
 	{
 	    StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
 	    assert(rhs && "Expected string to convert correctly");
@@ -1762,7 +1762,7 @@ llvm::Value* IfExprAST::CodeGen()
 	return 0;
     }
 
-    if (condV->getType() !=  Types::GetType(Types::Boolean))
+    if (condV->getType() !=  Types::GetType(Types::TypeDecl::TK_Boolean))
     {
 	assert(0 && "Only boolean expressions allowed in if-statement");
     }
@@ -2061,38 +2061,38 @@ void WriteAST::accept(Visitor& v)
 static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    llvm::Type* resTy = Types::GetType(Types::Void);
-    llvm::Type* intTy = Types::GetType(Types::Integer);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
+    llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
     std::vector<llvm::Type*> argTypes{fty};
     if (ty)
     {
 	switch(ty->Type())
 	{
-	case Types::Char:
+	case Types::TypeDecl::TK_Char:
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(intTy);
 	    suffix = "char";
 	    break;
 
-	case Types::Boolean:
+	case Types::TypeDecl::TK_Boolean:
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(intTy);
 	    suffix = "bool";
 	    break;
 
-	case Types::Integer:
+	case Types::TypeDecl::TK_Integer:
 	    argTypes.push_back(intTy);
 	    argTypes.push_back(intTy);
 	    suffix = "int";
 	    break;
 
-	case Types::Int64:
+	case Types::TypeDecl::TK_Int64:
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(intTy);
 	    suffix = "int64";
 	    break;
 
-	case Types::Real:
+	case Types::TypeDecl::TK_Real:
 	    // Args: double, int, int
 	    argTypes.push_back(ty->LlvmType());
 	    argTypes.push_back(intTy);
@@ -2100,23 +2100,23 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	    suffix = "real";
 	    break;
 
-	case Types::String:
+	case Types::TypeDecl::TK_String:
 	{
-	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
 	    argTypes.push_back(pty);
 	    argTypes.push_back(intTy);
 	    suffix = "str";
 	    break;
 	}
-	case Types::Array:
+	case Types::TypeDecl::TK_Array:
 	{
 	    Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
 	    assert(ad && "Expect array declaration to expand!");
-	    if (ad->SubType()->Type() != Types::Char)
+	    if (ad->SubType()->Type() != Types::TypeDecl::TK_Char)
 	    {
 		return ErrorF("Invalid type argument for write");
 	    }
-	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::Char));
+	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
 	    argTypes.push_back(pty);
 	    argTypes.push_back(intTy);
 	    suffix = "chars";
@@ -2140,7 +2140,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
 static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 {
-    llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     assert(ty && "Type should not be NULL!");
     if (!ty->isPointerTy())
     {
@@ -2171,7 +2171,7 @@ llvm::Value* WriteAST::CodeGen()
 	{
 	    Types::TypeDecl* type = arg.expr->Type();
 	    fn = CreateWriteFunc(type, f->getType());
-	    if (type->Type() == Types::String)
+	    if (type->Type() == Types::TypeDecl::TK_String)
 	    {
 		if (AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr))
 		{
@@ -2185,8 +2185,8 @@ llvm::Value* WriteAST::CodeGen()
 		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
-	    else if (type->Type() == Types::Array &&
-		     type->SubType()->Type() == Types::Char &&
+	    else if (type->Type() == Types::TypeDecl::TK_Array &&
+		     type->SubType()->Type() == Types::TypeDecl::TK_Char &&
 		     !llvm::isa<StringExprAST>(arg.expr))
 	    {
 		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
@@ -2207,11 +2207,11 @@ llvm::Value* WriteAST::CodeGen()
 	    llvm::Value*    w;
 	    if (!arg.width)
 	    {
-		if (type->Type() == Types::Integer)
+		if (type->Type() == Types::TypeDecl::TK_Integer)
 		{
 		    w = MakeIntegerConstant(13);
 		}
-		else if (type->Type() == Types::Real)
+		else if (type->Type() == Types::TypeDecl::TK_Real)
 		{
 		    w = MakeIntegerConstant(15);
 		}
@@ -2231,7 +2231,7 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV("Expected width to be integer value");
 	    }
 	    argsV.push_back(w);
-	    if (type->Type() == Types::Real)
+	    if (type->Type() == Types::TypeDecl::TK_Real)
 	    {
 		llvm::Value* p;
 		if (arg.precision)
@@ -2305,7 +2305,7 @@ void ReadAST::accept(Visitor& v)
 static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     std::vector<llvm::Type*> argTypes{fty};
     // ty is NULL if we're doing readln.
     if (!ty)
@@ -2318,19 +2318,19 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	argTypes.push_back(lty);
 	switch(ty->Type())
 	{
-	case Types::Char:
+	case Types::TypeDecl::TK_Char:
 	    suffix = "chr";
 	    break;
 
-	case Types::Integer:
+	case Types::TypeDecl::TK_Integer:
 	    suffix = "int";
 	    break;
 
-	case Types::Real:
+	case Types::TypeDecl::TK_Real:
 	    suffix = "real";
 	    break;
 
-	case Types::String:
+	case Types::TypeDecl::TK_String:
 	    suffix = "str";
 	    break;
 
@@ -2344,7 +2344,7 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
 static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
-    llvm::Type* resTy = Types::GetType(Types::Void);
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
     assert(vTy && "Type should not be NULL!");
     std::vector<llvm::Type*> argTypes = {fty, Types::GetVoidPtrType()};
@@ -2702,7 +2702,7 @@ llvm::Value* SetExprAST::Address()
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
-    builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::Char)),
+    builder.CreateMemSet(tmp, MakeConstant(0, Types::GetType(Types::TypeDecl::TK_Char)),
 			 (llvm::dyn_cast<Types::SetDecl>(type)->SetWords() *
 			  Types::SetDecl::SetBits / 8), 0);
 
@@ -2733,8 +2733,8 @@ llvm::Value* SetExprAST::Address()
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();
 
-	    low  = builder.CreateSExt(low, Types::GetType(Types::Integer), "sext.low");
-	    high = builder.CreateSExt(high, Types::GetType(Types::Integer), "sext.high");
+	    low  = builder.CreateSExt(low, Types::GetType(Types::TypeDecl::TK_Integer), "sext.low");
+	    high = builder.CreateSExt(high, Types::GetType(Types::TypeDecl::TK_Integer), "sext.high");
 
 	    llvm::Value* rangeStart = MakeIntegerConstant(range->GetStart());
 	    low = builder.CreateSub(low, rangeStart);
@@ -2784,7 +2784,7 @@ llvm::Value* SetExprAST::Address()
 	    {
 		return 0;
 	    }
-	    x = builder.CreateZExt(x, Types::GetType(Types::Integer), "zext");
+	    x = builder.CreateZExt(x, Types::GetType(Types::TypeDecl::TK_Integer), "zext");
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
 	    llvm::Value* offset = builder.CreateAnd(x, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
@@ -2850,15 +2850,15 @@ llvm::Value* RangeReduceAST::CodeGen()
     {
 	index = builder.CreateSub(index, MakeConstant(start, ty));
     }
-    if (ty->getPrimitiveSizeInBits() < Types::GetType(Types::Integer)->getPrimitiveSizeInBits())
+    if (ty->getPrimitiveSizeInBits() < Types::GetType(Types::TypeDecl::TK_Integer)->getPrimitiveSizeInBits())
     {
 	if (expr->Type()->isUnsigned())
 	{
-	    index = builder.CreateZExt(index, Types::GetType(Types::Integer), "zext");
+	    index = builder.CreateZExt(index, Types::GetType(Types::TypeDecl::TK_Integer), "zext");
 	}
 	else
 	{
-	    index = builder.CreateSExt(index, Types::GetType(Types::Integer), "sext");
+	    index = builder.CreateSExt(index, Types::GetType(Types::TypeDecl::TK_Integer), "sext");
 	}
     }
     return index;
@@ -2881,7 +2881,7 @@ llvm::Value* RangeCheckAST::CodeGen()
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
 
     llvm::Value* orig_index = index;
-    llvm::Type* intTy = Types::GetType(Types::Integer);
+    llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
 
     llvm::Type* ty = index->getType();
     int start = range->GetStart();
@@ -2916,7 +2916,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 				       MakeIntegerConstant(start),
 				       MakeIntegerConstant(end),
 				       orig_index };
-    std::vector<llvm::Type*> argTypes = { llvm::PointerType::getUnqual(Types::GetType(Types::Char)),
+    std::vector<llvm::Type*> argTypes = { llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char)),
 					  intTy,
 					  intTy,
 					  intTy,
@@ -2943,7 +2943,7 @@ void TypeCastAST::DoDump(std::ostream& out) const
 
 llvm::Value* TypeCastAST::CodeGen()
 {
-    if (type->Type() == Types::Real)
+    if (type->Type() == Types::TypeDecl::TK_Real)
     {
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
@@ -2962,9 +2962,9 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
-    if (((current->Type() == Types::Array && current->SubType()->Type() == Types::Char) ||
-	 current->Type() == Types::Char ) && 
-	type->Type() == Types::String)
+    if (((current->Type() == Types::TypeDecl::TK_Array && current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
+	 current->Type() == Types::TypeDecl::TK_Char ) && 
+	type->Type() == Types::TypeDecl::TK_String)
     {
 	return MakeStringFromExpr(expr);
     }

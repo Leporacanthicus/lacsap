@@ -559,7 +559,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
 	    if (ed)
 	    {
-		if (ed->Type()->Type() == Types::Boolean)
+		if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
 		{
 		    uint64_t v = ed->Value();
 		    if (unaryToken == Token::Not)
@@ -688,7 +688,8 @@ void Parser::ParseTypeDef()
 		Error("Name " + nm + " is already in use.");
 		return;
 	    }
-	    if (ty->Type() == Types::PointerIncomplete)
+	    if (ty->Type() == Types::TypeDecl::TK_Pointer &&
+		llvm::dyn_cast<Types::PointerDecl>(ty)->IsIncomplete())
 	    {
 		incomplete.push_back(llvm::dyn_cast<Types::PointerDecl>(ty));
 	    }
@@ -1252,7 +1253,7 @@ ExprAST* Parser::ParseStringExpr(Token token)
     {
 	len = 1;
     }
-    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), Types::Integer)};
+    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), Types::TypeDecl::TK_Integer)};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
@@ -1378,7 +1379,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     }
     else if (llvm::dyn_cast_or_null<const VarDef>(def))
     {
-	if (def->Type()->Type() == Types::Pointer)
+	if (def->Type()->Type() == Types::TypeDecl::TK_Pointer)
 	{
 	    if(Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	    {
@@ -1551,7 +1552,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
     AssertToken(Token::Uparrow);
-    if (type->Type() == Types::File)
+    if (type->Type() == Types::TypeDecl::TK_File)
     {
 	type = type->SubType();
 	return new FilePointerExprAST(CurrentToken().Loc(), expr, type);
@@ -1565,21 +1566,20 @@ bool Parser::IsCall(const NamedObject* def)
     assert(def && "Expected def to be non-NULL");
 
     Types::TypeDecl* type = def->Type();
-    Types::SimpleTypes ty = type->Type();
-    if (ty == Types::Pointer &&
-	(type->SubType()->Type() == Types::Function ||
-	 type->SubType()->Type() == Types::Procedure))
+    Types::TypeDecl::TypeKind ty = type->Type();
+    if (ty == Types::TypeDecl::TK_Pointer &&
+	type->SubType()->Type() == Types::TypeDecl::TK_Function)
     {
 	return true;
     }
-    if (ty == Types::Class && llvm::isa<MembFuncDef>(def))
+    if (ty == Types::TypeDecl::TK_Class && llvm::isa<MembFuncDef>(def))
     {
 	if (CurrentToken().GetToken() != Token::Assign)
 	{
 	    return true;
 	}
     }
-    if ((ty == Types::Procedure || ty == Types::Function || ty == Types::MemberFunc) &&
+    if ((ty == Types::TypeDecl::TK_Function || ty == Types::TypeDecl::TK_MemberFunc) &&
 	CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -1607,9 +1607,8 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 		    return false;
 		}
 		Types::TypeDecl* td = funcArgs[argNo].Type();
-		if (td->Type() == Types::Pointer &&
-		    (td->SubType()->Type() == Types::Function ||
-		     td->SubType()->Type() == Types::Procedure))
+		if (td->Type() == Types::TypeDecl::TK_Pointer &&
+		    td->SubType()->Type() == Types::TypeDecl::TK_Function)
 		{
 		    isFuncArg = true;
 		}
@@ -1710,7 +1709,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		}
 		else if (TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
 		{
-		    if ((ty->Type()->Type() == Types::Class))
+		    if ((ty->Type()->Type() == Types::TypeDecl::TK_Class))
 		    {
 			expr = ParseStaticMember(ty, type);
 		    }
@@ -2089,15 +2088,13 @@ BlockAST* Parser::ParseBlock()
 FunctionAST* Parser::ParseDefinition(int level)
 {
     Location loc = CurrentToken().Loc();
-    Types::SimpleTypes functionType =
-	CurrentToken().GetToken() == Token::Function?Types::Function:Types::Procedure;
     PrototypeAST* proto = ParsePrototype();
     if (!proto)
     {
 	return 0;
     }
     std::string name = proto->Name();
-    Types::TypeDecl* ty = new Types::FunctionDecl(functionType, proto->Type());
+    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
     NamedObject* nmObj;
 
     const NamedObject* def = nameStack.Find(name);
@@ -2584,7 +2581,7 @@ ExprAST* Parser::ParseWrite()
 	    {
 		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
 		{
-		    if (vexpr->Type()->Type() == Types::File)
+		    if (vexpr->Type()->Type() == Types::TypeDecl::TK_File)
 		    {
 			file = vexpr;
 			wa.expr = 0;
@@ -2665,7 +2662,7 @@ ExprAST* Parser::ParseRead()
 	    {
 		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
 		{
-		    if (vexpr->Type()->Type() == Types::File)
+		    if (vexpr->Type()->Type() == Types::TypeDecl::TK_File)
 		    {
 			file = vexpr;
 			expr = 0;

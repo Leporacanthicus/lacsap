@@ -54,9 +54,9 @@ static bool isNumeric(Types::TypeDecl* t)
 {
     switch(t->Type())
     {
-    case Types::Integer:
-    case Types::Int64:
-    case Types::Real:
+    case Types::TypeDecl::TK_Integer:
+    case Types::TypeDecl::TK_Int64:
+    case Types::TypeDecl::TK_Real:
 	return true;
     default:
 	return false;
@@ -172,7 +172,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
 	ty = new Types::BoolDecl;
     }
-    if (!ty && lty->Type() == Types::Set && rty->Type() == Types::Set)
+    if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
 	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
 	{
@@ -214,7 +214,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::Plus))
     {
-	if (lty->Type() == Types::Char && rty->Type() == Types::Char)
+	if (lty->Type() == Types::TypeDecl::TK_Char && rty->Type() == Types::TypeDecl::TK_Char)
 	{
 	    ty = new Types::StringDecl(255);
 	}
@@ -323,7 +323,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     Types::TypeDecl* lty = a->lhs->Type();
     Types::TypeDecl* rty = a->rhs->Type();
 
-    if (lty->Type() == Types::Set && rty->Type() == Types::Set)
+    if (lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
 	assert(lty->GetRange() && lty->SubType() &&
 	       "Expected left type to be well defined.");
@@ -371,7 +371,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     {
 	StringExprAST* s = llvm::dyn_cast<StringExprAST>(a->rhs);
 	Types::ArrayDecl* aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
-	if (aty->SubType()->Type() == Types::Char && aty->Ranges().size() == 1)
+	if (aty->SubType()->Type() == Types::TypeDecl::TK_Char && aty->Ranges().size() == 1)
 	{
 	    if (aty->Ranges()[0]->GetRange()->Size() == s->Str().size())
 	    {

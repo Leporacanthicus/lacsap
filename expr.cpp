@@ -701,7 +701,7 @@ static llvm::Value* MakeStringFromExpr(ExprAST* e)
 	TempStringFromChar(v, e);
 	return v;
     }
-    else if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
+    if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
     {
 	v = CreateTempAlloca(sd);
 	TempStringFromStringExpr(v, se);
@@ -1060,7 +1060,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
-    else if (rty->isDoubleTy())
+    if (rty->isDoubleTy())
     {
 	switch(oper.GetToken())
 	{
@@ -1125,7 +1125,7 @@ llvm::Value* UnaryExprAST::CodeGen()
 	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
-    else if (rty == llvm::Type::DoubleTyID)
+    if (rty == llvm::Type::DoubleTyID)
     {
 	switch(oper.GetToken())
 	{
@@ -1399,8 +1399,8 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	{
 	    shortname = shortname.substr(pos+1);
 	}
-	llvm::AllocaInst* a=CreateAlloca(fn, VarDef(shortname, type));
-	if(!variables.Add(shortname, a))
+	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
+	if (!variables.Add(shortname, a))
 	{
 	    ErrorF("Duplicate function result name " + name);
 	}
@@ -1660,7 +1660,6 @@ llvm::Value* AssignExprAST::CodeGen()
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
-	lhs->dump(std::cerr);
 	return ErrorV("Left hand side of assignment must be a variable");
     }
 

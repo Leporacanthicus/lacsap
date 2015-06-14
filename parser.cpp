@@ -169,6 +169,11 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
     return true;
 }
 
+bool Parser::IsSemicolonOrEnd()
+{
+    return (CurrentToken().GetToken() == Token::End || CurrentToken().GetToken() == Token::Semicolon);
+}
+
 bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
 {
     return !(CurrentToken().GetToken() != Token::End && !Expect(Token::Semicolon, true, file, line));
@@ -2331,9 +2336,8 @@ ExprAST* Parser::ParseWhile()
     {
 	return 0;
     }
-    ExprAST* body = ParseStmtOrBlock();
 
-    return new WhileExprAST(loc, cond, body);
+    return new WhileExprAST(loc, cond, ParseStmtOrBlock());
 }
 
 ExprAST* Parser::ParseRepeat()
@@ -2400,12 +2404,9 @@ ExprAST* Parser::ParseCaseExpr()
 	    if (ed)
 	    {
 		lab.push_back(ed->Value());
+		break;
 	    }
-	    else
-	    {
-		return Error("Expected enumerated type value");
-	    }
-	    break;
+	    return Error("Expected enumerated type value");
 	}
 
 	case Token::Otherwise:
@@ -2433,7 +2434,7 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Colon:
 	{
 	    Location locColon = CurrentToken().Loc();
-	    NextToken();
+	    AssertToken(Token::Colon);
 	    ExprAST* s = ParseStmtOrBlock();
 	    if (isOtherwise)
 	    {
@@ -2555,7 +2556,7 @@ ExprAST* Parser::ParseWrite()
 
     VariableExprAST* file = 0;
     std::vector<WriteAST::WriteArg> args;
-    if (CurrentToken().GetToken() == Token::Semicolon || CurrentToken().GetToken() == Token::End)
+    if (IsSemicolonOrEnd())
     {
 	if (!isWriteln)
 	{
@@ -2617,10 +2618,7 @@ ExprAST* Parser::ParseWrite()
 		return 0;
 	    }
 	}
-	if (args.size() < 1 && !isWriteln)
-	{
-	    return Error("Expected at least one expression for output in write");
-	}
+	assert(args.size() >= 1 || isWriteln && "Expected at least one expression for output in write");
     }
     return new WriteAST(loc, file, args, isWriteln);
 }
@@ -2637,7 +2635,7 @@ ExprAST* Parser::ParseRead()
 
     std::vector<ExprAST*> args;
     VariableExprAST* file = 0;
-    if (CurrentToken().GetToken() == Token::Semicolon || CurrentToken().GetToken() == Token::End)
+    if (IsSemicolonOrEnd())
     {
 	if (!isReadln)
 	{
@@ -2682,10 +2680,7 @@ ExprAST* Parser::ParseRead()
 		return 0;
 	    }
 	}
-	if (args.size() < 1 && !isReadln)
-	{
-	    return Error("Expected at least one variable in read statement");
-	}
+	assert(args.size() >= 1 || isReadln && "Expected at least one variable in read statement");
     }
     return new ReadAST(loc, file, args, isReadln);
 }

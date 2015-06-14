@@ -93,6 +93,7 @@ private:
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);
     void AssertToken(Token::TokenType type, const char* file, int line);
     bool AcceptToken(Token::TokenType type, const char* file, int line);
+    bool IsSemicolonOrEnd();
     bool ExpectSemicolonOrEnd(const char* file, int line);
 
     // General helper functions

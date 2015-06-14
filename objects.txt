@@ -3,7 +3,7 @@ Random order Todo List for "objects":
 Member functions
   Basic parsing/calling. - Done.
   Add extra "self" argument - Done
-  Virtual functions. - Generally working, but may need more work.
+  Virtual functions. - Done.
   Static functions - Done.
   Check prototype against object prototype (and whilst at it, for forward decls)  
 

@@ -53,6 +53,24 @@ begin
    cv := 7 + a(x) + b(x);
 end; { der2 }
 
+
+procedure p;
+var
+   aa : base;
+   bb : derived;
+   d  : integer;
+   e  : integer;
+begin
+   e := aa.a(7);
+   d := aa.cv(5);
+   writeln("d:", d);
+   writeln("e:", e);
+   e := bb.a(7);
+   d := bb.cv(5);
+   writeln("d:", d);
+   writeln("e:", e);
+end;
+
 var
    a : base;
    b : derived;
@@ -72,6 +90,8 @@ begin
    writeln("a:", x, " b:", y);
    x := c.cv(4);
    writeln("c:", x);
+
+   p;
 end.
 
 

@@ -15,3 +15,15 @@ Derived2 CV
 derived.a
 derived.b
 c:           31
+Base.a
+In CV
+Base.a
+Base.b
+d:           20
+e:            7
+derived.a
+In CV
+derived.a
+derived.b
+d:           30
+e:           14

@@ -14,7 +14,7 @@ public:
     ~TimeTraceImpl()
     {
 	end = std::chrono::steady_clock::now();
-	long elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+	uint64_t elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
 	std::cerr << "Time for " << func << " "
 		  << std::fixed << std::setprecision(3) << elapsed / 1000.0 << " ms" << std::endl;
     }

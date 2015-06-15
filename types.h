@@ -16,12 +16,12 @@ namespace Types
 	Range(int s, int e)
 	    : start(s), end(e)
 	{
-	    assert( ((long)e - (long)s) > 0 && "Range should have start before end.");
+	    assert( ((int64_t)e - (int64_t)s) > 0 && "Range should have start before end.");
 	}
     public:
 	int GetStart() const { return start; }
 	int GetEnd() const { return end; }
-	size_t Size() const { return (size_t) ((long)end - (long)start) + 1; }
+	size_t Size() const { return (size_t) ((int64_t)end - (int64_t)start) + 1; }
 	void dump() const;
 	void DoDump(std::ostream& out) const;
     private:

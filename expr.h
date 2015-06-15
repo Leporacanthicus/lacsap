@@ -109,11 +109,11 @@ class IntegerExprAST : public ExprAST
 public:
     IntegerExprAST(const Location& w, uint64_t v, Types::TypeDecl* ty)
 	: ExprAST(w, EK_IntegerExpr, ty), val(v) {}
-    IntegerExprAST(const Location& w, ExprKind ek, long v, Types::TypeDecl* ty)
+    IntegerExprAST(const Location& w, ExprKind ek, uint64_t v, Types::TypeDecl* ty)
 	: ExprAST(w, ek, ty), val(v) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    long Int() { return val; }
+    uint64_t Int() { return val; }
     static bool classof(const ExprAST* e)
     {
 	return e->getKind() == EK_IntegerExpr || e->getKind() == EK_CharExpr;

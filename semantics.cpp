@@ -271,7 +271,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     if (!ty && llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(b->rhs))
     {
 	Types::Range* r = lty->GetRange();
-	long v = llvm::dyn_cast<IntegerExprAST>(b->rhs)->Int();
+	int64_t v = llvm::dyn_cast<IntegerExprAST>(b->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
 	    Error(b, "Value out of range");
@@ -282,7 +282,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     if (llvm::isa<Types::RangeDecl>(rty) && llvm::isa<IntegerExprAST>(b->lhs))
     {
 	Types::Range* r = rty->GetRange();
-	long v = llvm::dyn_cast<IntegerExprAST>(b->lhs)->Int();
+	int64_t v = llvm::dyn_cast<IntegerExprAST>(b->lhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
 	    Error(b, "Value out of range");
@@ -357,7 +357,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     if (llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(a->rhs))
     {
 	Types::Range* r = lty->GetRange();
-	long v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
+	int64_t v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
 	if (r->GetStart() > v || v > r->GetEnd())
 	{
 	    Error(a, "Value out of range");

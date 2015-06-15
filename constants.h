@@ -35,14 +35,14 @@ public:
     class IntConstDecl : public ConstDecl
     {
     public:
-	IntConstDecl(const Location& w, long v) 
+	IntConstDecl(const Location& w, uint64_t v) 
 	    : ConstDecl(CK_IntConstDecl, w), value(v) {}
 	Token Translate() const override;
-	long Value() const { return value; }
+	uint64_t Value() const { return value; }
 	static bool classof(const ConstDecl *e) { return e->getKind() == CK_IntConstDecl; }
 	void dump() const override;
     private:
-	long value;
+	uint64_t value;
     };
 
     class RealConstDecl : public ConstDecl

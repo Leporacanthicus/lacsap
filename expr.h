@@ -734,6 +734,11 @@ bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
 bool FileIsText(llvm::Value* f);
 llvm::Value* MakeAddressable(ExprAST* e);
 void BackPatch();
+llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
+			    const std::string&name);
+llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llvm::Type*>& args,
+			    const std::string& name);
+
 
 
 #endif

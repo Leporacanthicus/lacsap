@@ -67,6 +67,22 @@ static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
 
+
+
+llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
+			    const std::string&name)
+{
+    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, args, false);
+    return theModule->getOrInsertFunction(name, ft);
+}
+
+llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llvm::Type*>& args,
+			    const std::string& name)
+{
+    llvm::Type* resTy = Types::GetType(res);
+    return GetFunction(resTy, args, name);
+}
+
 static bool IsConstant(ExprAST* e)
 {
     if (llvm::isa<IntegerExprAST>(e) ||
@@ -667,43 +683,32 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     llvm::Value* setWords = MakeIntegerConstant(llvm::dyn_cast<Types::SetDecl>(type)->SetWords());
     if (resTyIsSet)
     {
-	llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
-	std::vector<llvm::Type*> argTypes{pty, pty, pty, intTy};
+	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, { pty, pty, pty, intTy }, func);
 	
 	llvm::Value* v = CreateTempAlloca(type);
-	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
-
-	
 	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
 	builder.CreateCall(f, args);
 	return builder.CreateLoad(v);
     }
 
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Boolean);
-    std::vector<llvm::Type*> argTypes{pty, pty, intTy};
-    
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction(func, ft);
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Boolean, { pty, pty, intTy }, func);
 
-    std::vector<llvm::Value*> args = { lV, rV, setWords };
-    return builder.CreateCall(f, args, "calltmp");
+    return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
 static llvm::Value* MakeStringFromExpr(ExprAST* e)
 {
     TRACE();
-    llvm::Value* v;
     Types::StringDecl* sd = Types::GetStringType();
     if (e->Type()->Type() == Types::TypeDecl::TK_Char)
     {
-	v = CreateTempAlloca(sd);
+	llvm::Value* v = CreateTempAlloca(sd);
 	TempStringFromChar(v, e);
 	return v;
     }
     if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
     {
-	v = CreateTempAlloca(sd);
+	llvm::Value* v = CreateTempAlloca(sd);
 	TempStringFromStringExpr(v, se);
 	return v;
     }
@@ -723,16 +728,10 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
 	return 0;
     }
 
-    llvm::Type* strTy = Types::GetStringType()->LlvmType();
-    llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
-    std::vector<llvm::Type*> argTypes{pty, pty};
+    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetStringType()->LlvmType());
+    llvm::Constant* f = GetFunction(resTy, { pty, pty }, "__Str" + name);
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__Str" + name, ft);
-
-    std::vector<llvm::Value*> args = { lV, rV };
-
-    return builder.CreateCall(f, args, twine);
+    return builder.CreateCall(f, { lV, rV }, twine);
 }
 
 static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
@@ -742,16 +741,11 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
     llvm::Value* lV = MakeStringFromExpr(lhs);
 
     llvm::Type* strTy = Types::GetStringType()->LlvmType();
-
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
-    std::vector<llvm::Type*> argTypes{pty, pty, pty};
 
-    llvm::Value* v = CreateTempAlloca(Types::GetStringType());
-
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__StrConcat", ft);
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, {pty, pty, pty}, "__StrConcat");
     
+    llvm::Value* v = CreateTempAlloca(Types::GetStringType());
     std::vector<llvm::Value*> args = { v, lV, rV };
     builder.CreateCall(f, args);
     return v;
@@ -776,15 +770,13 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 	return 0;
     }
     // Result is integer.
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Integer);
     llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
-    std::vector<llvm::Type*> argTypes{pty, pty, resTy};
+    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Integer);
 
     lV = builder.CreateBitCast(lV, pty);
     rV = builder.CreateBitCast(rV, pty);
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__Arr" + name, ft);
+    llvm::Constant* f = GetFunction(resTy, { pty, pty, resTy }, "__Arr" + name);
 
     std::vector<llvm::Value*> args = { lV, rV,  MakeIntegerConstant(size) };
     return builder.CreateCall(f, args, "calltmp");
@@ -1324,7 +1316,6 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	argTypes.push_back(argTy);
     }
     llvm::Type* resTy = type->LlvmType();
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
     std::string actualName;
     /* Don't mangle our 'main' functions name, as we call that from C */
     if (name == "__PascalMain")
@@ -1344,8 +1335,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	}
     }
 
-    llvm::Constant* cf = theModule->getOrInsertFunction(actualName, ft);
-    llvm::Function* f = llvm::dyn_cast<llvm::Function>(cf);
+    llvm::Function* f = llvm::dyn_cast<llvm::Function>(GetFunction(resTy, argTypes, actualName));
     if (!f->empty())
     {
 	return ErrorF("redefinition of function: " + name);
@@ -2060,96 +2050,81 @@ void WriteAST::accept(Visitor& v)
 static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
     std::vector<llvm::Type*> argTypes{fty};
-    if (ty)
+    switch(ty->Type())
     {
-	switch(ty->Type())
+    case Types::TypeDecl::TK_Char:
+	argTypes.push_back(ty->LlvmType());
+	argTypes.push_back(intTy);
+	suffix = "char";
+	break;
+
+    case Types::TypeDecl::TK_Boolean:
+	argTypes.push_back(ty->LlvmType());
+	argTypes.push_back(intTy);
+	suffix = "bool";
+	break;
+
+    case Types::TypeDecl::TK_Integer:
+	argTypes.push_back(intTy);
+	argTypes.push_back(intTy);
+	suffix = "int";
+	break;
+
+    case Types::TypeDecl::TK_Int64:
+	argTypes.push_back(ty->LlvmType());
+	argTypes.push_back(intTy);
+	suffix = "int64";
+	break;
+
+    case Types::TypeDecl::TK_Real:
+	// Args: double, int, int
+	argTypes.push_back(ty->LlvmType());
+	argTypes.push_back(intTy);
+	argTypes.push_back(intTy);
+	suffix = "real";
+	break;
+
+    case Types::TypeDecl::TK_String:
+    {
+	llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
+	argTypes.push_back(pty);
+	argTypes.push_back(intTy);
+	suffix = "str";
+	break;
+    }
+    case Types::TypeDecl::TK_Array:
+    {
+	Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
+	assert(ad && "Expect array declaration to expand!");
+	if (ad->SubType()->Type() != Types::TypeDecl::TK_Char)
 	{
-	case Types::TypeDecl::TK_Char:
-	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(intTy);
-	    suffix = "char";
-	    break;
-
-	case Types::TypeDecl::TK_Boolean:
-	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(intTy);
-	    suffix = "bool";
-	    break;
-
-	case Types::TypeDecl::TK_Integer:
-	    argTypes.push_back(intTy);
-	    argTypes.push_back(intTy);
-	    suffix = "int";
-	    break;
-
-	case Types::TypeDecl::TK_Int64:
-	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(intTy);
-	    suffix = "int64";
-	    break;
-
-	case Types::TypeDecl::TK_Real:
-	    // Args: double, int, int
-	    argTypes.push_back(ty->LlvmType());
-	    argTypes.push_back(intTy);
-	    argTypes.push_back(intTy);
-	    suffix = "real";
-	    break;
-
-	case Types::TypeDecl::TK_String:
-	{
-	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
-	    argTypes.push_back(pty);
-	    argTypes.push_back(intTy);
-	    suffix = "str";
-	    break;
-	}
-	case Types::TypeDecl::TK_Array:
-	{
-	    Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
-	    assert(ad && "Expect array declaration to expand!");
-	    if (ad->SubType()->Type() != Types::TypeDecl::TK_Char)
-	    {
-		return ErrorF("Invalid type argument for write");
-	    }
-	    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
-	    argTypes.push_back(pty);
-	    argTypes.push_back(intTy);
-	    suffix = "chars";
-	    break;
-	}
-	default:
-	    ty->dump(std::cerr);
-	    assert(0);
 	    return ErrorF("Invalid type argument for write");
 	}
+	llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
+	argTypes.push_back(pty);
+	argTypes.push_back(intTy);
+	suffix = "chars";
+	break;
     }
-    else
-    {
-	suffix = "nl";
+    default:
+	ty->dump(std::cerr);
+	assert(0);
+	return ErrorF("Invalid type argument for write");
     }
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__write_" + suffix, ft);
-
-    return f;
+    return GetFunction(Types::TypeDecl::TK_Void, argTypes, "__write_" + suffix);
 }
 
 static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 {
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     assert(ty && "Type should not be NULL!");
     if (!ty->isPointerTy())
     {
 	return ErrorF("Write argument is not a variable type!");
     }
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-    std::vector<llvm::Type*> argTypes{fty, voidPtrTy};
-
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    llvm::Constant* f = theModule->getOrInsertFunction("__write_bin", ft);
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, { fty, voidPtrTy }, "__write_bin");
 
     return f;
 }
@@ -2158,12 +2133,11 @@ llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
     llvm::Value* f = file->Address();
-
+    llvm::Value* v = NULL;
     bool isText = FileIsText(f);
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
-	llvm::Value*    v;
 	llvm::Constant* fn;
 	argsV.push_back(f);
 	if (isText)
@@ -2257,17 +2231,16 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    v = vexpr->Address();
 	    argsV.push_back(builder.CreateBitCast(v,  Types::GetVoidPtrType()));
-	    llvm::Type* ty = v->getType();
-	    fn = CreateWriteBinFunc(ty, f->getType());
+	    fn = CreateWriteBinFunc(v->getType(), f->getType());
 	}
-	builder.CreateCall(fn, argsV, "");
+	v = builder.CreateCall(fn, argsV, "");
     }
     if (isWriteln)
     {
-	llvm::Constant* fn = CreateWriteFunc(0, f->getType());
-	builder.CreateCall(fn, f, "");
+	llvm::Constant* fn = GetFunction(Types::TypeDecl::TK_Void, { f->getType() }, "__write_nl");
+	v = builder.CreateCall(fn, f, "");
     }
-    return MakeIntegerConstant(0);
+    return v;
 }
 
 void ReadAST::DoDump(std::ostream& out) const
@@ -2304,59 +2277,47 @@ void ReadAST::accept(Visitor& v)
 static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     std::vector<llvm::Type*> argTypes{fty};
     // ty is NULL if we're doing readln.
-    if (!ty)
+    llvm::Type* lty = llvm::PointerType::getUnqual(ty->LlvmType());
+    argTypes.push_back(lty);
+    switch(ty->Type())
     {
-	suffix = "nl";
+    case Types::TypeDecl::TK_Char:
+	suffix = "chr";
+	break;
+
+    case Types::TypeDecl::TK_Integer:
+	suffix = "int";
+	break;
+	
+    case Types::TypeDecl::TK_Real:
+	suffix = "real";
+	break;
+
+    case Types::TypeDecl::TK_String:
+	suffix = "str";
+	break;
+
+    default:
+	return ErrorF("Invalid type argument for read");
     }
-    else
-    {
-	llvm::Type* lty = llvm::PointerType::getUnqual(ty->LlvmType());
-	argTypes.push_back(lty);
-	switch(ty->Type())
-	{
-	case Types::TypeDecl::TK_Char:
-	    suffix = "chr";
-	    break;
-
-	case Types::TypeDecl::TK_Integer:
-	    suffix = "int";
-	    break;
-
-	case Types::TypeDecl::TK_Real:
-	    suffix = "real";
-	    break;
-
-	case Types::TypeDecl::TK_String:
-	    suffix = "str";
-	    break;
-
-	default:
-	    return ErrorF("Invalid type argument for read");
-	}
-    }
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    return theModule->getOrInsertFunction("__read_" + suffix, ft);
+    return GetFunction(Types::TypeDecl::TK_Void, argTypes,"__read_" + suffix);
 }
 
 static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
-    llvm::Type* resTy = Types::GetType(Types::TypeDecl::TK_Void);
     llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
     assert(vTy && "Type should not be NULL!");
-    std::vector<llvm::Type*> argTypes = {fty, Types::GetVoidPtrType()};
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(resTy, argTypes, false);
-    return theModule->getOrInsertFunction("__read_bin", ft);
+    return GetFunction(Types::TypeDecl::TK_Void, { fty, Types::GetVoidPtrType() }, "__read_bin");
 }
 
 llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
     llvm::Value* f = file->Address();
-
+    llvm::Value* v;
     bool isText = FileIsText(f);
     llvm::Type* fTy =  f->getType();
     for(auto arg: args)
@@ -2369,7 +2330,7 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	
 	Types::TypeDecl* ty = vexpr->Type();
-	llvm::Value* v = vexpr->Address();
+	v = vexpr->Address();
 	if (!v)
 	{
 	    assert(0 && "Could not evaluate address of expression for read");
@@ -2390,18 +2351,15 @@ llvm::Value* ReadAST::CodeGen()
 	    fn = CreateReadBinFunc(ty, fTy);
 	}
 	
-	builder.CreateCall(fn, argsV, "");
+	v = builder.CreateCall(fn, argsV, "");
     }
     if (isReadln)
     {
-	if (!isText)
-	{
-	    return ErrorV("File is not text for readln");
-	}
-	llvm::Constant* fn = CreateReadFunc(0, fTy);
-	builder.CreateCall(fn, f, "");
+	assert(isText && "File is not text for readln");
+	llvm::Constant* fn = GetFunction(Types::TypeDecl::TK_Void, { fTy }, "__read_nl");
+	v = builder.CreateCall(fn, f, "");
     }
-    return MakeIntegerConstant(0);
+    return v;
 }
 
 void VarDeclAST::DoDump(std::ostream& out) const
@@ -2929,8 +2887,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 					  intTy,
 					  intTy };
 
-    llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetVoidPtrType(), argTypes, false);
-    llvm::Constant* fn = theModule->getOrInsertFunction("range_error", ft);
+    llvm::Constant* fn = GetFunction(Types::GetVoidPtrType(), argTypes, "range_error");
 
     builder.CreateCall(fn, args, "");
     builder.CreateUnreachable();

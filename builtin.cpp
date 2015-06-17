@@ -74,26 +74,6 @@ namespace Builtin
     typedef std::function<BuiltinFunctionBase*(const std::vector<ExprAST*>&)>  CreateBIFObject;
     std::map<std::string, CreateBIFObject> BIFMap;
 
-    /* TODO: Remove this Old style functionality */
-    typedef llvm::Value* (*CodeGenFunc)(llvm::IRBuilder<>& builder, const std::vector<ExprAST*>& expr);
-
-
-    static llvm::Constant* GetFunction(llvm::Type* resTy,
-				       const std::vector<llvm::Type*>& args,
-				       const std::string&name)
-    {
-	llvm::FunctionType* ft = llvm::FunctionType::get(resTy, args, false);
-	return theModule->getOrInsertFunction(name, ft);
-    }
-
-    static llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res,
-				       const std::vector<llvm::Type*>& args,
-				       const std::string& name)
-    {
-	llvm::Type* resTy = Types::GetType(res);
-	return GetFunction(resTy, args, name);
-    }
-
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
 					  const std::string& func,
 					  const std::vector<ExprAST*>& args)

@@ -561,8 +561,7 @@ llvm::Value* FunctionExprAST::CodeGen()
 {
     if (MangleMap* mm = mangles.Find(name))
     {
-	std::string actualName = mm->Name();
-	return theModule->getFunction(actualName);
+	return theModule->getFunction(mm->Name());
     }
     return ErrorV("Name " + name + " could not be found...");
 }
@@ -575,7 +574,7 @@ llvm::Value* FunctionExprAST::Address()
 
 static int StringishScore(ExprAST* e)
 {
-    if (llvm::isa<CharExprAST>(e))
+    if (llvm::isa<CharExprAST>(e) || e->Type()->Type() == Types::TypeDecl::TK_Char)
     {
 	return 1;
     }
@@ -586,10 +585,6 @@ static int StringishScore(ExprAST* e)
     if (llvm::isa<Types::StringDecl>(e->Type()))
     {
 	return 3;
-    }
-    if (e->Type()->Type() == Types::TypeDecl::TK_Char)
-    {
-	return 1;
     }
     return 0;
 }
@@ -668,10 +663,8 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return inl;
     }
 
-    std::string func = "__Set" + name;
     Types::TypeDecl* type = rhs->Type();
     assert(*type == *lhs->Type() && "Expect both sides to have same type" );
-
     assert(type && "Expect to get a type");
 
     llvm::Value* rV = MakeAddressable(rhs);
@@ -684,7 +677,8 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     llvm::Value* setWords = MakeIntegerConstant(llvm::dyn_cast<Types::SetDecl>(type)->SetWords());
     if (resTyIsSet)
     {
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, { pty, pty, pty, intTy }, func);
+	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, { pty, pty, pty, intTy },
+					"__Set" + name);
 	
 	llvm::Value* v = CreateTempAlloca(type);
 	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
@@ -692,7 +686,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return builder.CreateLoad(v);
     }
 
-    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Boolean, { pty, pty, intTy }, func);
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Boolean, { pty, pty, intTy }, "__Set" + name);
 
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
@@ -1516,11 +1510,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     else
     {
 	std::string shortname = ShortName(proto->Name());
-	std::string::size_type pos = shortname.find_last_of('$');
-	if (pos != std::string::npos)
-	{
-	    shortname = shortname.substr(pos+1);
-	}
 	llvm::Value* v = variables.Find(shortname);
 	assert(v);
 	llvm::Value* retVal = builder.CreateLoad(v);
@@ -3002,8 +2991,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 	Types::MemberFuncDecl *m = classDecl->GetMembFunc(i);
 	if (m->IsVirtual() || m->IsOverride())
 	{
-	    std::string name = "P." + m->LongName();
-	    if (llvm::Constant* c = theModule->getFunction(name))
+	    if (llvm::Constant* c = theModule->getFunction("P." + m->LongName()))
 	    {
 		vtInit[m->VirtIndex()] = c;
 	    }

@@ -17,4 +17,4 @@ Inheritance
   Private, Public
 
 Improvements
-  Move shortname calculation into a function.
+  Move shortname calculation into a function. - Done

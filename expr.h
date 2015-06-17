@@ -179,7 +179,6 @@ public:
 	: AddressableAST(w, k, ty), name(v->name) {}
     void DoDump(std::ostream& out) const override;
     const std::string& Name() const { return name; }
-    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e)
     {
@@ -738,7 +737,6 @@ llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& a
 			    const std::string&name);
 llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llvm::Type*>& args,
 			    const std::string& name);
-
-
+std::string ShortName(const std::string& name);
 
 #endif

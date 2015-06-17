@@ -67,7 +67,16 @@ static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
 
-
+std::string ShortName(const std::string& name)
+{
+    std::string shortname = name;
+    std::string::size_type pos = name.find_last_of('$');
+    if (pos != std::string::npos)
+    {
+	shortname = shortname.substr(pos+1);
+    }
+    return shortname;
+}
 
 llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
 			    const std::string&name)
@@ -370,14 +379,6 @@ void VariableExprAST::DoDump(std::ostream& out) const
 {
     out << "Variable: " << name << " ";
     Type()->dump(out);
-}
-
-llvm::Value* VariableExprAST::CodeGen()
-{
-    TRACE();
-    llvm::Value* v = Address();
-    assert(v && "Expected to get an address");
-    return builder.CreateLoad(v, name);
 }
 
 llvm::Value* VariableExprAST::Address()
@@ -796,7 +797,6 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 
 Types::TypeDecl* BinaryExprAST::Type() const
 {
-    // TODO: Clean this up - most of it is probably not needed
     Token::TokenType tt = oper.GetToken();
     if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
     {
@@ -1383,12 +1383,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
     if (type->Type() != Types::TypeDecl::TK_Void)
     {
-	std::string shortname = name;
-	std::string::size_type pos = name.find_last_of('$');
-	if (pos != std::string::npos)
-	{
-	    shortname = shortname.substr(pos+1);
-	}
+	std::string shortname = ShortName(name);
 	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
 	if (!variables.Add(shortname, a))
 	{
@@ -1520,7 +1515,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
     else
     {
-	std::string shortname = proto->Name();
+	std::string shortname = ShortName(proto->Name());
 	std::string::size_type pos = shortname.find_last_of('$');
 	if (pos != std::string::npos)
 	{

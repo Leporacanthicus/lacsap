@@ -2107,11 +2107,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     std::string shortname;
     if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
     {
-	std::string::size_type pos;
-	if ((pos = name.find_last_of('$')) != std::string::npos)
-	{
-	    shortname = name.substr(pos + 1);
-	}
+	shortname = ShortName(name);
 	if (Types::ClassDecl* cd = proto->BaseObj())
 	{
 	    int elem = cd->MembFunc(shortname);

@@ -187,6 +187,29 @@ Token Lexer::StringToken()
     return Token(Token::StringLiteral, w, str);
 }
 
+struct SingleCharToken
+{
+    char ch;
+    Token::TokenType t;
+};
+
+static const SingleCharToken singleCharTokenTable[] =
+{
+    { '(', Token::LeftParen },
+    { ')', Token::RightParen },
+    { '+', Token::Plus },
+    { '-', Token::Minus },
+    { '*', Token::Multiply },
+    { '/', Token::Divide },
+    { ',', Token::Comma },
+    { ';', Token::Semicolon },
+    { '=', Token::Equal },
+    { '[', Token::LeftSquare },
+    { ']', Token::RightSquare },
+    { '^', Token::Uparrow },
+};
+
+
 Token Lexer::GetToken()
 {
     int ch = CurChar();
@@ -224,38 +247,6 @@ Token Lexer::GetToken()
     Token::TokenType tt = Token::Unknown;
     switch(ch)
     {
-    case '(':
-	tt = Token::LeftParen;
-	break;
-
-    case ')':
-	tt = Token::RightParen;
-	break;
-
-    case '+':
-	tt = Token::Plus;
-	break;
-
-    case '-':
-	tt = Token::Minus;
-	break;
-
-    case '*':
-	tt = Token::Multiply;
-	break;
-
-    case '/':
-	tt = Token::Divide;
-	break;
-	
-    case ',':
-	tt = Token::Comma;
-	break;
-
-    case ';':
-	tt = Token::Semicolon;
-	break;
-
     case '.':
 	tt = Token::Period;
 	if (PeekChar() == '.')
@@ -290,10 +281,6 @@ Token Lexer::GetToken()
 	}
 	break;
 
-    case '=':
-	tt = Token::Equal;
-	break;
-
     case ':':
 	tt = Token::Colon;
 	if (PeekChar() == '=')
@@ -302,23 +289,19 @@ Token Lexer::GetToken()
 	    tt = Token::Assign;
 	}
 	break;
-
-    case '[':
-	tt = Token::LeftSquare;
-	break;
-
-    case ']':
-	tt = Token::RightSquare;
-	break;
-	
-    case '^':
-	tt = Token::Uparrow;
-	break;
     }
     if (tt != Token::Unknown)
     {
 	NextChar();
 	return Token(tt, w);
+    }
+    for(auto i : singleCharTokenTable)
+    {
+	if (i.ch == ch)
+	{
+	    NextChar();
+	    return Token(i.t, w);
+	}
     }
 
     if (ch == '\'' || ch == '"')

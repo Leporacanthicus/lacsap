@@ -1,25 +1,12 @@
 #include "namedobject.h"
 #include "expr.h"
 
-void VarDef::dump(std::ostream& out) const
+
+void NamedObject::dump(std::ostream& out) const
 {
-    out << "Name: " << Name() << " Type: ";
+    out << Name() << " Type: ";
     Type()->dump(out);
     std::cerr << std::endl;
-}
-
-void FuncDef::dump(std::ostream& out) const
-{
-    out << "Function: Name: " << Name() << " Prototype:";
-    proto->dump(out);
-    out << std::endl;
-}
-
-void TypeDef::dump(std::ostream& out) const
-{
-    out << "Type: " << Name() << " type : ";
-    Type()->dump(out);
-    out << std::endl;
 }
 
 void ConstDef::dump(std::ostream& out) const

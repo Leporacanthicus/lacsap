@@ -30,7 +30,7 @@ public:
     virtual ~NamedObject() {}
     Types::TypeDecl* Type() const { return type; }
     const std::string& Name() const { return name; }
-    virtual void dump(std::ostream& out) const { out << "Name: " << name << std::endl; }
+    virtual void dump(std::ostream& out) const;
     NamedKind getKind() const { return kind; }
 private:
     const NamedKind  kind;
@@ -47,7 +47,6 @@ public:
     }
     bool IsRef() const { return isRef; }
     bool IsExternal() const { return isExt; }
-    void dump(std::ostream& out) const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 private:
     bool isRef;   /* "var" arguments are "references" */
@@ -63,7 +62,6 @@ public:
 	assert(p && "Need to pass a prototype for funcdef");
     }
     PrototypeAST* Proto() const { return proto; }
-    void dump(std::ostream& out) const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Func; }
 private:
     PrototypeAST* proto;
@@ -74,7 +72,6 @@ class TypeDef : public NamedObject
 public:
     TypeDef(const std::string& nm, Types::TypeDecl* ty) 
 	: NamedObject(NK_Type, nm, ty) { }
-    void dump(std::ostream& out) const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Type; }
 };
 

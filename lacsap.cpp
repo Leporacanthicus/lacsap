@@ -107,7 +107,7 @@ void OptimizerInit()
 	// Simplify the control flow graph (deleting unreachable blocks, etc).
 	mpm->add(llvm::createCFGSimplificationPass());
         // Memory copying opts. 
-	//	mpm->add(llvm::createMemCpyOptPass());
+	mpm->add(llvm::createMemCpyOptPass());
 	// Merge constants.
 	mpm->add(llvm::createConstantMergePass());
 	// dead code removal:
@@ -128,9 +128,7 @@ static int Compile(const std::string& filename)
 {
     TIME_TRACE();
     theModule = CreateModule();
-    std::vector<ExprAST*> ast;
     Lexer                 lex(filename);
-
     Builtin::InitBuiltins();
     if (!lex.Good())
     {
@@ -141,9 +139,8 @@ static int Compile(const std::string& filename)
 
     OptimizerInit();
 
-    ast = p.Parse();
-    int e = p.GetErrors();
-    if (e > 0)
+    std::vector<ExprAST*> ast = p.Parse();
+    if (int e = p.GetErrors())
     {
 	std::cerr << "Errors in parsing: " << e << ".\nExiting..." << std::endl;
 	return 1;
@@ -152,8 +149,7 @@ static int Compile(const std::string& filename)
     Semantics sema;
     sema.Analyse(ast);
 
-    e = sema.GetErrors();
-    if (e > 0)
+    if (int e = sema.GetErrors())
     {
 	std::cerr << "Errors in analysis: " << e << ".\nExiting..." << std::endl;
 	return 1;

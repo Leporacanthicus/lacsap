@@ -42,12 +42,10 @@ int Lexer::NextChar()
     if (curValid > 1)
     {
 	curValid--;
-	curChar = nextChar;
-	return curChar;
+	return curChar = nextChar;
     }
 
-    curChar = GetChar();
-    return curChar;
+    return curChar = GetChar();
 }
 
 int Lexer::PeekChar()
@@ -57,8 +55,7 @@ int Lexer::PeekChar()
 	return nextChar;
     }
     curValid++;
-    nextChar = GetChar();
-    return nextChar;
+    return nextChar = GetChar();
 }
 
 Token Lexer::NumberToken()
@@ -134,7 +131,6 @@ Token Lexer::NumberToken()
 	    assert(0 && "Huh? We should not be here...");
 	    break;
 	}
-
 	    
 	if (ch == '.' && state != Fraction && base != 16)
 	{
@@ -208,7 +204,6 @@ static const SingleCharToken singleCharTokenTable[] =
     { ']', Token::RightSquare },
     { '^', Token::Uparrow },
 };
-
 
 Token Lexer::GetToken()
 {

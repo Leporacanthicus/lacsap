@@ -207,17 +207,16 @@ static const TokenEntry* FindToken(Token::TokenType type)
     return 0;
 }
 
-static const TokenEntry* FindToken(const std::string& kw)
+static const TokenEntry* FindToken(std::string kw)
 {
-    std::string kwlower = kw;
     /* Don't "tolower" the keyword if it starts with __ */
     if (kw.substr(0,2) != "__")
     {
-	std::transform(kwlower.begin(), kwlower.end(), kwlower.begin(), ::tolower);
+	std::transform(kw.begin(), kw.end(), kw.begin(), ::tolower);
     }
     for(auto &i : tokenTable)
     {
-	if (kwlower == i.str)
+	if (kw == i.str)
 	{
 	    return &i;
 	}
@@ -236,7 +235,6 @@ int Token::Precedence() const
     const TokenEntry* t  = FindToken(type);
     return t->precedence;
 }
-
 
 Token::TokenType Token::KeyWordToToken(const std::string &str) 
 {

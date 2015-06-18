@@ -112,6 +112,11 @@ public:
 	Virtual,
 	Override,
 	Static,
+	Private,
+	Public,
+	Protected,
+	Constructor,
+	Destructor,
 
 	// Specials
 	LineNumber,

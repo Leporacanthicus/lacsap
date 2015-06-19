@@ -9,7 +9,13 @@ var
    str6	: string;
    str7	: string;
    str8	: string;
+   str9	: string[30];
    ch	: char;
+
+procedure proc(var str : string);
+begin
+   str := 'doremifasole';
+end;
 
 begin
    str1 := 'abc';
@@ -34,6 +40,8 @@ begin
 
    str8 := copy(str7, 2, 20);
 
+   proc(str9);
+
    writeln(str1);
    writeln(str2);
    writeln(str4);
@@ -42,4 +50,5 @@ begin
    writeln(str7);
    writeln(str8);
    writeln(length(str8));
+   writeln(str9);
 end.

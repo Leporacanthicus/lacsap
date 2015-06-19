@@ -281,9 +281,7 @@ namespace Types
     {
     public:
 	BoolDecl() :
-	    EnumDecl(std::vector<std::string>{"false", "true"}, TK_Boolean)
-	{
-	}
+	    EnumDecl(std::vector<std::string>{"false", "true"}, TK_Boolean) { }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -336,7 +334,8 @@ namespace Types
     class FieldDecl : public CompoundDecl
     {
     public:
-	FieldDecl(const std::string& nm, TypeDecl* ty, bool stat)
+	enum Access { Private, Protected, Public };
+	FieldDecl(const std::string& nm, TypeDecl* ty, bool stat, Access ac = Public)
 	    : CompoundDecl(TK_Field, ty), name(nm), isStatic(stat) {}
     public:
 	const std::string& Name() const { return name; }
@@ -347,11 +346,13 @@ namespace Types
 	bool IsStatic() const { return isStatic; }
 	bool SameAs(const TypeDecl* ty) const override { return baseType->SameAs(ty); }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
+	operator Access() { return access; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
 	std::string name;
 	bool isStatic;
+	Access access;
     };
 
     class FieldCollection : public TypeDecl

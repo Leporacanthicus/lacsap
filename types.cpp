@@ -331,20 +331,23 @@ namespace Types
 	    return false;
 	}
 
-	const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty);
-	if (ranges.size() != aty->Ranges().size())
+	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
 	{
-	    return false;
-	}
-	for(size_t i = 0; i < ranges.size(); i++)
-	{
-	    if (*ranges[i] != *aty->Ranges()[i])
+	    if (ranges.size() != aty->Ranges().size())
 	    {
 		return false;
 	    }
-	}
+	    for(size_t i = 0; i < ranges.size(); i++)
+	    {
+		if (*ranges[i] != *aty->Ranges()[i])
+		{
+		    return false;
+		}
+	    }
 
-	return true;
+	    return true;
+	}
+	return false;
     }
 
     bool SimpleCompoundDecl::classof(const TypeDecl* e)
@@ -371,13 +374,15 @@ namespace Types
 	{
 	    return false;
 	}
-	const SimpleCompoundDecl* sty = llvm::dyn_cast<SimpleCompoundDecl>(ty);
-
-	if (sty->baseType != baseType)
+	if (const SimpleCompoundDecl* sty = llvm::dyn_cast<SimpleCompoundDecl>(ty))
 	{
-	    return false;
+	    if (sty->baseType != baseType)
+	    {
+		return false;
+	    }
+	    return true;
 	}
-	return true;
+	return false;
     }
 
     void Range::dump() const
@@ -403,12 +408,9 @@ namespace Types
 	    {
 		return false;
 	    }
+	    return true;
 	}
-	else
-	{
-	    return false;
-	}
-	return true;
+	return false;
     }
 
     const TypeDecl* RangeDecl::CompatibleType(const TypeDecl* ty) const
@@ -417,7 +419,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == TK_Integer || ty->Type() == TK_Int64|| ty->Type() == TK_Real)
+	if (ty->Type() == Type())
 	{
 	    return ty;
 	}
@@ -615,19 +617,22 @@ namespace Types
 	    return false;
 	}
 
-	const FieldCollection* fty = llvm::dyn_cast<FieldCollection>(ty);
-	if (fields.size() != fty->fields.size())
+	if (const FieldCollection* fty = llvm::dyn_cast<FieldCollection>(ty))
 	{
-	    return false;
-	}
-	for(size_t i = 0; i < fields.size(); i++)
-	{
-	    if(fields[i] != fty->fields[i])
+	    if (fields.size() != fty->fields.size())
 	    {
 		return false;
 	    }
+	    for(size_t i = 0; i < fields.size(); i++)
+	    {
+		if(fields[i] != fty->fields[i])
+		{
+		    return false;
+		}
+	    }
+	    return true;
 	}
-	return true;
+	return false;
     }
 
     size_t RecordDecl::Size() const
@@ -983,8 +988,11 @@ namespace Types
 	{
 	    return false;
 	}
-	const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty);
-	return proto == fty->proto;
+	if (const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty))
+	{
+	    return proto == fty->proto;
+	}
+	return false;
     }
 
 /*
@@ -1094,14 +1102,25 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == TK_Array)
+	if (ty->Type() == TK_String)
 	{
-	    const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty);
-	    if (aty->Ranges().size() != 1)
+	    if (llvm::dyn_cast<StringDecl>(ty)->Ranges()[0]->GetEnd() > 
+		Ranges()[0]->GetEnd())
 	    {
-		return 0;
+		return ty;
 	    }
 	    return this;
+	}
+	if (ty->Type() == TK_Array)
+	{
+	    if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	    {
+		if (aty->Ranges().size() != 1)
+		{
+		    return 0;
+		}
+		return this;
+	    }
 	}
 	return 0;
     }
@@ -1113,12 +1132,15 @@ namespace Types
 	    return false;
 	}
 
-	const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty);
-	if (*range != *sty->range)
+	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
 	{
-	    return false;
+	    if (*range != *sty->range)
+	    {
+		return false;
+	    }
+	    return true;
 	}
-	return true;
+	return false;
     }
 
 // Void pointer is not a "pointer to void", but a "pointer to Int8".

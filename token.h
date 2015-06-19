@@ -176,6 +176,7 @@ public:
     const Location& Loc() const { return where; }
 
     int Precedence() const;
+    bool IsCompare() const { return type >= Token::FirstComparison && type <= Token::LastComparison; }
 
 private:
     TokenType   type;

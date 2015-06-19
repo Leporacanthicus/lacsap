@@ -38,3 +38,13 @@ E.g. write("Executable=", paramstr(0));
 Resolved: Added call to "MakeAddressable" in WrtieAST::CodeGen.
 Fix in: 78d825566b899b6a32f7f7e3dfb80742a513f46d
 ----------------------------------------------------------------
+Bug5:
+Date: 17-Jun-2015
+
+dhry.pas doesn't compile. 
+----------------------------------------------------------------
+Bug6:
+Date: 17-Jun-2015
+
+schedule.pas doesn't compile.
+----------------------------------------------------------------

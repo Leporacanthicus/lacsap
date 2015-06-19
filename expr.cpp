@@ -791,8 +791,7 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 
 Types::TypeDecl* BinaryExprAST::Type() const
 {
-    Token::TokenType tt = oper.GetToken();
-    if (tt >= Token::FirstComparison && tt <= Token::LastComparison)
+    if (oper.IsCompare())
     {
 	return new Types::BoolDecl;
     }
@@ -3023,13 +3022,11 @@ void BackPatch()
     }
 }
 
-
 VirtFunctionAST::VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
 	: AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf) 
 {
     assert(index >= 0 && "Index should not be negative!");
 }
-
 
 void VirtFunctionAST::DoDump(std::ostream& out) const
 {

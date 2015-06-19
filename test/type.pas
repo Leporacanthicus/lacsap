@@ -15,6 +15,8 @@ type
    ptrMonth = ^month;
    month    = (january, february, march, april, may, june, july, august, september,
 	       october, november, december);
+   range    = 8..16;
+
    rec = record
 	    f1 : integer;
 	    f2 : real;
@@ -24,6 +26,7 @@ var
    ll : letter;
    dd : days;
    w  : workdays;
+   rr : range;
    
 function f : integer;
 var
@@ -95,10 +98,17 @@ begin
    writeln('parr^[x]=', parr^[x]:0);
    writeln('arrp[x]^=', arrp[x]^:0);
    writeln('h=', h);
+end; { testAccess }
+
+procedure proc(c : char; d: letter);
+begin
+   writeln("Proc: c=", c, " d=", d);
 end;
+
    
 begin
    ll := 'B';
+   proc(ll, 'C');
    writeln('LL=', ll);
    for ll := 'K' to 'X' do
       writeln('LL=', ll);
@@ -106,4 +116,8 @@ begin
    ptrtest;
    testAccess;
    recordtest;
+   rr := 8;
+   rr := rr + 1;
+   rr := 1 + rr;
+   writeln('RR=', rr:1);
 end.

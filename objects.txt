@@ -16,5 +16,10 @@ Inheritance
 
   Private, Public
 
+Object creation
+  Global variable. - Done.
+  Local variable. - Done.
+  Dynamic allocation (New/Dispose).
+
 Improvements
   Move shortname calculation into a function. - Done

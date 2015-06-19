@@ -172,28 +172,40 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
 	ty = new Types::BoolDecl;
     }
+
+    if (!ty && b->oper.IsCompare() && 
+	(lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
+    {
+	ty = Types::GetStringType();
+	if (*rty != *ty)
+	{
+	    ExprAST* e = b->rhs;
+	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
+	}
+	if (*lty != *ty)
+	{
+	    ExprAST* e = b->lhs;
+	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
+	}
+	ty = new Types::BoolDecl;
+    }
+
     if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
 	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
 	{
-	    if (s->values.empty())
+	    if (s->values.empty() && rty->SubType())
 	    {
-		if (rty->SubType())
-		{
-		    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
-			llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
-		}
+		llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
+		    llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
 	    }
 	}
 	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
 	{
-	    if (s->values.empty())
+	    if (s->values.empty() && lty->SubType())
 	    {
-		if (lty->SubType())
-		{
-		    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
-			llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
-		}
+		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
+		    llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
 	    }
 	}
 	
@@ -216,7 +228,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if (lty->Type() == Types::TypeDecl::TK_Char && rty->Type() == Types::TypeDecl::TK_Char)
 	{
-	    ty = new Types::StringDecl(255);
+	    ty = Types::GetStringType();
 	}
     }
 
@@ -270,23 +282,11 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(b->rhs))
     {
-	Types::Range* r = lty->GetRange();
-	int64_t v = llvm::dyn_cast<IntegerExprAST>(b->rhs)->Int();
-	if (r->GetStart() > v || v > r->GetEnd())
-	{
-	    Error(b, "Value out of range");
-	}
 	ty = lty;
     }
 
     if (llvm::isa<Types::RangeDecl>(rty) && llvm::isa<IntegerExprAST>(b->lhs))
     {
-	Types::Range* r = rty->GetRange();
-	int64_t v = llvm::dyn_cast<IntegerExprAST>(b->lhs)->Int();
-	if (r->GetStart() > v || v > r->GetEnd())
-	{
-	    Error(b, "Value out of range");
-	}
 	ty = rty;
     }
 
@@ -499,6 +499,7 @@ void Semantics::RunFixups()
 
 void Semantics::Analyse(std::vector<ExprAST*>& ast)
 {
+    TIME_TRACE();
     TRACE();
 
     for(auto& e : ast)

@@ -668,7 +668,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 
     llvm::Value* rV = MakeAddressable(rhs);
     llvm::Value* lV = MakeAddressable(lhs);
-
     assert(rV && lV && "Should have generated values for left and right set");
 
     llvm::Type* pty = llvm::PointerType::getUnqual(type->LlvmType());

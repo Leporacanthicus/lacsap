@@ -849,7 +849,12 @@ namespace Types
 	int elem = FieldCollection::Element(name);
 	if (elem >= 0)
 	{
-	    return elem+b;
+	    elem += b;
+	    if (VTableType(true))
+	    {
+		elem++;
+	    }
+	    return elem;
 	}
 	return (baseobj) ? baseobj->Element(name) : -1;
     }

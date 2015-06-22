@@ -898,9 +898,24 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			 Token::TokenType type)
 {
     bool isClass = type == Token::Class;
+    // Different from C++, public is the default access qualifier.
+    Types::FieldDecl::Access access = Types::FieldDecl::Public;
     variant = 0;
     do
     {
+	if (isClass && AcceptToken(Token::Private))
+	{
+	    access = Types::FieldDecl::Private;
+	}
+	if (isClass && AcceptToken(Token::Public))
+	{
+	    access = Types::FieldDecl::Public;
+	}
+	if (isClass && AcceptToken(Token::Protected))
+	{
+	    access = Types::FieldDecl::Protected;
+	}
+
 	std::vector<std::string> names;
 	// Parse Variant part if we have a "case".
 	if (AcceptToken(Token::Case))
@@ -1012,7 +1027,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			    AssertToken(Token::Semicolon);
 			    AssertToken(Token::Static);
 			}
-			fields.push_back(new Types::FieldDecl(n, ty, isStatic));
+			fields.push_back(new Types::FieldDecl(n, ty, isStatic, access));
 		    }
 		}
 		else
@@ -1451,14 +1466,14 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     VariableExprAST* e = 0;
     Types::VariantDecl* v = 0;
     unsigned fc = 0;
-    if (Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(type))
+    if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(type))
     {
-	int elem = od->Element(name);
+	int elem = cd->Element(name);
 	typedesc = "object";
 	if (elem >= 0)
 	{
 	    std::string objname;
-	    const Types::FieldDecl* fd = od->GetElement(elem, objname);
+	    const Types::FieldDecl* fd = cd->GetElement(elem, objname);
 	    
 	    type = fd->FieldType();
 	    if (fd->IsStatic())
@@ -1473,10 +1488,9 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	}
 	else
 	{
-	    elem = od->MembFunc(name);
-	    if (elem >= 0)
+ 	    if ((elem = cd->MembFunc(name)) >= 0)
 	    {
-		Types::MemberFuncDecl* membfunc = od->GetMembFunc(elem);
+		Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
 		NamedObject* def = nameStack.Find(membfunc->LongName());
 
 		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -1496,8 +1510,8 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    }
 	    else
 	    {
-		fc = od->FieldCount();
-		v = od->Variant();
+		fc = cd->FieldCount();
+		v = cd->Variant();
 	    }
 	}
     }
@@ -2462,9 +2476,14 @@ ExprAST* Parser::ParseCaseExpr()
 void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
 {
     TRACE();
+    int vtableoffset = 0;
+    if (const Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(fields))
+    {
+	vtableoffset = !!cd->VTableType(true);
+    }
     for(int i = 0; i < fields->FieldCount(); i++)
     {
-	const Types::FieldDecl *f = fields->GetElement(i);
+	const Types::FieldDecl* f = fields->GetElement(i);
 	Types::TypeDecl* ty = f->FieldType();
 	if (f->Name() == "")
 	{
@@ -2477,7 +2496,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	    ExprAST* e;
 	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ClassDecl>(fields))
 	    {
-		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
+		e = new FieldExprAST(CurrentToken().Loc(), v, i + vtableoffset, ty);
 	    }
 	    else
 	    {

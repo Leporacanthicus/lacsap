@@ -137,6 +137,7 @@ namespace Types
     void TypeDecl::dump() const
     {
 	DoDump(std::cerr);
+	std::cerr << std::endl;
     }
 
     void BasicTypeDecl::DoDump(std::ostream& out) const
@@ -260,7 +261,7 @@ namespace Types
 
     void PointerDecl::DoDump(std::ostream& out) const
     {
-	out << "Pointer to: " << name << " (" << baseType << ")" << std::endl;
+	out << "Pointer to: " << name << " (" << baseType << ")";
     }
 
     bool CompoundDecl::classof(const TypeDecl* e)
@@ -399,7 +400,6 @@ namespace Types
     {
 	out << "RangeDecl: " << TypeToStr(baseType) << " ";
 	range->DoDump(out);
-	out << std::endl;
     }
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const
@@ -505,7 +505,7 @@ namespace Types
 
     void FunctionDecl::DoDump(std::ostream& out) const
     {
-	out << "Function " << baseType << std::endl;
+	out << "Function " << baseType;
     }
 
     void FieldDecl::DoDump(std::ostream& out) const
@@ -743,7 +743,6 @@ namespace Types
 	{
 	    variant->DoDump(out);
 	}
-	out << std::endl;
     }
 
     size_t ClassDecl::MembFuncCount() const
@@ -958,7 +957,7 @@ namespace Types
 
     void FuncPtrDecl::DoDump(std::ostream& out) const
     {
-	out << "FunctionPtr " << std::endl;
+	out << "FunctionPtr ";
     }
 
     llvm::Type* FuncPtrDecl::GetLlvmType() const
@@ -1073,7 +1072,6 @@ namespace Types
 	{
 	    range->DoDump(out);
 	}
-	out << std::endl;
     }
 
     void SetDecl::UpdateSubtype(TypeDecl* ty)

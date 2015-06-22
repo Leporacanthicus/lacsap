@@ -1165,6 +1165,7 @@ llvm::Value* CallExprAST::CodeGen()
 	    else
 	    {
 		TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
+		assert(tc && "Uhm - this should be a typecase expression!");
 
 		if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
 		{

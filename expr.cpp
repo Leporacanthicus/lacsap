@@ -186,9 +186,10 @@ llvm::Value* MakeAddressable(ExprAST* e)
 {
     if (AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e))
     {
-	llvm::Value* v = ea->Address();
-	assert(v && "Expect address to be non-zero");
-	return v;
+	if (llvm::Value* v = ea->Address())
+	{
+	    return v;
+	}
     }
 
     llvm::Value* store = e->CodeGen();
@@ -256,7 +257,7 @@ static llvm::Value* MakeCharConstant(int val)
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
     TRACE();
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0),MakeIntegerConstant(0)};
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0),MakeIntegerConstant(0) };
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
 
     ind[1] = MakeIntegerConstant(1);
@@ -271,11 +272,9 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
-    if (rhs->Type()->Type() != Types::TypeDecl::TK_Char)
-    {
-	return ErrorV("Expected char value");
-    }
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
+    assert(rhs->Type()->Type() == Types::TypeDecl::TK_Char &&
+	   "Expected char value");
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
     llvm::Value* dest1 = builder.CreateGEP(dest, ind, "str_0");
 
     ind[1] = MakeIntegerConstant(1);
@@ -691,19 +690,18 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
-static llvm::Value* MakeStringFromExpr(ExprAST* e)
+static llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 {
     TRACE();
-    Types::StringDecl* sd = Types::GetStringType();
     if (e->Type()->Type() == Types::TypeDecl::TK_Char)
     {
-	llvm::Value* v = CreateTempAlloca(sd);
+	llvm::Value* v = CreateTempAlloca(Types::GetStringType());
 	TempStringFromChar(v, e);
 	return v;
     }
     if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
     {
-	llvm::Value* v = CreateTempAlloca(sd);
+	llvm::Value* v = CreateTempAlloca(ty);
 	TempStringFromStringExpr(v, se);
 	return v;
     }
@@ -715,15 +713,15 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
 				const std::string& twine)
 {
     TRACE();
-    llvm::Value* rV = MakeStringFromExpr(rhs);
-    llvm::Value* lV = MakeStringFromExpr(lhs);
+    llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
+    llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
     if (!rV || !lV)
     {
 	return 0;
     }
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetStringType()->LlvmType());
+    llvm::Type* pty = llvm::PointerType::getUnqual(lhs->Type()->LlvmType());
     llvm::Constant* f = GetFunction(resTy, { pty, pty }, "__Str" + name);
 
     return builder.CreateCall(f, { lV, rV }, twine);
@@ -732,18 +730,17 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
 static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 {
     TRACE();
-    llvm::Value* rV = MakeStringFromExpr(rhs);
-    llvm::Value* lV = MakeStringFromExpr(lhs);
+    llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
+    llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
     llvm::Type* strTy = Types::GetStringType()->LlvmType();
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
 
-    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, {pty, pty, pty}, "__StrConcat");
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, {pty, lV->getType(), rV->getType()}, "__StrConcat");
     
-    llvm::Value* v = CreateTempAlloca(Types::GetStringType());
-    std::vector<llvm::Value*> args = { v, lV, rV };
-    builder.CreateCall(f, args);
-    return v;
+    llvm::Value* dest = CreateTempAlloca(Types::GetStringType());
+    builder.CreateCall(f, {dest, lV, rV});
+    return dest;
 }
 
 llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
@@ -1614,10 +1611,10 @@ llvm::Value* AssignExprAST::AssignStr()
     Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type());
     assert(sty && "Expect string type in lhsv->Type()");
 
-    llvm::Value* dest = lhsv->Address();
 
     if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
+	llvm::Value* dest = lhsv->Address();
 	return TempStringFromStringExpr(dest, srhs);
     }
     
@@ -2903,7 +2900,6 @@ llvm::Value* TypeCastAST::CodeGen()
 	    return builder.CreateZExt(expr->CodeGen(), type->LlvmType());
 	}
 	return builder.CreateSExt(expr->CodeGen(), type->LlvmType());
-
     }
     if (llvm::isa<Types::PointerDecl>(type))
     {
@@ -2913,7 +2909,7 @@ llvm::Value* TypeCastAST::CodeGen()
 	 current->Type() == Types::TypeDecl::TK_Char ) && 
 	type->Type() == Types::TypeDecl::TK_String)
     {
-	return MakeStringFromExpr(expr);
+	return MakeStringFromExpr(expr, type);
     }
     dump();
     assert(0 && "Expected to get something out of this function");
@@ -2921,12 +2917,22 @@ llvm::Value* TypeCastAST::CodeGen()
 
 llvm::Value* TypeCastAST::Address()
 {
+    llvm::Value* v = 0;
     if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
     {
-	llvm::Value* a = ae->Address();
-	return builder.CreateBitCast(a, llvm::PointerType::getUnqual(type->LlvmType()));
+	v = ae->Address();
     }
-    return 0;
+    else if (expr->Type()->Type() == Types::TypeDecl::TK_String)
+    {
+	v = MakeAddressable(expr);
+    }
+    else if (type->Type() == Types::TypeDecl::TK_String)
+    {
+	v = MakeStringFromExpr(expr, type);
+    }
+    assert(v && "Expected to get a value here...");
+    return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));
+    
 }
 
 llvm::Value* SizeOfExprAST::CodeGen()

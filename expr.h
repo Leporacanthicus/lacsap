@@ -38,33 +38,33 @@ public:
 	EK_VariantFieldExpr,
 	EK_FunctionExpr,
 	EK_SetExpr,
-	EK_LastAddressable,	/* 15 */
+	EK_TypeCastExpr,	/* 15 */
+	EK_LastAddressable,
 
 	EK_BinaryExpr,
 	EK_UnaryExpr,
 	EK_RangeExpr,
-	EK_Block,
-	EK_AssignExpr,		/* 20 */
+	EK_Block,		/* 20 */
+	EK_AssignExpr,
 	EK_VarDecl,
 	EK_Function,
 	EK_Prototype,
-	EK_CallExpr,
-	EK_BuiltinExpr,		/* 25 */
+	EK_CallExpr,		/* 25 */
+	EK_BuiltinExpr,
 	EK_IfExpr,
 	EK_ForExpr,
 	EK_WhileExpr,
-	EK_RepeatExpr,
-	EK_Write,		/* 30 */
+	EK_RepeatExpr,		/* 30 */
+	EK_Write,
 	EK_Read,
 	EK_LabelExpr,
 	EK_CaseExpr,
-	EK_WithExpr,
-	EK_RangeReduceExpr,     /* 35 */
+	EK_WithExpr,		/* 35 */
+	EK_RangeReduceExpr,
 	EK_RangeCheckExpr,
-	EK_TypeCastExpr,
 	EK_SizeOfExpr,
-	EK_VTableExpr,
-	EK_VirtFunction,        /* 40 */
+	EK_VTableExpr, 		/* 40 */
+	EK_VirtFunction,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -669,14 +669,14 @@ public:
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeCheckExpr; }
 };
 
-class TypeCastAST : public ExprAST
+class TypeCastAST : public AddressableAST
 {
 public:
     TypeCastAST(const Location& w, ExprAST* e, const Types::TypeDecl* t)
-	: ExprAST(w, EK_TypeCastExpr, const_cast<Types::TypeDecl*>(t)), expr(e) {};
+	: AddressableAST(w, EK_TypeCastExpr, const_cast<Types::TypeDecl*>(t)), expr(e) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    llvm::Value* Address();
+    llvm::Value* Address() override;
     ExprAST* Expr() { return expr; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_TypeCastExpr; }
 private:

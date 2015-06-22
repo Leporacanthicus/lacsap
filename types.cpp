@@ -397,7 +397,9 @@ namespace Types
 
     void RangeDecl::DoDump(std::ostream& out) const
     {
-	out << "RangeDecl: " << TypeToStr(baseType) << " " << range << std::endl;
+	out << "RangeDecl: " << TypeToStr(baseType) << " ";
+	range->DoDump(out);
+	out << std::endl;
     }
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const

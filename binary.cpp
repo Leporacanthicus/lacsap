@@ -167,8 +167,7 @@ llvm::Module* CreateModule()
 {
     llvm::InitializeNativeTarget();
 
-    llvm::Module* module = new llvm::Module("TheModule",
-					    llvm::getGlobalContext());
+    llvm::Module* module = new llvm::Module("TheModule", llvm::getGlobalContext());
 
     llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
     if (model == m32)
@@ -181,8 +180,7 @@ llvm::Module* CreateModule()
     }
     module->setTargetTriple(triple.getTriple());
     std::string error;
-    const llvm::Target *target =
-	llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
+    const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
     if (!target)
     {
 	std::cerr << "Error, could not find target: " << error << std::endl;
@@ -201,9 +199,8 @@ llvm::Module* CreateModule()
     }
 
     llvm::TargetOptions options;
-    std::unique_ptr<llvm::TargetMachine> tm
-	(target->createTargetMachine(triple.getTriple(), MCPU,
-				     FeaturesStr, options));
+    std::unique_ptr<llvm::TargetMachine> tm(target->createTargetMachine(triple.getTriple(), MCPU,
+									FeaturesStr, options));
     if (!tm)
     {
 	std::cerr << "Could not create TargetMachine" << std::endl;

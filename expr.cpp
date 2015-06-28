@@ -61,11 +61,42 @@ private:
 typedef Stack<MangleMap*> MangleStack;
 typedef StackWrapper<MangleMap*> MangleWrapper;
 
+class Label
+{
+public:
+    Label(llvm::BasicBlock* b, int lab): bb(b), label(lab) {}
+    void dump(std::ostream& out)
+    {
+	out << "label: " << label << std::endl;
+    }
+    llvm::BasicBlock* GetBB() { return bb; }
+private:
+    llvm::BasicBlock* bb;
+    int label;
+};
+
+typedef Stack<Label*> LabelStack;
+typedef StackWrapper<Label*> LabelWrapper;
+
 VarStack variables;
 MangleStack mangles;
+LabelStack labels;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
+
+static llvm::BasicBlock* CreateGotoTarget(int label)
+{
+    std::string name = std::to_string(label);
+    if (Label *lab = labels.Find(name))
+    {
+	return lab->GetBB();
+    }
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), name, theFunction);
+    labels.Add(name, new Label(bb, label));
+    return bb;
+}
 
 std::string ShortName(const std::string& name)
 {
@@ -128,7 +159,6 @@ bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 	isText = st->getName().substr(0, 4) == "text";
 	return true;
     }
-
     return false;
 }
 
@@ -1440,8 +1470,8 @@ void FunctionAST::accept(Visitor& v)
 
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
-    VarStackWrapper w(variables);
     TRACE();
+    VarStackWrapper w(variables);
     assert(namePrefix != "" && "Prefix should not be empty");
     llvm::Function* theFunction = proto->CodeGen(namePrefix);
     if (!theFunction)
@@ -1457,7 +1487,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     builder.SetInsertPoint(bb);
 
     proto->CreateArgumentAlloca(theFunction);
-
     if (varDecls)
     {
 	varDecls->SetFunction(theFunction);
@@ -1465,25 +1494,12 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
 
     llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
+    MangleWrapper m(mangles);
 
-    MangleWrapper   m(mangles);
-
-    if (subFunctions.size())
+    std::string newPrefix = namePrefix + "." + proto->Name();
+    for(auto fn : subFunctions)
     {
-	std::string newPrefix;
-	if (namePrefix != "")
-	{
-	    newPrefix = namePrefix + "." + proto->Name();
-	}
-	else
-	{
-	    newPrefix = proto->Name();
-	}
-
-	for(auto fn : subFunctions)
-	{
-	    fn->CodeGen(newPrefix);
-	}
+	fn->CodeGen(newPrefix);
     }
 
     if (verbosity > 1)
@@ -2432,9 +2448,22 @@ void LabelExprAST::DoDump(std::ostream& out) const
     stmt->dump(out);
 }
 
+llvm::Value* LabelExprAST::CodeGen()
+{
+    TRACE();
+    assert(!stmt && "Expected no statement for 'goto' label expression");
+    llvm::BasicBlock* labelBB = CreateGotoTarget(labelValues[0]);
+    // Make LLVM-IR valid by jumping to the neew block!
+    llvm::Value* v = builder.CreateBr(labelBB);
+    builder.SetInsertPoint(labelBB);
+    
+    return v;
+}
+
 llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
 {
     TRACE();
+    assert(stmt && "Expected a statement for 'case' label expression");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
 
@@ -2451,10 +2480,12 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
 
 void LabelExprAST::accept(Visitor& v)
 {
-    stmt->accept(v);
+    if (stmt)
+    {
+	stmt->accept(v);
+    }
     v.visit(this);
 }
-
 
 void CaseExprAST::DoDump(std::ostream& out) const
 {
@@ -3039,12 +3070,6 @@ void VirtFunctionAST::DoDump(std::ostream& out) const
     out << "VirtFunctionAST: " << std::endl;
 }
 
-llvm::Value* VirtFunctionAST::CodeGen()
-{
-    llvm::Value* v = Address();
-    return builder.CreateLoad(v);
-}
-
 llvm::Value* VirtFunctionAST::Address()
 {
     llvm::Value* v = self->Address();
@@ -3053,5 +3078,22 @@ llvm::Value* VirtFunctionAST::Address()
     ind[1] = MakeIntegerConstant(index);
     v = builder.CreateLoad(v);
     v = builder.CreateGEP(v, ind, "mfunc");
+    return v;
+}
+
+void GotoAST::DoDump(std::ostream& out) const
+{
+    out << "Goto " << dest << std::endl;
+}
+
+llvm::Value* GotoAST::CodeGen()
+{
+    llvm::BasicBlock* labelBB = CreateGotoTarget(dest);
+    // Make LLVM-IR valid by jumping to the neew block!
+    llvm::Value* v = builder.CreateBr(labelBB);
+    // FIXME: This should not be needed, semantics should remove code after goto!
+    llvm::Function* fn = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* dead = llvm::BasicBlock::Create(llvm::getGlobalContext(), "dead", fn);
+    builder.SetInsertPoint(dead);
     return v;
 }

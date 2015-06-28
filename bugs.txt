@@ -48,3 +48,27 @@ Date: 17-Jun-2015
 
 schedule.pas doesn't compile.
 ----------------------------------------------------------------
+Bug7:
+Date: 28-Jun-2015
+
+Superfluous "begin .. end" should be parsed correctly.
+E.g. 
+  if x = y then begin
+    begin
+       ... 
+    end
+  end;
+----------------------------------------------------------------
+Bug8:
+Date: 28-Jun-2015
+
+Forward declared functions/procedures without repeating arguments/return type.
+
+e.g. 
+function fw(x : integer) : real; 
+... 
+function fw;
+begin
+   fw := x * 7.0;
+end;
+----------------------------------------------------------------

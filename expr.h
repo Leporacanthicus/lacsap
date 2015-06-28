@@ -65,6 +65,7 @@ public:
 	EK_SizeOfExpr,
 	EK_VTableExpr, 		/* 40 */
 	EK_VirtFunction,
+	EK_Goto,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -456,6 +457,7 @@ private:
     std::vector<FunctionAST*>  subFunctions;
     std::vector<VarDef>        usedVariables;
     FunctionAST*               parent;
+    std::vector<int>           labels;
 };
 
 class CallExprAST : public ExprAST
@@ -601,7 +603,7 @@ public:
     LabelExprAST(const Location& w, const std::vector<int>& lab, ExprAST* st)
 	: ExprAST(w, EK_LabelExpr), labelValues(lab),stmt(st) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override { assert(0); return 0; }
+    llvm::Value* CodeGen() override;
     llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
     void accept(Visitor& v) override;
@@ -714,7 +716,6 @@ class VirtFunctionAST : public AddressableAST
 public:
     VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     int Index() const { return index; }
     VariableExprAST* Self() { return self; }
@@ -723,7 +724,18 @@ private:
     int index;
     VariableExprAST* self;
 };
-  
+
+class GotoAST : public ExprAST
+{
+public:
+    GotoAST(const Location& w, int d)
+	: ExprAST(w, EK_Goto), dest(d) {}
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
+private:
+    int dest;
+};
 
 /* Useful global functions */
 llvm::Value* MakeIntegerConstant(int val);

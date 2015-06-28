@@ -33,6 +33,8 @@ private:
     ExprAST* ParseSetExpr();
     ExprAST* ParseSizeOfExpr();
 
+    ExprAST* ParseIntegerOrLabel(Token token);
+
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
@@ -45,6 +47,7 @@ private:
     ExprAST* ParseWhile();
     ExprAST* ParseCaseExpr();
     ExprAST* ParseWithBlock();
+    ExprAST* ParseGoto();
 
     // I/O functions
     ExprAST* ParseWrite();
@@ -58,6 +61,7 @@ private:
     FunctionAST*  ParseDefinition(int level);
     PrototypeAST* ParsePrototype();
     bool          ParseProgram();
+    void          ParseLabels();
 
     // Type declarations and defintitions
     void ParseTypeDef();
@@ -100,12 +104,14 @@ private:
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
 
     /* Error functions - all the same except for the return type */
-    ExprAST*          Error(const std::string& msg, const char* file = 0, int line = 0);
-    PrototypeAST*     ErrorP(const std::string& msg);
-    FunctionAST*      ErrorF(const std::string& msg);
-    Types::TypeDecl*  ErrorT(const std::string& msg);
+    ExprAST* Error(const std::string& msg, const char* file = 0, int line = 0);
+    PrototypeAST* ErrorP(const std::string& msg);
+    FunctionAST* ErrorF(const std::string& msg);
+    Types::TypeDecl* ErrorT(const std::string& msg);
     Types::RangeDecl* ErrorR(const std::string& msg);
-    VariableExprAST*  ErrorV(const std::string& msg);
+    VariableExprAST* ErrorV(const std::string& msg);
+    int ErrorI(const std::string& msg);
+    Constants::ConstDecl* ErrorC(const std::string& msg);
 
     // Helper functions for expression evaluation.
     bool     IsCall(const NamedObject* def);

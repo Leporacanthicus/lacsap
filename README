@@ -10,7 +10,6 @@ Among things NOT yet supported are:
 - Good error handling. Now slightly improved.
 - Proper type checking. Now better - but not perfect.
 - Support for unsigned integral types. Some support.
-- Goto statement.
 - Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - Refactor AST dump functions to use visitors.
 - Separate compile units.

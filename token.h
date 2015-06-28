@@ -117,6 +117,8 @@ public:
 	Protected,
 	Constructor,
 	Destructor,
+	Label,
+	Goto,
 
 	// Specials
 	LineNumber,

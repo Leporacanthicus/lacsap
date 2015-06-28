@@ -36,4 +36,7 @@ void MembFuncDef::dump(std::ostream& out) const
     out << std::endl;
 }
 
-
+void LabelDef::dump(std::ostream& out) const
+{
+    out << "Label: " << Name() << std::endl;
+}

@@ -84,32 +84,37 @@ ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
 
 PrototypeAST* Parser::ErrorP(const std::string& msg)
 {
-    Error(msg);
-    return 0;
+    return reinterpret_cast<PrototypeAST*>(Error(msg));
 }
 
 FunctionAST* Parser::ErrorF(const std::string& msg)
 {
-    Error(msg);
-    return 0;
+    return reinterpret_cast<FunctionAST*>(Error(msg));
 }
 
 Types::TypeDecl* Parser::ErrorT(const std::string& msg)
 {
-    Error(msg);
-    return 0;
+    return reinterpret_cast<Types::TypeDecl*>(Error(msg));
 }
 
 Types::RangeDecl* Parser::ErrorR(const std::string& msg)
 {
-    Error(msg);
-    return 0;
+    return reinterpret_cast<Types::RangeDecl*>(Error(msg));
 }
 
 VariableExprAST* Parser::ErrorV(const std::string& msg)
 {
-    Error(msg);
-    return 0;
+    return reinterpret_cast<VariableExprAST*>(Error(msg));
+}
+
+Constants::ConstDecl* Parser::ErrorC(const std::string& msg)
+{
+    return reinterpret_cast<Constants::ConstDecl*>(Error(msg));
+}
+
+int Parser::ErrorI(const std::string& msg)
+{
+    return reinterpret_cast<uintptr_t>(Error(msg));
 }
 
 const Token& Parser::CurrentToken() const
@@ -259,6 +264,17 @@ ExprAST* Parser::ParseSizeOfExpr()
     return expr;
 }
 
+ExprAST* Parser::ParseGoto()
+{
+    AssertToken(Token::Goto);
+    Token t = CurrentToken();
+    if (!Expect(Token::Integer, true))
+    {
+	return 0;
+    }
+    return new GotoAST(t.Loc(), t.GetIntVal());
+}
+
 const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
     if (ConstDef *constDef = llvm::dyn_cast_or_null<ConstDef>(nameStack.Find(name)))
@@ -281,8 +297,7 @@ bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 	{
 	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
 	    {
-		Error("Enumerated value by name " + v.name + " already exists...");
-		return false;
+		return (bool)ErrorI("Enumerated value by name " + v.name + " already exists...");
 	    }
 	}
     }
@@ -293,8 +308,7 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 {
     if (!nameStack.Add(name, new ConstDef(name, cd)))
     {
-	Error("Name " + name + " is already declared as a constant");
-	return false;
+	return (bool)ErrorI("Name " + name + " is already declared as a constant");
     }
     return true;
 
@@ -332,9 +346,8 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 
     if (tt != Token::Unknown && token.GetToken() != tt)
     {
-	Error("Expected token to match type");
 	tt = Token::Unknown;
-	return 0;
+	return ErrorI("Expected token to match type");
     }
 
     tt = token.GetToken();
@@ -364,15 +377,13 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	else
 	{
 	    tt = Token::Unknown;
-	    Error("Invalid constant, expected identifier for enumerated type");
-	    return 0;
+	    return ErrorI("Invalid constant, expected identifier for enumerated type");
 	}
 	break;
     }
     default:
 	tt = Token::Unknown;
-	Error("Invalid constant value, expected char, integer or enum value");
-	return 0;
+	return ErrorI("Invalid constant value, expected char, integer or enum value");
     }
     NextToken();
     return result;
@@ -524,8 +535,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	case Token::StringLiteral:
 	    if (unaryToken != Token::Unknown)
 	    {
-		Error("Unary + or - not allowed for string constants");
-		return 0;
+		return ErrorC("Unary + or - not allowed for string constants");
 	    }
 	    cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
 	    break;
@@ -544,8 +554,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	case Token::Real:
 	    if (unaryToken == Token::Not)
 	    {
-		Error("Unary 'not' is not allowed for real constants");
-		return 0;
+		return ErrorC("Unary 'not' is not allowed for real constants");
 	    }
 	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
 	    break;
@@ -553,8 +562,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	case Token::Char:
 	    if (unaryToken != Token::Unknown)
 	    {
-		Error("Unary + or - not allowed for char constants");
-		return 0;
+		return ErrorC("Unary + or - not allowed for char constants");
 	    }
 	    cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
 	    break;
@@ -573,8 +581,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		    }
 		    else if (unaryToken != Token::Unknown)
 		    {
-			Error("Unary + or - not allowed for bool constants");
-			return 0;
+			return ErrorC("Unary + or - not allowed for bool constants");
 		    }
 		    cd = new Constants::BoolConstDecl(loc, v);
 		}
@@ -582,8 +589,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		{
 		    if (unaryToken != Token::Unknown)
 		    {
-			Error("Unary + or - not allowed for enum constants");
-			return 0;
+			return ErrorC("Unary + or - not allowed for enum constants");
 		    }
 		    cd = new Constants::IntConstDecl(loc, ed->Value());
 		}
@@ -615,9 +621,8 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		    }
 		    else
 		    {
-			Error("Can't negate the type of " + CurrentToken().GetIdentName() +
-			      " only integer and real types can be negated");
-			return 0;
+			return ErrorC("Can't negate the type of " + CurrentToken().GetIdentName() +
+				      " only integer and real types can be negated");
 		    }
 		}
 	    }
@@ -817,8 +822,8 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    }
 	    if (std::find(variantsSeen.begin(), variantsSeen.end(), v) != variantsSeen.end())
 	    {
-		Error("Value already used: " + std::to_string(v) + " in variant declaration");
-		return 0;
+		return reinterpret_cast<Types::VariantDecl*>
+		    (Error("Value already used: " + std::to_string(v) + " in variant declaration"));
 	    }
 	    variantsSeen.push_back(v);
 	    if (CurrentToken().GetToken() != Token::Colon)
@@ -859,8 +864,8 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		    {
 			if (n == f->Name())
 			{
-			    Error("Duplicate field name '" + n + "' in record");
-			    return 0;
+			    return reinterpret_cast<Types::VariantDecl*>
+				(Error("Duplicate field name '" + n + "' in record"));
 			}
 		    }
 		    // Variants can't be static, can they?
@@ -932,8 +937,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    markerTy = ParseType("");
 	    if (!markerTy->isIntegral())
 	    {
-		Error("Expect variant selector to be integral type");
-		return false;
+		return (bool)Error("Expect variant selector to be integral type");
 	    }
 	    if (marker != "")
 	    {
@@ -950,8 +954,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	    if (*markerTy != *type)
 	    {
-		Error("Marker type does not match member variant type");
-		return false;
+		return (bool)Error("Marker type does not match member variant type");
 	    }
 	}
 	else if (isClass &&
@@ -1014,8 +1017,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			{
 			    if (n == f->Name())
 			    {
-				Error("Duplicate field name '" + n + "' in record");
-				return false;
+				return (bool)Error("Duplicate field name '" + n + "' in record");
 			    }
 			}
 			bool isStatic = false;
@@ -1055,8 +1057,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     }
     if (fields.size() == 0 && !variant)
     {
-	Error("No elements in record declaration");
-	return 0;
+	return reinterpret_cast<Types::RecordDecl*>(Error("No elements in record declaration"));
     }
     return new Types::RecordDecl(fields, variant);
 }
@@ -1078,6 +1079,7 @@ Types::FileDecl* Parser::ParseFileDecl()
 
 Types::SetDecl* Parser::ParseSetDecl()
 {
+    TRACE();
     AssertToken(Token::Set);
     if (!Expect(Token::Of, true))
     {
@@ -1095,8 +1097,8 @@ Types::SetDecl* Parser::ParseSetDecl()
 
 Types::StringDecl* Parser::ParseStringDecl()
 {
+    TRACE();
     AssertToken(Token::String);
-
     unsigned size = 255;
 
     if (AcceptToken(Token::LeftSquare))
@@ -1105,8 +1107,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 
 	if (token.GetToken() != Token::Integer)
 	{
-	    Error("Expected integer value!");
-	    return 0;
+	    return reinterpret_cast<Types::StringDecl*>(Error("Expected integer value!"));
 	}
 
 	size = token.GetIntVal();
@@ -1122,6 +1123,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 
 Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 {
+    TRACE();
     Location loc = CurrentToken().Loc();
     AssertToken(Token::Class);
     Types::ClassDecl* base = 0;
@@ -1135,8 +1137,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 	std::string baseName = CurrentToken().GetIdentName();
 	if (!(base = llvm::dyn_cast_or_null<Types::ClassDecl>(GetTypeDecl(baseName))))
 	{
-	    Error("Expected class as base");
-	    return 0;
+	    return reinterpret_cast<Types::ClassDecl*>(Error("Expected class as base"));
 	}
 	AssertToken(Token::Identifier);
 	if (!Expect(Token::RightParen, true))
@@ -1192,6 +1193,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 
 Types::TypeDecl* Parser::ParseType(const std::string& name)
 {
+    TRACE();
     Token::TokenType tt = CurrentToken().GetToken();
     if (tt == Token::Packed)
     {
@@ -1266,6 +1268,17 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
     return new IntegerExprAST(loc, val, GetTypeDecl(type));
 }
 
+ExprAST* Parser::ParseIntegerOrLabel(Token token)
+{
+    if (PeekToken().GetToken() == Token::Colon)
+    {
+	AssertToken(Token::Integer);
+	AssertToken(Token::Colon);
+	return new LabelExprAST(token.Loc(), { (int)token.GetIntVal() }, NULL);
+    }
+    return ParseIntegerExpr(token);
+}
+
 ExprAST* Parser::ParseStringExpr(Token token)
 {
     int len =  token.GetStrVal().length()-1;
@@ -1273,10 +1286,31 @@ ExprAST* Parser::ParseStringExpr(Token token)
     {
 	len = 1;
     }
-    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), Types::TypeDecl::TK_Integer)};
+    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), 
+							      Types::TypeDecl::TK_Integer)};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
+}
+
+void Parser::ParseLabels()
+{
+    AssertToken(Token::Label);
+    std::vector<int> labels;
+    do
+    {
+	if (CurrentToken().GetToken() == Token::Integer)
+	{
+	    int n = CurrentToken().GetIntVal();
+	    if(!nameStack.Add(std::to_string(n), new LabelDef(n)))
+	    {
+		Error("Multiple label defintions?");
+		return;
+	    }
+	    NextToken();
+	}
+	AcceptToken(Token::Comma);
+    } while(!AcceptToken(Token::Semicolon));
 }
 
 ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
@@ -1622,8 +1656,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 		auto funcArgs = funcDef->Proto()->Args();
 		if (argNo >= funcArgs.size())
 		{
-		    Error("Too many arguments");
-		    return false;
+		    return (bool)Error("Too many arguments");
 		}
 		Types::TypeDecl* td = funcArgs[argNo].Type();
 		if (td->Type() == Types::TypeDecl::TK_Pointer &&
@@ -1873,7 +1906,7 @@ VarDeclAST* Parser::ParseVarDecls()
 		    varList.push_back(v);
 		    if (!nameStack.Add(n, new VarDef(n, type)))
 		    {
-			Error("Name '" + n + "' is already defined");
+			return reinterpret_cast<VarDeclAST*>(Error("Name '"+ n +"' is already defined"));
 		    }
 		}
 		if (!Expect(Token::Semicolon, true))
@@ -1946,16 +1979,14 @@ PrototypeAST* Parser::ParsePrototype()
 		}
 		if (!membfunc)
 		{
-		    Error("Member function '" + m + "' not found in '"  + funcName + "'.");
-		    return 0;
+		    return ErrorP("Member function '" + m + "' not found in '"  + funcName + "'.");
 		}
 		funcName = membfunc->LongName();
 	    }
 	}
 	if (!od)
 	{
-	    Error("Expected object name");
-	    return 0;
+	    return ErrorP("Expected object name");
 	}
     }
     std::vector<VarDef> args;
@@ -2088,7 +2119,15 @@ BlockAST* Parser::ParseBlock()
     Location loc = CurrentToken().Loc();
     while(!AcceptToken(Token::End))
     {
-	if (ExprAST* ast = ParseStatement())
+	if (CurrentToken().GetToken() == Token::Integer &&
+	    PeekToken().GetToken() == Token::Colon)
+	{
+	    Token token = CurrentToken();
+	    AcceptToken(Token::Integer);
+	    AcceptToken(Token::Colon);
+	    v.push_back(new LabelExprAST(token.Loc(), { static_cast<int>(token.GetIntVal()) }, 0));
+	}
+	else if (ExprAST* ast = ParseStatement())
 	{
 	    v.push_back(ast);
 	    if (!ExpectSemicolonOrEnd())
@@ -2185,6 +2224,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    varDecls = ParseVarDecls();
 	    break;
 
+	case Token::Label:
+	    ParseLabels();
+	    break;
+
 	case Token::Type:
 	    if (typeDecls)
 	    {
@@ -2254,7 +2297,7 @@ ExprAST* Parser::ParseStmtOrBlock()
     case Token::Semicolon:
     case Token::End:
 	// Empty block.
-	return new BlockAST(CurrentToken().Loc(), std::vector<ExprAST*>());
+	return new BlockAST(CurrentToken().Loc(), { });
 
     default:
 	return ParseStatement();
@@ -2767,6 +2810,9 @@ ExprAST* Parser::ParsePrimary()
     case Token::SizeOf:
 	return ParseSizeOfExpr();
 
+    case Token::Goto:
+	return ParseGoto();
+
     default:
 	CurrentToken().dump(std::cerr);
 	assert(0 && "Unexpected token");
@@ -2817,7 +2863,6 @@ std::vector<ExprAST*> Parser::Parse()
     nameStack.Add("input", new VarDef(input));
     nameStack.Add("output", new VarDef(output));
     std::vector<VarDef> varList{input, output};
-
     ast.push_back(new VarDeclAST(Location("", 0, 0), varList));
 
     for(;;)
@@ -2832,6 +2877,10 @@ std::vector<ExprAST*> Parser::Parse()
 
 	case Token::Semicolon:
 	    NextToken();
+	    break;
+
+	case Token::Label:
+	    ParseLabels();
 	    break;
 
 	case Token::Function:

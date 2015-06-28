@@ -287,7 +287,8 @@ struct
     { "Basic", "loop",          "loop.pas",        "" },
     { "Basic", "obj",           "obj.pas",         "" },
     { "Basic", "Static Fields", "sf.pas",          "" },
-    { "Basic", "Virtuals",      "virt.pas",        "" }, 
+    { "Basic", "Virtuals",      "virt.pas",        "" },
+    { "Basic", "Dhrystone",     "dhry.pas",        "< dhry.in" },
 
     { "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

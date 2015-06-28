@@ -71,7 +71,7 @@ namespace Builtin
 	return strTy;
     }
 
-    typedef std::function<BuiltinFunctionBase*(const std::vector<ExprAST*>&)>  CreateBIFObject;
+    typedef std::function<BuiltinFunctionBase*(const std::vector<ExprAST*>&)> CreateBIFObject;
     std::map<std::string, CreateBIFObject> BIFMap;
 
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder,
@@ -399,28 +399,17 @@ namespace Builtin
 
     bool BuiltinFunctionSameAsArg::Semantics()
     {
-	return args.size() == 1 &&
-	    args[0]->Type()->Type() != Types::TypeDecl::TK_Char &&
-	    args[0]->Type()->Type() != Types::TypeDecl::TK_Enum &&
-	    (args[0]->Type()->isIntegral() ||
-	     args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
+	return (args.size() == 1) &&
+	    (args[0]->Type()->Type() != Types::TypeDecl::TK_Char) &&
+	    (args[0]->Type()->Type() != Types::TypeDecl::TK_Enum) &&
+	    (args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     bool BuiltinFunctionSameAsArg2::Semantics()
     {
-	if (args.size() != 2)
-	{
-	    return false;
-	}
-	if (!(args[0]->Type()->isIntegral()) && args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    return false;
-	}
-	if (!(args[1]->Type()->isIntegral()) && args[1]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    return false;
-	}
-	return true;
+	return (args.size() == 2) &&
+	    ((args[0]->Type()->isIntegral()) || args[0]->Type()->Type() == Types::TypeDecl::TK_Real) &&
+	    ((args[1]->Type()->isIntegral()) || args[1]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
@@ -464,20 +453,10 @@ namespace Builtin
 
     bool BuiltinFunctionSqr::Semantics()
     {
-	if (args.size() != 1)
-	{
-	    return false;
-	}
-	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Char ||
-	    args[0]->Type()->Type() == Types::TypeDecl::TK_Enum)
-	{
-	    return false;
-	}
-	if (!args[0]->Type()->isIntegral() && args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    return false;
-	}
-	return true;
+	return args.size() == 1 &&
+	    args[0]->Type()->Type() != Types::TypeDecl::TK_Char &&
+	    args[0]->Type()->Type() != Types::TypeDecl::TK_Enum &&
+	    (args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     llvm::Value* BuiltinFunctionFloat::CodeGen(llvm::IRBuilder<>& builder)

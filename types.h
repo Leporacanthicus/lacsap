@@ -232,6 +232,7 @@ namespace Types
 	bool isStringLike() const override { return (baseType->Type() == TK_Char); }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
 	static bool classof(const TypeDecl* e)
 	{
 	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray;

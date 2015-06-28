@@ -351,6 +351,29 @@ namespace Types
 	return false;
     }
 
+    const TypeDecl* ArrayDecl::CompatibleType(const TypeDecl *ty) const
+    {
+	if (SameAs(ty))
+	{
+	    return this;
+	}
+	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	{
+	    if (ty->SubType() == SubType() && ranges.size() == aty->Ranges().size())
+	    {
+		for(size_t i = 0; i < ranges.size(); i++)
+		{
+		    if (ranges[i]->Size() != aty->Ranges()[i]->Size())
+		    {
+			return 0;
+		    }
+		}
+	    }
+	}
+	return this;
+    }
+
+
     bool SimpleCompoundDecl::classof(const TypeDecl* e)
     {
 	switch(e->getKind())

@@ -25,11 +25,11 @@ public:
 	EK_RealExpr,		/* 1 */
 	EK_IntegerExpr,
 	EK_CharExpr,
-	EK_StringExpr,
-	EK_NilExpr,		/* 5 */
+	EK_NilExpr,
 
 	// Addressable types
-	EK_AddressableExpr,
+	EK_AddressableExpr,	/* 5 */
+	EK_StringExpr,
 	EK_VariableExpr,
 	EK_ArrayExpr,
 	EK_PointerExpr,
@@ -133,19 +133,6 @@ public:
     static bool classof(const ExprAST* e) { return e->getKind() == EK_CharExpr; }
 };
 
-class StringExprAST : public ExprAST
-{
-public:
-    StringExprAST(const Location& w, const std::string &v, Types::TypeDecl* ty)
-	: ExprAST(w, EK_StringExpr, ty), val(v) {}
-    void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
-    const std::string& Str() const { return val; }
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_StringExpr; }
-private:
-    std::string val;
-};
-
 class NilExprAST : public ExprAST
 {
 public:
@@ -167,6 +154,20 @@ public:
     {
 	return e->getKind() >= EK_AddressableExpr && e->getKind() <= EK_LastAddressable;
     }
+};
+
+class StringExprAST : public AddressableAST
+{
+public:
+    StringExprAST(const Location& w, const std::string &v, Types::TypeDecl* ty)
+	: AddressableAST(w, EK_StringExpr, ty), val(v) {}
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    llvm::Value* Address() override;
+    const std::string& Str() const { return val; }
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_StringExpr; }
+private:
+    std::string val;
 };
 
 class VariableExprAST : public AddressableAST

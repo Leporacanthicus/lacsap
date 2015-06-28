@@ -745,11 +745,6 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
     llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
-    if (!rV || !lV)
-    {
-	return 0;
-    }
-
     llvm::Type* pty = llvm::PointerType::getUnqual(lhs->Type()->LlvmType());
     llvm::Constant* f = GetFunction(resTy, { pty, pty }, "__Str" + name);
 
@@ -765,7 +760,8 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
     llvm::Type* strTy = Types::GetStringType()->LlvmType();
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
 
-    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, {pty, lV->getType(), rV->getType()}, "__StrConcat");
+    llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, {pty, lV->getType(), rV->getType()},
+				    "__StrConcat");
     
     llvm::Value* dest = CreateTempAlloca(Types::GetStringType());
     builder.CreateCall(f, {dest, lV, rV});
@@ -1611,6 +1607,12 @@ llvm::Value* StringExprAST::CodeGen()
     return builder.CreateGlobalStringPtr(val, "_string");
 }
 
+llvm::Value* StringExprAST::Address()
+{
+    TRACE();
+    return builder.CreateGlobalStringPtr(val, "_string");
+}
+
 void AssignExprAST::DoDump(std::ostream& out) const
 {
     out << "Assign: " << std::endl;
@@ -1627,7 +1629,6 @@ llvm::Value* AssignExprAST::AssignStr()
     Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type());
     assert(sty && "Expect string type in lhsv->Type()");
 
-
     if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
 	llvm::Value* dest = lhsv->Address();
@@ -1635,7 +1636,6 @@ llvm::Value* AssignExprAST::AssignStr()
     }
     
     assert(llvm::isa<Types::StringDecl>(rhs->Type()));
-
     return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
 }
 
@@ -2949,17 +2949,18 @@ llvm::Value* TypeCastAST::CodeGen()
 llvm::Value* TypeCastAST::Address()
 {
     llvm::Value* v = 0;
-    if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
-    {
-	v = ae->Address();
-    }
-    else if (expr->Type()->Type() == Types::TypeDecl::TK_String)
+    Types::TypeDecl* current = expr->Type();
+    if (current->Type() == Types::TypeDecl::TK_String)
     {
 	v = MakeAddressable(expr);
     }
     else if (type->Type() == Types::TypeDecl::TK_String)
     {
 	v = MakeStringFromExpr(expr, type);
+    }
+    else if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
+    {
+	v = ae->Address();
     }
     assert(v && "Expected to get a value here...");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));

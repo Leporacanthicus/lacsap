@@ -1468,6 +1468,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
     VarStackWrapper w(variables);
+    LabelWrapper l(labels);
     assert(namePrefix != "" && "Prefix should not be empty");
     llvm::Function* theFunction = proto->CodeGen(namePrefix);
     if (!theFunction)

@@ -458,7 +458,6 @@ private:
     std::vector<FunctionAST*>  subFunctions;
     std::vector<VarDef>        usedVariables;
     FunctionAST*               parent;
-    std::vector<int>           labels;
 };
 
 class CallExprAST : public ExprAST

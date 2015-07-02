@@ -60,14 +60,14 @@ begin
    writeln('m.f:', m.f(2));
 
    n.i := 46;
-   n.s := "Blah";
+   n.s := 'Blah';
    n.j := 92;
    n.p;
-   writeln("n.i:", n.i);
-   writeln("n.j:", n.j);
-   writeln("n.s:", n.s);
+   writeln('n.i:', n.i);
+   writeln('n.j:', n.j);
+   writeln('n.s:', n.s);
 
    o.i := 18;
    o.r;
-   writeln("o.i", o.i);
+   writeln('o.i', o.i);
 end.

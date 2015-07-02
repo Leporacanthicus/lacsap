@@ -132,8 +132,8 @@ begin
    SubDiv(x, y, sx, sy);
    if g.grid[x, y].n <> 0 then
    begin
-      writeln("Setting cell which already has a value @ ", x:1, "," , y:1);
-      panic("Exiting");
+      writeln('Setting cell which already has a value @ ', x:1, ',' , y:1);
+      panic('Exiting');
    end;
 
    g.grid[x, y].n := n;
@@ -155,7 +155,7 @@ var
 
 begin
    if length(str) <> 9 then
-      panic("String not right length");
+      panic('String not right length');
    for i := 1 to 9 do
       if str[i] <> '0' then
 	 SetGrid(g, i, row, ord(str[i]) - ord('0'), true);
@@ -262,7 +262,7 @@ begin
 	    SetGridFromString(g, 9, '000406000');
 	 end;
      otherwise : 
-         panic("Unknown index");
+         panic('Unknown index');
    end;
 end; { InitGame }
 
@@ -462,15 +462,15 @@ begin
       InitGame(g, i);
       DrawGame(g);
       if Solve(g, 1) then
-	 writeln("Success")
+	 writeln('Success')
       else
-	 writeln("failed");
+	 writeln('failed');
       DrawGame(g);
    end;
    for i := 1 to 40 do
    begin
       InitGame(g, i);
       if not Solve(g, 1) then
-	 writeln("failed");
+	 writeln('failed');
    end;
 end.

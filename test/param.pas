@@ -5,6 +5,6 @@ var
 
 begin
    for i := 0 to ParamCount do begin
-      writeln("Param ", i:1, "='", paramstr(i), "'");
+      writeln('Param ', i:1, '="', paramstr(i), '"');
    end;
 end.

@@ -9,5 +9,5 @@ var
 
 begin
    aa[Mon] := 7;
-   writeln("aa[Mon]=", aa[Mon]);
+   writeln('aa[Mon]=', aa[Mon]);
 end.

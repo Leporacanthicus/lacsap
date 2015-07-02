@@ -102,7 +102,7 @@ end; { testAccess }
 
 procedure proc(c : char; d: letter);
 begin
-   writeln("Proc: c=", c, " d=", d);
+   writeln('Proc: c=', c, ' d=', d);
 end;
 
    

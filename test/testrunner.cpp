@@ -7,7 +7,11 @@
 #include <chrono>
 #include <cassert>
 
+#if 1
 std::string compiler = "../lacsap";
+#else
+std::string compiler = "fpc";
+#endif
 
 // TODO: Move this to a "utility" library?
 std::string replace_ext(const std::string &origName, const std::string& expectedExt, const std::string& newExt)
@@ -237,7 +241,7 @@ struct
     const char *args;
 } testCaseList[] = 
 {
-    { "Basic", "Math",          "math.pas",        "" },
+    { "Basic", "Math",          "mathtest.pas",    "" },
     { "Basic", "HungryMouse",   "hungrymouse.pas", " < hungrymouse.txt" },
     { "Basic", "Types",         "type.pas",        "" },
     { "Basic", "WC",            "wc.pas",          "" },

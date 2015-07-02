@@ -1,1 +1,1 @@
-aa[Mon]=            7
+aa[Mon]=7

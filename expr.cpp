@@ -2179,11 +2179,11 @@ llvm::Value* WriteAST::CodeGen()
 	    {
 		if (type->Type() == Types::TypeDecl::TK_Integer)
 		{
-		    w = MakeIntegerConstant(13);
+		    w = MakeIntegerConstant(1);
 		}
 		else if (type->Type() == Types::TypeDecl::TK_Real)
 		{
-		    w = MakeIntegerConstant(15);
+		    w = MakeIntegerConstant(1);
 		}
 		else
 		{

@@ -1,23 +1,23 @@
 a is greater than zero
 Hello, world!
-         4711   3.140000E+00
-a=           12
-Factorial of 12 is:    479001600
-fact2(13) =    1932053504
+47113.140000E+00
+a=12
+Factorial of 12 is:479001600
+fact2(13) = 1932053504
 
 10
-abs(-3.7)=   3.700000E+00
-trunc(2.610)=            2
-trunc(-2.610)=           -2
-round(2.610)=            3
-round(-2.610)=           -3
-trunc(6.200)=            6
-trunc(-6.200)=           -6
-round(6.200)=            6
-round(-6.200)=           -6
+abs(-3.7)=3.700000E+00
+trunc(2.610)=2
+trunc(-2.610)=-2
+round(2.610)=3
+round(-2.610)=-3
+trunc(6.200)=6
+trunc(-6.200)=-6
+round(6.200)=6
+round(-6.200)=-6
 In procedure with no args
-testIntToFloat(12)=   1.200000E+01
-sqr(16)=          256
+testIntToFloat(12)=1.200000E+01
+sqr(16)=256
 sqr(4.2)=  17.640
 sqrt(16)=   4.000
 sqrt(169.0)=  13.000

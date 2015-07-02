@@ -6,5 +6,5 @@ abcdefghi
 tab
 ABCDEFGHIJKLMNOPQRSTUVWXYZ
 CDEFGHIJKLMNOPQRSTUV
-           20
+20
 doremifasole

@@ -1,4 +1,4 @@
-program rec
+program rec;
 
 var
    fcalls : integer;

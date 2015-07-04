@@ -1,19 +1,19 @@
 program virt;
 
 type
-   base	= class
+   base	= object
              d, e: integer;
              function a(x : integer): integer; virtual;
              function b(x : integer): integer; virtual;
              function cv(x : integer): integer; virtual;
 	   end;
 
-   derived = class(base)
+   derived = object(base)
               function b(x : integer): integer; override;
               function a(x : integer): integer; override;
 	     end;
 
-der2 = class(derived)
+der2 = object(derived)
            function cv(x : integer): integer; override;
 	end;
 

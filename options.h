@@ -26,4 +26,5 @@ extern bool     disableMemcpyOpt;
 extern bool     rangeCheck;
 extern OptLevel optimization;
 extern Model    model;
+extern bool     caseInsensitive;
 #endif

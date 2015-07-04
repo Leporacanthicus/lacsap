@@ -7,10 +7,10 @@
 #include <chrono>
 #include <cassert>
 
-#if 1
+#if 0
 std::string compiler = "../lacsap";
 #else
-std::string compiler = "fpc";
+std::string compiler = "fpc -Mdelphi";
 #endif
 
 // TODO: Move this to a "utility" library?

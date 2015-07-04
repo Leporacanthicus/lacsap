@@ -1,4 +1,4 @@
-program wc;
+program wordcount;
 
 type
    counts = record

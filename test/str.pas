@@ -35,6 +35,7 @@ begin
    if str1 + str2 = str3 then
       writeln('same');
 
+   str7 := '';
    for ch := 'A' to 'Z' do
       str7 := str7 + ch;
 

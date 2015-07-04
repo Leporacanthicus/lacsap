@@ -2853,7 +2853,7 @@ std::vector<ExprAST*> Parser::Parse()
 {
     TIME_TRACE();
 
-    if (!ParseProgram())
+    if (!ParseProgram() || !Expect(Token::Semicolon, true))
     {
 	return ast;
     }

@@ -2,7 +2,6 @@
 #define STACK_H
 
 #include "options.h"
-
 #include <deque>
 #include <map>
 #include <string>
@@ -54,8 +53,12 @@ public:
     }
 
     /* Returns false on failure */
-    bool Add(const std::string& name, T v) 
+    bool Add(std::string name, T v) 
     {
+	if (caseInsensitive)
+	{
+	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	}
 	MapIter it = stack.back().find(name);
 	if (it == stack.back().end())
 	{
@@ -69,12 +72,16 @@ public:
 	return false;
     }
 
-    T Find(const std::string& name, size_t& level) const
+    T Find(std::string name, size_t& level) const
     {
 	int lvl = MaxLevel();
 	if (verbosity > 1)
 	{
 	    std::cerr << "Finding value: " << name << std::endl;
+	}
+	if (caseInsensitive)
+	{
+	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 	}
 	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
 	{
@@ -103,8 +110,12 @@ public:
 	return Find(name, dummy);
     }
 
-    T FindTopLevel(const std::string& name)
+    T FindTopLevel(std::string name)
     {
+	if (caseInsensitive)
+	{
+	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	}
 	MapIter it = stack.back().find(name);
 	if (it != stack.back().end())
 	{
@@ -113,8 +124,12 @@ public:
 	return 0;
     }
 
-    T FindBottomLevel(const std::string& name)
+    T FindBottomLevel(std::string name)
     {
+	if (caseInsensitive)
+	{
+	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	}
 	MapIter it = stack.front().find(name);
 	if (it != stack.front().end())
 	{

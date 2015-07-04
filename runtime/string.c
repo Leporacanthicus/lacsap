@@ -70,6 +70,6 @@ String __StrCopy(String* str, int start, int len)
     }
 
     String result = { len, "" };
-    memcpy(result.str, &str->str[start], len);
+    memcpy(result.str, &str->str[start-1], len);
     return result;
 }

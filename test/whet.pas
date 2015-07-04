@@ -36,8 +36,6 @@ CONST
       T2=2.0;
 
 TYPE
-   REAL	    = real;
-   INTEGER  = integer;
    ARGARRAY = ARRAY[1..4] OF REAL;
 
 VAR E1 : ARGARRAY;

@@ -5,9 +5,9 @@
 program mtprog;
 
 type
-   LongInt  = integer;
-   Word	    = 0..65535;
-   Cardinal = LongInt;
+   Int32 = integer;
+   Int16 = 0..65535;
+   Cardinal = Int32;
 const
    N	      = 624;
    N_1	      = 623;
@@ -18,15 +18,15 @@ const
 	      
 
 var
-   mt	 : array[0..N_1] of Cardinal{LongInt};  { the array for the state vector }
-   mti	 : Word;                        { mti == N+1 means mt[N] is not initialized }
-   mag01 : array[0..1] of Cardinal{LongInt};
-   init	 : array[0..N] of LongInt;
+   mt	 : array[0..N_1] of Cardinal{Int32};  { the array for the state vector }
+   mti	 : Int16;                        { mti == N+1 means mt[N] is not initialized }
+   mag01 : array[0..1] of Cardinal{Int32};
+   init	 : array[0..N] of Int32;
    i	 : integer;
    
-procedure InitMT(Seed : LongInt);
+procedure InitMT(Seed : Int32);
 var
-  i : Word;
+  i : Int16;
 begin
   mt[0] := Seed and $ffffffff;
   for i := 1 to N_1 do
@@ -40,11 +40,14 @@ begin
         { For >32 Bit machines }
     end;
   mti := N;
-end;
+end; { InitMT }
 
-procedure InitMTbyArray(InitKey : array [0..N] of LongInt; KeyLength : Word);
+type
+   arrNLong = array [0..N] of Int32;
+
+procedure InitMTbyArray(InitKey : arrNLong ; KeyLength : Int16);
 var
-  i, j, k, k1 : Word;
+  i, j, k, k1 : Int16;
 begin
   InitMT(19650218);
 
@@ -82,10 +85,10 @@ begin
     mt[0] := $80000000; { MSB is 1; assuring non-zero initial array }
 end;
 
-function IRanMT : LongInt;
+function IRanMT : Int32;
 var
-  y : LongInt;
-  k : Word;
+  y : Int32;
+  k : Int16;
 begin
   if mti >= N then  { generate N words at one Time }
     begin

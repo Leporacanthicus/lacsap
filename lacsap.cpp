@@ -25,6 +25,7 @@ bool     disableMemcpyOpt;
 OptLevel optimization;
 bool     rangeCheck;
 Model    model = m64;
+bool     caseInsensitive = true;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string>    InputFilename(llvm::cl::Positional, llvm::cl::Required, 

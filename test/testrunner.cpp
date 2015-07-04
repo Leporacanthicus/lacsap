@@ -7,7 +7,7 @@
 #include <chrono>
 #include <cassert>
 
-#if 0
+#if 1
 std::string compiler = "../lacsap";
 #else
 std::string compiler = "fpc -Mdelphi";

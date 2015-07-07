@@ -1,5 +1,8 @@
 program str;
 
+type
+   str30 =  string[30];
+
 var 
    str1	: string;
    str2	: string;
@@ -9,10 +12,10 @@ var
    str6	: string;
    str7	: string;
    str8	: string;
-   str9	: string[30];
+   str9	: str30;
    ch	: char;
 
-procedure proc(var str : string);
+procedure proc(var str : str30);
 begin
    str := 'doremifasole';
 end;

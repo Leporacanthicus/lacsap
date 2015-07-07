@@ -65,7 +65,6 @@ end; { RandomLatLon }
 
 var
    i   : integer;
-   t   : longint;
    tot : real;
    cl  : real;
 begin
@@ -74,15 +73,11 @@ begin
       cps[i].a := ReadLatLon();
       cps[i].b := ReadLatLon();
    end;
-   t := cycles;
    for i := 1 to SIZE do
    begin
       tc[i] := CourseInitial(cps[i].a.lat, cps[i].a.lon, cps[i].b.lat, cps[i].b.lon);
    end;
 
-   t := cycles - t;
-   cl := t / SIZE;
-{   writeln('Time=', cl:8:3); }
    tot := 0;
    for i := 1 to SIZE do
    begin

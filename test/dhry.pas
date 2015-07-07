@@ -417,11 +417,6 @@ var
 
   RunIndex,
   NumberOfRuns:         integer;
-  BeginClock,
-  EndClock,
-  SumClocks:            longint;
-  Microseconds,         
-  DhrystonesPerSecond:  real;
   I:                    integer;
 
   (* end of variables for measurement *)
@@ -702,8 +697,6 @@ begin (* main program, corresponds to procedures        *)
   writeln;
   writeln ('Execution starts, ', NumberOfRuns : 7, ' runs through Dhrystone');
 
-  BeginClock := clock;
-
   (***************)
   (* Start timer *)
   (***************)
@@ -750,8 +743,6 @@ begin (* main program, corresponds to procedures        *)
       (* Int1Glob = 5 *)
 
   end; (* for RunIndex *)
-
-  EndClock := clock;
 
   (**************)
   (* Stop timer *)
@@ -822,30 +813,5 @@ begin (* main program, corresponds to procedures        *)
   writeln ('        should be:           DHRYSTONE PROGRAM, 2''ND STRING');
   writeln;
   writeln;
-
- {
-  SumClocks := EndClock - BeginClock;
-  writeln ('Sumclocks=', SumClocks:2);
-
-  if SumClocks < TooSmallTime
-    then
-    begin
-      writeln ('Measured time too small to obtain meaningful results');
-      writeln ('Please increase number of runs');
-      writeln;
-    end
-    else
-    begin
-      Microseconds := SumClocks * (MicrosecondsPerClock / NumberOfRuns);
-                                (* Brackets to prevent integer overflow *)
-      DhrystonesPerSecond := NumberOfRuns * (ClocksPerSecond / SumClocks);
-      write ('Microseconds for one run through Dhrystone: ');
-      writeln (Microseconds : 8 : 3);
-      write ('Dhrystones per Second:                      ');
-      writeln (DhrystonesPerSecond : 8 : 1);
-      writeln;
-     end;
-   }
-
   
 end.

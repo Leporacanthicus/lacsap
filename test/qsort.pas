@@ -8,7 +8,7 @@ TYPE
 	      
 VAR
    { Indexes, exchange temp, array size. }
-   i, j, tmp, size	: integer;
+   i, size	: integer;
    
 { Array of ints }
    arr: IntArrType;
@@ -30,10 +30,9 @@ PROCEDURE Quicksort(size: integer; VAR arr: IntArrType );
  parameters which define the range of the array to work on,
  and references the array as a global. }
 PROCEDURE QuicksortRecur(start, stop: integer);
-VAR
-   m : integer;
      
 { The location separating the high and low parts. }
+ VAR
    splitpt: integer;
    
 { The quicksort split algorithm.  Takes the range, and

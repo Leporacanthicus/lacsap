@@ -182,7 +182,7 @@ begin
    writeln('fact2(13) = ', fact2(13));
    writeln;
    writeln(foo(2, 3):1);
-   writeln('abs(-3.7)=', abs(-3.7));
+   writeln('abs(-3.7)=', abs(-3.7):8:4);
    testRoundTrunc(2.61);
    testRoundTrunc(6.2);
    testProcWithNoArgs;

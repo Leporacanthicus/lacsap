@@ -5,6 +5,7 @@ const
    R2D = 57.295779513082320876798154814105;
    D2R =  0.01745329251994329576923690768489;
 
+
 function CourseInitial(lat1, lon1, lat2, lon2 : real): real;
 
 var

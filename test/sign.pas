@@ -1,5 +1,7 @@
 program sgn;
 
+uses math;
+
 var
    i : integer;
    a : integer;
@@ -25,4 +27,3 @@ begin
       writeln('sign(b)=', sign(b));
    end;
 end.
-   

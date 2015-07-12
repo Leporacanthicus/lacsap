@@ -119,6 +119,7 @@ public:
 	Destructor,
 	Label,
 	Goto,
+	Uses,
 
 	// Specials
 	LineNumber,

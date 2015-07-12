@@ -2890,6 +2890,18 @@ std::vector<ExprAST*> Parser::Parse()
 	    ast.clear();
 	    return ast;
 
+	case Token::Uses:
+	    NextToken();
+	    if (CurrentToken().GetToken() != Token::Identifier ||
+		CurrentToken().GetIdentName() != "math")
+	    {
+		Error("'uses' is only allowed for 'math' - and really ignored");
+		ast.clear();
+		return ast;
+	    }
+	    AssertToken(Token::Identifier);
+	    break;
+
 	case Token::Semicolon:
 	    NextToken();
 	    break;

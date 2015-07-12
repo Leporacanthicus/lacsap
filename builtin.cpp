@@ -381,11 +381,12 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    class BuiltinFunctionSign : public BuiltinFunctionSameAsArg
+    class BuiltinFunctionSign : public BuiltinFunctionInt
     {
     public:
 	BuiltinFunctionSign(const std::vector<ExprAST*>& a)
-	    : BuiltinFunctionSameAsArg(a) {}
+	    : BuiltinFunctionInt(a) {}
+	virtual bool Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -893,29 +894,30 @@ namespace Builtin
 	return builder.CreateSelect(sel, a, b, "min");
     }
 
+    bool BuiltinFunctionSign::Semantics()
+    {
+	return args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real;
+    }
+
     llvm::Value* BuiltinFunctionSign::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = args[0]->CodeGen();
+	llvm::Value* zero = MakeIntegerConstant(0);
+	llvm::Value* one = MakeIntegerConstant(1);
+	llvm::Value* mone = MakeIntegerConstant(-1);
 	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real)
 	{
-	    llvm::Value* zero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
-	    llvm::Value* one = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(1.0));
-	    llvm::Value* mone = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(-1.0));
-	    llvm::Value* sel1 = builder.CreateFCmpOGT(v, zero, "gt");
-	    llvm::Value* sel2 = builder.CreateFCmpOLT(v, zero, "lt");
+	    llvm::Value* fzero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
+	    llvm::Value* sel1 = builder.CreateFCmpOGT(v, fzero, "gt");
+	    llvm::Value* sel2 = builder.CreateFCmpOLT(v, fzero, "lt");
 	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
 	    return builder.CreateSelect(sel2, mone, res, "sgn2");
 	}
 	if (args[0]->Type()->isUnsigned())
 	{
-	    llvm::Value* zero = MakeIntegerConstant(0);
-	    llvm::Value* one = MakeIntegerConstant(1);
 	    llvm::Value* sel1 = builder.CreateICmpUGT(v, zero, "gt");
 	    return builder.CreateSelect(sel1, one, zero, "sgn1");
 	} 
-	llvm::Value* zero = MakeIntegerConstant(0);
-	llvm::Value* one = MakeIntegerConstant(1);
-	llvm::Value* mone = MakeIntegerConstant(-1);
 	llvm::Value* sel1 = builder.CreateICmpSGT(v, zero, "gt");
 	llvm::Value* sel2 = builder.CreateICmpSLT(v, zero, "lt");
 	llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");

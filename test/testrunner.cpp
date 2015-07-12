@@ -302,6 +302,8 @@ struct
     { 0,           "Basic", "Static Fields", "sf.pas",          "" },
     { LACSAP_ONLY, "Basic", "Virtuals",      "virt.pas",        "" },
     { 0,           "Basic", "Dhrystone",     "dhry.pas",        "< dhry.in" },
+    { LACSAP_ONLY, "Basic", "Function arg",  "func.pas",        "" },
+    { LACSAP_ONLY, "Basic", "Function arg2", "func2.pas",       "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

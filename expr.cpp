@@ -1430,7 +1430,8 @@ void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
     args.swap(newArgs);
 }
 
-FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b)
+FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v,
+			 BlockAST* b)
     : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0)
 {
     assert((proto->IsForward() || body) && "Function should have body");
@@ -1454,9 +1455,9 @@ void FunctionAST::accept(Visitor& v)
     {
 	i->accept(v);
     }
-    if (varDecls)
+    for(auto d : varDecls)
     {
-	varDecls->accept(v);
+	d->accept(v);
     }
     if (body)
     {
@@ -1484,10 +1485,10 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     builder.SetInsertPoint(bb);
 
     proto->CreateArgumentAlloca(theFunction);
-    if (varDecls)
+    for(auto d : varDecls)
     {
-	varDecls->SetFunction(theFunction);
-	varDecls->CodeGen();
+	d->SetFunction(theFunction);
+	d->CodeGen();
     }
 
     llvm::BasicBlock::iterator ip = builder.GetInsertPoint();

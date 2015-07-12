@@ -2197,7 +2197,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	if (AcceptToken(Token::Forward))
 	{
 	    proto->SetIsForward(true);
-	    return new FunctionAST(CurrentToken().Loc(), proto, 0, 0);
+	    return new FunctionAST(CurrentToken().Loc(), proto, std::vector<VarDeclAST*>(), 0);
 	}
     }
 
@@ -2223,21 +2223,22 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
     }
 
-    VarDeclAST*               varDecls = 0;
+    std::vector<VarDeclAST*>  varDecls;
     BlockAST*                 body = 0;
-    bool                      typeDecls = false;
-    bool                      constDecls = false;
     std::vector<FunctionAST*> subFunctions;
     for(;;)
     {
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Var:
-	    if (varDecls)
+	    if (VarDeclAST* v = ParseVarDecls())
 	    {
-		return ErrorF("Can't declare variables multiple times");
+		varDecls.push_back(v);
 	    }
-	    varDecls = ParseVarDecls();
+	    else
+	    {
+		return 0;
+	    }
 	    break;
 
 	case Token::Label:
@@ -2245,21 +2246,11 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    break;
 
 	case Token::Type:
-	    if (typeDecls)
-	    {
-		return ErrorF("Can't declare types multiple times");
-	    }
 	    ParseTypeDef();
-	    typeDecls = true;
 	    break;
 
 	case Token::Const:
-	    if (constDecls)
-	    {
-		return ErrorF("Can't declare const multiple times");
-	    }
 	    ParseConstDef();
-	    constDecls = true;
 	    break;
 
 	case Token::Function:
@@ -2938,7 +2929,7 @@ std::vector<ExprAST*> Parser::Parse()
 	    // "__PascalMain" so we can call it from C-code.
 	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
-	    FunctionAST* fun = new FunctionAST(loc, proto, 0, body);
+	    FunctionAST* fun = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
 	    ast.push_back(fun);
 	    if (!Expect(Token::Period, true))
 	    {

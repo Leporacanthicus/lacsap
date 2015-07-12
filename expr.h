@@ -439,7 +439,7 @@ private:
 class FunctionAST : public ExprAST
 {
 public:
-    FunctionAST(const Location& w, PrototypeAST *prot, VarDeclAST* v, BlockAST* b);
+    FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v, BlockAST* b);
     void DoDump(std::ostream& out) const override;
     llvm::Function* CodeGen() override;
     llvm::Function* CodeGen(const std::string& namePrefix);
@@ -453,7 +453,7 @@ public:
     void accept(Visitor& v) override;
 private:
     PrototypeAST*              proto;
-    VarDeclAST*                varDecls;
+    std::vector<VarDeclAST*>   varDecls;
     BlockAST*                  body;
     std::vector<FunctionAST*>  subFunctions;
     std::vector<VarDef>        usedVariables;

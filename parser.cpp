@@ -2949,6 +2949,7 @@ std::vector<ExprAST*> Parser::Parse()
 	}
 
 	default:
+	    assert(0);
 	    curAst = ParseExpression();
 	    break;
 	}

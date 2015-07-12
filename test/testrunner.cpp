@@ -318,15 +318,13 @@ struct
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
-    { LACSAP_ONLY, "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
+    { 0,           "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
 
     { 0,           "Time",  "LongCompile",   "longcompile.pas", "1000" },
 };
 
 
-void runTestCases(const std::vector<TestCase*>& tc, 
-		  TestResult& res,
-		  const std::string& options)
+void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)
 {
     for(auto t : tc)
     {

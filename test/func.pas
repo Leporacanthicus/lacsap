@@ -4,8 +4,9 @@ program func;
 
 const eps = 1E-7;
 
-var result : real;
-   good	   : boolean;
+var
+   result : real;
+   good	  : boolean;
 
 procedure interval(function f(x	: real): real; a, b, epsvalue: real;
 		   var zeropoint : real; var ok : boolean);

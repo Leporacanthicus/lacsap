@@ -59,7 +59,7 @@ private:
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
     FunctionAST*  ParseDefinition(int level);
-    PrototypeAST* ParsePrototype();
+    PrototypeAST* ParsePrototype(bool unnamed);
     bool          ParseProgram();
     void          ParseLabels();
 

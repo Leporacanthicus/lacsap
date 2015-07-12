@@ -1008,12 +1008,11 @@ namespace Types
     FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
 	: CompoundDecl(TK_FuncPtr, 0), proto(func)
     {
-	baseType = new FunctionDecl(proto->Type());
     }
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
     {
-	if (!CompoundDecl::SameAs(ty))
+	if (ty->Type() != TK_FuncPtr)
 	{
 	    return false;
 	}

@@ -961,7 +961,11 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		 (CurrentToken().GetToken() == Token::Function ||
 		  CurrentToken().GetToken() == Token::Procedure))
 	{
-	    PrototypeAST* p = ParsePrototype();
+	    PrototypeAST* p = ParsePrototype(false);
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return false;
+	    }
 	    int f = 0;
 	    if (AcceptToken(Token::Static))
 	    {
@@ -1249,6 +1253,13 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
     case Token::String:
 	return ParseStringDecl();
 
+    case Token::Procedure:
+    case Token::Function:
+    {
+	PrototypeAST* proto = ParsePrototype(true);
+	return new Types::FuncPtrDecl(proto);
+    }
+
     default:
 	return ErrorT("Can't understand type");
     }
@@ -1433,7 +1444,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     }
     else if (llvm::dyn_cast_or_null<const VarDef>(def))
     {
-	if (def->Type()->Type() == Types::TypeDecl::TK_Pointer)
+	if (def->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 	{
 	    if(Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	    {
@@ -1620,8 +1631,7 @@ bool Parser::IsCall(const NamedObject* def)
 
     Types::TypeDecl* type = def->Type();
     Types::TypeDecl::TypeKind ty = type->Type();
-    if (ty == Types::TypeDecl::TK_Pointer &&
-	type->SubType()->Type() == Types::TypeDecl::TK_Function)
+    if (ty == Types::TypeDecl::TK_FuncPtr)
     {
 	return true;
     }
@@ -1659,8 +1669,7 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 		    return (bool)Error("Too many arguments");
 		}
 		Types::TypeDecl* td = funcArgs[argNo].Type();
-		if (td->Type() == Types::TypeDecl::TK_Pointer &&
-		    td->SubType()->Type() == Types::TypeDecl::TK_Function)
+		if (td->Type() == Types::TypeDecl::TK_FuncPtr)
 		{
 		    isFuncArg = true;
 		}
@@ -1937,7 +1946,7 @@ VarDeclAST* Parser::ParseVarDecls()
 // member function/procedure:
 //   function classname.name{( args... )}: type;
 //   procedure classname.name{ args... }
-PrototypeAST* Parser::ParsePrototype()
+PrototypeAST* Parser::ParsePrototype(bool unnamed)
 {
     assert((CurrentToken().GetToken() == Token::Procedure ||
 	    CurrentToken().GetToken() == Token::Function) &&
@@ -1947,15 +1956,20 @@ PrototypeAST* Parser::ParsePrototype()
 
     // Consume "function" or "procedure"
     NextToken();
-    if (!Expect(Token::Identifier, false))
+    std::string funcName = "noname";
+    if (!unnamed)
     {
-	return 0;
-    }
-    Types::ClassDecl* od = 0;
-    // Get function name.
-    std::string funcName = CurrentToken().GetIdentName();
-    AssertToken(Token::Identifier);
 
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
+	// Get function name.
+	funcName = CurrentToken().GetIdentName();
+	AssertToken(Token::Identifier);
+    }
+
+    Types::ClassDecl* od = 0;
     Types::MemberFuncDecl* membfunc = 0;
     // Is it a member function?
     // FIXME: Nested classes, should we do this again?
@@ -1999,10 +2013,15 @@ PrototypeAST* Parser::ParsePrototype()
 	    if (CurrentToken().GetToken() == Token::Function ||
 		CurrentToken().GetToken() == Token::Procedure)
 	    {
-		PrototypeAST* proto = ParsePrototype();
+		PrototypeAST* proto = ParsePrototype(false);
 		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
 		VarDef v(proto->Name(), type, false);
 		args.push_back(v);
+		if (CurrentToken().GetToken() != Token::RightParen &&
+		    !Expect(Token::Semicolon, true))
+		{
+		    return 0;
+		}
 	    }
 	    else
 	    {
@@ -2067,11 +2086,6 @@ PrototypeAST* Parser::ParsePrototype()
     else
     {
 	resultType = Types::GetVoidType();
-    }
-
-    if (!Expect(Token::Semicolon, true))
-    {
-	return 0;
     }
 
     PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
@@ -2146,11 +2160,12 @@ BlockAST* Parser::ParseBlock()
 FunctionAST* Parser::ParseDefinition(int level)
 {
     Location loc = CurrentToken().Loc();
-    PrototypeAST* proto = ParsePrototype();
-    if (!proto)
+    PrototypeAST* proto = ParsePrototype(false);
+    if (!proto || !Expect(Token::Semicolon, true))
     {
 	return 0;
     }
+
     std::string name = proto->Name();
     Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
     NamedObject* nmObj;

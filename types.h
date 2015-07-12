@@ -481,12 +481,12 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	PrototypeAST* Proto() const { return proto; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }
+	bool isCompound() const override { return false; }
 	bool SameAs(const TypeDecl* ty) const override;
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
 	PrototypeAST* proto;
-	TypeDecl*     baseType;
     };
 
     class FileDecl : public CompoundDecl

@@ -4,10 +4,6 @@
 {* From http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/VERSIONS/PASCAL/Alex.pas *}
 program mtprog;
 
-type
-   Int32 = integer;
-   Int16 = 0..65535;
-   Cardinal = Int32;
 const
    N	      = 624;
    N_1	      = 623;
@@ -15,13 +11,18 @@ const
    MATRIX_A   = $9908b0df;  { constant vector a }
    UPPER_MASK = $80000000;  { most significant w-r bits }
    LOWER_MASK = $7fffffff;  { least significant r bits }
-	      
+
+type
+   Int32 = integer;
+   Int16 = 0..65535;
+   Cardinal = Int32;
+   arrNLong = array [0..N] of Int32;
 
 var
    mt	 : array[0..N_1] of Cardinal{Int32};  { the array for the state vector }
    mti	 : Int16;                        { mti == N+1 means mt[N] is not initialized }
    mag01 : array[0..1] of Cardinal{Int32};
-   init	 : array[0..N] of Int32;
+   init	 : arrNLong;
    i	 : integer;
    
 procedure InitMT(Seed : Int32);
@@ -42,8 +43,6 @@ begin
   mti := N;
 end; { InitMT }
 
-type
-   arrNLong = array [0..N] of Int32;
 
 procedure InitMTbyArray(InitKey : arrNLong ; KeyLength : Int16);
 var

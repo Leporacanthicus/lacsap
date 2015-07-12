@@ -251,8 +251,9 @@ struct
 } testCaseList[] = 
 {
     { 0,           "Basic", "Math",          "mathtest.pas",    "" },
+    // Results differ due to different random number generator
     { LACSAP_ONLY, "Basic", "HungryMouse",   "hungrymouse.pas", " < hungrymouse.txt" },
-    { LACSAP_ONLY, "Basic", "Types",         "type.pas",        "" },
+    { 0,           "Basic", "Types",         "type.pas",        "" },
     { 0,           "Basic", "WC",            "wc.pas",          "" },
     { 0,           "Basic", "Histogram",     "hist.pas",        " < hist.pas" },
     { 0,           "Basic", "Case",          "case.pas",        "" },
@@ -260,6 +261,7 @@ struct
     { 0,           "Basic", "TestSet 2",     "testset2.pas",    "" },
     { 0,           "Basic", "SetTest",       "set_test.pas",    "" },
     { 0,           "Basic", "Record Pass",   "recpass.pas",     "" },
+    // Random numbers are diferent
     { LACSAP_ONLY, "Basic", "Random Number", "randtest.pas",    "" },
     { 0,           "Basic", "Fact Bignum",   "fact-bignum.pas", "" },
     { 0,           "Basic", "Nested Funcs",  "nestfunc.pas",    "" },
@@ -271,41 +273,50 @@ struct
     { 0,           "Basic", "Test 12",       "test12.pas",      "" },
     { 0,           "Basic", "Test 13",       "test13.pas",      "" },
     { 0,           "Basic", "Test 14",       "test14.pas",      "" },
+    // "otherwise" vs. "else" in case-statemnt
     { LACSAP_ONLY, "Basic", "Test 16",       "test16.pas",      "" },
     { 0,           "Basic", "Test 17",       "test17.pas",      "" },
     { 0,           "Basic", "Test 20",       "test20.pas",      "< test20.in" },
     { 0,           "Basic", "Test 21",       "test21.pas",      "< test21.in" },
     { 0,           "Basic", "Test 23",       "test23.pas",      "" },
     { 0,           "Basic", "C func name",   "cfuncname.pas",   "" },
-    { LACSAP_ONLY, "Basic", "MT 19937",      "mt.pas",          "" },
+    { 0,           "Basic", "MT 19937",      "mt.pas",          "" },
     { 0,           "Basic", "String",        "str.pas",         "" },
     { 0,           "Basic", "Linked List",   "list.pas",        "" },
     { 0,           "Basic", "Whetstone",     "whet.pas",        "" },
     { 0,           "Basic", "Variant Record","variant.pas",     "" },
+    // Variant variable not supported.
     { LACSAP_ONLY, "Basic", "Variant Rec2",  "variant2.pas",    "" },
     { 0,           "Basic", "Quicksort",     "qsort.pas",       "< numbers.txt" },
-    { LACSAP_ONLY, "Basic", "Calc Words",    "calcwords.pas",   "< /usr/share/dict/words" },
+    { 0,           "Basic", "Calc Words",    "calcwords.pas",   "< /usr/share/dict/words" },
+    // Free pascal doesn't support __FILE__ and __LINE__
     { LACSAP_ONLY, "Basic", "Line & File",   "linefile.pas",    "" },
     { 0,           "Basic", "Set Values",    "set.pas",         "" },
+    // Free Pascal doesn't support popcount!
     { LACSAP_ONLY, "Basic", "Pop Count",     "popcnt.pas",      "" },
-    { LACSAP_ONLY, "Basic", "Sudoku",        "sudoku.pas",      "" },
-    { LACSAP_ONLY, "Basic", "General",       "general.pas",     "< general.in" },
+    { 0,           "Basic", "Sudoku",        "sudoku.pas",      "" },
+    { 0,           "Basic", "General",       "general.pas",     "< general.in" },
     { 0,           "Basic", "Array",         "arr.pas",         "" },
     { LACSAP_ONLY, "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
     { LACSAP_ONLY, "Basic", "pi",            "pi.pas",          "" },
+    // Sizes of types are different.
     { LACSAP_ONLY, "Basic", "size",          "size.pas",        "" },
     { 0,           "Basic", "minmax",        "minmax.pas",      "< minmax.in" },
     { 0,           "Basic", "sign",          "sign.pas",        "< sign.in" },
+    // fmod not supported by FPC.
     { LACSAP_ONLY, "Basic", "course",        "course.pas",      "< course.in" },
     { 0,           "Basic", "loop",          "loop.pas",        "" },
-    { 0,           "Basic", "obj",           "obj.pas",         "" },
-    { 0,           "Basic", "Static Fields", "sf.pas",          "" },
+    // Object handling is not yet compatible.
+    { LACSAP_ONLY, "Basic", "obj",           "obj.pas",         "" },
     { LACSAP_ONLY, "Basic", "Virtuals",      "virt.pas",        "" },
+    { 0,           "Basic", "Static Fields", "sf.pas",          "" },
     { 0,           "Basic", "Dhrystone",     "dhry.pas",        "< dhry.in" },
+    // Function arguments not the same yet.
     { LACSAP_ONLY, "Basic", "Function arg",  "func.pas",        "" },
     { LACSAP_ONLY, "Basic", "Function arg2", "func2.pas",       "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
+    // get from files not supported.
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
     { LACSAP_ONLY, "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
 

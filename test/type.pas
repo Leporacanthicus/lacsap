@@ -54,7 +54,7 @@ var
    s : record
 	  g1 : integer;
 	  g2 : integer;
-	  g3 : longint;
+	  g3 : int64;
        end;  
 begin
    r.f1 := 2;
@@ -63,7 +63,7 @@ begin
    s.g1 := 9;
    s.g3 := 12345678909112;
    writeln('r.f1=', r.f1:0);
-   writeln('r.f2=', r.f2:0);
+   writeln('r.f2=', r.f2:8:3);
    writeln('s.g1=', s.g1:0);
    writeln('s.g2=', s.g2:0);
    writeln('s.g3=', s.g3:0);

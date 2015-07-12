@@ -272,6 +272,15 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class BuiltinFunctionHalt : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionHalt(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	virtual bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class BuiltinFunctionFile : public BuiltinFunctionVoid
     {
     public:
@@ -586,12 +595,31 @@ namespace Builtin
 	return builder.CreateCall(f, { args[0]->CodeGen() });
     }
 
+    bool BuiltinFunctionHalt::Semantics()
+    {
+	return args.size() <= 1 && (args.size() == 0 || args[0]->Type()->isIntegral());
+    }
+
+    llvm::Value* BuiltinFunctionHalt::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* v = MakeIntegerConstant(0);
+	if (args.size() == 1)
+	{
+	    v = args[0]->CodeGen();
+	}
+
+	llvm::Constant* f = GetFunction(Types::GetType(Types::TypeDecl::TK_Void),
+					{ Types::GetType(Types::TypeDecl::TK_Integer) }, "exit");
+
+	return builder.CreateCall(f, { v });
+    }
+
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
     {
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	llvm::Value* faddr = fvar->Address();
 	llvm::Constant* f = GetFunction(Type()->Type(), { faddr->getType() },
-					std::string("__") + funcname);
+					"__" + funcname);
 
 	return builder.CreateCall(f, { faddr });
     }
@@ -964,6 +992,7 @@ namespace Builtin
 	AddBIFCreator("pred",       NEW(Pred));
 	AddBIFCreator("new",        NEW(New));
 	AddBIFCreator("dispose",    NEW(Dispose));
+	AddBIFCreator("halt",       NEW(Halt));
 	AddBIFCreator("length",     NEW(Length));
 	AddBIFCreator("popcnt",     NEW(Popcnt));
 	AddBIFCreator("assign",     NEW(Assign));

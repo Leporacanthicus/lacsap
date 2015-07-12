@@ -114,12 +114,11 @@ var
    i, n : integer;
 
 begin
-   CountCandidates := popcnt(cand.bits);
-{   n := 0;
+   n := 0;
    for i := 1 to 9 do
       if i in cand.bits then
 	 n := n + 1;
-   CountCandidates := n; }
+   CountCandidates := n;
 end; { CountCandidates }
 
 
@@ -133,7 +132,7 @@ begin
    if g.grid[x, y].n <> 0 then
    begin
       writeln('Setting cell which already has a value @ ', x:1, ',' , y:1);
-      panic('Exiting');
+      halt(1);
    end;
 
    g.grid[x, y].n := n;
@@ -155,7 +154,10 @@ var
 
 begin
    if length(str) <> 9 then
-      panic('String not right length');
+   begin
+      writeln('String not right length');
+      halt(1);
+   end;
    for i := 1 to 9 do
       if str[i] <> '0' then
 	 SetGrid(g, i, row, ord(str[i]) - ord('0'), true);
@@ -261,8 +263,6 @@ begin
 	    SetGridFromString(g, 8, '080090070');
 	    SetGridFromString(g, 9, '000406000');
 	 end;
-     otherwise : 
-         panic('Unknown index');
    end;
 end; { InitGame }
 
@@ -397,7 +397,6 @@ function Solve(var g : Game; level: integer): boolean;
 var
    x, y	: integer;
    list	: CandList;
-   f	: boolean;
    done	: boolean;
    val	: integer;
    gm	: Game;

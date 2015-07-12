@@ -4,18 +4,11 @@ var
    longest : array [1..10] of string;
    word	   : string;
    i, j	   : integer;
-   tmp	   : string;
    
 procedure readword(var w : string );
 
 begin
-   w := '';
-   while not eoln do
-   begin
-      w := w + input^;
-      get(input);
-   end;
-   get(input);
+   readln(w);
 end; { readword }
 
 procedure toupper(var w	: string);

@@ -54,6 +54,7 @@ Parser::Parser(Lexer &l)
 {
     if (!(AddType("integer", new Types::IntegerDecl) &&
 	  AddType("longint", new Types::Int64Decl) &&
+	  AddType("int64", new Types::Int64Decl) &&
 	  AddType("real", new Types::RealDecl) &&
 	  AddType("char", new Types::CharDecl) &&
 	  AddType("boolean", new Types::BoolDecl) &&
@@ -2950,7 +2951,7 @@ std::vector<ExprAST*> Parser::Parse()
 
 	default:
 	    assert(0);
-	    curAst = ParseExpression();
+	    Error("Unexpected token");
 	    break;
 	}
 

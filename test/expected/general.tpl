@@ -1,6 +1,6 @@
 a is greater than zero
 Hello, world!
-47113.140000E+00
+47113.140
 a=12
 Factorial of 12 is:479001600
 fact2(13) = 1932053504
@@ -16,7 +16,7 @@ trunc(-6.200)=-6
 round(6.200)=6
 round(-6.200)=-6
 In procedure with no args
-testIntToFloat(12)=1.200000E+01
+testIntToFloat(12)=12.000
 sqr(16)=256
 sqr(4.2)=  17.640
 sqrt(16)=   4.000

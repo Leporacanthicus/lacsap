@@ -176,7 +176,7 @@ begin
    ifemptyelse;
    writeln('Hello, world!');
    write(4711);
-   writeln(3.14);
+   writeln(3.14:5:3);
    writeln('a=', a);
    writeln('Factorial of ', 12:1, ' is:', fact(12));
    writeln('fact2(13) = ', fact2(13));
@@ -186,7 +186,7 @@ begin
    testRoundTrunc(2.61);
    testRoundTrunc(6.2);
    testProcWithNoArgs;
-   writeln('testIntToFloat(12)=', testIntToFloat(12));
+   writeln('testIntToFloat(12)=', testIntToFloat(12):5:3);
 
    writeln('sqr(16)=', sqr(16));
    writeln('sqr(4.2)=', sqr(4.2):8:3);

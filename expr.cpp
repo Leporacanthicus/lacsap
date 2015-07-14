@@ -2615,7 +2615,8 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	else
 	{
 	    IntegerExprAST* e = llvm::dyn_cast<IntegerExprAST>(v);
-	    unsigned i = e->Int();
+	    int start = type->GetRange()->GetStart();
+	    unsigned i = e->Int() - start;
 	    elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
 	}
     }
@@ -2757,12 +2758,13 @@ llvm::Value* SetExprAST::Address()
 	}
 	else
 	{
+	    Types::Range* range = type->GetRange();
+	    llvm::Value* rangeStart = MakeIntegerConstant(range->GetStart());
 	    llvm::Value* x = v->CodeGen();
-	    if (!x)
-	    {
-		return 0;
-	    }
+	    assert(x && "Expect codegen to work!");
 	    x = builder.CreateZExt(x, Types::GetType(Types::TypeDecl::TK_Integer), "zext");
+	    x = builder.CreateSub(x, rangeStart);
+	    
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
 	    llvm::Value* offset = builder.CreateAnd(x, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);

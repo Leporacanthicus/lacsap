@@ -121,6 +121,88 @@ begin
    CountCandidates := n;
 end; { CountCandidates }
 
+procedure DrawGame(var g : Game);
+
+var
+   x, y	: integer;
+
+begin
+   for y := 1 to 9 do
+   begin
+      for x := 1 to 9 do
+      begin
+	 with g.grid[x, y] do
+	 begin
+	    write('|');
+	    if n = 0 then
+	       write('   ')
+	    else
+	       write(n : 2, ' ');
+	 end;
+      end;
+      writeln('|');
+   end;
+end; { DrawGame }
+
+
+procedure PrintSet(s : CandSet);
+
+var
+   i :  integer;
+begin
+   for i := 1 to 9 do
+   begin
+      if i in s then write(i:1, ' ');
+   end;
+   writeln;
+end;
+
+procedure CheckGrid(var g : Game);
+var
+   x, y	  : integer;
+   n	  : integer;
+   rowset : CandSet;
+   colset : CandSet;
+   
+begin
+   for y := 1 to 9 do
+   begin
+      rowset := [];
+      colset := [];
+      for x := 1 to 9 do
+      begin
+	 n := g.grid[x,y].n;
+	 if n <> 0 then
+	 begin
+	   if n in rowset then
+	   begin
+	      writeln('Row contains ', n:1, ' more than once @', x:1, ',', y:1);
+	      DrawGame(g);
+	      halt(1);
+	   end
+	   else
+	   begin
+	      rowset := rowset + [n];
+	   end
+	 end;
+	 n := g.grid[y,x].n;
+	 if n <> 0 then
+	 begin
+	    if n in colset then
+	    begin
+	       writeln('Column contains ', n:1, ' more than once @', x:1, ',', y:1);
+	       DrawGame(g);
+	       halt(1);
+	    end
+	    else
+	    begin
+	       colset := colset + [n];
+	    end;
+	 end;
+      end;
+   end;
+end;
+
 
 procedure SetGrid(var g: Game; x, y: integer; n: integer; fixed : boolean);
 
@@ -144,6 +226,7 @@ begin
       col[x] := col[x] - [n];
       sub[sx, sy] := sub[sx, sy] - [n];
    end;
+   CheckGrid(g);
 end; { SetGrid }
 
 
@@ -366,30 +449,6 @@ begin
       end;
    Next := res;
 end;
-
-
-procedure DrawGame(var g : Game);
-
-var
-   x, y	: integer;
-
-begin
-   for y := 1 to 9 do
-   begin
-      for x := 1 to 9 do
-      begin
-	 with g.grid[x, y] do
-	 begin
-	    write('|');
-	    if n = 0 then
-	       write('   ')
-	    else
-	       write(n : 2, ' ');
-	 end;
-      end;
-      writeln('|');
-   end;
-end; { DrawGame }
 
 
 function Solve(var g : Game; level: integer): boolean;

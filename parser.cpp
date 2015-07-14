@@ -2447,6 +2447,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    isFirst = false;
 	}
 	else if (CurrentToken().GetToken() != Token::Otherwise &&
+		 CurrentToken().GetToken() != Token::Else && 
 		 prevTT != CurrentToken().GetToken())
 	{
 	    return Error("Type of case labels must not change type");
@@ -2469,10 +2470,12 @@ ExprAST* Parser::ParseCaseExpr()
 	    return Error("Expected enumerated type value");
 	}
 
+
+	case Token::Else:
 	case Token::Otherwise:
 	    if (otherwise)
 	    {
-		return Error("Otherwise already used in this case block");
+		return Error("An 'otherwise:' or 'else' already used in this case block");
 	    }
 	    isOtherwise = true;
 	    break;
@@ -2480,28 +2483,33 @@ ExprAST* Parser::ParseCaseExpr()
 	default:
 	    return Error("Syntax error, expected case label");
 	}
-	NextToken();
+	if (CurrentToken().GetToken() != Token::Else)
+	{
+	    NextToken();
+	}
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Comma:
 	    if (isOtherwise)
 	    {
-		return Error("Can't have multiple case labels with otherwise case label");
+		return Error("Can't have multiple case labels with 'otherwise:' or else 'case' label");
 	    }
-	    NextToken();
+	    AssertToken(Token::Comma);
 	    break;
 
 	case Token::Colon:
+	case Token::Else:
 	{
+	    NextToken();
 	    Location locColon = CurrentToken().Loc();
-	    AssertToken(Token::Colon);
 	    ExprAST* s = ParseStmtOrBlock();
 	    if (isOtherwise)
 	    {
 		otherwise = s;
 		if (lab.size())
 		{
-		    return Error("Can't have multiple case labels with otherwise case label");
+		    return Error("Can't have multiple case labels with 'otherwise' or 'else'"
+				 " case label");
 		}
 	    }
 	    else

@@ -430,13 +430,9 @@ namespace Types
     {
 	if (const RangeDecl* rty = llvm::dyn_cast<RangeDecl>(ty))
 	{
-	    if (rty->Type() != Type() || *range != *rty->range)
-	    {
-		return false;
-	    }
-	    return true;
+	    return rty->Type() == Type() && *range == *rty->range;
 	}
-	return false;
+	return Type() == ty->Type();
     }
 
     const TypeDecl* RangeDecl::CompatibleType(const TypeDecl* ty) const

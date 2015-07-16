@@ -256,10 +256,13 @@ struct
     { 0,           "Basic", "Types",         "type.pas",        "" },
     { 0,           "Basic", "WC",            "wc.pas",          "" },
     { 0,           "Basic", "Histogram",     "hist.pas",        " < hist.pas" },
+    // Case-statement using otherwise not available in FPC.
+    // Alternative implementation in CaseCompat test.
     { LACSAP_ONLY, "Basic", "Case",          "case.pas",        "" },
     { 0,           "Basic", "CaseCompat",    "casecompat.pas",  "" },
     { 0,           "Basic", "TestSet",       "testset.pas",     "" },
     { 0,           "Basic", "TestSet 2",     "testset2.pas",    "" },
+    { LACSAP_ONLY, "Basic", "TestSet 3",     "testset3.pas",    "" },
     { 0,           "Basic", "SetTest",       "set_test.pas",    "" },
     { 0,           "Basic", "Record Pass",   "recpass.pas",     "" },
     // Random numbers are diferent

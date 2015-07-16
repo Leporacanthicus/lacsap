@@ -209,10 +209,6 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    }
 	}
 	
-	if (*lty->SubType() != *rty->SubType())
-	{
-	    Error(b, "Set type content isn't the same!");
-	}
 	if (!lty->GetRange())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
@@ -220,6 +216,10 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	if (!rty->GetRange())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
+	}
+	if (*lty->SubType() != *rty->SubType())
+	{
+	    Error(b, "Set type content isn't the same!");
 	}
 	ty = rty;
     }

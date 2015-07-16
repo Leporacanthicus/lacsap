@@ -1271,7 +1271,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
-    uint64_t val = token.GetIntVal();
+    int64_t val = token.GetIntVal();
     Location loc = token.Loc();
     const char* type = "integer";
 

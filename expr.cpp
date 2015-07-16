@@ -484,7 +484,7 @@ llvm::Value* ArrayExprAST::Address()
 	    totalIndex = builder.CreateAdd(totalIndex, index);
 	}
     }
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), totalIndex};
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), totalIndex };
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
 }
@@ -511,7 +511,7 @@ llvm::Value* FieldExprAST::Address()
     EnsureSized();
     if (llvm::Value* v = expr->Address())
     {
-	std::vector<llvm::Value*> ind = {MakeIntegerConstant(0), MakeIntegerConstant(element)};
+	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(element) };
 	return builder.CreateGEP(v, ind, "valueindex");
     }
     return ErrorV("Expression did not form an address");
@@ -1282,7 +1282,7 @@ void BlockAST::accept(Visitor& v)
 llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
-    llvm::Value* v = 0;
+    llvm::Value* v = MakeIntegerConstant(0);
     for(auto e : content)
     {
 	v = e->CodeGen();

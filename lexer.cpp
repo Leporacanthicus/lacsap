@@ -113,11 +113,10 @@ Token Lexer::NumberToken()
 	    isFloat = true;
 	    assert((ch == 'e' || ch == 'E') && "Fraction should start with '.'");
 	    num += ch;
-	    ch = PeekChar();
+	    ch = NextChar();
 	    if (ch == '+' || ch == '-')
 	    {
 		num += ch;
-		NextChar();
 		ch = NextChar();
 	    }
 	    while(isdigit(ch))

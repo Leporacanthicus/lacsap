@@ -110,6 +110,29 @@ begin
    writeln;
 end; { testChar }
 
+procedure testIncDec;
+
+var
+   ch : char;
+   i  : integer;
+   
+begin
+   ch := 'a';
+   inc(ch);
+   write(ch);
+   inc(ch);
+   write(ch);
+   dec(ch);
+   writeln(ch);
+   i := 42;
+   inc(i);
+   write(i:3);
+   inc(i);
+   write(i:3);
+   dec(i);
+   writeln(i:3);
+end;
+
 procedure readTest;
 var
    x : integer;
@@ -196,7 +219,7 @@ begin
    whileTest;
    repeatTest;
    arrayTest;
-   
+
    testUpdateVars;
    testChar;
    write('Enter a number:');
@@ -206,4 +229,5 @@ begin
    readln(b);
    writeln('a=', b:2:5);
    readTest;
+   testIncDec;
 end.

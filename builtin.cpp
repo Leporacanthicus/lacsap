@@ -90,7 +90,7 @@ namespace Builtin
 	BuiltinFunctionSameAsArg(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	Types::TypeDecl* Type() const override { return args[0]->Type(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionSameAsArg2 : public BuiltinFunctionBase
@@ -99,7 +99,7 @@ namespace Builtin
 	BuiltinFunctionSameAsArg2(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	Types::TypeDecl* Type() const override { return args[0]->Type(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionInt : public BuiltinFunctionBase
@@ -124,7 +124,7 @@ namespace Builtin
 	BuiltinFunctionSqr(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionSameAsArg(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionOdd : public BuiltinFunctionBase
@@ -134,7 +134,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return BoolType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionRound : public BuiltinFunctionInt
@@ -143,7 +143,7 @@ namespace Builtin
 	BuiltinFunctionRound(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionTrunc : public BuiltinFunctionRound
@@ -161,7 +161,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return RealType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionChr : public BuiltinFunctionBase
@@ -171,7 +171,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return CharType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionOrd : public BuiltinFunctionInt
@@ -180,7 +180,7 @@ namespace Builtin
 	BuiltinFunctionOrd(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionLength : public BuiltinFunctionInt
@@ -189,7 +189,7 @@ namespace Builtin
 	BuiltinFunctionLength(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionPopcnt : public BuiltinFunctionInt
@@ -198,7 +198,7 @@ namespace Builtin
 	BuiltinFunctionPopcnt(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionSucc : public BuiltinFunctionSameAsArg
@@ -207,7 +207,7 @@ namespace Builtin
 	BuiltinFunctionSucc(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionSameAsArg(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionPred : public BuiltinFunctionSucc
@@ -225,7 +225,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return RealType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     protected:
 	std::string funcname;
     };
@@ -237,7 +237,7 @@ namespace Builtin
 	    : BuiltinFunctionFloat(fn, a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return RealType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionFloatIntrinsic : public BuiltinFunctionFloat
@@ -261,7 +261,7 @@ namespace Builtin
 	BuiltinFunctionNew(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionDispose : public BuiltinFunctionNew
@@ -277,7 +277,24 @@ namespace Builtin
     public:
 	BuiltinFunctionHalt(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a) {}
-	virtual bool Semantics() override;
+	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class BuiltinFunctionInc : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionInc(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class BuiltinFunctionDec : public BuiltinFunctionInc
+    {
+    public:
+	BuiltinFunctionDec(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionInc(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -297,7 +314,7 @@ namespace Builtin
     public:
 	BuiltinFunctionFileBool(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionFile(fn, a) {}
-	virtual bool Semantics() override;
+	bool Semantics() override;
 	Types::TypeDecl* Type() const override { return BoolType(); }
     };
 
@@ -316,7 +333,7 @@ namespace Builtin
 	BuiltinFunctionPanic(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionLongInt : public BuiltinFunctionBase
@@ -334,7 +351,7 @@ namespace Builtin
 	BuiltinFunctionClock(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionLongInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionCycles : public BuiltinFunctionClock
@@ -351,7 +368,7 @@ namespace Builtin
 	BuiltinFunctionParamcount(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionParamstr : public BuiltinFunctionBase
@@ -361,7 +378,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return StringType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionCopy : public BuiltinFunctionBase
@@ -371,7 +388,7 @@ namespace Builtin
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return StringType(); }
-	virtual bool Semantics() override;
+	bool Semantics() override;
     };
 
     class BuiltinFunctionMin : public BuiltinFunctionSameAsArg2
@@ -395,7 +412,7 @@ namespace Builtin
     public:
 	BuiltinFunctionSign(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionInt(a) {}
-	virtual bool Semantics() override;
+	bool Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -583,7 +600,8 @@ namespace Builtin
 
     bool BuiltinFunctionNew::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type());
+	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type()) && 
+	    llvm::isa<VariableExprAST>(args[0]);
     }
 
     llvm::Value* BuiltinFunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
@@ -612,6 +630,31 @@ namespace Builtin
 					{ Types::GetType(Types::TypeDecl::TK_Integer) }, "exit");
 
 	return builder.CreateCall(f, { v });
+    }
+
+    bool BuiltinFunctionInc::Semantics()
+    {
+	return args.size() == 1 && args[0]->Type()->isIntegral() && llvm::isa<VariableExprAST>(args[0]);
+    }
+
+    llvm::Value* BuiltinFunctionInc::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	assert(var && "Expected variable here... Semantics not working?");
+	llvm::Value* pA = var->Address();
+	llvm::Value* a = builder.CreateLoad(pA, "inc");
+	a = builder.CreateAdd(a, MakeConstant(1, a->getType()), "inc");
+	return builder.CreateStore(a, pA);
+    }
+
+    llvm::Value* BuiltinFunctionDec::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	assert(var && "Expected variable here... Semantics not working?");
+	llvm::Value* pA = var->Address();
+	llvm::Value* a = builder.CreateLoad(pA, "dec");
+	a = builder.CreateSub(a, MakeConstant(1, a->getType()), "dec");
+	return builder.CreateStore(a, pA);
     }
 
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
@@ -1005,6 +1048,8 @@ namespace Builtin
 	AddBIFCreator("max",        NEW(Max));
 	AddBIFCreator("min",        NEW(Min));
 	AddBIFCreator("sign",       NEW(Sign));
+	AddBIFCreator("inc",        NEW(Inc));
+	AddBIFCreator("dec",        NEW(Dec));
 	AddBIFCreator("sqrt",       NEW2(FloatIntrinsic, "sqrt"));
 	AddBIFCreator("sin",        NEW2(FloatIntrinsic, "sin"));
 	AddBIFCreator("cos",        NEW2(FloatIntrinsic, "cos"));

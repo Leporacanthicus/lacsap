@@ -315,6 +315,7 @@ struct
     { LACSAP_ONLY, "Basic", "Function arg",  "func.pas",        "" },
     { LACSAP_ONLY, "Basic", "Function arg2", "func2.pas",       "" },
     { 0,           "Basic", "Multiple decl", "multidecl.pas",   "" },
+    { 0,           "Basic", "numeric",       "numeric.pas",     "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

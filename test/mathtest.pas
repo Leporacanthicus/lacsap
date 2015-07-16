@@ -9,4 +9,3 @@ begin
    writeln('sqr(0.5)=', sqr(0.5):8:5);
    writeln('sqrt(0.5)=', sqrt(0.5):8:5);
 end.
-   

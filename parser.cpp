@@ -1209,6 +1209,9 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 	}
     }
 
+    Token token = TranslateToken(CurrentToken());
+    tt = token.GetToken();
+
     switch(tt)
     {
     case Token::Identifier:

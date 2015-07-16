@@ -72,3 +72,11 @@ begin
    fw := x * 7.0;
 end;
 ----------------------------------------------------------------
+Bug9:
+Date: 16-Jul-2015
+
+Set using negative range doesn't work.
+
+The negative start value is seen as a huge positive number, and the type becomes
+int64 which doesn't provide a "range".
+----------------------------------------------------------------

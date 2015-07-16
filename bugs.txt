@@ -79,4 +79,6 @@ Set using negative range doesn't work.
 
 The negative start value is seen as a huge positive number, and the type becomes
 int64 which doesn't provide a "range".
+
+Fix in: e220ebee2f0c5ae3e5b0755c269700e3e2d5de31
 ----------------------------------------------------------------

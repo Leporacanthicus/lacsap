@@ -230,4 +230,6 @@ begin
    writeln('a=', b:2:5);
    readTest;
    testIncDec;
+   for a := 0 to 4 do
+      writeln(odd(a):6);
 end.

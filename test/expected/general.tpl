@@ -150,3 +150,8 @@ Enter a number:x=19
 Enter a floating point number:y=23.00000000
 bcb
  43 44 43
+ FALSE
+  TRUE
+ FALSE
+  TRUE
+ FALSE

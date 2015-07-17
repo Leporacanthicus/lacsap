@@ -460,7 +460,7 @@ namespace Builtin
     {
 	llvm::Value* v = args[0]->CodeGen();
 	v = builder.CreateAnd(v, MakeIntegerConstant(1));
-	return builder.CreateBitCast(v, Types::GetType(Types::TypeDecl::TK_Boolean));
+	return builder.CreateTrunc(v, Types::GetType(Types::TypeDecl::TK_Boolean), "odd");
     }
 
     bool BuiltinFunctionOdd::Semantics()

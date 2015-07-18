@@ -52,18 +52,17 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 Parser::Parser(Lexer &l)
     : lexer(l), nextTokenValid(false), errCnt(0)
 {
+    Types::TypeDecl* ty = new Types::BoolDecl;
     if (!(AddType("integer", new Types::IntegerDecl) &&
 	  AddType("longint", new Types::Int64Decl) &&
 	  AddType("int64", new Types::Int64Decl) &&
 	  AddType("real", new Types::RealDecl) &&
 	  AddType("char", new Types::CharDecl) &&
-	  AddType("boolean", new Types::BoolDecl) &&
-	  AddType("text", Types::GetTextType())))
-    {
-	assert(0 && "Failed to add basic types...");
-    }
-
-    if (!(AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
+	  AddType("text", Types::GetTextType()) &&
+	  AddType("boolean", ty) &&
+	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&
+	  nameStack.Add("true", new EnumDef("true", 1, ty)) &&
+	  AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
     {
 	assert(0 && "Failed to add builtin constants");
     }
@@ -292,16 +291,6 @@ EnumDef* Parser::GetEnumValue(const std::string& name)
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
 {
-    if (Types::EnumDecl* ed = llvm::dyn_cast<Types::EnumDecl>(ty))
-    {
-	for(auto v : ed->Values())
-	{
-	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
-	    {
-		return (bool)ErrorI("Enumerated value by name " + v.name + " already exists...");
-	    }
-	}
-    }
     return nameStack.Add(name, new TypeDef(name, ty));
 }
 
@@ -750,7 +739,16 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    }
 	}
     }
-    return new Types::EnumDecl(values);
+    Types::EnumDecl* ty = new Types::EnumDecl(values);
+    for(auto v : ty->Values())
+    {
+	if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
+	{
+	    return reinterpret_cast<Types::EnumDecl*>
+		(Error("Enumerated value by name " + v.name + " already exists..."));
+	}
+    }
+    return ty;
 }
 
 Types::PointerDecl* Parser::ParsePointerType()

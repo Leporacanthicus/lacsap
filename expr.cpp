@@ -1218,9 +1218,17 @@ llvm::Value* CallExprAST::CodeGen()
 
 	    if (!v)
 	    {
-		if (vi && vi->Type()->isCompound())
+		if (i->Type()->isCompound())
 		{
-		    v = LoadOrMemcpy(vi->Address(), vi->Type());
+		    if (vi)
+		    {
+			v = LoadOrMemcpy(vi->Address(), vi->Type());
+		    }
+		    else
+		    {
+			v = CreateTempAlloca(i->Type());
+			builder.CreateStore(i->CodeGen(), v);
+		    }
 		    argAttr.push_back(std::make_pair(index+1, llvm::Attribute::ByVal));
 		}
 		else

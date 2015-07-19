@@ -47,6 +47,7 @@ begin
 end;   
 
 begin
+   head := NIL;
    for i := 1 to 10 do
       addLink(i);
    print;

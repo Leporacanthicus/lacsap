@@ -323,6 +323,8 @@ struct
     { 0,           "Basic", "GPC t03",       "t03.pas",         "" },
     { 0,           "Basic", "GPC t04",       "t04.pas",         "" },
     { 0,           "Basic", "GPC t09",       "t09.pas",         "" },
+    { 0,           "Basic", "GPC t12",       "t12.pas",         "" },
+    { 0,           "Basic", "GPC t14",       "t14.pas",         "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

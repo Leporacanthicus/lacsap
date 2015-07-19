@@ -16,6 +16,8 @@ begin
 
    d := 'B';
 
+   n := 3;
+
    if c = [ ] then
       writeln('c is an empty set');
 

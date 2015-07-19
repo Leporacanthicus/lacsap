@@ -379,12 +379,14 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	    }
 	}
 	Error(a, "String assignment from incompatible string constant");
+	return;
     }
 
     const Types::TypeDecl* ty = lty->AssignableType(rty);
     if (!ty)
     {
 	Error(a, "Incompatible type in assignment");
+	return;
     }
     if (*ty != *rty)
     {

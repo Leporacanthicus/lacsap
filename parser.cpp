@@ -31,7 +31,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	expr->dump();
     }
 
-    if(CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
+    if (CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
     {
 	if (call->Proto()->Name() == proto->Name()
 	    && call->Args().size() != proto->Args().size())
@@ -47,28 +47,6 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	    }
 	}
     }
-}
-
-Parser::Parser(Lexer &l)
-    : lexer(l), nextTokenValid(false), errCnt(0)
-{
-    Types::TypeDecl* ty = new Types::BoolDecl;
-    if (!(AddType("integer", new Types::IntegerDecl) &&
-	  AddType("longint", new Types::Int64Decl) &&
-	  AddType("int64", new Types::Int64Decl) &&
-	  AddType("real", new Types::RealDecl) &&
-	  AddType("char", new Types::CharDecl) &&
-	  AddType("text", Types::GetTextType()) &&
-	  AddType("boolean", ty) &&
-	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&
-	  nameStack.Add("true", new EnumDef("true", 1, ty)) &&
-	  AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
-    {
-	assert(0 && "Failed to add builtin constants");
-    }
-
-    // Read in the FIRST token.
-    NextToken(__FILE__, __LINE__);
 }
 
 ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
@@ -597,7 +575,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 		
 		if (mul == -1)
 		{
-		    if(llvm::isa<Constants::RealConstDecl>(cd))
+		    if (llvm::isa<Constants::RealConstDecl>(cd))
 		    {
 			const Constants::RealConstDecl* rd =
 			    llvm::dyn_cast<Constants::RealConstDecl>(cd);
@@ -1315,7 +1293,7 @@ void Parser::ParseLabels()
 	if (CurrentToken().GetToken() == Token::Integer)
 	{
 	    int n = CurrentToken().GetIntVal();
-	    if(!nameStack.Add(std::to_string(n), new LabelDef(n)))
+	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
 	    {
 		Error("Multiple label defintions?");
 		return;
@@ -1448,7 +1426,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
     {
 	if (def->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 	{
-	    if(Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
+	    if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	    {
 		proto = fp->Proto();
 		expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
@@ -2601,7 +2579,7 @@ ExprAST* Parser::ParseWithBlock()
     NameWrapper wrapper(nameStack);
     for(auto v : vars)
     {
-	if(Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
+	if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
 	{
 	    ExpandWithNames(rd, v, 0);
 	    if (Types::VariantDecl* variant = rd->Variant())
@@ -2836,8 +2814,13 @@ ExprAST* Parser::ParsePrimary()
     }
 }
 
-bool Parser::ParseProgram()
+bool Parser::ParseProgram(ParserType type)
 {
+    Token::TokenType t  = Token::Program;
+    if (type == Unit)
+    {
+	t = Token::Unit;
+    }
     if (!Expect(Token::Program, true))
     {
 	return false;
@@ -2865,11 +2848,44 @@ bool Parser::ParseProgram()
     return true;
 }
 
-std::vector<ExprAST*> Parser::Parse()
+bool Parser::ParseUses()
+{
+    AssertToken(Token::Uses);
+    if (Expect(Token::Identifier, false))
+    {
+	std::string unitname = CurrentToken().GetIdentName();
+	AssertToken(Token::Identifier);
+	if (unitname == "math")
+	{
+	    return true;
+	}
+	else
+	{
+	    /* TODO: Loop over commaseparated list */
+	    Parser p(unitname + ".pas");
+	    std::vector<ExprAST*> v = p.Parse(Unit);
+	    if (v.empty())
+	    {
+		return false;
+	    }
+	    return Expect(Token::Semicolon, true);
+	}
+    }
+    return false;
+}
+
+std::vector<ExprAST*> Parser::Parse(ParserType type)
 {
     TIME_TRACE();
 
-    if (!ParseProgram() || !Expect(Token::Semicolon, true))
+    if (!lexer.Good())
+    {
+	std::cerr << "Could not open " << fileName << std::endl;
+	return ast;
+    }
+    NextToken();
+
+    if (!ParseProgram(type) || !Expect(Token::Semicolon, true))
     {
 	return ast;
     }
@@ -2892,15 +2908,11 @@ std::vector<ExprAST*> Parser::Parse()
 	    return ast;
 
 	case Token::Uses:
-	    NextToken();
-	    if (CurrentToken().GetToken() != Token::Identifier ||
-		CurrentToken().GetIdentName() != "math")
+	    if (!ParseUses())
 	    {
-		Error("'uses' is only allowed for 'math' - and really ignored");
 		ast.clear();
 		return ast;
 	    }
-	    AssertToken(Token::Identifier);
 	    break;
 
 	case Token::Semicolon:
@@ -2959,5 +2971,24 @@ std::vector<ExprAST*> Parser::Parse()
 	{
 	    ast.push_back(curAst);
 	}
+    }
+}
+
+Parser::Parser(const std::string& fn)
+    : lexer(fn), nextTokenValid(false), fileName(fn), errCnt(0)
+{
+    Types::TypeDecl* ty = new Types::BoolDecl;
+    if (!(AddType("integer", new Types::IntegerDecl) &&
+	  AddType("longint", new Types::Int64Decl) &&
+	  AddType("int64", new Types::Int64Decl) &&
+	  AddType("real", new Types::RealDecl) &&
+	  AddType("char", new Types::CharDecl) &&
+	  AddType("text", Types::GetTextType()) &&
+	  AddType("boolean", ty) &&
+	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&
+	  nameStack.Add("true", new EnumDef("true", 1, ty)) &&
+	  AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
+    {
+	assert(0 && "Failed to add builtin constants");
     }
 }

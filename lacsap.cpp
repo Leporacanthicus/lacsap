@@ -129,18 +129,12 @@ static int Compile(const std::string& filename)
 {
     TIME_TRACE();
     theModule = CreateModule();
-    Lexer                 lex(filename);
     Builtin::InitBuiltins();
-    if (!lex.Good())
-    {
-	std::cerr << "Could not open " << filename << std::endl;
-	return 1;
-    }
-    Parser p(lex);
+    Parser p(filename);
 
     OptimizerInit();
 
-    std::vector<ExprAST*> ast = p.Parse();
+    std::vector<ExprAST*> ast = p.Parse(Parser::Program);
     if (int e = p.GetErrors())
     {
 	std::cerr << "Errors in parsing: " << e << ".\nExiting..." << std::endl;

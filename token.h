@@ -97,6 +97,7 @@ public:
 	Begin,
 	End,
 	Program,
+	Unit,
 	Write,
 	Writeln,
 	Read,

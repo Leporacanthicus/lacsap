@@ -130,6 +130,7 @@ const TokenEntry tokenTable[] =
     { Token::Otherwise,     true,  -1, "otherwise" },
     { Token::With,          true,  -1, "with" },
     { Token::Program,       true,  -1, "program" },
+    { Token::Unit,          true,  -1, "unit" },
     { Token::Write,         true,  -1, "write" },
     { Token::Writeln,       true,  -1, "writeln" },
     { Token::Read,          true,  -1, "read" },

@@ -10,8 +10,14 @@
 class Parser
 {
 public:
-    Parser(Lexer &l);
-    std::vector<ExprAST*> Parse();
+    enum ParserType
+    {
+	Program,
+	Unit
+    };
+public:
+    Parser(const std::string& fname);
+    std::vector<ExprAST*> Parse(ParserType type);
 
     int GetErrors() { return errCnt; }
 
@@ -60,8 +66,9 @@ private:
     BlockAST*     ParseBlock();
     FunctionAST*  ParseDefinition(int level);
     PrototypeAST* ParsePrototype(bool unnamed);
-    bool          ParseProgram();
+    bool          ParseProgram(ParserType type);
     void          ParseLabels();
+    bool          ParseUses();
 
     // Type declarations and defintitions
     void ParseTypeDef();
@@ -128,14 +135,16 @@ private:
     
 private:
     typedef StackWrapper<NamedObject*> NameWrapper;
-    Lexer&      lexer;
-    Token       curToken;
-    Token       nextToken;
-    bool        nextTokenValid;
-    std::string moduleName;
-    int         errCnt;
-    Stack<NamedObject*> nameStack;
-    Stack<NamedObject*> usedVariables;
+
+    Lexer                 lexer;
+    Token                 curToken;
+    Token                 nextToken;
+    bool                  nextTokenValid;
+    std::string           moduleName;
+    std::string           fileName;
+    int                   errCnt;
+    Stack<NamedObject*>   nameStack;
+    Stack<NamedObject*>   usedVariables;
     std::vector<ExprAST*> ast;
 };
 

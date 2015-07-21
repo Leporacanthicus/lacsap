@@ -2821,7 +2821,7 @@ bool Parser::ParseProgram(ParserType type)
     {
 	t = Token::Unit;
     }
-    if (!Expect(Token::Program, true))
+    if (!Expect(t, true))
     {
 	return false;
     }
@@ -2831,8 +2831,9 @@ bool Parser::ParseProgram(ParserType type)
     }
     moduleName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
-    if (AcceptToken(Token::LeftParen))
+    if (type == Program && AcceptToken(Token::LeftParen))
     {
+	// We completely ignore "file" specifications on the program.
 	do
 	{
 	    if (!Expect(Token::Identifier, true))
@@ -2955,11 +2956,24 @@ std::vector<ExprAST*> Parser::Parse(ParserType type)
 	    if (!Expect(Token::Period, true))
 	    {
 		ast.clear();
-		return ast;
 	    }
 	    return ast;
 	    break;
 	}
+	case Token::End:
+	    if (type == Unit)
+	    {
+		AssertToken(Token::End);
+		if (!Expect(Token::Period, true))
+		{
+		    ast.clear();
+		}
+		return ast;
+	    }
+	    Error("Unexpected 'end' token");
+	    ast.clear();
+	    return ast;
+	    break;
 
 	default:
 	    assert(0);

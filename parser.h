@@ -17,7 +17,7 @@ public:
     };
 public:
     Parser(const std::string& fname);
-    std::vector<ExprAST*> Parse(ParserType type);
+    ExprAST* Parse(ParserType type);
 
     int GetErrors() { return errCnt; }
 
@@ -68,7 +68,8 @@ private:
     PrototypeAST* ParsePrototype(bool unnamed);
     bool          ParseProgram(ParserType type);
     void          ParseLabels();
-    bool          ParseUses();
+    ExprAST*      ParseUses();
+    ExprAST*      ParseUnit(ParserType type);
 
     // Type declarations and defintitions
     void ParseTypeDef();

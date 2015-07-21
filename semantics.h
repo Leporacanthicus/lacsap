@@ -12,7 +12,7 @@ public:
     Semantics() : errors(0) {}
     ~Semantics() { }
 
-    void Analyse(std::vector<ExprAST*>& ast);
+    void Analyse(ExprAST* ast);
     int GetErrors() { return errors; }
     void AddError() { errors++; }
     void AddFixup(SemaFixup *f);

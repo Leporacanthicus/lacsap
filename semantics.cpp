@@ -499,15 +499,12 @@ void Semantics::RunFixups()
     }
 }
 
-void Semantics::Analyse(std::vector<ExprAST*>& ast)
+void Semantics::Analyse(ExprAST* ast)
 {
     TIME_TRACE();
     TRACE();
 
-    for(auto& e : ast)
-    {
-	TypeCheckVisitor tc(this);
-	e->accept(tc);
-    }
+    TypeCheckVisitor tc(this);
+    ast->accept(tc);
     RunFixups();
 }

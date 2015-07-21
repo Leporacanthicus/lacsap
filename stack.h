@@ -160,7 +160,7 @@ private:
     Stack<T>& stack;
 };
 
-template<typename T>
+template <typename T>
 void Stack<T>::dump(std::ostream& out) const
 {
     int n = 0;

@@ -66,6 +66,7 @@ public:
 	EK_VTableExpr, 		/* 40 */
 	EK_VirtFunction,
 	EK_Goto,
+	EK_Unit,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -732,9 +733,23 @@ public:
 	: ExprAST(w, EK_Goto), dest(d) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_Goto; }
 private:
     int dest;
+};
+
+class UnitAST : public ExprAST
+{
+public:
+    UnitAST(const Location& w, const std::vector<ExprAST*>& c, FunctionAST* init)
+	: ExprAST(w, EK_Unit), initFunc(init), code(c) { };
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_Unit; }
+    void accept(Visitor& v) override;
+private:
+    FunctionAST* initFunc;
+    std::vector<ExprAST*> code;
 };
 
 /* Useful global functions */

@@ -72,23 +72,6 @@ void DumpModule(llvm::Module* module)
     module->dump(); 
 }
 
-bool CodeGen(std::vector<ExprAST*> ast)
-{
-    TIME_TRACE();
-    for(auto a : ast)
-    {
-	llvm::Value* v = a->CodeGen(); 
-	if (!v)
-	{
-	    std::cerr << "Sorry, something went wrong here..." << std::endl;
-	    a->dump(std::cerr);
-	    return false;
-	}
-    }
-    BackPatch();
-    return true;
-}
-
 void OptimizerInit()
 {
     mpm = new llvm::legacy::PassManager();
@@ -134,7 +117,7 @@ static int Compile(const std::string& filename)
 
     OptimizerInit();
 
-    std::vector<ExprAST*> ast = p.Parse(Parser::Program);
+    ExprAST* ast = p.Parse(Parser::Program);
     if (int e = p.GetErrors())
     {
 	std::cerr << "Errors in parsing: " << e << ".\nExiting..." << std::endl;
@@ -150,11 +133,17 @@ static int Compile(const std::string& filename)
 	return 1;
     }
 
-    if (!CodeGen(ast))
     {
-	std::cerr << "Code generation failed...\nExiting..." << std::endl;
-	return 1;
+	TIME_TRACE();
+	if (!ast->CodeGen())
+	{
+	    std::cerr << "Sorry, something went wrong here..." << std::endl;
+	    ast->dump(std::cerr);
+	    return 1;
+	}
+	BackPatch();
     }
+
     mpm->run(*theModule);
     if (verbosity)
     {

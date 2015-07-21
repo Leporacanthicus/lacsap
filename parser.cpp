@@ -2849,7 +2849,7 @@ bool Parser::ParseProgram(ParserType type)
     return true;
 }
 
-bool Parser::ParseUses()
+ExprAST* Parser::ParseUses()
 {
     AssertToken(Token::Uses);
     if (Expect(Token::Identifier, false))
@@ -2858,62 +2858,52 @@ bool Parser::ParseUses()
 	AssertToken(Token::Identifier);
 	if (unitname == "math")
 	{
-	    return true;
+	    /* Math unit is "fake", so nothing inside it for now */
+	    return new UnitAST(CurrentToken().Loc(), { }, 0);
 	}
 	else
 	{
 	    /* TODO: Loop over commaseparated list */
 	    Parser p(unitname + ".pas");
-	    std::vector<ExprAST*> v = p.Parse(Unit);
-	    if (v.empty())
+	    ExprAST* e = p.Parse(Unit);
+	    if (!Expect(Token::Semicolon, true))
 	    {
-		return false;
+		return 0;
 	    }
-	    return Expect(Token::Semicolon, true);
+	    return e;
 	}
     }
-    return false;
+    return 0;
 }
 
-std::vector<ExprAST*> Parser::Parse(ParserType type)
+ExprAST* Parser::ParseUnit(ParserType type)
 {
-    TIME_TRACE();
-
-    if (!lexer.Good())
-    {
-	std::cerr << "Could not open " << fileName << std::endl;
-	return ast;
-    }
-    NextToken();
-
+    Location unitloc = CurrentToken().Loc();
     if (!ParseProgram(type) || !Expect(Token::Semicolon, true))
     {
-	return ast;
+	return 0;
     }
 
-    VarDef input("input", Types::GetTextType(), false, true);
-    VarDef output("output", Types::GetTextType(), false, true);
-    nameStack.Add("input", new VarDef(input));
-    nameStack.Add("output", new VarDef(output));
-    std::vector<VarDef> varList{input, output};
-    ast.push_back(new VarDeclAST(Location("", 0, 0), varList));
+    // The "main" of the program - we call that "__PascalMain" so we can call it from C-code.
+    std::string initName = "__PascalMain";
+    // In a unit, we use the moduleName to form the "init functioin" name.
+    if (type == Unit)
+    {
+	initName = moduleName + ".init";
+    }
 
-    for(;;)
+    FunctionAST* initFunction = 0;
+    bool finished = false;
+    do
     {
 	ExprAST* curAst = 0;
 	switch(CurrentToken().GetToken())
 	{
 	case Token::EndOfFile:
-	    Error("Unexpected end of file");
-	    ast.clear();
-	    return ast;
+	    return Error("Unexpected end of file");
 
 	case Token::Uses:
-	    if (!ParseUses())
-	    {
-		ast.clear();
-		return ast;
-	    }
+	    curAst = ParseUses();
 	    break;
 
 	case Token::Semicolon:
@@ -2947,17 +2937,10 @@ std::vector<ExprAST*> Parser::Parse(ParserType type)
 	{
 	    Location loc = CurrentToken().Loc();
 	    BlockAST* body = ParseBlock();
-	    // Parse the "main" of the program - we call that
-	    // "__PascalMain" so we can call it from C-code.
-	    PrototypeAST* proto = new PrototypeAST(loc, "__PascalMain", std::vector<VarDef>(),
+	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
-	    FunctionAST* fun = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
-	    ast.push_back(fun);
-	    if (!Expect(Token::Period, true))
-	    {
-		ast.clear();
-	    }
-	    return ast;
+	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
+	    finished = true;
 	    break;
 	}
 	case Token::End:
@@ -2966,13 +2949,14 @@ std::vector<ExprAST*> Parser::Parse(ParserType type)
 		AssertToken(Token::End);
 		if (!Expect(Token::Period, true))
 		{
-		    ast.clear();
+		    return 0;
 		}
-		return ast;
+		finished = true;
 	    }
-	    Error("Unexpected 'end' token");
-	    ast.clear();
-	    return ast;
+	    else
+	    {
+		return Error("Unexpected 'end' token");
+	    }
 	    break;
 
 	default:
@@ -2985,7 +2969,31 @@ std::vector<ExprAST*> Parser::Parse(ParserType type)
 	{
 	    ast.push_back(curAst);
 	}
+    } while(!finished);
+    return new UnitAST(unitloc, ast, initFunction);
+}
+
+ExprAST* Parser::Parse(ParserType type)
+{
+    TIME_TRACE();
+
+    if (!lexer.Good())
+    {
+	std::cerr << "Could not open " << fileName << std::endl;
+	return 0;
     }
+    NextToken();
+    if (type == Program)
+    {
+	VarDef input("input", Types::GetTextType(), false, true);
+	VarDef output("output", Types::GetTextType(), false, true);
+	nameStack.Add("input", new VarDef(input));
+	nameStack.Add("output", new VarDef(output));
+	std::vector<VarDef> varList{input, output};
+	ast.push_back(new VarDeclAST(Location("", 0, 0), varList));
+    }
+
+    return ParseUnit(type);
 }
 
 Parser::Parser(const std::string& fn)

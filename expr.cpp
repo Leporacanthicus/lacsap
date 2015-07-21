@@ -41,9 +41,6 @@ const size_t MIN_ALIGN = 4;
 
 extern llvm::Module* theModule;
 
-typedef Stack<llvm::Value*> VarStack;
-typedef StackWrapper<llvm::Value*> VarStackWrapper;
-
 class MangleMap
 {
 public:
@@ -57,9 +54,6 @@ public:
 private:
     std::string actualName;
 };
-
-typedef Stack<MangleMap*> MangleStack;
-typedef StackWrapper<MangleMap*> MangleWrapper;
 
 class Label
 {
@@ -77,10 +71,14 @@ private:
 
 typedef Stack<Label*> LabelStack;
 typedef StackWrapper<Label*> LabelWrapper;
+typedef Stack<llvm::Value*> VarStack;
+typedef StackWrapper<llvm::Value*> VarStackWrapper;
+typedef Stack<MangleMap*> MangleStack;
+typedef StackWrapper<MangleMap*> MangleWrapper;
 
-VarStack variables;
-MangleStack mangles;
-LabelStack labels;
+static VarStack variables;
+static MangleStack mangles;
+static LabelStack labels;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
@@ -3108,5 +3106,41 @@ llvm::Value* GotoAST::CodeGen()
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* dead = llvm::BasicBlock::Create(llvm::getGlobalContext(), "dead", fn);
     builder.SetInsertPoint(dead);
+    return v;
+}
+
+
+void UnitAST::DoDump(std::ostream& out) const
+{
+    out << "Unit "  << std::endl;
+}
+
+void UnitAST::accept(Visitor& v)
+{
+    for(auto i : code)
+    {
+	i->accept(v);
+    }
+    if (initFunc)
+    {
+	initFunc->accept(v);
+    }
+}
+
+llvm::Value* UnitAST::CodeGen()
+{
+    llvm::Value* v = MakeIntegerConstant(0);
+    for(ExprAST* a : code)
+    {
+	v = a->CodeGen();
+	if (!v)
+	{
+	    return 0;
+	}
+    }
+    if (initFunc)
+    {
+	initFunc->CodeGen();
+    }
     return v;
 }

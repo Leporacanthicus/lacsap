@@ -2176,7 +2176,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	if (AcceptToken(Token::Forward))
 	{
 	    proto->SetIsForward(true);
-	    return new FunctionAST(CurrentToken().Loc(), proto, std::vector<VarDeclAST*>(), 0);
+	    return new FunctionAST(CurrentToken().Loc(), proto, {}, 0);
 	}
     }
 
@@ -2454,7 +2454,7 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Otherwise:
 	    if (otherwise)
 	    {
-		return Error("An 'otherwise:' or 'else' already used in this case block");
+		return Error("An 'otherwise' or 'else' already used in this case block");
 	    }
 	    isOtherwise = true;
 	    break;
@@ -2462,7 +2462,7 @@ ExprAST* Parser::ParseCaseExpr()
 	default:
 	    return Error("Syntax error, expected case label");
 	}
-	if (CurrentToken().GetToken() != Token::Else)
+	if (CurrentToken().GetToken() != Token::Else && CurrentToken().GetToken() != Token::Otherwise)
 	{
 	    NextToken();
 	}
@@ -2471,12 +2471,13 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Comma:
 	    if (isOtherwise)
 	    {
-		return Error("Can't have multiple case labels with 'otherwise:' or else 'case' label");
+		return Error("Can't have multiple case labels with 'otherwise' or else 'case' label");
 	    }
 	    AssertToken(Token::Comma);
 	    break;
 
 	case Token::Colon:
+	case Token::Otherwise:
 	case Token::Else:
 	{
 	    NextToken();
@@ -2859,7 +2860,7 @@ ExprAST* Parser::ParseUses()
 	if (unitname == "math")
 	{
 	    /* Math unit is "fake", so nothing inside it for now */
-	    return new UnitAST(CurrentToken().Loc(), { }, 0);
+	    return new UnitAST(CurrentToken().Loc(), { }, 0, { });
 	}
 	else
 	{
@@ -2874,6 +2875,48 @@ ExprAST* Parser::ParseUses()
 	}
     }
     return 0;
+}
+
+bool Parser::ParseInterface(InterfaceList &iList)
+{
+    AssertToken(Token::Interface);
+    do
+    {
+	switch(CurrentToken().GetToken())
+	{
+	case Token::Type:
+	    ParseTypeDef();
+	    break;
+
+	case Token::Procedure:
+	case Token::Function:
+	{
+	    PrototypeAST* proto = ParsePrototype(false);
+	    if(!proto || !Expect(Token::Semicolon, true))
+	    {
+		return false;
+	    }
+	    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
+	    std::string name = proto->Name();
+	    NamedObject* nmObj = new FuncDef(name, ty, proto);
+	    if (!iList.Add(name, nmObj))
+	    {
+		return ErrorF("Name '" + name + "' already exists...");
+	    }
+	    break;
+	}
+
+	case Token::Var:
+	    ParseVarDecls();
+	    break;
+
+	default:
+	    assert(0);
+	    Error("Unexpected token");
+	    break;
+	}
+    } while(CurrentToken().GetToken() != Token::Implementation);
+    return true;
 }
 
 ExprAST* Parser::ParseUnit(ParserType type)
@@ -2894,6 +2937,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
     FunctionAST* initFunction = 0;
     bool finished = false;
+    InterfaceList interfaceList;
     do
     {
 	ExprAST* curAst = 0;
@@ -2903,7 +2947,19 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    return Error("Unexpected end of file");
 
 	case Token::Uses:
+	{
 	    curAst = ParseUses();
+	    if (UnitAST *ua = llvm::dyn_cast<UnitAST>(curAst))
+	    {
+		for(auto i : ua->Interface().List())
+		{
+		    if (!nameStack.Add(i.first, i.second))
+		    {
+			return 0;
+		    }
+		}
+	    }
+	}
 	    break;
 
 	case Token::Semicolon:
@@ -2933,6 +2989,22 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    // No AST from constdef, so continue.
 	    continue;
 
+	case Token::Interface:
+	    if (!ParseInterface(interfaceList))
+	    {
+		return 0;
+	    }
+	    break;
+
+	case Token::Implementation:
+	{
+	    /* Start a new level of names */
+	    NameWrapper* nw = new NameWrapper(nameStack);
+	    (void)nw;
+	    AssertToken(Token::Implementation);
+	    break;
+	}
+
 	case Token::Begin:
 	{
 	    Location loc = CurrentToken().Loc();
@@ -2943,6 +3015,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    finished = true;
 	    break;
 	}
+
 	case Token::End:
 	    if (type == Unit)
 	    {
@@ -2970,7 +3043,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    ast.push_back(curAst);
 	}
     } while(!finished);
-    return new UnitAST(unitloc, ast, initFunction);
+    return new UnitAST(unitloc, ast, initFunction, interfaceList);
 }
 
 ExprAST* Parser::Parse(ParserType type)

@@ -741,15 +741,18 @@ private:
 class UnitAST : public ExprAST
 {
 public:
-    UnitAST(const Location& w, const std::vector<ExprAST*>& c, FunctionAST* init)
-	: ExprAST(w, EK_Unit), initFunc(init), code(c) { };
+    UnitAST(const Location& w, const std::vector<ExprAST*>& c, FunctionAST* init,
+	InterfaceList iList)
+	: ExprAST(w, EK_Unit), initFunc(init), code(c), interfaceList(iList) { };
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Unit; }
     void accept(Visitor& v) override;
+    const InterfaceList& Interface() { return interfaceList; }
 private:
     FunctionAST* initFunc;
     std::vector<ExprAST*> code;
+    InterfaceList interfaceList;
 };
 
 /* Useful global functions */

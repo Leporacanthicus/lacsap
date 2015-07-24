@@ -70,6 +70,7 @@ private:
     void          ParseLabels();
     ExprAST*      ParseUses();
     ExprAST*      ParseUnit(ParserType type);
+    bool          ParseInterface(InterfaceList& iList);
 
     // Type declarations and defintitions
     void ParseTypeDef();

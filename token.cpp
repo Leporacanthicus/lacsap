@@ -147,6 +147,8 @@ const TokenEntry tokenTable[] =
     { Token::String,        true,  -1, "string" },
     { Token::Set,           true,  -1, "set" },
     { Token::Forward,       true,  -1, "forward" },
+    { Token::Implementation,true,  -1, "implementation" },
+    { Token::Interface,     true,  -1, "interface" },
     { Token::Const,         true,  -1, "const" },
     { Token::Nil,           true,  -1, "nil" },
     { Token::And,           true,  40, "and" },

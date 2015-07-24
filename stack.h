@@ -2,16 +2,20 @@
 #define STACK_H
 
 #include "options.h"
+#include "namedobject.h"
 #include <deque>
 #include <map>
 #include <string>
 #include <iostream>
+#include <vector>
 
 template <typename T>
 class Stack
 {
-private:
+public:
+    // Expose this so we can use it as InterfaceList for example.
     typedef std::map<std::string, T> MapType;
+private:
     typedef typename MapType::const_iterator MapIter;
     typedef std::deque<MapType> StackType;
     typedef typename StackType::const_reverse_iterator StackRIter;
@@ -177,5 +181,14 @@ void Stack<T>::dump(std::ostream& out) const
     }
 }
 
+class InterfaceList
+{
+public:
+    InterfaceList() {};
+    bool Add(std::string name, NamedObject* obj);
+    const Stack<NamedObject*>::MapType& List() const { return list; }
+private:
+    Stack<NamedObject*>::MapType list;
+};
 
 #endif

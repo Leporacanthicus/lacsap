@@ -128,4 +128,5 @@ public:
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Label; }
 };
 
+
 #endif

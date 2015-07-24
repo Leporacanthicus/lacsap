@@ -21,7 +21,7 @@ begin
      7	       : writeln('seven');
      8	       : writeln('eight');
      9	       : writeln('nine');
-     otherwise : writeln('unknown');
+     otherwise   writeln('unknown');
    end;
 end; { numbertotext }
 

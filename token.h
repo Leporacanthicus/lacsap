@@ -104,6 +104,8 @@ public:
 	Readln,
 	Builtin,
 	Forward,
+	Interface,
+	Implementation,
 	And,
 	Or,
 	Not,

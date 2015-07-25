@@ -391,6 +391,7 @@ public:
     llvm::Value* CodeGen() override;
     void SetFunction(llvm::Function* f) { func = f; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
+    const std::vector<VarDef>& Vars() { return vars; }
 private:
     std::vector<VarDef> vars;
     llvm::Function* func;

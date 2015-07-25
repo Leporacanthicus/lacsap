@@ -2907,7 +2907,15 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	}
 
 	case Token::Var:
-	    ParseVarDecls();
+	{
+	    VarDeclAST* v = ParseVarDecls();
+	    for(auto i : v->Vars())
+	    {
+		std::cout << "name:" << i.Name() << std::endl;
+		iList.Add(i.Name(), new VarDef(i));
+	    }
+	    ast.push_back(v);
+	}   
 	    break;
 
 	default:
@@ -2953,6 +2961,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    {
 		for(auto i : ua->Interface().List())
 		{
+		    std::cout << "Adding to global: name:" << i.first << std::endl;
 		    if (!nameStack.Add(i.first, i.second))
 		    {
 			return 0;

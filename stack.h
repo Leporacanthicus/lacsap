@@ -44,6 +44,7 @@ public:
     std::vector<T> GetLevel(int n)
     {
 	std::vector<T> v;
+	assert(n < stack.size() && "Requests for getlevel should be in bounds...");
 	for(auto i : stack[n])
 	{
 	    v.push_back(i.second);

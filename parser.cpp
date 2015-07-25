@@ -291,7 +291,7 @@ Types::TypeDecl* Parser::ParseSimpleType()
 	    AssertToken(Token::Identifier);
 	    return ty;
 	}
-	return ErrorT("Identifier does not name a type");
+	return ErrorT("Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
     }
     return 0;
 }
@@ -2879,6 +2879,7 @@ ExprAST* Parser::ParseUses()
 
 bool Parser::ParseInterface(InterfaceList &iList)
 {
+    NameWrapper wrapper(nameStack);
     AssertToken(Token::Interface);
     do
     {
@@ -2896,24 +2897,20 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    {
 		return false;
 	    }
-	    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
+	    proto->SetIsForward(true);
 	    std::string name = proto->Name();
-	    NamedObject* nmObj = new FuncDef(name, ty, proto);
-	    if (!iList.Add(name, nmObj))
+	    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
+	    FuncDef* nmObj = new FuncDef(name, ty, proto);
+	    if (!nameStack.Add(name, nmObj))
 	    {
-		return ErrorF("Name '" + name + "' already exists...");
+		return ErrorF("Interface name '" + name + "' already exists in...");
 	    }
-	    break;
 	}
+	    break;
 
 	case Token::Var:
 	{
 	    VarDeclAST* v = ParseVarDecls();
-	    for(auto i : v->Vars())
-	    {
-		std::cout << "name:" << i.Name() << std::endl;
-		iList.Add(i.Name(), new VarDef(i));
-	    }
 	    ast.push_back(v);
 	}   
 	    break;
@@ -2924,6 +2921,11 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    break;
 	}
     } while(CurrentToken().GetToken() != Token::Implementation);
+    for(auto i : nameStack.GetLevel())
+    {
+//	std::cout << "name:" << i->Name() << std::endl;
+	iList.Add(i->Name(), i);
+    }
     return true;
 }
 
@@ -2957,11 +2959,11 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	case Token::Uses:
 	{
 	    curAst = ParseUses();
-	    if (UnitAST *ua = llvm::dyn_cast<UnitAST>(curAst))
+	    if (UnitAST *ua = llvm::dyn_cast_or_null<UnitAST>(curAst))
 	    {
 		for(auto i : ua->Interface().List())
 		{
-		    std::cout << "Adding to global: name:" << i.first << std::endl;
+		    // std::cout << "Adding to global: name at outer level:" << i.first << std::endl;
 		    if (!nameStack.Add(i.first, i.second))
 		    {
 			return 0;
@@ -3003,13 +3005,19 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    {
 		return 0;
 	    }
+	    for(auto i : interfaceList.List())
+	    {
+//		std::cout << "Adding to global within unit: name:" << i.first << std::endl;
+		if (!nameStack.Add(i.first, i.second))
+		{
+		    return 0;
+		}
+	    }
 	    break;
 
 	case Token::Implementation:
 	{
 	    /* Start a new level of names */
-	    NameWrapper* nw = new NameWrapper(nameStack);
-	    (void)nw;
 	    AssertToken(Token::Implementation);
 	    break;
 	}
@@ -3042,8 +3050,8 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    break;
 
 	default:
-	    assert(0);
 	    Error("Unexpected token");
+	    assert(0);
 	    break;
 	}
 

@@ -1,0 +1,10 @@
+TODO List for unit support
+
+Essential features
+* Allow multiple modules to have the same exported names.
+* Add support for UnitName.Name syntax.
+* Add 'init' support.
+
+Later on:
+* Initialization and Finalization features.
+* Separate compilation.

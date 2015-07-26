@@ -82,6 +82,7 @@ static LabelStack labels;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
+static std::vector<FunctionAST*> unitInit;
 
 static llvm::BasicBlock* CreateGotoTarget(int label)
 {
@@ -3054,20 +3055,12 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 
 void VTableAST::Fixup()
 {
-    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(true));
+    llvm::StructType* ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(true));
     std::vector<llvm::Constant*> vtInit = GetInitializer();
     assert(vtInit.size() && "Should have something to initialize here");
 
     llvm::Constant* init = llvm::ConstantStruct::get(ty, vtInit);
     vtable->setInitializer(init);
-}
-
-void BackPatch()
-{
-    for(auto v : vtableBackPatchList)
-    {
-	v->Fixup();
-    }
 }
 
 VirtFunctionAST::VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
@@ -3109,7 +3102,6 @@ llvm::Value* GotoAST::CodeGen()
     return v;
 }
 
-
 void UnitAST::DoDump(std::ostream& out) const
 {
     out << "Unit "  << std::endl;
@@ -3141,6 +3133,40 @@ llvm::Value* UnitAST::CodeGen()
     if (initFunc)
     {
 	initFunc->CodeGen();
+	if (initFunc->Proto()->Name() != "__PascalMain")
+	{
+	    unitInit.push_back(initFunc);
+	}
     }
     return v;
 }
+
+static void BuildUnitInitList()
+{
+    std::vector<llvm::Constant*> unitList(unitInit.size()+1);
+    llvm::Type* vp = Types::GetVoidPtrType();
+    int index = 0;
+    for(auto v : unitInit)
+    {
+	llvm::Function* fn = theModule->getFunction("P." + v->Proto()->Name());
+	assert(fn && "Expected to find the function!");
+	unitList[index] = llvm::ConstantExpr::getBitCast(fn, vp);
+	index++;
+    }
+    unitList[unitInit.size()] = llvm::Constant::getNullValue(vp);
+    llvm::ArrayType* arr = llvm::ArrayType::get(vp, unitInit.size()+1);
+    llvm::Constant* init = llvm::ConstantArray::get(arr, unitList);
+    llvm::Value* unitInitList = new llvm::GlobalVariable(*theModule, arr, true, llvm::GlobalValue::ExternalLinkage, init,
+							 "UnitIniList");
+    assert(unitInitList && "Unit Initializer List not built correctly?");
+}
+
+void BackPatch()
+{
+    for(auto v : vtableBackPatchList)
+    {
+	v->Fixup();
+    }
+    BuildUnitInitList();
+}
+

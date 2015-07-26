@@ -6,6 +6,7 @@
 #include "builtin.h"
 #include "options.h"
 #include "trace.h"
+#include "utils.h"
 #include <iostream>
 #include <cassert>
 #include <limits>
@@ -1076,6 +1077,19 @@ Types::SetDecl* Parser::ParseSetDecl()
     return 0;
 }
 
+unsigned Parser::ParseStringSize()
+{
+	Token token = TranslateToken(CurrentToken());
+
+	if (token.GetToken() != Token::Integer)
+	{
+	    return reinterpret_cast<uintptr_t>(Error("Expected integer value!"));
+	}
+	NextToken();
+	return token.GetIntVal();
+}
+
+
 Types::StringDecl* Parser::ParseStringDecl()
 {
     TRACE();
@@ -1084,20 +1098,23 @@ Types::StringDecl* Parser::ParseStringDecl()
 
     if (AcceptToken(Token::LeftSquare))
     {
-	Token token = TranslateToken(CurrentToken());
-
-	if (token.GetToken() != Token::Integer)
-	{
-	    return reinterpret_cast<Types::StringDecl*>(Error("Expected integer value!"));
-	}
-
-	size = token.GetIntVal();
-	
-	NextToken();
+	size = ParseStringSize();
 	if (!Expect(Token::RightSquare, true))
 	{
 	    return 0;
 	}
+    }
+    else if (AcceptToken(Token::LeftParen))
+    {
+	size = ParseStringSize();
+	if (!Expect(Token::RightParen, true))
+	{
+	    return 0;
+	}
+    }
+    if (size == 0)
+    {
+	return 0;
     }
     return new Types::StringDecl(size);
 }
@@ -2865,6 +2882,7 @@ ExprAST* Parser::ParseUses()
 	else
 	{
 	    /* TODO: Loop over commaseparated list */
+	    strlower(unitname);
 	    Parser p(unitname + ".pas");
 	    ExprAST* e = p.Parse(Unit);
 	    if (!Expect(Token::Semicolon, true))

@@ -3,6 +3,7 @@
 
 #include "options.h"
 #include "namedobject.h"
+#include "utils.h"
 #include <deque>
 #include <map>
 #include <string>
@@ -62,7 +63,7 @@ public:
     {
 	if (caseInsensitive)
 	{
-	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	    strlower(name);
 	}
 	MapIter it = stack.back().find(name);
 	if (it == stack.back().end())
@@ -86,7 +87,7 @@ public:
 	}
 	if (caseInsensitive)
 	{
-	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	    strlower(name);
 	}
 	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
 	{
@@ -119,7 +120,7 @@ public:
     {
 	if (caseInsensitive)
 	{
-	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	    strlower(name);
 	}
 	MapIter it = stack.back().find(name);
 	if (it != stack.back().end())
@@ -133,7 +134,7 @@ public:
     {
 	if (caseInsensitive)
 	{
-	    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	    strlower(name);
 	}
 	MapIter it = stack.front().find(name);
 	if (it != stack.front().end())

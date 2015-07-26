@@ -1,4 +1,5 @@
 #include "token.h"
+#include "utils.h"
 #include <cassert>
 #include <sstream>
 #include <iostream>
@@ -223,7 +224,7 @@ static const TokenEntry* FindToken(std::string kw)
     /* Don't "tolower" the keyword if it starts with __ */
     if (kw.substr(0,2) != "__")
     {
-	std::transform(kw.begin(), kw.end(), kw.begin(), ::tolower);
+	strlower(kw);
     }
     for(auto &i : tokenTable)
     {

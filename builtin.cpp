@@ -1003,7 +1003,7 @@ namespace Builtin
 
     bool IsBuiltin(std::string name)
     {
-	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	strlower(name);
 	return BIFMap.find(name) != BIFMap.end();
     }
 

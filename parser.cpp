@@ -2098,23 +2098,36 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 
 ExprAST* Parser::ParseStatement()
 {
-    if (ExprAST* expr = ParsePrimary())
+    switch(CurrentToken().GetToken())
     {
-	if (AcceptToken(Token::Assign))
+    case Token::Begin:
+	return ParseBlock();
+
+    case Token::Semicolon:
+    case Token::End:
+	// Empty block.
+	return new BlockAST(CurrentToken().Loc(), { });
+
+    default:
+	if (ExprAST* expr = ParsePrimary())
 	{
-	    Location loc = CurrentToken().Loc();
-	    ExprAST* rhs = ParseExpression();
-	    if (rhs)
+	    if (AcceptToken(Token::Assign))
 	    {
-		expr = new AssignExprAST(loc, expr, rhs);
+		Location loc = CurrentToken().Loc();
+		ExprAST* rhs = ParseExpression();
+		if (rhs)
+		{
+		    expr = new AssignExprAST(loc, expr, rhs);
+		}
+		else
+		{
+		    // TODO: Error recovery.
+		    return 0;
+		}
 	    }
-	    else
-	    {
-		// TODO: Error recovery.
-		return 0;
-	    }
+	    return expr;
 	}
-	return expr;
+	break;
     }
     // TODO: Error recovery.
     return 0;
@@ -2292,23 +2305,6 @@ FunctionAST* Parser::ParseDefinition(int level)
     return 0;
 }
 
-ExprAST* Parser::ParseStmtOrBlock()
-{
-    switch(CurrentToken().GetToken())
-    {
-    case Token::Begin:
-	return ParseBlock();
-
-    case Token::Semicolon:
-    case Token::End:
-	// Empty block.
-	return new BlockAST(CurrentToken().Loc(), { });
-
-    default:
-	return ParseStatement();
-    }
-}
-
 ExprAST* Parser::ParseIfExpr()
 {
     TRACE();
@@ -2323,7 +2319,7 @@ ExprAST* Parser::ParseIfExpr()
     ExprAST* then = 0;
     if (CurrentToken().GetToken() != Token::Else)
     {
-	then = ParseStmtOrBlock();
+	then = ParseStatement();
 	if (!then)
 	{
 	    return 0;
@@ -2333,7 +2329,7 @@ ExprAST* Parser::ParseIfExpr()
     ExprAST* elseExpr = 0;
     if (AcceptToken(Token::Else))
     {
-	if (!(elseExpr = ParseStmtOrBlock()))
+	if (!(elseExpr = ParseStatement()))
 	{
 	    return 0;
 	}
@@ -2377,7 +2373,7 @@ ExprAST* Parser::ParseForExpr()
     {
 	return 0;
     }
-    if (ExprAST* body = ParseStmtOrBlock())
+    if (ExprAST* body = ParseStatement())
     {
 	return new ForExprAST(loc, varName, start, end, down, body);
     }
@@ -2395,7 +2391,7 @@ ExprAST* Parser::ParseWhile()
 	return 0;
     }
 
-    return new WhileExprAST(loc, cond, ParseStmtOrBlock());
+    return new WhileExprAST(loc, cond, ParseStatement());
 }
 
 ExprAST* Parser::ParseRepeat()
@@ -2501,7 +2497,7 @@ ExprAST* Parser::ParseCaseExpr()
 	{
 	    NextToken();
 	    Location locColon = CurrentToken().Loc();
-	    ExprAST* s = ParseStmtOrBlock();
+	    ExprAST* s = ParseStatement();
 	    if (isOtherwise)
 	    {
 		otherwise = s;
@@ -2612,7 +2608,7 @@ ExprAST* Parser::ParseWithBlock()
 	    return Error("Type for with statement should be a record type");
 	}
     }
-    ExprAST* body = ParseStmtOrBlock();
+    ExprAST* body = ParseStatement();
     return new WithExprAST(loc, body);
 }
 

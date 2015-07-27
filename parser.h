@@ -61,7 +61,6 @@ private:
 
     // Statements, blocks and calls
     ExprAST*      ParseStatement();
-    ExprAST*      ParseStmtOrBlock();
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock();
     FunctionAST*  ParseDefinition(int level);

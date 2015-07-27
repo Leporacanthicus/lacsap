@@ -42,6 +42,8 @@ Bug5:
 Date: 17-Jun-2015
 
 dhry.pas doesn't compile. 
+
+Fixed in : Unknown [works in 949a2971204dc999863ced0c206627217f7686d2]
 ----------------------------------------------------------------
 Bug6:
 Date: 17-Jun-2015

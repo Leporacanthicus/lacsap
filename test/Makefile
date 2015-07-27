@@ -14,16 +14,10 @@ SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 testrunner: ${OBJECTS}
 	${LD} ${LDFLAGS} -o $@ ${OBJECTS}
 
-libruntime.a: ../libruntime.a
-	cp $< .
-
-libruntime-m32.a: ../libruntime-m32.a
-	cp $< .
-
-fulltests: testrunner libruntime.a libruntime-m32.a
+fulltests: testrunner
 	./testrunner
 
-fasttests: testrunner libruntime.a
+fasttests: testrunner
 	./testrunner -O1
 
 clean:

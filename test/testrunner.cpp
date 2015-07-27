@@ -326,8 +326,10 @@ struct
     { 0,           "Basic", "GPC t12",       "t12.pas",         "" },
     { 0,           "Basic", "GPC t14",       "t14.pas",         "" },
     /* Uses variant label not compatible with FPC */
-    { LACSAP_ONLY, "Basic", "GPC varrec1",   "varrec1.pas",     "" }
-,
+    { LACSAP_ONLY, "Basic", "GPC varrec1",   "varrec1.pas",     "" },
+    { 0,           "Basic", "GPC Transpose", "transpose.pas",   "" },
+    { 0,           "Basic", "Double Begin",  "doublebegin.pas", "" },
+
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },

@@ -2130,6 +2130,8 @@ BlockAST* Parser::ParseBlock()
     Location loc = CurrentToken().Loc();
     while(!AcceptToken(Token::End))
     {
+	/* Superfluous semicolons are discarded here */
+	AcceptToken(Token::Semicolon);
 	if (CurrentToken().GetToken() == Token::Integer &&
 	    PeekToken().GetToken() == Token::Colon)
 	{
@@ -2981,7 +2983,6 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    {
 		for(auto i : ua->Interface().List())
 		{
-		    // std::cout << "Adding to global: name at outer level:" << i.first << std::endl;
 		    if (!nameStack.Add(i.first, i.second))
 		    {
 			return 0;
@@ -3025,7 +3026,6 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    }
 	    for(auto i : interfaceList.List())
 	    {
-//		std::cout << "Adding to global within unit: name:" << i.first << std::endl;
 		if (!nameStack.Add(i.first, i.second))
 		{
 		    return 0;

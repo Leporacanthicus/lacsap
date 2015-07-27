@@ -82,3 +82,9 @@ int64 which doesn't provide a "range".
 
 Fix in: e220ebee2f0c5ae3e5b0755c269700e3e2d5de31
 ----------------------------------------------------------------
+Bug10:
+Date: 26-Jul-2015
+
+Runtime library should be searched for in "compiler binary directory" and not
+have to be copied to the directory where the compiler runs.
+----------------------------------------------------------------

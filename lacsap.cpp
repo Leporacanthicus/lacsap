@@ -18,6 +18,7 @@
 
 llvm::legacy::PassManager* mpm;
 llvm::Module* theModule;
+std::string libpath;
 
 int      verbosity;
 bool     timetrace;
@@ -153,8 +154,18 @@ static int Compile(const std::string& filename)
     return 0;
 }
 
+static void FindLibPath(const char* exename)
+{
+    char path[PATH_MAX];
+    std::string compiler = realpath(exename, path) ;
+    std::string::size_type pos = compiler.find_last_of("/");
+    libpath = compiler.substr(0, pos);
+}
+
+
 int main(int argc, char** argv)
 {
+    FindLibPath(argv[0]);
     llvm::cl::ParseCommandLineOptions(argc, argv);
     int res = Compile(InputFilename);
     return res;

@@ -87,4 +87,6 @@ Date: 26-Jul-2015
 
 Runtime library should be searched for in "compiler binary directory" and not
 have to be copied to the directory where the compiler runs.
+
+Fix in: 5ecdd2e11ce0032046d573e719f08bd46a020569
 ----------------------------------------------------------------

@@ -58,6 +58,11 @@ ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
     }
     std::cerr << "Error: " << msg << std::endl;
     errCnt++;
+    if (errCnt > 256)
+    {
+	std::cerr << "Too many errors, quitting..." << std::endl;
+	exit(1);
+    }
     return 0;
 }
 

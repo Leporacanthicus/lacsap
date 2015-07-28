@@ -1970,6 +1970,9 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	   "Expected function or procedure token");
 
     bool isFunction = CurrentToken().GetToken() == Token::Function;
+    PrototypeAST* fwdProto = 0;
+    Types::ClassDecl* od = 0;
+    Types::MemberFuncDecl* membfunc = 0;
 
     // Consume "function" or "procedure"
     NextToken();
@@ -1984,42 +1987,56 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	// Get function name.
 	funcName = CurrentToken().GetIdentName();
 	AssertToken(Token::Identifier);
-    }
 
-    Types::ClassDecl* od = 0;
-    Types::MemberFuncDecl* membfunc = 0;
-    // Is it a member function?
-    // FIXME: Nested classes, should we do this again?
-    if (AcceptToken(Token::Period))
-    {
-	if (Types::TypeDecl* ty = GetTypeDecl(funcName))
+	// Is it a member function?
+	// FIXME: Nested classes, should we do this again?
+	if (AcceptToken(Token::Period))
 	{
-	    if ((od = llvm::dyn_cast<Types::ClassDecl>(ty)))
+	    if (Types::TypeDecl* ty = GetTypeDecl(funcName))
 	    {
-		if (!Expect(Token::Identifier, false))
+		if ((od = llvm::dyn_cast<Types::ClassDecl>(ty)))
 		{
-		    return 0;
-		}
-		std::string m = CurrentToken().GetIdentName();
-		AssertToken(Token::Identifier);
-		int elem;
+		    if (!Expect(Token::Identifier, false))
+		    {
+			return 0;
+		    }
+		    std::string m = CurrentToken().GetIdentName();
+		    AssertToken(Token::Identifier);
+		    int elem;
 
-		if ((elem = od->MembFunc(m)) >= 0)
-		{
-		    membfunc = od->GetMembFunc(elem);
+		    if ((elem = od->MembFunc(m)) >= 0)
+		    {
+			membfunc = od->GetMembFunc(elem);
+		    }
+		    if (!membfunc)
+		    {
+			return ErrorP("Member function '" + m + "' not found in '"  + funcName + "'.");
+		    }
+		    funcName = membfunc->LongName();
 		}
-		if (!membfunc)
-		{
-		    return ErrorP("Member function '" + m + "' not found in '"  + funcName + "'.");
-		}
-		funcName = membfunc->LongName();
+	    }
+	    if (!od)
+	    {
+		return ErrorP("Expected object name");
 	    }
 	}
-	if (!od)
+	// See if it's a "forward declaration"?
+	if (const NamedObject* def = nameStack.Find(funcName))
 	{
-	    return ErrorP("Expected object name");
+	    const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
+	    if (fnDef && fnDef->Proto() && fnDef->Proto()->IsForward())
+	    {
+		fwdProto = fnDef->Proto();
+		fwdProto->SetIsForward(false);
+		// If this is a semicolon, then return current prototype, and be done with it.
+		if (CurrentToken().GetToken() == Token::Semicolon)
+		{
+		    return fwdProto;
+		}
+	    }
 	}
     }
+
     std::vector<VarDef> args;
     if (AcceptToken(Token::LeftParen))
     {
@@ -2103,6 +2120,16 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     else
     {
 	resultType = Types::GetVoidType();
+    }
+
+    if (fwdProto)
+    {
+	if (*resultType != *fwdProto->Type())
+	{
+	    return ErrorP("Forward declared function should have same return type as definition");
+	}
+	// Todo: Check argument types...
+	return fwdProto;
     }
 
     PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
@@ -2205,7 +2232,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::string shortname;
-    if (!(fnDef && fnDef->Proto() && fnDef->Proto()->IsForward()))
+    if (!(fnDef && fnDef->Proto() && fnDef->Proto() == proto))
     {
 	shortname = ShortName(name);
 	if (Types::ClassDecl* cd = proto->BaseObj())
@@ -2219,6 +2246,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 	else
 	{
+	    shortname = "";
 	    nmObj = new FuncDef(name, ty, proto);
 	}
 	if (!nameStack.Add(name, nmObj))
@@ -2304,6 +2332,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 
 	    FunctionAST* fn = new FunctionAST(loc, proto, varDecls, body);
+	    if (!proto->Function())
+	    {
+		proto->SetFunction(fn);
+	    }
 	    for(auto s : subFunctions)
 	    {
 		s->SetParent(fn);

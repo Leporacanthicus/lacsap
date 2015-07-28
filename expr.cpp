@@ -1481,7 +1481,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     {
 	return 0;
     }
-    if (proto->IsForward())
+    if (!body)
     {
 	return theFunction;
     }

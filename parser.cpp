@@ -3113,6 +3113,7 @@ Parser::Parser(const std::string& fn)
 	  AddType("boolean", ty) &&
 	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&
 	  nameStack.Add("true", new EnumDef("true", 1, ty)) &&
+	  AddConst("maxint", new Constants::IntConstDecl(Location("", 0, 0), INT_MAX)) &&
 	  AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
     {
 	assert(0 && "Failed to add builtin constants");

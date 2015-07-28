@@ -744,8 +744,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
     llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
-    llvm::Type* pty = llvm::PointerType::getUnqual(lhs->Type()->LlvmType());
-    llvm::Constant* f = GetFunction(resTy, { pty, pty }, "__Str" + name);
+    llvm::Constant* f = GetFunction(resTy, { lV->getType(), rV->getType() }, "__Str" + name);
 
     return builder.CreateCall(f, { lV, rV }, twine);
 }
@@ -931,7 +930,6 @@ llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
 	return ErrorV("Invalid operand for char arrays");
     }
 }
-
 
 llvm::Value* BinaryExprAST::CodeGen()
 {
@@ -3169,4 +3167,3 @@ void BackPatch()
     }
     BuildUnitInitList();
 }
-

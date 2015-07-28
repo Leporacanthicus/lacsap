@@ -97,7 +97,7 @@ Token Lexer::NumberToken()
 	    
 	case Fraction:
 	    assert(ch == '.' && "Fraction should start with '.'");
-	    if (PeekChar() == '.')
+	    if (PeekChar() == '.' || PeekChar() == ')')
 	    {
 		break;
 	    }
@@ -248,6 +248,11 @@ Token Lexer::GetToken()
 	    NextChar();
 	    tt = Token::DotDot;
 	}
+	else if (PeekChar() == ')')
+	{
+	    NextChar();
+	    tt = Token::RightSquare;
+	}
 	break;
 
     case '<':
@@ -281,6 +286,14 @@ Token Lexer::GetToken()
 	{
 	    NextChar();
 	    tt = Token::Assign;
+	}
+	break;
+    case '(':
+	if (PeekChar() == '.')
+	{
+
+	    NextChar();
+	    tt = Token::LeftSquare;
 	}
 	break;
     }

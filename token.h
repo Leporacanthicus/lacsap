@@ -123,6 +123,7 @@ public:
 	Label,
 	Goto,
 	Uses,
+	At,
 
 	// Specials
 	LineNumber,

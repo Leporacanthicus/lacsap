@@ -311,6 +311,13 @@ Token Parser::TranslateToken(const Token& token)
 
 int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 {
+    bool negative = false;
+    if (CurrentToken().GetToken() == Token::Minus)
+    {
+	negative = true;
+	NextToken();
+    }
+
     Token token = TranslateToken(CurrentToken());
 
     if (tt != Token::Unknown && token.GetToken() != tt)
@@ -355,6 +362,14 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	return ErrorI("Invalid constant value, expected char, integer or enum value");
     }
     NextToken();
+    if (negative)
+    {
+	if (tt != Token::Integer)
+	{
+	    return ErrorI("Invalid negative constant");
+	}
+	result = -result;
+    }
     return result;
 }
 
@@ -732,7 +747,9 @@ Types::EnumDecl* Parser::ParseEnumDef()
 
 Types::PointerDecl* Parser::ParsePointerType()
 {
-    AssertToken(Token::Uparrow);
+    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At)
+	   && "Expected @ or ^ token...");
+    NextToken();
     // If the name is an "identifier" then it's a name of a not yet declared type.
     // We need to forward declare it, and backpatch later.
     if (CurrentToken().GetToken() == Token::Identifier)
@@ -820,44 +837,42 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	do
 	{
 	    std::vector<std::string> names;
-	    do
+	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
-		// TODO: Fix up to reduce duplication of this code. It's in several places now.
-		if (!Expect(Token::Identifier, false))
+		do
 		{
-		    return 0;
-		}
-		names.push_back(CurrentToken().GetIdentName());
-		AssertToken(Token::Identifier);
-		if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
-		{
-			return 0;
-		}
-	    } while(!AcceptToken(Token::Colon));
-	    if (Types::TypeDecl* ty = ParseType(""))
-	    {
-		for(auto n : names)
-		{
-		    for(auto f : fields)
+		    if (!Expect(Token::Identifier, false))
 		    {
-			if (n == f->Name())
-			{
-			    return reinterpret_cast<Types::VariantDecl*>
-				(Error("Duplicate field name '" + n + "' in record"));
-			}
+			return 0;
 		    }
-		    // Variants can't be static, can they?
-		    fields.push_back(new Types::FieldDecl(n, ty, false));
+		    names.push_back(CurrentToken().GetIdentName());
+		    AssertToken(Token::Identifier);
+		    if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
+		    {
+			return 0;
+		    }
+		} while(!AcceptToken(Token::Colon));
+		if (Types::TypeDecl* ty = ParseType(""))
+		{
+		    for(auto n : names)
+		    {
+			for(auto f : fields)
+			{
+			    if (n == f->Name())
+			    {
+				return reinterpret_cast<Types::VariantDecl*>
+				    (Error("Duplicate field name '" + n + "' in record"));
+			    }
+			}
+			// Variants can't be static, can they?
+			fields.push_back(new Types::FieldDecl(n, ty, false));
+		    }
 		}
 		if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Semicolon, true))
 		{
 		    TRACE();
 		    return 0;
 		}
-	    }
-	    else
-	    {
-		return 0;
 	    }
 	} while(!AcceptToken(Token::RightParen));
 	if (!ExpectSemicolonOrEnd())
@@ -1196,9 +1211,9 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
     if (tt == Token::Packed)
     {
 	tt = NextToken().GetToken();
-	if (tt != Token::Array && tt != Token::Record)
+	if (tt != Token::Array && tt != Token::Record && tt != Token::Set && tt != Token::File)
 	{
-	    return ErrorT("Expected 'array' or 'record' after 'packed'");
+	    return ErrorT("Expected 'array', 'record', 'file' or 'set' after 'packed'");
 	}
     }
 
@@ -1217,6 +1232,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
     // Fall through:
     case Token::Integer:
     case Token::Char:
+    case Token::Minus:
     {
 	Types::TypeDecl*  type = NULL;
 	if (Types::RangeDecl* r = ParseRange(type))
@@ -1245,6 +1261,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 	return ParseEnumDef();
 
     case Token::Uparrow:
+    case Token::At:
 	return ParsePointerType();
 
     case Token::String:
@@ -1612,7 +1629,9 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    AssertToken(Token::Uparrow);
+    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) 
+	   && "Expected @ or ^ token...");
+    NextToken();  
     if (type->Type() == Types::TypeDecl::TK_File)
     {
 	type = type->SubType();
@@ -1785,7 +1804,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 	    assert(type && "Type is supposed to be set here");
 
 	    Token::TokenType tt = CurrentToken().GetToken();
-	    while(tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::Period)
+	    while(tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::At || tt == Token::Period)
 	    {
 		assert(type && "Expect to have a type here...");
 		switch(tt)
@@ -1795,6 +1814,7 @@ ExprAST* Parser::ParseIdentifierExpr()
 		    break;
 
 		case Token::Uparrow:
+		case Token::At:
 		    expr = ParsePointerExpr(expr, type);
 		    break;
 

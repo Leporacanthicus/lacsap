@@ -202,6 +202,7 @@ static const SingleCharToken singleCharTokenTable[] =
     { '[', Token::LeftSquare },
     { ']', Token::RightSquare },
     { '^', Token::Uparrow },
+    { '@', Token::At },
 };
 
 Token Lexer::GetToken()

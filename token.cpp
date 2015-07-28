@@ -198,6 +198,7 @@ const TokenEntry tokenTable[] =
     { Token::Label,         true,  -1, "label" },
     { Token::Goto,          true,  -1, "goto" },
     { Token::Uses,          true,  -1, "uses" },
+    { Token::At,            false, -1, "@" },
     { Token::LineNumber,    true,  -1, "__LINE__" },
     { Token::FileName,      true,  -1, "__FILE__" },
     { Token::SizeOf,        true,  -1, "sizeof" },

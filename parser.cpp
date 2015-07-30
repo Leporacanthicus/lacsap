@@ -680,7 +680,7 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	if (Types::TypeDecl* ty = ParseType(nm))
+	if (Types::TypeDecl* ty = ParseType(nm, true))
 	{
 	    if (!AddType(nm,  ty))
 	    {
@@ -706,7 +706,7 @@ void Parser::ParseTypeDef()
     // Now fix up any incomplete types...
     for(auto p : incomplete)
     {
-	if (Types::TypeDecl *ty = GetTypeDecl(p->Name()))
+	if (Types::TypeDecl* ty = GetTypeDecl(p->Name()))
 	{
 	    p->SetSubType(ty);
 	}
@@ -750,7 +750,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
     return ty;
 }
 
-Types::PointerDecl* Parser::ParsePointerType()
+Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 {
     assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At)
 	   && "Expected @ or ^ token...");
@@ -760,17 +760,25 @@ Types::PointerDecl* Parser::ParsePointerType()
     if (CurrentToken().GetToken() == Token::Identifier)
     {
 	std::string name = CurrentToken().GetIdentName();
-	// Is it a known type?
 	AssertToken(Token::Identifier);
-	if (Types::TypeDecl* ty = GetTypeDecl(name))
+	if (!maybeForwarded)
 	{
-	    return new Types::PointerDecl(ty);	
+	    // Is it a known type?
+	    if (Types::TypeDecl* ty = GetTypeDecl(name))
+	    {
+		return new Types::PointerDecl(ty);	
+	    }
+	    else
+	    {
+		return reinterpret_cast<Types::PointerDecl*>
+		    (ErrorI("Unknown type '" + name + "' in pointer declaration"));
+	    }
 	}
 	// Otherwise, forward declare...
 	return new Types::PointerDecl(name);
     }
 
-    return new Types::PointerDecl(ParseType(""));
+    return new Types::PointerDecl(ParseType("", false));
 }
 
 Types::ArrayDecl* Parser::ParseArrayDecl()
@@ -799,7 +807,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     {
 	return 0;
     }
-    if (Types::TypeDecl* ty = ParseType(""))
+    if (Types::TypeDecl* ty = ParseType("", false))
     {
 	return new Types::ArrayDecl(ty, rv);
     }
@@ -857,7 +865,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 			return 0;
 		    }
 		} while(!AcceptToken(Token::Colon));
-		if (Types::TypeDecl* ty = ParseType(""))
+		if (Types::TypeDecl* ty = ParseType("", false))
 		{
 		    for(auto n : names)
 		    {
@@ -932,7 +940,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		AssertToken(Token::Identifier);
 		AssertToken(Token::Colon);
 	    }
-	    markerTy = ParseType("");
+	    markerTy = ParseType("", false);
 	    if (!markerTy->isIntegral())
 	    {
 		return (bool)Error("Expect variant selector to be integral type");
@@ -1011,7 +1019,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		    }
 		} while(!AcceptToken(Token::Colon));
 		assert(names.size() != 0 && "Should have some names here...");
-		if (Types::TypeDecl* ty = ParseType(""))
+		if (Types::TypeDecl* ty = ParseType("", false))
 		{
 		    for(auto n : names)
 		    {
@@ -1072,7 +1080,7 @@ Types::FileDecl* Parser::ParseFileDecl()
 	return 0;
     }
 
-    if (Types::TypeDecl* type = ParseType(""))
+    if (Types::TypeDecl* type = ParseType("", false))
     {
 	return new Types::FileDecl(type);
     }
@@ -1209,7 +1217,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
     return cd;
 }
 
-Types::TypeDecl* Parser::ParseType(const std::string& name)
+Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 {
     TRACE();
     Token::TokenType tt = CurrentToken().GetToken();
@@ -1267,7 +1275,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name)
 
     case Token::Uparrow:
     case Token::At:
-	return ParsePointerType();
+	return ParsePointerType(maybeForwarded);
 
     case Token::String:
 	return ParseStringDecl();
@@ -1958,7 +1966,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	AssertToken(Token::Identifier);
 	if (AcceptToken( Token::Colon))
 	{
-	    if (Types::TypeDecl* type = ParseType(""))
+	    if (Types::TypeDecl* type = ParseType("", false))
 	    {
 		for(auto n : names)
 		{
@@ -2107,7 +2115,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		names.push_back(arg);
 		if (AcceptToken(Token::Colon))
 		{
-		    if (Types::TypeDecl* type = ParseType(""))
+		    if (Types::TypeDecl* type = ParseType("", false))
 		    {
 			for(auto n : names)
 			{

@@ -1015,7 +1015,7 @@ namespace Types
 	}
 	if (const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty))
 	{
-	    return proto == fty->proto;
+	    return *proto == *fty->proto;
 	}
 	return false;
     }
@@ -1158,7 +1158,7 @@ namespace Types
 
 	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
 	{
-	    if (*range != *sty->range)
+	    if (!sty->range || *range != *sty->range)
 	    {
 		return false;
 	    }

@@ -99,7 +99,7 @@ private:
     Types::StringDecl*  ParseStringDecl();
     Types::VariantDecl* ParseVariantDecl(Types::TypeDecl*& type);
     int                 ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
-    bool                ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args);
+    bool                ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
 
     // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

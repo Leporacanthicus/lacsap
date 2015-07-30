@@ -428,6 +428,7 @@ public:
     void AddExtraArgsLast(const std::vector<VarDef>& extra);
     void AddExtraArgsFirst(const std::vector<VarDef>& extra);
     Types::ClassDecl* BaseObj() const { return baseobj; }
+    bool operator==(const PrototypeAST& rhs) const;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
 private:
     std::string         name;

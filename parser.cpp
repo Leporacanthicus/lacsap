@@ -1434,9 +1434,17 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    type = adecl->SubType();
 	    adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
 	}
-	if (CurrentToken().GetToken() != Token::RightSquare && (!Expect(Token::Comma, true) || !adecl))
+	if (CurrentToken().GetToken() == Token::RightSquare && PeekToken().GetToken() == Token::LeftSquare)
 	{
-	    return 0;
+	    AssertToken(Token::RightSquare);
+	    AssertToken(Token::LeftSquare);
+	}
+	else if (!AcceptToken(Token::Comma))
+	{
+	    if (CurrentToken().GetToken() != Token::RightSquare && !adecl)
+	    {
+		return 0;
+	    }
 	}
     }
     if (indices.size())
@@ -1447,9 +1455,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     return expr;
 }
 
-ExprAST* Parser::MakeCallExpr(VariableExprAST* self,
-			      NamedObject* def,
-			      const std::string& funcName,
+ExprAST* Parser::MakeCallExpr(VariableExprAST* self, NamedObject* def, const std::string& funcName,
 			      std::vector<ExprAST*>& args)
 {
     TRACE();
@@ -1557,11 +1563,10 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 		Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
 		NamedObject* def = nameStack.Find(membfunc->LongName());
 
-		const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def);
 		std::vector<ExprAST* > args;
 		NextToken();
 
-		if (!ParseArgs(funcDef, args))
+		if (!ParseArgs(def, args))
 		{
 		    return 0;
 		}
@@ -1671,20 +1676,31 @@ bool Parser::IsCall(const NamedObject* def)
     return false;
 }
 
-bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
+bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 {
     TRACE();
 
     if (AcceptToken(Token::LeftParen))
     {
-	// Get past the '(' and fetch the next one.
 	unsigned argNo = 0;
+	const PrototypeAST* proto = 0;
+	if (const FuncDef* funcDef = llvm::dyn_cast_or_null<FuncDef>(def))
+	{
+	    proto = funcDef->Proto();
+	}
+	else if (const VarDef* varDef = llvm::dyn_cast_or_null<VarDef>(def))
+	{
+	    if (const Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(varDef->Type()))
+	    {
+		proto = fp->Proto();
+	    }
+	}
 	while (!AcceptToken(Token::RightParen))
 	{
 	    bool isFuncArg = false;
-	    if (funcDef && funcDef->Proto())
+	    if (proto)
 	    {
-		auto funcArgs = funcDef->Proto()->Args();
+		auto& funcArgs = proto->Args();
 		if (argNo >= funcArgs.size())
 		{
 		    return (bool)Error("Too many arguments");
@@ -1695,17 +1711,30 @@ bool Parser::ParseArgs(const FuncDef* funcDef, std::vector<ExprAST*>& args)
 		    isFuncArg = true;
 		}
 	    }
-	    ExprAST* arg;
+	    ExprAST* arg = 0;
 	    if (isFuncArg)
 	    {
-		if (!Expect(Token::Identifier, false))
+		Token token = CurrentToken();
+		std::string idName = token.GetIdentName();
+		AssertToken(Token::Identifier);
+		if (NamedObject* argDef = nameStack.Find(idName))
+		{
+		    if (llvm::isa<FuncDef>(argDef))
+		    {
+			arg = new FunctionExprAST(CurrentToken().Loc(), idName, proto->Args()[argNo].Type());
+		    }
+		    else if (VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
+		    {
+			if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
+			{
+			    arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
+			}
+		    }
+		}
+		if (!arg)
 		{
 		    return false;
 		}
-		arg = new FunctionExprAST(CurrentToken().Loc(),
-					  CurrentToken().GetIdentName(),
-					  funcDef->Proto()->Args()[argNo].Type());
-		NextToken();
 	    }
 	    else
 	    {
@@ -1847,7 +1876,7 @@ ExprAST* Parser::ParseIdentifierExpr()
     }
 
     std::vector<ExprAST* > args;
-    if (!ParseArgs(llvm::dyn_cast_or_null<const FuncDef>(def), args))
+    if (!ParseArgs(def, args))
     {
 	return 0;
     }

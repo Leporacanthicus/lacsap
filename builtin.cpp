@@ -298,6 +298,24 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class BuiltinFunctionPack : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionPack(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class BuiltinFunctionUnpack : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionUnpack(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class BuiltinFunctionFile : public BuiltinFunctionVoid
     {
     public:
@@ -655,6 +673,76 @@ namespace Builtin
 	llvm::Value* a = builder.CreateLoad(pA, "dec");
 	a = builder.CreateSub(a, MakeConstant(1, a->getType()), "dec");
 	return builder.CreateStore(a, pA);
+    }
+
+    // Pack(a, start, apacked);
+    bool BuiltinFunctionPack::Semantics()
+    {
+	if (args.size() != 3)
+	{
+	    return false;
+	}
+	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	Types::ArrayDecl* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
+	return  t0 && t2 && t0->SubType() == t2->SubType() &&
+	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
+	    args[1]->Type()->isIntegral() &&
+	    llvm::isa<VariableExprAST>(args[2]) && t2->Ranges().size() == 1;
+    }
+
+    llvm::Value* BuiltinFunctionPack::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
+	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[2]);
+
+	llvm::Value* start = args[1]->CodeGen();
+	Types::ArrayDecl* ty2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
+	if (ty2->Ranges()[0]->GetStart())
+	{
+	    start = builder.CreateSub(start, MakeConstant(ty2->Ranges()[0]->GetStart(), start->getType()));
+	}
+
+	llvm::Value* pA = var0->Address();
+	llvm::Value* pB = var2->Address();
+
+	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
+	llvm::Value *dest = builder.CreateGEP(pA, ind, "dest");
+	return builder.CreateMemCpy(dest, pB, ty2->Size(), 1);
+    }
+
+    // Unpack(apacked, a, start);
+    bool BuiltinFunctionUnpack::Semantics()
+    {
+	if (args.size() != 3)
+	{
+	    return false;
+	}
+	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	Types::ArrayDecl* t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
+	return t0 && t1 && t0->SubType() == t1->SubType() &&
+	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
+	    llvm::isa<VariableExprAST>(args[1]) && t1->Ranges().size() == 1 &&
+	    args[2]->Type()->isIntegral();
+    }
+
+    llvm::Value* BuiltinFunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[0]);
+	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[1]);
+
+	llvm::Value* start = args[2]->CodeGen();
+	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
+	if (ty0->Ranges()[0]->GetStart())
+	{
+	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(), start->getType()));
+	}
+
+	llvm::Value* pA = var1->Address();
+	llvm::Value* pB = var2->Address();
+
+	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
+	llvm::Value *dest = builder.CreateGEP(pB, ind, "dest");
+	return builder.CreateMemCpy(dest, pA, ty0->Size(), 1);
     }
 
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
@@ -1050,6 +1138,8 @@ namespace Builtin
 	AddBIFCreator("sign",       NEW(Sign));
 	AddBIFCreator("inc",        NEW(Inc));
 	AddBIFCreator("dec",        NEW(Dec));
+	AddBIFCreator("pack",       NEW(Pack));
+	AddBIFCreator("unpack",     NEW(Unpack));
 	AddBIFCreator("sqrt",       NEW2(FloatIntrinsic, "sqrt"));
 	AddBIFCreator("sin",        NEW2(FloatIntrinsic, "sin"));
 	AddBIFCreator("cos",        NEW2(FloatIntrinsic, "cos"));

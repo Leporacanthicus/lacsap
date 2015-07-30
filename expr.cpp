@@ -3,6 +3,7 @@
 #include "builtin.h"
 #include "options.h"
 #include "trace.h"
+#include "types.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/ADT/APSInt.h>
@@ -1433,6 +1434,31 @@ void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
 	newArgs.push_back(v);
     }
     args.swap(newArgs);
+}
+
+bool PrototypeAST::operator==(const PrototypeAST& rhs) const
+{
+    // Easy case: They are the same pointer!
+    if (&rhs == this)
+    {
+	return true;
+    }
+    // Can't be same if baseobj is different? Is this so?
+    // Or if args count is different
+    if (baseobj != rhs.baseobj || args.size() != rhs.args.size())
+    {
+	return false;
+    }
+    // Not equal if args are different types
+    for(size_t i = 0; i < args.size(); i++)
+    {
+	if (*args[i].Type() != *rhs.args[i].Type())
+	{
+	    return false;
+	}
+    }
+    // All done, must be equal.
+    return true;
 }
 
 FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v,

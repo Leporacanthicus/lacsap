@@ -1723,23 +1723,12 @@ llvm::Value* AssignExprAST::CodeGen()
 	}
     }
 
-    if (SetExprAST* rhsSet = llvm::dyn_cast<SetExprAST>(rhs))
+    if (llvm::Value* v = rhs->CodeGen())
     {
-	llvm::Value* v = rhsSet->CodeGen();
 	builder.CreateStore(v, dest);
 	return v;
     }
-
-    llvm::Value* v = rhs->CodeGen();
-
-    if (!v)
-    {
-	return ErrorV("Could not produce expression for assignment");
-    }
-
-    builder.CreateStore(v, dest);
-
-    return v;
+    return ErrorV("Could not produce expression for assignment");
 }
 
 void IfExprAST::DoDump(std::ostream& out) const

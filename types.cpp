@@ -1120,6 +1120,36 @@ namespace Types
 	out << "]";
     }
 
+    const TypeDecl* SetDecl::CompatibleType(const TypeDecl* ty) const
+    {
+	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
+	{
+	    if (*baseType != *sty->baseType)
+	    {
+		return 0;
+	    }
+	}
+	return ty;
+    }
+
+    bool SetDecl::SameAs(const TypeDecl* ty) const
+    {
+	if (!CompoundDecl::SameAs(ty))
+	{
+	    return false;
+	}
+
+	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
+	{
+	    if (!sty->range || *range != *sty->range)
+	    {
+		return false;
+	    }
+	    return true;
+	}
+	return false;
+    }
+
     const TypeDecl* StringDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (SameAs(ty) || ty->Type() == TK_Char)
@@ -1147,24 +1177,6 @@ namespace Types
 	    }
 	}
 	return 0;
-    }
-
-    bool SetDecl::SameAs(const TypeDecl* ty) const
-    {
-	if (!CompoundDecl::SameAs(ty))
-	{
-	    return false;
-	}
-
-	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
-	{
-	    if (!sty->range || *range != *sty->range)
-	    {
-		return false;
-	    }
-	    return true;
-	}
-	return false;
     }
 
 // Void pointer is not a "pointer to void", but a "pointer to Int8".

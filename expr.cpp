@@ -1672,6 +1672,26 @@ llvm::Value* AssignExprAST::AssignStr()
     return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType()->LlvmType(), "");
 }
 
+llvm::Value* AssignExprAST::AssignSet()
+{
+    if (*lhs->Type() == *rhs->Type())
+    {
+	if (llvm::Value* v = rhs->CodeGen())
+	{
+	    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+	    llvm::Value* dest = lhsv->Address();
+	    assert(dest && "Expected address from lhsv!");
+	    builder.CreateStore(v, dest);
+	    return v;
+	}
+	assert(0 && "Expected to succeed rhs->CodeGen");
+	return 0;
+    }
+
+    assert(0 && "Huh? This shouldn't happen (yet!)");
+    return 0;
+}
+
 llvm::Value* AssignExprAST::CodeGen()
 {
     TRACE();
@@ -1685,6 +1705,11 @@ llvm::Value* AssignExprAST::CodeGen()
     if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
     {
 	return AssignStr();
+    }
+
+    if (llvm::isa<Types::SetDecl>(lhsv->Type()))
+    {
+	return AssignSet();
     }
 
     if (llvm::isa<StringExprAST>(rhs) && lhs->Type()->Type() == Types::TypeDecl::TK_Array)

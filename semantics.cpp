@@ -336,14 +336,6 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	{
 	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(lty->SubType());
 	}
-	if (*lty->SubType() != *rty->SubType())
-	{
-	    Error(a, "Subtypes are different in assignment.");
-	}
-	else if (*lty->GetRange() != *rty->GetRange())
-	{
-	    Error(a, "Range mismatch for assignment");
-	}
     }
 
     // Note difference to binary expression: only allowed on rhs!

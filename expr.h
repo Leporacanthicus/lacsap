@@ -378,6 +378,7 @@ public:
     void accept(Visitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
 private:
     llvm::Value* AssignStr();
+    llvm::Value* AssignSet();
     ExprAST* lhs;
     ExprAST* rhs;
 };

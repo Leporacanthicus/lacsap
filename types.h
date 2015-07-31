@@ -536,6 +536,7 @@ namespace Types
 	void UpdateRange(RangeDecl* r) { range = r; }
 	void UpdateSubtype(TypeDecl* ty);
 	bool SameAs(const TypeDecl* ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
     private:
 	llvm::Type* GetLlvmType() const override;
     private:

@@ -1674,21 +1674,67 @@ llvm::Value* AssignExprAST::AssignStr()
 
 llvm::Value* AssignExprAST::AssignSet()
 {
-    if (*lhs->Type() == *rhs->Type())
+    if (llvm::Value* v = rhs->CodeGen())
     {
-	if (llvm::Value* v = rhs->CodeGen())
+	VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+	llvm::Value* dest = lhsv->Address();
+	if (*lhs->Type() == *rhs->Type())
 	{
-	    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
-	    llvm::Value* dest = lhsv->Address();
 	    assert(dest && "Expected address from lhsv!");
 	    builder.CreateStore(v, dest);
 	    return v;
 	}
-	assert(0 && "Expected to succeed rhs->CodeGen");
-	return 0;
-    }
+	else
+	{
+	    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
+	    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
+	    Types::Range* rrange = rty->GetRange();
+	    Types::Range* lrange = lty->GetRange();
 
-    assert(0 && "Huh? This shouldn't happen (yet!)");
+	    // First fill any words at the beginning.
+	    int ldiff = lrange->GetStart() - rrange->GetStart();
+	    int index = 0;
+	    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	    if (ldiff > 0)
+	    {
+		int lwords = ldiff >> Types::SetDecl::SetPow2Bits;
+		for(int i = 0; i < lwords; i++)
+		{
+		    ind[1] = MakeIntegerConstant(index);
+		    llvm::Value *desti = builder.CreateGEP(dest, ind);
+		    builder.CreateStore(MakeIntegerConstant(0), desti); 
+		    index++;
+		}
+	    }
+
+	    int end = std::min(lty->SetWords(), rty->SetWords());
+	    SetExprAST* setrhs = llvm::dyn_cast<SetExprAST>(rhs);
+	    llvm::Value* src = setrhs->Address();
+	    std::vector<llvm::Value*> srcind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	    for(int i = 0; i < end; i++)
+	    {
+		llvm::Value* w;
+		
+		if (i & Types::SetDecl::SetMask)
+		{
+		    srcind[1] = MakeIntegerConstant(i >> Types::SetDecl::SetPow2Bits);
+		    llvm::Value *srci = builder.CreateGEP(src, srcind);
+		    w = builder.CreateLoad(srci, "srci");
+		    w = builder.CreateShl(w, MakeIntegerConstant(i & Types::SetDecl::SetMask));
+		    if (i + Types::SetDecl::SetBits < end)
+		    {
+			srcind[1] = MakeIntegerConstant((i >> Types::SetDecl::SetPow2Bits)+1);
+			// llvm::Value *srci1 = builder.CreateGEP(src, srcind);
+			// llvm::Value* tmp = builder.CreateLoad(srci1, "srci");
+		    }
+		    ind[1] = MakeIntegerConstant(index);
+		    llvm::Value *desti = builder.CreateGEP(dest, ind);
+		    builder.CreateStore(w, desti);
+		}
+	    }
+	    return dest;
+	}
+    }
     return 0;
 }
 

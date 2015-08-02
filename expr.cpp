@@ -2470,7 +2470,12 @@ llvm::Value* VarDeclAST::CodeGen()
 	// Are we declaring global variables  - no function!
 	if (!func)
 	{
+	    if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
+	    {
+		fc->EnsureSized();
+	    }
 	    llvm::Type* ty = var.Type()->LlvmType();
+
 	    assert(ty && "Type should have a value");
 	    llvm::Constant* init;
 	    llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);

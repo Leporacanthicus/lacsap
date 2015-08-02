@@ -561,13 +561,16 @@ namespace Types
 	for(auto f : fields)
 	{
 	    llvm::Type* ty = f->LlvmType();
-	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->hasLlvmType())
+	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
 	    {
-		if (!opaqueType)
+		if (pf->IsIncomplete())
 		{
-		    opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		    if (!opaqueType)
+		    {
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		    }
+		    return opaqueType;
 		}
-		return opaqueType;
 	    }
 	    size_t sz = dl.getTypeAllocSize(ty);
 	    size_t al = dl.getPrefTypeAlignment(ty);
@@ -682,13 +685,16 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 	for(auto f : fields)
 	{
-	    if (llvm::isa<PointerDecl>(f->FieldType()) && !f->FieldType()->hasLlvmType())
+	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->FieldType()))
 	    {
-		if (!opaqueType)
+		if (pf->IsIncomplete() || !pf->hasLlvmType())
 		{
-		    opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		    if (!opaqueType)
+		    {
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+		    }
+		    return opaqueType;
 		}
-		return opaqueType;
 	    }
 	    fv.push_back(f->LlvmType());
 	}
@@ -700,6 +706,10 @@ namespace Types
 	{
 	    opaqueType->setBody(fv);
 	    return opaqueType;
+	}
+	if (fv.empty())
+	{
+	    fv.push_back(llvm::Type::getInt8Ty(llvm::getGlobalContext()));
 	}
 	return llvm::StructType::create(fv);
     }

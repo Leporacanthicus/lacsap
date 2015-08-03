@@ -49,6 +49,7 @@ namespace Types
 	}
 	return 0;
     }
+
     static const char* TypeToStr(TypeDecl::TypeKind t)
     {
 	switch(t)
@@ -296,8 +297,7 @@ namespace Types
 
     llvm::Type* PointerDecl::GetLlvmType() const
     {
-	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	return ty;
+	return llvm::PointerType::getUnqual(baseType->LlvmType());
     }
 
     void ArrayDecl::DoDump(std::ostream& out) const
@@ -373,7 +373,6 @@ namespace Types
 	}
 	return this;
     }
-
 
     bool SimpleCompoundDecl::classof(const TypeDecl* e)
     {
@@ -467,7 +466,6 @@ namespace Types
 	}
 	return b;
     }
-
 
     void EnumDecl::SetValues(const std::vector<std::string>& nmv)
     {
@@ -687,7 +685,7 @@ namespace Types
 	{
 	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->FieldType()))
 	    {
-		if (pf->IsIncomplete() || !pf->hasLlvmType())
+		if (pf->IsIncomplete() || !f->hasLlvmType())
 		{
 		    if (!opaqueType)
 		    {

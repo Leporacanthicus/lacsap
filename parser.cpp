@@ -3101,13 +3101,11 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	case Token::Type:
 	    ParseTypeDef();
-	    // Generates no AST, so need to "continue" here
-	    continue;
+	    break;
 
 	case Token::Const:
 	    ParseConstDef();
-	    // No AST from constdef, so continue.
-	    continue;
+	    break;
 
 	case Token::Interface:
 	    if (!ParseInterface(interfaceList))

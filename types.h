@@ -76,7 +76,7 @@ namespace Types
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 	llvm::Type* LlvmType() const;
-	bool hasLlvmType() { return ltype; }
+	virtual bool hasLlvmType() const = 0;
 	void dump(std::ostream& out) const { DoDump(out); }
 	void dump() const;
 	virtual void DoDump(std::ostream& out) const = 0;
@@ -110,6 +110,7 @@ namespace Types
 	bool isStringLike() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 8; }
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -123,6 +124,7 @@ namespace Types
 	unsigned Bits() const override { return 32; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -136,6 +138,7 @@ namespace Types
 	unsigned Bits() const override { return 64; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -148,6 +151,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 64; }
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -159,6 +163,7 @@ namespace Types
 	{
 	}
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return 0; }
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -171,6 +176,7 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isCompound() const override { return true; }
 	TypeDecl* SubType() const override { return baseType; }
+	bool hasLlvmType() const override { return baseType->hasLlvmType(); }
 	static bool classof(const TypeDecl* e);
     protected:
 	TypeDecl* baseType;
@@ -184,6 +190,7 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isIntegral() const override { return true; }
 	TypeKind Type() const override { return baseType; }
+	bool hasLlvmType() const override { return true; }
 	static bool classof(const TypeDecl* e);
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -309,6 +316,7 @@ namespace Types
 	bool IsIncomplete() const { return incomplete; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
+	bool hasLlvmType() const override { return baseType->hasLlvmType(); }
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
@@ -324,12 +332,11 @@ namespace Types
 	{
 	}
 	void DoDump(std::ostream& out) const override;
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override
-	{ return baseType->CompatibleType(ty); }
-	const TypeDecl* AssignableType(const TypeDecl *ty) const override 
-	{ return baseType->AssignableType(ty); }
+	const TypeDecl* CompatibleType(const TypeDecl *ty) const override { return baseType->CompatibleType(ty); }
+	const TypeDecl* AssignableType(const TypeDecl *ty) const override { return baseType->AssignableType(ty); }
+	bool hasLlvmType() const override { return false; }
     protected:
-	llvm::Type* GetLlvmType() const override { return NULL; }
+	llvm::Type* GetLlvmType() const override { return 0; }
     };
 
     class FieldDecl : public CompoundDecl
@@ -371,6 +378,7 @@ namespace Types
 	virtual int FieldCount() const { return fields.size(); }
 	bool isCompound() const override { return true; }
 	bool SameAs(const TypeDecl* ty) const override;
+	bool hasLlvmType() const override { return ltype; }
 	static bool classof(const TypeDecl* e)
 	{
 	    return e->getKind() == TK_Variant || e->getKind() == TK_Record || 
@@ -431,6 +439,7 @@ namespace Types
 	bool IsOverride() { return flags & Override; }
 	int VirtIndex() const { return index; }
 	void VirtIndex(int n) { index = n; }
+	bool hasLlvmType() const override { return false; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_MemberFunc; }
     protected:
 	// We don't actually have an LLVM type for member functions.
@@ -512,6 +521,7 @@ namespace Types
 	TextDecl()
 	    : FileDecl(new CharDecl) {}
 	void DoDump(std::ostream& out) const override;
+	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };
@@ -537,6 +547,7 @@ namespace Types
 	void UpdateSubtype(TypeDecl* ty);
 	bool SameAs(const TypeDecl* ty) const override;
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	bool hasLlvmType() const override { return true; }
     private:
 	llvm::Type* GetLlvmType() const override;
     private:
@@ -555,6 +566,7 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_String; }
 	bool isStringLike() const override { return true; }
 	void DoDump(std::ostream& out) const override;
+	bool hasLlvmType() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
     };
 

@@ -453,6 +453,7 @@ public:
     void SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 		     const Stack<NamedObject*>& nameStack);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
+    Types::TypeDecl* ClosureType();
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void accept(Visitor& v) override;
 private:
@@ -462,6 +463,7 @@ private:
     std::vector<FunctionAST*>  subFunctions;
     std::vector<VarDef>        usedVariables;
     FunctionAST*               parent;
+    Types::TypeDecl*           closureType;
 };
 
 class CallExprAST : public ExprAST

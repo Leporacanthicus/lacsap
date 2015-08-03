@@ -1463,7 +1463,7 @@ bool PrototypeAST::operator==(const PrototypeAST& rhs) const
 
 FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v,
 			 BlockAST* b)
-    : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0)
+    : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0), closureType(0)
 {
     assert((proto->IsForward() || body) && "Function should have body");
     if (!proto->IsForward())
@@ -1627,6 +1627,26 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	    }
 	}
     }
+}
+
+Types::TypeDecl* FunctionAST::ClosureType()
+{
+    if (usedVariables.empty())
+    {
+	return 0;
+    }
+    // Have we cached it? Return now!
+    if (closureType)
+    {
+	return closureType;
+    }
+    std::vector<Types::FieldDecl*> vf;
+    for(auto u : usedVariables)
+    {
+	vf.push_back(new Types::FieldDecl(u.Name(), new Types::PointerDecl(u.Type()), false));
+    }
+    closureType = new Types::RecordDecl(vf, 0);
+    return closureType;
 }
 
 void StringExprAST::DoDump(std::ostream& out) const

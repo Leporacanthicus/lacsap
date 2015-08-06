@@ -31,8 +31,7 @@ static void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
 	std::vector<VariableExprAST*> vf;
 	for(auto u : fn->UsedVars())
 	{
-	    VariableExprAST* v = new VariableExprAST(fn->Loc(), u.Name(), u.Type());
-	    vf.push_back(v);
+	    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
 	}
 	ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
 	args.insert(args.begin(), closure);
@@ -1739,9 +1738,9 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		AssertToken(Token::Identifier);
 		if (NamedObject* argDef = nameStack.Find(idName))
 		{
-		    if (llvm::isa<FuncDef>(argDef))
+		    if (FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 		    {
-			arg = new FunctionExprAST(CurrentToken().Loc(), idName, proto->Args()[argNo].Type());
+			arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());
 		    }
 		    else if (VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
 		    {
@@ -2280,7 +2279,6 @@ FunctionAST* Parser::ParseDefinition(int level)
     }
 
     std::string name = proto->Name();
-    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
     NamedObject* nmObj;
 
     const NamedObject* def = nameStack.Find(name);
@@ -2301,6 +2299,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	else
 	{
 	    shortname = "";
+	    Types::TypeDecl* ty = new Types::FunctionDecl(proto);
 	    nmObj = new FuncDef(name, ty, proto);
 	}
 	if (!nameStack.Add(name, nmObj))
@@ -2399,7 +2398,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack);
 	    if (Types::TypeDecl *closure = fn->ClosureType())
 	    {
-		proto->AddExtraArgsFirst({ VarDef(fn->ClosureName(), closure) } );
+		proto->AddExtraArgsFirst({ VarDef(fn->ClosureName(), closure) });
 	    }
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
@@ -3024,7 +3023,7 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    }
 	    proto->SetIsForward(true);
 	    std::string name = proto->Name();
-	    Types::TypeDecl* ty = new Types::FunctionDecl(proto->Type());
+	    Types::TypeDecl* ty = new Types::FunctionDecl(proto);
 	    FuncDef* nmObj = new FuncDef(name, ty, proto);
 	    if (!nameStack.Add(name, nmObj))
 	    {
@@ -3048,7 +3047,6 @@ bool Parser::ParseInterface(InterfaceList &iList)
     } while(CurrentToken().GetToken() != Token::Implementation);
     for(auto i : nameStack.GetLevel())
     {
-//	std::cout << "name:" << i->Name() << std::endl;
 	iList.Add(i->Name(), i);
     }
     return true;

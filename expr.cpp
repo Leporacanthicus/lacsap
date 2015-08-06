@@ -45,15 +45,17 @@ extern llvm::Module* theModule;
 class MangleMap
 {
 public:
-    MangleMap(const std::string& name)
-	: actualName(name) {}
+    MangleMap(const std::string& name, FunctionAST* fn)
+	: actualName(name), func(fn) {}
     void dump(std::ostream& out)
     {
 	out << "Name: " << actualName << std::endl;
     }
     const std::string& Name() { return actualName; }
+    const FunctionAST* Function() { return func; }
 private:
     std::string actualName;
+    FunctionAST* func;
 };
 
 class Label
@@ -1358,7 +1360,8 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 
     if (!mangles.FindTopLevel(name))
     {
-	if (!mangles.Add(name, new MangleMap(actualName)))
+	assert(Function() && "Expect there to ba function here");
+	if (!mangles.Add(name, new MangleMap(actualName, Function())))
 	{
 	    return ErrorF("Name " + name + " already in use?");
 	}
@@ -1440,7 +1443,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
 	if (!variables.Add(shortname, a))
 	{
-	    ErrorF("Duplicate function result name " +  shortname);
+	    ErrorF("Duplicate function result name '" + shortname + "'.");
 	}
     }
 }

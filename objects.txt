@@ -23,3 +23,6 @@ Object creation
 
 Improvements
   Move shortname calculation into a function. - Done
+
+Try this
+  Nested functions inside member functions

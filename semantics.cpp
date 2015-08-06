@@ -466,12 +466,12 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 		ExprAST* e = a;
 		a = new TypeCastAST(e->Loc(), e, ty);
 	    }
-	    idx++;
 	}
 	else
 	{
 	    Error(a, "Incompatible type");
 	}
+	idx++;
     }
 }
 

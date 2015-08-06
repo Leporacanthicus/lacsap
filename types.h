@@ -327,16 +327,18 @@ namespace Types
     class FunctionDecl : public CompoundDecl
     {
     public:
-	FunctionDecl(TypeDecl* resType) 
-	    : CompoundDecl(TK_Function, resType)
-	{
-	}
+	FunctionDecl(PrototypeAST* proto);
 	void DoDump(std::ostream& out) const override;
 	const TypeDecl* CompatibleType(const TypeDecl *ty) const override { return baseType->CompatibleType(ty); }
 	const TypeDecl* AssignableType(const TypeDecl *ty) const override { return baseType->AssignableType(ty); }
+	bool isCompound() const override { return false; }
 	bool hasLlvmType() const override { return false; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Function; }
+	PrototypeAST* Proto() const { return proto; }
     protected:
 	llvm::Type* GetLlvmType() const override { return 0; }
+    private:
+	PrototypeAST* proto;
     };
 
     class FieldDecl : public CompoundDecl

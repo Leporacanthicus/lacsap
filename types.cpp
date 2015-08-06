@@ -521,6 +521,10 @@ namespace Types
 	return b;
     }
 
+    FunctionDecl:: FunctionDecl(PrototypeAST* p)
+	: CompoundDecl(TK_Function, p->Type()), proto(p)
+    {
+    }
     void FunctionDecl::DoDump(std::ostream& out) const
     {
 	out << "Function " << baseType;
@@ -1017,13 +1021,17 @@ namespace Types
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
     {
-	if (ty->Type() != TK_FuncPtr)
+	if (ty->Type() == TK_FuncPtr)
 	{
-	    return false;
-	}
-	if (const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty))
-	{
+	    const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty);
+	    assert(fty && "Expect to convert to function pointer!");
 	    return *proto == *fty->proto;
+	}
+	if (ty->Type() == TK_Function)
+	{
+	    const FunctionDecl* fty = llvm::dyn_cast<FunctionDecl>(ty);
+	    assert(fty && "Expect to convert to function declaration");
+	    return *proto == *fty->Proto();
 	}
 	return false;
     }

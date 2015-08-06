@@ -1178,62 +1178,69 @@ llvm::Value* CallExprAST::CodeGen()
     {
 	llvm::Value* v = 0;
 
-	VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
-	if (vdef[index].IsRef())
+	if (ClosureAST* ca = llvm::dyn_cast<ClosureAST>(i))
 	{
-	    if (vi)
-	    {
-		v = vi->Address();
-	    }
-	    else
-	    {
-		TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
-		assert(tc && "Uhm - this should be a typecase expression!");
-
-		if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
-		{
-		    return ErrorV("Argument declared with 'var' must be a variable!");
-		}
-
-		if (!(v = tc->Address()))
-		{
-		    return 0;
-		}
-	    }
+	    v = ca->CodeGen();
 	}
 	else
 	{
-	    StringExprAST* sv = llvm::dyn_cast<StringExprAST>(i);
-	    if (llvm::isa<Types::StringDecl>(vdef[index].Type()) &&
-		sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
+	    VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
+	    if (vdef[index].IsRef())
 	    {
-		if (sv && sv->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
+		if (vi)
 		{
-		    v = CreateTempAlloca(vdef[index].Type());
-		    TempStringFromStringExpr(v, sv);
-		}
-	    }
-
-	    if (!v)
-	    {
-		if (i->Type()->isCompound())
-		{
-		    if (vi)
-		    {
-			v = LoadOrMemcpy(vi->Address(), vi->Type());
-		    }
-		    else
-		    {
-			v = CreateTempAlloca(i->Type());
-			builder.CreateStore(i->CodeGen(), v);
-		    }
-		    argAttr.push_back(std::make_pair(index+1, llvm::Attribute::ByVal));
+		    v = vi->Address();
 		}
 		else
 		{
-		    if (!(v = i->CodeGen()))
+		    TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
+		    assert(tc && "Uhm - this should be a typecast expression!");
+
+		    if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
+		    {
+			return ErrorV("Argument declared with 'var' must be a variable!");
+		    }
+
+		    if (!(v = tc->Address()))
 		    {
 			return 0;
+		    }
+		}
+	    }
+	    else
+	    {
+		StringExprAST* sv = llvm::dyn_cast<StringExprAST>(i);
+		if (llvm::isa<Types::StringDecl>(vdef[index].Type()) &&
+		    sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
+		{
+		    if (sv && sv->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
+		    {
+			v = CreateTempAlloca(vdef[index].Type());
+			TempStringFromStringExpr(v, sv);
+		    }
+		}
+
+		if (!v)
+		{
+		    if (i->Type()->isCompound())
+		    {
+			if (vi)
+			{
+			    v = LoadOrMemcpy(vi->Address(), vi->Type());
+			}
+			else
+			{
+			    v = CreateTempAlloca(i->Type());
+			    builder.CreateStore(i->CodeGen(), v);
+			}
+			argAttr.push_back(std::make_pair(index+1, llvm::Attribute::ByVal));
+		    }
+		    else
+		    {
+			if (!(v = i->CodeGen()))
+			{
+			    return 0;
+			}
 		    }
 		}
 	    }
@@ -1385,8 +1392,32 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 {
     TRACE();
 
-    unsigned idx = 0;
-    for(llvm::Function::arg_iterator ai = fn->arg_begin(); idx < args.size(); idx++, ai++)
+    unsigned offset = 0;
+    llvm::Function::arg_iterator ai = fn->arg_begin();
+    if (Types::TypeDecl* closureType = Function()->ClosureType())
+    {
+	assert(closureType == args[0].Type() && "Expect type to match here");
+	// Skip over the closure argument in the loop below.
+	offset = 1;
+
+	Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(closureType);
+	assert(rd && "Expected a record for closure type!");
+	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), 0 };
+	for(int i = 0; i < rd->FieldCount(); i++)
+	{
+	    const Types::FieldDecl* f = rd->GetElement(i);
+	    ind[1] = MakeIntegerConstant(i);
+	    llvm::Value* a = builder.CreateGEP(ai, ind, f->Name());
+	    a = builder.CreateLoad(a);
+	    if (!variables.Add(f->Name(), a))
+	    {
+		ErrorF("Duplicate variable name " + f->Name());
+	    }
+	}
+	// Now "done" with this argument, so skip to next.
+	ai++;
+    }
+    for(unsigned idx = offset; idx < args.size(); idx++, ai++)
     {
 	llvm::Value* a;
 	if (args[idx].IsRef() || args[idx].Type()->isCompound())
@@ -1409,7 +1440,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
 	if (!variables.Add(shortname, a))
 	{
-	    ErrorF("Duplicate function result name " + name);
+	    ErrorF("Duplicate function result name " +  shortname);
 	}
     }
 }
@@ -1643,7 +1674,8 @@ Types::TypeDecl* FunctionAST::ClosureType()
     std::vector<Types::FieldDecl*> vf;
     for(auto u : usedVariables)
     {
-	vf.push_back(new Types::FieldDecl(u.Name(), new Types::PointerDecl(u.Type()), false));
+	Types::TypeDecl* ty = new Types::PointerDecl(u.Type());
+	vf.push_back(new Types::FieldDecl(u.Name(), ty, false));
     }
     closureType = new Types::RecordDecl(vf, 0);
     return closureType;
@@ -3250,6 +3282,43 @@ llvm::Value* UnitAST::CodeGen()
     return v;
 }
 
+void ClosureAST::DoDump(std::ostream& out) const
+{
+    out << "Closure ";
+    for(auto c : content)
+    {
+	c->dump();
+    }
+    out << std::endl;
+}
+
+llvm::Value* ClosureAST::CodeGen()
+{
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), 0 };
+    llvm::Function* fn = builder.GetInsertBlock()->getParent();
+    llvm::Value* closure = CreateNamedAlloca(fn, type, "$$ClosureStruct");
+    int index = 0;
+    for(auto u : content)
+    {
+	llvm::Value* v;
+	v = u->Address();
+	ind[1] = MakeIntegerConstant(index);
+	llvm::Value* ptr = builder.CreateGEP(closure, ind, u->Name());
+	builder.CreateStore(v, ptr);
+	index++;
+    }
+    return closure;
+}
+
+void ClosureAST::Unpack()
+{
+    assert(0);
+}
+
+void ClosureAST::accept(Visitor& v)
+{
+}
+
 static void BuildUnitInitList()
 {
     std::vector<llvm::Constant*> unitList(unitInit.size()+1);
@@ -3278,3 +3347,4 @@ void BackPatch()
     }
     BuildUnitInitList();
 }
+

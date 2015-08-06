@@ -23,6 +23,25 @@ private:
     const PrototypeAST* proto;
 };
 
+
+static void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
+{
+    if (Types::TypeDecl* closureTy = fn->ClosureType())
+    {
+	std::vector<VariableExprAST*> vf;
+	for(auto u : fn->UsedVars())
+	{
+	    VariableExprAST* v = new VariableExprAST(fn->Loc(), u.Name(), u.Type());
+	    vf.push_back(v);
+	}
+	ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
+	args.insert(args.begin(), closure);
+    }
+}
+
+/* This is used to update internal calls within the nest of functions, where we need
+ * to pass variables from the outer scope to the inner scope
+ */
 void UpdateCallVisitor::visit(ExprAST* expr)
 {
     TRACE();
@@ -41,11 +60,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	    {
 		std::cerr << "Adding arguments for function" << std::endl;
 	    }
-	    auto& args = call->Args();
-	    for(auto u : proto->Function()->UsedVars())
-	    {
-		args.push_back(new VariableExprAST(call->Loc(), u.Name(), u.Type()));
-	    }
+	    AddClosureArg(proto->Function(), call->Args());
 	}
     }
 }
@@ -1521,10 +1536,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, NamedObject* def, const std
 	}
 	if (FunctionAST* fn = proto->Function())
 	{
-	    for(auto u : fn->UsedVars())
-	    {
-		args.push_back(new VariableExprAST(CurrentToken().Loc(), u.Name(), u.Type()));
-	    }
+	    AddClosureArg(fn, args);
 	}
 	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
     }
@@ -2385,7 +2397,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
 	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack);
-	    proto->AddExtraArgsLast(fn->UsedVars());
+	    if (Types::TypeDecl *closure = fn->ClosureType())
+	    {
+		proto->AddExtraArgsFirst({ VarDef(fn->ClosureName(), closure) } );
+	    }
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
 	    return fn;

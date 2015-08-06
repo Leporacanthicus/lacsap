@@ -67,6 +67,7 @@ public:
 	EK_VirtFunction,
 	EK_Goto,
 	EK_Unit,
+	EK_Closure,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -454,6 +455,7 @@ public:
 		     const Stack<NamedObject*>& nameStack);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
     Types::TypeDecl* ClosureType();
+    const std::string ClosureName() { return "$$CLOSURE"; };
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void accept(Visitor& v) override;
 private:
@@ -747,7 +749,7 @@ class UnitAST : public ExprAST
 {
 public:
     UnitAST(const Location& w, const std::vector<ExprAST*>& c, FunctionAST* init,
-	InterfaceList iList)
+	    InterfaceList iList)
 	: ExprAST(w, EK_Unit), initFunc(init), code(c), interfaceList(iList) { };
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
@@ -758,6 +760,20 @@ private:
     FunctionAST* initFunc;
     std::vector<ExprAST*> code;
     InterfaceList interfaceList;
+};
+
+class ClosureAST : public ExprAST
+{
+public:
+    ClosureAST(const Location& w, Types::TypeDecl* ty, const std::vector<VariableExprAST*>& vf)
+	: ExprAST(w, EK_Closure, ty), content(vf) { }
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    void Unpack();
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_Closure; }
+    void accept(Visitor& v) override;
+private:
+    std::vector<VariableExprAST*> content;
 };
 
 /* Useful global functions */

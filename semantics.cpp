@@ -459,6 +459,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
     const std::vector<VarDef>& parg = proto->args;
     for(auto& a : c->args)
     {
+	bool bad = true;
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
 	    if (*ty != *a->Type())
@@ -466,10 +467,33 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 		ExprAST* e = a;
 		a = new TypeCastAST(e->Loc(), e, ty);
 	    }
+	    bad = false;
 	}
-	else
+	else if (Types::FunctionDecl* fnTy = llvm::dyn_cast<Types::FunctionDecl>(a->Type()))
 	{
-	    Error(a, "Incompatible type");
+	    if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
+	    {
+		if (fnTy->Proto()->IsMatchWithoutClosure(argTy->Proto()))
+		{
+		    /* Todo: Make this a function */
+		    std::vector<VariableExprAST*> vf;
+		    FunctionAST* fn = fnTy->Proto()->Function();
+		    Types::TypeDecl* closureTy = fn->ClosureType();
+		    for(auto u : fn->UsedVars())
+		    {
+			vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
+		    }
+		    ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
+		    FunctionExprAST* e = llvm::dyn_cast<FunctionExprAST>(a);
+		    assert(e && "Expected argument to be FunctionExprAST");
+		    a = new TrampolineAST(e->loc, e, closure, argTy);
+		    bad = false;
+		}
+	    }
+	}
+	if (bad)
+	{
+	    Error(a, "Incompatible argument type");
 	}
 	idx++;
     }

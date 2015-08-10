@@ -180,8 +180,8 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* 
     llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
 
     llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
-    assert(ty && "Must have type passed in");
 
+    assert(ty && "Must have type passed in");
     llvm::Type* type = ty->LlvmType();
 
     llvm::AllocaInst* a = bld.CreateAlloca(type, 0, name);
@@ -1183,6 +1183,7 @@ llvm::Value* CallExprAST::CodeGen()
 	if (ClosureAST* ca = llvm::dyn_cast<ClosureAST>(i))
 	{
 	    v = ca->CodeGen();
+	    argAttr.push_back(std::make_pair(index+1, llvm::Attribute::Nest));
 	}
 	else
 	{
@@ -1329,12 +1330,16 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	llvm::AttrBuilder attrs;
 	Types::TypeDecl* ty = i.Type();
 	llvm::Type* argTy = ty->LlvmType();
-	index++;
 	if (!ty)
 	{
 	    return ErrorF("Invalid type for argument" + i.Name() + "...");
 	}
 	
+	index++;
+	if (index == 1 && Function()->ClosureType())
+	{
+	    argAttr.push_back(std::make_pair(index, llvm::Attribute::Nest));
+	}
 	if (i.IsRef() || ty->isCompound() )
 	{
 	    argTy = llvm::PointerType::getUnqual(ty->LlvmType());
@@ -1448,14 +1453,6 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
 }
 
-void PrototypeAST::AddExtraArgsLast(const std::vector<VarDef>& extra)
-{
-    for(auto v : extra)
-    {
-	args.push_back(VarDef(v.Name(), v.Type(), true));
-    }
-}
-
 void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
 {
     std::vector<VarDef> newArgs;
@@ -1494,6 +1491,41 @@ bool PrototypeAST::operator==(const PrototypeAST& rhs) const
     // All done, must be equal.
     return true;
 }
+
+/* Check "if we remove the closure, is the arguments matching".
+ * This function will return false if this->args[0] isn't a closure.
+ * It will return true if all arguments (and return typ) is the saem type.
+ */
+bool PrototypeAST::IsMatchWithoutClosure(const PrototypeAST* rhs) const
+{
+    /* Don't allow comparison with ourselves */
+    if (rhs == this)
+    {
+	return false;
+    }
+    if (Types::TypeDecl* closure = Function()->ClosureType())
+    {
+	if (args[0].Type() != closure)
+	{
+	    return false;
+	}
+    }
+    // Can't be same if baseobj is different? Is this so?
+    // Or if args count is different
+    if (baseobj != rhs->baseobj || args.size() != rhs->args.size() + 1)
+    {
+	return false;
+    }
+    for(size_t i = 0; i < rhs->args.size(); i++)
+    {
+	if (*args[i+1].Type() != *rhs->args[i].Type())
+	{
+	    return false;
+	}
+    }
+    return true;
+}
+
 
 FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v,
 			 BlockAST* b)
@@ -3313,13 +3345,41 @@ llvm::Value* ClosureAST::CodeGen()
     return closure;
 }
 
-void ClosureAST::Unpack()
+void TrampolineAST::DoDump(std::ostream& out) const
 {
-    assert(0);
+    out << "Trampoline for "; 
+    func->DoDump(out);
+};
+
+llvm::Value* TrampolineAST::CodeGen()
+{
+    if (MangleMap* mm = mangles.Find(func->Name()))
+    {
+	llvm::Function* destFn = theModule->getFunction(mm->Name());
+	// Temporary memory to store the trampoline itself.
+	llvm::Type* trampTy = llvm::ArrayType::get(Types::GetType(Types::TypeDecl::TK_Char), 32);
+	llvm::Value* tramp = builder.CreateAlloca(trampTy, 0, "tramp");
+	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	llvm::Value* tptr = builder.CreateGEP(tramp, ind, "tramp.first");
+	llvm::Value* nest = closure->CodeGen();
+	llvm::Type* voidPtrTy = Types::GetVoidPtrType();
+	nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
+	llvm::Value* castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
+	llvm::Constant* llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(), 
+						{ voidPtrTy, voidPtrTy, voidPtrTy },
+						"llvm.init.trampoline");
+	builder.CreateCall(llvmTramp, { tptr, castFn, nest });
+	llvm::Constant* llvmAdjust = GetFunction(voidPtrTy, { voidPtrTy }, "llvm.adjust.trampoline");
+	llvm::Value* ptr = builder.CreateCall(llvmAdjust, { tptr }, "tramp.ptr");
+
+	return builder.CreateBitCast(ptr, funcPtrTy->LlvmType(), "tramp.func");
+    }
+    return 0;
 }
 
-void ClosureAST::accept(Visitor& v)
+void TrampolineAST::accept(Visitor& v)
 {
+    func->accept(v);
 }
 
 static void BuildUnitInitList()
@@ -3350,4 +3410,3 @@ void BackPatch()
     }
     BuildUnitInitList();
 }
-

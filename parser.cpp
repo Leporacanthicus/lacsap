@@ -23,7 +23,6 @@ private:
     const PrototypeAST* proto;
 };
 
-
 static void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
 {
     if (Types::TypeDecl* closureTy = fn->ClosureType())

@@ -68,6 +68,7 @@ public:
 	EK_Goto,
 	EK_Unit,
 	EK_Closure,
+	EK_Trampoline, 		/* 45 */
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -427,10 +428,10 @@ public:
     void SetHasSelf(bool v) { hasSelf = v; }
     void SetFunction(FunctionAST* fun) { function = fun; }
     FunctionAST* Function() const { return function; }
-    void AddExtraArgsLast(const std::vector<VarDef>& extra);
     void AddExtraArgsFirst(const std::vector<VarDef>& extra);
     Types::ClassDecl* BaseObj() const { return baseobj; }
     bool operator==(const PrototypeAST& rhs) const;
+    bool IsMatchWithoutClosure(const PrototypeAST* rhs) const;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
 private:
     std::string         name;
@@ -489,7 +490,7 @@ private:
     std::vector<ExprAST*> args;
 };
 
-// Builtin funciton call
+// Builtin function call
 class BuiltinExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
@@ -769,11 +770,25 @@ public:
 	: ExprAST(w, EK_Closure, ty), content(vf) { }
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    void Unpack();
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Closure; }
-    void accept(Visitor& v) override;
 private:
     std::vector<VariableExprAST*> content;
+};
+
+class TrampolineAST : public FunctionExprAST
+{
+public:
+    TrampolineAST(const Location& w, FunctionExprAST* fn, ClosureAST* c, Types::FuncPtrDecl* fnPtrTy)
+	: FunctionExprAST(w, fn->Name(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) { }
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* CodeGen() override;
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_Trampoline; }
+    void accept(Visitor& v) override;
+
+private:
+    FunctionExprAST* func;
+    ClosureAST* closure;
+    Types::FuncPtrDecl* funcPtrTy;
 };
 
 /* Useful global functions */

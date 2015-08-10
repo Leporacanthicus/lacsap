@@ -837,12 +837,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
     if (lhs->Type() && lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
     {
 	llvm::Value* l = lhs->CodeGen();
-	AddressableAST* rhsA = llvm::dyn_cast<AddressableAST>(rhs);
-	if (!rhsA)
-	{
-	    return ErrorV("Set value should be addressable!");
-	}
-	llvm::Value* setV = rhsA->Address();
+	llvm::Value* setV = MakeAddressable(rhs);
 	Types::TypeDecl* type = rhs->Type();
 	int start = type->GetRange()->GetStart();
 	l = builder.CreateZExt(l, Types::GetType(Types::TypeDecl::TK_Integer), "zext.l");

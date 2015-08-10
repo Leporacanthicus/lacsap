@@ -727,18 +727,18 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[0]);
-	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[1]);
+	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
+	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 
 	llvm::Value* start = args[2]->CodeGen();
-	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
+	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	if (ty0->Ranges()[0]->GetStart())
 	{
 	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(), start->getType()));
 	}
 
-	llvm::Value* pA = var1->Address();
-	llvm::Value* pB = var2->Address();
+	llvm::Value* pA = var0->Address();
+	llvm::Value* pB = var1->Address();
 
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
 	llvm::Value *dest = builder.CreateGEP(pB, ind, "dest");

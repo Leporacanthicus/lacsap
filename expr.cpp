@@ -1790,9 +1790,8 @@ llvm::Value* AssignExprAST::AssignSet()
 	    }
 
 	    int end = std::min(lty->SetWords(), rty->SetWords());
-	    SetExprAST* setrhs = llvm::dyn_cast<SetExprAST>(rhs);
-	    llvm::Value* src = setrhs->Address();
-	    std::vector<llvm::Value*> srcind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	    llvm::Value* src = MakeAddressable(rhs);
+	    std::vector<llvm::Value*> srcind = { MakeIntegerConstant(0), 0 };
 	    for(int i = 0; i < end; i++)
 	    {
 		llvm::Value* w;
@@ -2204,6 +2203,7 @@ void WriteAST::DoDump(std::ostream& out) const
 
 void WriteAST::accept(Visitor& v)
 {
+    file->accept(v);
     for(auto a : args)
     {
 	a.expr->accept(v);
@@ -2395,12 +2395,7 @@ llvm::Value* WriteAST::CodeGen()
 	}
 	else
 	{
-	    VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg.expr);
-	    if (!vexpr)
-	    {
-		return ErrorV("Argument for write should be a variable");
-	    }
-	    v = vexpr->Address();
+	    v = MakeAddressable(arg.expr);
 	    argsV.push_back(builder.CreateBitCast(v,  Types::GetVoidPtrType()));
 	    fn = CreateWriteBinFunc(v->getType(), f->getType());
 	}
@@ -2439,6 +2434,7 @@ void ReadAST::DoDump(std::ostream& out) const
 
 void ReadAST::accept(Visitor& v)
 {
+    file->accept(v);
     for(auto a : args)
     {
 	a->accept(v);

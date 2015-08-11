@@ -2278,7 +2278,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     }
 
     std::string name = proto->Name();
-    NamedObject* nmObj;
+    NamedObject* nmObj = 0;
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef *fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -2297,9 +2297,12 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 	else
 	{
-	    shortname = "";
 	    Types::TypeDecl* ty = new Types::FunctionDecl(proto);
 	    nmObj = new FuncDef(name, ty, proto);
+	    if (llvm::isa<Types::VoidDecl>(proto->Type()))
+	    {
+		shortname = "";
+	    }
 	}
 	if (!nameStack.Add(name, nmObj))
 	{
@@ -2320,9 +2323,9 @@ FunctionAST* Parser::ParseDefinition(int level)
 	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
-    /* For member functions: Add short name inside the wrapper */
     if (shortname != "")
     {
+	assert(nmObj);
 	nameStack.Add(shortname, nmObj);
     }
 
@@ -2330,12 +2333,12 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
-	    return ErrorF("Duplicate name " + v.Name());
+	    return ErrorF("Duplicate name " + v.Name() + " (1)");
 	}
     }
 
-    std::vector<VarDeclAST*>  varDecls;
-    BlockAST*                 body = 0;
+    std::vector<VarDeclAST*> varDecls;
+    BlockAST* body = 0;
     std::vector<FunctionAST*> subFunctions;
     for(;;)
     {

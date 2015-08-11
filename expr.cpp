@@ -1448,6 +1448,12 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     }
 }
 
+void PrototypeAST::SetIsForward(bool v)
+{
+    assert(!function && "Can't make a real function prototype forward");
+    isForward = v;
+}
+
 void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
 {
     std::vector<VarDef> newArgs;
@@ -1630,6 +1636,7 @@ llvm::Function* FunctionAST::CodeGen()
 void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 			      const Stack<NamedObject*>& nameStack)
 {
+    TRACE();
     std::map<std::string, NamedObject*> nonLocal;
     size_t maxLevel = nameStack.MaxLevel();
 
@@ -1667,9 +1674,9 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	    }
 	    if (!(level == 0 || level == maxLevel))
 	    {
-		if (verbosity)
+		if (verbosity != 0)
 		{
-		    std::cout << "Adding" << v.Name() << " level=" << level << std::endl;
+		    std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
 		}
 		nonLocal[v.Name()] = new VarDef(v);
 	    }
@@ -1679,13 +1686,20 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
     for(auto n : nonLocal)
     {
 	VarDef* v = llvm::dyn_cast<VarDef>(n.second);
+	if (!v)
+	{
+	    if (FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
+	    {
+		v = new VarDef(fd->Name(), fd->Proto()->Type());
+	    }
+	}
 	if (v)
 	{
-	    usedVariables.push_back(*v);
 	    if (verbosity)
 	    {
 		v->dump(std::cerr);
 	    }
+	     usedVariables.push_back(*v);
 	}
     }
 }

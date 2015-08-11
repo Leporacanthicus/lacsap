@@ -424,7 +424,7 @@ public:
     const std::vector<VarDef>& Args() const { return args; }
     bool IsForward() const { return isForward; }
     bool HasSelf() const { return hasSelf; }
-    void SetIsForward(bool v) { assert(!function && "Can't make a real function prototype forward"); isForward = v; }
+    void SetIsForward(bool v);
     void SetHasSelf(bool v) { hasSelf = v; }
     void SetFunction(FunctionAST* fun) { function = fun; }
     FunctionAST* Function() const { return function; }

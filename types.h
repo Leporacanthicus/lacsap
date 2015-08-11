@@ -164,6 +164,7 @@ namespace Types
 	}
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return 0; }
 	bool hasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Void; }
     protected:
 	llvm::Type* GetLlvmType() const override;
     };

@@ -209,11 +209,11 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    }
 	}
 	
-	if (!lty->GetRange())
+	if (!lty->GetRange() && rty->GetRange())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
 	}
-	if (!rty->GetRange())
+	if (!rty->GetRange() && lty->GetRange())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
 	}

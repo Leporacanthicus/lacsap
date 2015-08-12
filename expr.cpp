@@ -1783,49 +1783,54 @@ llvm::Value* AssignExprAST::AssignSet()
 	else
 	{
 	    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
-	    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
+	    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(lhs->Type());
 	    Types::Range* rrange = rty->GetRange();
 	    Types::Range* lrange = lty->GetRange();
 
-	    // First fill any words at the beginning.
-	    int ldiff = lrange->GetStart() - rrange->GetStart();
-	    int index = 0;
-	    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	    if (ldiff > 0)
-	    {
-		int lwords = ldiff >> Types::SetDecl::SetPow2Bits;
-		for(int i = 0; i < lwords; i++)
-		{
-		    ind[1] = MakeIntegerConstant(index);
-		    llvm::Value *desti = builder.CreateGEP(dest, ind);
-		    builder.CreateStore(MakeIntegerConstant(0), desti); 
-		    index++;
-		}
-	    }
-
-	    int end = std::min(lty->SetWords(), rty->SetWords());
+	    llvm::Value* w;
+	    llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
 	    llvm::Value* src = MakeAddressable(rhs);
-	    std::vector<llvm::Value*> srcind = { MakeIntegerConstant(0), 0 };
-	    for(int i = 0; i < end; i++)
+	    size_t p = 0;
+	    for(auto i = lrange->GetStart(); i < lrange->GetEnd(); i++)
 	    {
-		llvm::Value* w;
-		
-		if (i & Types::SetDecl::SetMask)
+		if (i >= (rrange->GetStart() & ~Types::SetDecl::SetMask) && i < rrange->GetEnd())
 		{
-		    srcind[1] = MakeIntegerConstant(i >> Types::SetDecl::SetPow2Bits);
-		    llvm::Value *srci = builder.CreateGEP(src, srcind);
-		    w = builder.CreateLoad(srci, "srci");
-		    w = builder.CreateShl(w, MakeIntegerConstant(i & Types::SetDecl::SetMask));
-		    if (i + Types::SetDecl::SetBits < end)
+		    if (i > rrange->GetStart())
 		    {
-			srcind[1] = MakeIntegerConstant((i >> Types::SetDecl::SetPow2Bits)+1);
-			// llvm::Value *srci1 = builder.CreateGEP(src, srcind);
-			// llvm::Value* tmp = builder.CreateLoad(srci1, "srci");
+			size_t index = i - rrange->GetStart();
+			size_t sp = index >> Types::SetDecl::SetPow2Bits;
+			ind[1] = MakeIntegerConstant(sp);
+			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
+			w = builder.CreateLoad(srci, "w");
+			if (size_t shift = (index & Types::SetDecl::SetMask))
+			{
+			    w = builder.CreateLShr(w, shift, "wsh");
+			    if (sp + 1 < rty->SetWords())
+			    {
+				ind[1] = MakeIntegerConstant(sp + 1);
+				llvm::Value* xp = builder.CreateGEP(src, ind, "srcip1");
+				llvm::Value* x = builder.CreateLoad(xp, "x");
+				x = builder.CreateShl(x, 32-shift);
+				w = builder.CreateOr(w, x);
+			    }
+			}
 		    }
-		    ind[1] = MakeIntegerConstant(index);
-		    llvm::Value *desti = builder.CreateGEP(dest, ind);
-		    builder.CreateStore(w, desti);
+		    else
+		    {
+			ind[1] = MakeIntegerConstant(0);
+			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
+			w = builder.CreateLoad(srci, "w");
+			w = builder.CreateShl(w, rrange->GetStart() - i, "wsh");
+		    }
 		}
+		else
+		{
+		    w = MakeIntegerConstant(0);
+		}
+		ind[1] = MakeIntegerConstant(p);
+		llvm::Value *desti = builder.CreateGEP(dest, ind);
+		builder.CreateStore(w, desti);
+		p++;
 	    }
 	    return dest;
 	}
@@ -2837,6 +2842,8 @@ llvm::Value* SetExprAST::Address()
 
     assert(type && "No type supplied");
 
+    assert(type->GetRange()->Size() <= Types::SetDecl::MaxSetSize && "Size too large?");
+
     // Check if ALL the values involved are constants.
     bool allConstants = true;
     for(auto v : values)
@@ -2887,15 +2894,9 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value* high = r->High();
 	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
-	    Types::TypeDecl* type = new Types::IntegerDecl();
+	    llvm::Value* loopVar = CreateTempAlloca(new Types::IntegerDecl());
 
-	    llvm::Value* loopVar = CreateTempAlloca(type);
-
-	    if (!low || !high)
-	    {
-		assert(0 && "Expected expressions to evalueate");
-		return 0;
-	    }
+	    assert(high && low && "Expected expressions to evalueate");
 
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();
@@ -2974,12 +2975,6 @@ llvm::Value* SetExprAST::Address()
     }
 
     return setV;
-}
-
-llvm::Value* SetExprAST::CodeGen()
-{
-    llvm::Value* v = Address();
-    return builder.CreateLoad(v);
 }
 
 void WithExprAST::DoDump(std::ostream& out) const

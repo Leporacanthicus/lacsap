@@ -286,7 +286,6 @@ public:
     SetExprAST(const Location& w, std::vector<ExprAST*> v, Types::TypeDecl* ty)
 	: AddressableAST(w, EK_SetExpr, ty), values(v) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     llvm::Value* Address() override;
     llvm::Value* MakeConstantSet(Types::TypeDecl* type);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }

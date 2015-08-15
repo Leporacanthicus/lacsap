@@ -13,6 +13,6 @@ void __read_bin(File* file, void *val)
 	fprintf(stderr, "Invalid file used for read binary\n");
 	return;
     }
-    memcpy(val, file->buffer, f->recordSize);
+    memcpy(val, file->buffer, file->recordSize);
     __get(file);
 }

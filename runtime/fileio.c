@@ -8,6 +8,10 @@
  */
 void __reset(File* f)
 {
+    if (!f->handle) 
+    {
+	__assign_unnamed(f);
+    }
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "r");
@@ -22,6 +26,10 @@ void __reset(File* f)
 
 void __rewrite(File* f)
 {
+    if (!f->handle) 
+    {
+	__assign_unnamed(f);
+    }
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "w");
@@ -35,6 +43,10 @@ void __rewrite(File* f)
 
 void __append(File* f)
 {
+    if (!f->handle) 
+    {
+	__assign_unnamed(f);
+    }
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "a");
@@ -52,8 +64,6 @@ void __close(File* f)
     {
 	fclose(files[f->handle].file);
 	files[f->handle].file = NULL;
-	free(f->buffer);
-	f->buffer = NULL;
 	return;
     }
     fprintf(stderr, "Attempt to close file failed\n");

@@ -1659,8 +1659,8 @@ VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl
 {
     assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) 
 	   && "Expected @ or ^ token...");
-    NextToken();  
-    if (type->Type() == Types::TypeDecl::TK_File)
+    NextToken();
+    if (llvm::isa<Types::FileDecl>(type))
     {
 	type = type->SubType();
 	return new FilePointerExprAST(CurrentToken().Loc(), expr, type);
@@ -2760,7 +2760,7 @@ ExprAST* Parser::ParseWrite()
 	    {
 		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
 		{
-		    if (vexpr->Type()->Type() == Types::TypeDecl::TK_File)
+		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
 		    {
 			file = vexpr;
 			wa.expr = 0;
@@ -2838,7 +2838,7 @@ ExprAST* Parser::ParseRead()
 	    {
 		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
 		{
-		    if (vexpr->Type()->Type() == Types::TypeDecl::TK_File)
+		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
 		    {
 			file = vexpr;
 			expr = 0;

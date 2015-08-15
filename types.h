@@ -52,6 +52,7 @@ namespace Types
 	    TK_FuncPtr,
 	    TK_Function,
 	    TK_File,
+	    TK_Text,
 	    TK_Set,
 	    TK_Variant,
 	    TK_Class,
@@ -508,25 +509,25 @@ namespace Types
 	{
 	    Handle,
 	    Buffer,
+	    RecordSize,
+	    IsText
 	} FileFields;
-	FileDecl(TypeDecl* ty)
-	    : CompoundDecl(TK_File, ty) {}
+	FileDecl(TypeDecl* ty) : CompoundDecl(TK_File, ty) {}
+        FileDecl(TypeKind k, TypeDecl* ty) : CompoundDecl(k, ty) {}
 	void DoDump(std::ostream& out) const override;
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_File; }
+	static bool classof(const TypeDecl* e) 
+	{ return e->getKind() == TK_File || e->getKind() == TK_Text; }
     protected:
 	llvm::Type* GetLlvmType() const override;
-    protected:
     };
 
     class TextDecl : public FileDecl
     {
     public:
-	TextDecl()
-	    : FileDecl(new CharDecl) {}
+	TextDecl() : FileDecl(TK_Text, new CharDecl) {}
 	void DoDump(std::ostream& out) const override;
 	bool hasLlvmType() const override { return true; }
-    protected:
-	llvm::Type* GetLlvmType() const override;
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Text; }
     };
 
     class SetDecl : public CompoundDecl

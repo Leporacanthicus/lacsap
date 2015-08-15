@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 
 /*******************************************
  * Enum declarations
@@ -19,8 +20,10 @@ enum
 /* Note: This should match the definition in the compiler, or weirdness happens! */
 typedef struct File
 {
-    int   handle;
-    char* buffer;
+    int    handle;
+    char*  buffer;
+    int    recordSize;
+    bool   isText; 
 } File;
 
 struct FileEntry
@@ -28,9 +31,7 @@ struct FileEntry
     File* fileData;
     FILE* file;
     char* name;
-    int   isText;
     int   inUse;
-    int   recordSize;
     int   readAhead;
     int   readPos;
     int   bufferSize;
@@ -78,4 +79,5 @@ int __get(File *file);
 void __put(File *file);
 int __eof(File* file);
 int __eoln(File* file);
-void __assign(File* f, char* name, int recordSize, int isText);
+void __assign(File* f, char* name);
+void __assign_unnamed(File* f);

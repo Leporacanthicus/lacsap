@@ -13,6 +13,6 @@ void __write_bin(File* file, void *val)
 	fprintf(stderr, "Invalid file used for write binary file\n");
 	return;
     }
-    memcpy(file->buffer, val, f->recordSize); 
+    memcpy(file->buffer, val, file->recordSize); 
     __put(file);
 }

@@ -5,7 +5,8 @@
 
 static int read_chunk_text(struct FileEntry* f)
 {
-    if(f->isText & 2)
+    File* file = f->fileData;
+    if(file->isText & 2)
     {
 	int ch = fgetc(f->file);
 	f->readAhead = f->bufferSize = (ch != EOF);
@@ -20,14 +21,14 @@ static int read_chunk_text(struct FileEntry* f)
 	}
 
 	int n;
-	if ((n = fread(f->fileData->buffer, 1, f->recordSize, f->file)))
+	if ((n = fread(file->buffer, 1, file->recordSize, f->file)))
 	{
 	    if (n > 0)
 	    {
 		f->bufferSize = n;
 		f->readAhead = 1;
 		f->readPos = 1;
-		return *f->fileData->buffer;
+		return *file->buffer;
 	    }
 	}
     }
@@ -38,8 +39,6 @@ int get_next(struct FileEntry* f)
 {
     return read_chunk_text(f);
 }
-
-
 
 /* Make a local function so it can inline */
 static int __get_text(File* file)

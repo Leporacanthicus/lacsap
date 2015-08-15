@@ -158,18 +158,9 @@ bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
 	ty = ty->getContainedType(0);
 	const llvm::DataLayout dl(theModule);
 	recSize = dl.getTypeAllocSize(ty);
-	isText = st->getName().substr(0, 4) == "text";
 	return true;
     }
     return false;
-}
-
-bool FileIsText(llvm::Value* f)
-{
-    bool isText;
-    int  recSize;
-
-    return (FileInfo(f, recSize, isText) && isText);
 }
 
 static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty, const std::string& name)
@@ -261,27 +252,22 @@ static llvm::Function* ErrorF(const std::string& msg)
     return 0;
 }
 
-llvm::Value* MakeConstant(uint64_t val, llvm::Type* ty)
+llvm::Constant* MakeConstant(uint64_t val, llvm::Type* ty)
 {
     return llvm::ConstantInt::get(ty, val);
 }
 
-llvm::Value* MakeIntegerConstant(int val)
+llvm::Constant* MakeIntegerConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Integer));
 }
 
-llvm::Value* MakeInt64Constant(uint64_t val)
-{
-    return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Int64));
-}
-
-static llvm::Value* MakeBooleanConstant(int val)
+static llvm::Constant* MakeBooleanConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Boolean));
 }
 
-static llvm::Value* MakeCharConstant(int val)
+static llvm::Constant* MakeCharConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Char));
 }
@@ -570,11 +556,12 @@ llvm::Value* FilePointerExprAST::Address()
 {
     TRACE();
     VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
+    assert(vptr && "Expected variable expression!");
     llvm::Value* v = vptr->Address();
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer)};
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0),
+				      MakeIntegerConstant(Types::FileDecl::Buffer) };
     v = builder.CreateGEP(v, ind, "bufptr");
-    v = builder.CreateLoad(v, "buffer");
-    return v;
+    return builder.CreateLoad(v, "buffer");
 }
 
 void FilePointerExprAST::accept(Visitor& v)
@@ -2324,7 +2311,7 @@ llvm::Value* WriteAST::CodeGen()
     TRACE();
     llvm::Value* f = file->Address();
     llvm::Value* v = NULL;
-    bool isText = FileIsText(f);
+    bool isText = llvm::isa<Types::TextDecl>(file->Type());
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
@@ -2415,7 +2402,7 @@ llvm::Value* WriteAST::CodeGen()
 	else
 	{
 	    v = MakeAddressable(arg.expr);
-	    argsV.push_back(builder.CreateBitCast(v,  Types::GetVoidPtrType()));
+	    argsV.push_back(builder.CreateBitCast(v, Types::GetVoidPtrType()));
 	    fn = CreateWriteBinFunc(v->getType(), f->getType());
 	}
 	v = builder.CreateCall(fn, argsV, "");
@@ -2463,10 +2450,8 @@ void ReadAST::accept(Visitor& v)
 static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
     std::string suffix;
-    std::vector<llvm::Type*> argTypes{fty};
-    // ty is NULL if we're doing readln.
     llvm::Type* lty = llvm::PointerType::getUnqual(ty->LlvmType());
-    argTypes.push_back(lty);
+    std::vector<llvm::Type*> argTypes= { fty, lty };
     switch(ty->Type())
     {
     case Types::TypeDecl::TK_Char:
@@ -2504,11 +2489,11 @@ llvm::Value* ReadAST::CodeGen()
     TRACE();
     llvm::Value* f = file->Address();
     llvm::Value* v;
-    bool isText = FileIsText(f);
+    bool isText = llvm::isa<Types::TextDecl>(file->Type());
     llvm::Type* fTy =  f->getType();
     for(auto arg: args)
     {
-	std::vector<llvm::Value*> argsV{f};
+	std::vector<llvm::Value*> argsV = { f };
 	VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg);
 	if (!vexpr)
 	{
@@ -2558,6 +2543,25 @@ void VarDeclAST::DoDump(std::ostream& out) const
     }
 }
 
+static llvm::Constant* FileInitializer(Types::TypeDecl* type)
+{
+    llvm::Type* ty = type->LlvmType();
+    assert(type->SubType() && "Expect subtype to be valid here");
+    assert(llvm::isa<Types::FileDecl>(type) && "Expect a FileDecl!");
+    llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
+    llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);
+    std::vector<llvm::Constant*> inits(sty->getNumElements());
+    unsigned i = 0;
+    while(llvm::Constant *c = nullValue->getAggregateElement(i))
+    {
+	inits[i] = c;
+	i++;
+    }
+    inits[Types::FileDecl::RecordSize] = MakeIntegerConstant(type->SubType()->Size());
+    inits[Types::FileDecl::IsText] = MakeBooleanConstant(llvm::isa<Types::TextDecl>(type));
+    return llvm::ConstantStruct::get(sty, inits);
+}
+
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
@@ -2565,13 +2569,13 @@ llvm::Value* VarDeclAST::CodeGen()
     for(auto var : vars)
     {
 	// Are we declaring global variables  - no function!
+	llvm::Type* ty = var.Type()->LlvmType();
 	if (!func)
 	{
 	    if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
 	    {
 		fc->EnsureSized();
 	    }
-	    llvm::Type* ty = var.Type()->LlvmType();
 
 	    assert(ty && "Type should have a value");
 	    llvm::Constant* init;
@@ -2590,6 +2594,10 @@ llvm::Value* VarDeclAST::CodeGen()
 		    i++;
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
+	    }
+	    else if (llvm::isa<Types::FileDecl>(var.Type()))
+	    {
+		init = FileInitializer(var.Type());
 	    }
 	    else
 	    {
@@ -2617,6 +2625,11 @@ llvm::Value* VarDeclAST::CodeGen()
 		std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
 		llvm::Value* dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
+	    }
+	    else if (llvm::isa<Types::FileDecl>(var.Type()))
+	    {
+		llvm::Constant* init = FileInitializer(var.Type());
+		builder.CreateStore(init, v);
 	    }
 	}
 	if (!variables.Add(var.Name(), v))

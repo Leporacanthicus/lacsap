@@ -791,11 +791,10 @@ private:
 };
 
 /* Useful global functions */
-llvm::Value* MakeIntegerConstant(int val);
-llvm::Value* MakeConstant(uint64_t val, llvm::Type* ty);
+llvm::Constant* MakeIntegerConstant(int val);
+llvm::Constant* MakeConstant(uint64_t val, llvm::Type* ty);
 llvm::Value* ErrorV(const std::string& msg);
 bool FileInfo(llvm::Value* f, int& recSize, bool& isText);
-bool FileIsText(llvm::Value* f);
 llvm::Value* MakeAddressable(ExprAST* e);
 void BackPatch();
 llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,

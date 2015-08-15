@@ -12,7 +12,7 @@ void __put(File *file)
     {
 	f = &files[file->handle];
     }
-    fwrite(file->buffer, f->recordSize, 1, f->file);
+    fwrite(file->buffer, file->recordSize, 1, f->file);
 }
 
 int __get(File *file)
@@ -22,7 +22,7 @@ int __get(File *file)
     {
 	f = &files[file->handle];
     }
-    if (f->isText)
+    if (file->isText)
     {
 	int ch = fgetc(f->file);
 	*file->buffer = ch;
@@ -31,7 +31,7 @@ int __get(File *file)
     }
     else
     {
-	if (fread(file->buffer, f->recordSize, 1, f->file) > 0)
+	if (fread(file->buffer, file->recordSize, 1, f->file) > 0)
 	{
 	    f->readAhead = 1;
 	    return 1;

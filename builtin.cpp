@@ -805,22 +805,12 @@ namespace Builtin
 
 	llvm::Value* filename = args[1]->CodeGen();
 	llvm::Type* ty = filename->getType();
-	llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
-	std::vector<llvm::Type*> argTypes = { faddr->getType(), ty, intTy, intTy };
-
-	bool textFile;
-	int  recSize;
-	if (!FileInfo(faddr, recSize, textFile))
-	{
-	    return ErrorV("Expected first argument to be of filetype for 'assign'");
-	}
-	llvm::Value* isText = MakeIntegerConstant(textFile);
-	llvm::Value* aSize = MakeIntegerConstant(recSize); 
+	std::vector<llvm::Type*> argTypes = { faddr->getType(), ty };
 
 	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, argTypes,
 					"__assign");
 
-	std::vector<llvm::Value*> argsV = { faddr, filename, aSize, isText };
+	std::vector<llvm::Value*> argsV = { faddr, filename };
 	return builder.CreateCall(f, argsV);
     }
 

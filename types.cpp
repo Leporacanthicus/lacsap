@@ -64,36 +64,6 @@ namespace Types
 	    return "Char";
 	case TypeDecl::TK_Boolean:
 	    return "Boolean";
-	case TypeDecl::TK_Array:
-	    return "Array";
-	case TypeDecl::TK_Function:
-	    return "Function";
-	case TypeDecl::TK_Record:
-	    return "Record";
-	case TypeDecl::TK_Set:
-	    return "Set";
-	case TypeDecl::TK_Range:
-	    return "Range";
-	case TypeDecl::TK_Enum:
-	    return "Enum";
-	case TypeDecl::TK_Pointer:
-	    return "Pointer";
-	case TypeDecl::TK_Void:
-	    return "Void";
-	case TypeDecl::TK_Field:
-	    return "Field";
-	case TypeDecl::TK_File:
-	    return "File";
-	case TypeDecl::TK_String:
-	    return "String";
-	case TypeDecl::TK_Variant:
-	    return "Variant";
-	case TypeDecl::TK_FuncPtr:
-	    return "FuncPtr";
-	case TypeDecl::TK_Class:
-	    return "Class";
-	case TypeDecl::TK_MemberFunc:
-	    return "MemberFunc";
 	default:
 	    break;
 	}
@@ -276,6 +246,7 @@ namespace Types
 	case TK_Field:
 	case TK_FuncPtr:
 	case TK_File:
+	case TK_Text:
 	case TK_Set:
 	    return true;
 	default:
@@ -1040,8 +1011,10 @@ namespace Types
  * A "file" is represented by:
  * struct
  * {
- *    int32     handle;          // 0: filehandle
- *    baseType *ptr;             // 1: pointer to the record.
+ *    int32     handle;
+ *    baseType *ptr;
+ *    int32     recordSize;
+ *    baseType  isText;
  * };
  *
  * The translation from handle to actual file is done inside the C runtime
@@ -1051,28 +1024,19 @@ namespace Types
  *
  * The type name is used to determine if the file is a "text" or "file of TYPE" type.
  */
-    llvm::Type* GetFileType(const std::string& name, TypeDecl* baseType)
-    {
-	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	std::vector<llvm::Type*> fv{GetType(TypeDecl::TK_Integer), ty};
-	llvm::StructType* st = llvm::StructType::create(fv, name);
-	return st;
-    }
-
     llvm::Type* FileDecl::GetLlvmType() const
     {
-	return GetFileType("file", baseType);
+	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
+	std::vector<llvm::Type*> fv = 
+	    { GetType(TypeDecl::TK_Integer), ty, GetType(TypeDecl::TK_Integer), 
+	      GetType(TypeDecl::TK_Boolean) };
+	return llvm::StructType::create(fv);
     }
 
     void FileDecl::DoDump(std::ostream& out) const
     {
 	out << "File of ";
 	baseType->DoDump(out);
-    }
-
-    llvm::Type* TextDecl::GetLlvmType() const
-    {
-	return GetFileType("text", baseType);
     }
 
     void TextDecl::DoDump(std::ostream& out) const

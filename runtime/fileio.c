@@ -6,6 +6,12 @@
  * File Basics, low level I/O.
  *******************************************
  */
+
+static void FileError(const char *op)
+{
+    fprintf(stderr, "Attempt to %s file failed\n", op);
+}
+
 void __reset(File* f)
 {
     if (!f->handle) 
@@ -21,7 +27,7 @@ void __reset(File* f)
 	    return;
 	}
     }
-    fprintf(stderr, "Attempt to open file failed\n");
+    FileError("open");
 }
 
 void __rewrite(File* f)
@@ -38,7 +44,7 @@ void __rewrite(File* f)
 	    return;
 	}
     }
-    fprintf(stderr, "Attempt to open file failed\n");
+    FileError("open");
 }
 
 void __append(File* f)
@@ -55,7 +61,7 @@ void __append(File* f)
 	    return;
 	}
     }
-    fprintf(stderr, "Attempt to append file failed\n");
+    FileError("append");
 }
 
 void __close(File* f)
@@ -66,5 +72,5 @@ void __close(File* f)
 	files[f->handle].file = NULL;
 	return;
     }
-    fprintf(stderr, "Attempt to close file failed\n");
+    FileError("close");
 }

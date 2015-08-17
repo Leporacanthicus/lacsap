@@ -434,7 +434,7 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    void BuiltinFunctionBase::accept(Visitor& v)
+    void BuiltinFunctionBase::accept(ASTVisitor& v)
     {
 	for(auto a : args)
 	{

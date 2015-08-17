@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <cmath>
 
-class UpdateCallVisitor : public Visitor
+class UpdateCallVisitor : public ASTVisitor
 {
 public:
     UpdateCallVisitor(const PrototypeAST *p) : proto(p) {}

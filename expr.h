@@ -4,7 +4,7 @@
 #include "token.h"
 #include "types.h"
 #include "namedobject.h"
-#include "astvisitor.h"
+#include "visitor.h"
 #include "stack.h"
 #include "builtin.h"
 #include <llvm/IR/Value.h>
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-class ExprAST : public Visitable
+class ExprAST : public Visitable<ExprAST>
 {
     friend class TypeCheckVisitor;
 public:
@@ -81,7 +81,7 @@ public:
     {
 	out << "Empty node";
     }
-    virtual void accept(Visitor& v) { v.visit(this); }
+    virtual void accept(ASTVisitor& v) { v.visit(this); }
     std::string ToString();
     virtual llvm::Value* CodeGen() = 0;
     ExprKind getKind() const { return kind; }
@@ -206,7 +206,7 @@ public:
     /* Don't need CodeGen, just calculate address and use parent CodeGen */
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_ArrayExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     VariableExprAST* expr;
     std::vector<ExprAST*> indices;
@@ -222,7 +222,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_PointerExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* pointer;
 };
@@ -235,7 +235,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FilePointerExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* pointer;
 };
@@ -248,7 +248,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FieldExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     VariableExprAST* expr;
     int element;
@@ -309,7 +309,7 @@ public:
     llvm::Value* CallArrFunc(const std::string& name, size_t size);
     Types::TypeDecl* Type() const override;
     void UpdateType(Types::TypeDecl* ty);
-    void accept(Visitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
+    void accept(ASTVisitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
 private:
     Token            oper;
     ExprAST*         lhs;
@@ -326,7 +326,7 @@ public:
     llvm::Value* CodeGen() override;
     Types::TypeDecl* Type() const override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
-    void accept(Visitor& v) override { rhs->accept(v); v.visit(this); }
+    void accept(ASTVisitor& v) override { rhs->accept(v); v.visit(this); }
 private:
     Token oper;
     ExprAST* rhs;
@@ -346,7 +346,7 @@ public:
     ExprAST* HighExpr() { return high; }
     Types::TypeDecl* Type() const override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
-    void accept(Visitor& v) override { low->accept(v); high->accept(v); v.visit(this); }
+    void accept(ASTVisitor& v) override { low->accept(v); high->accept(v); v.visit(this); }
 private:
     ExprAST* low;
     ExprAST* high;
@@ -362,7 +362,7 @@ public:
     bool IsEmpty() { return content.size() == 0; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Block; }
     std::vector<ExprAST*>& Content() { return content; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     std::vector<ExprAST*> content;
 };
@@ -376,7 +376,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_AssignExpr; }
-    void accept(Visitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
+    void accept(ASTVisitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
 private:
     llvm::Value* AssignStr();
     llvm::Value* AssignSet();
@@ -457,7 +457,7 @@ public:
     Types::TypeDecl* ClosureType();
     const std::string ClosureName() { return "$$CLOSURE"; };
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Function; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     PrototypeAST*              proto;
     std::vector<VarDeclAST*>   varDecls;
@@ -482,7 +482,7 @@ public:
     static bool classof(const ExprAST* e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST* Proto() { return proto; }
     std::vector<ExprAST*>& Args() { return args; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     const PrototypeAST*   proto;
     ExprAST*              callee;
@@ -501,7 +501,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_BuiltinExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     Builtin::BuiltinFunctionBase* bif;
 };
@@ -514,7 +514,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_IfExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* cond;
     ExprAST* then;
@@ -529,7 +529,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_ForExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     std::string varName;
     ExprAST* start;
@@ -546,7 +546,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_WhileExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* cond;
     ExprAST* body;
@@ -560,7 +560,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RepeatExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* cond;
     ExprAST* body;
@@ -583,7 +583,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Write; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     VariableExprAST*      file;
     std::vector<WriteArg> args;
@@ -598,7 +598,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Read; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     VariableExprAST*      file;
     std::vector<ExprAST*> args;
@@ -614,7 +614,7 @@ public:
     llvm::Value* CodeGen() override;
     llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
     static bool classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     std::vector<int> labelValues;
     ExprAST*         stmt;
@@ -628,7 +628,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_CaseExpr; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 private:
     ExprAST* expr;
     std::vector<LabelExprAST*> labels;
@@ -643,7 +643,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_WithExpr; }
-    void accept(Visitor& v) override { body->accept(v); v.visit(this); }
+    void accept(ASTVisitor& v) override { body->accept(v); v.visit(this); }
 private:
     ExprAST* body;
 };
@@ -754,7 +754,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Unit; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
     const InterfaceList& Interface() { return interfaceList; }
 private:
     FunctionAST* initFunc;
@@ -782,7 +782,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Trampoline; }
-    void accept(Visitor& v) override;
+    void accept(ASTVisitor& v) override;
 
 private:
     FunctionExprAST* func;

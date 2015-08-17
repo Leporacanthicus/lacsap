@@ -1,11 +1,11 @@
 #include "semantics.h"
 #include "expr.h"
-#include "astvisitor.h"
+#include "visitor.h"
 #include "trace.h"
 #include "token.h"
 #include "options.h"
 
-class TypeCheckVisitor : public Visitor
+class TypeCheckVisitor : public ASTVisitor
 {
 public:
     TypeCheckVisitor(Semantics* s) : sema(s) {};

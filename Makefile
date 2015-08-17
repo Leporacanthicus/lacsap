@@ -55,7 +55,7 @@ fasttests: lacsap tests
 clean:
 	rm -f ${OBJECTS} libruntime.a
 	make -C test clean
-	make -C runtime clean
+	make -C runtime clean .depends
 
 include .depends
 

@@ -477,7 +477,7 @@ llvm::Value* ArrayExprAST::Address()
     return v;
 }
 
-void ArrayExprAST::accept(Visitor& v)
+void ArrayExprAST::accept(ASTVisitor& v)
 {
     for(auto i : indices)
     {
@@ -505,7 +505,7 @@ llvm::Value* FieldExprAST::Address()
     return ErrorV("Expression did not form an address");
 }
 
-void FieldExprAST::accept(Visitor& v)
+void FieldExprAST::accept(ASTVisitor& v)
 {
     expr->accept(v);
     v.visit(this);
@@ -540,7 +540,7 @@ llvm::Value* PointerExprAST::Address()
     return pointer->CodeGen();
 }
 
-void PointerExprAST::accept(Visitor& v)
+void PointerExprAST::accept(ASTVisitor& v)
 {
     pointer->accept(v);
     v.visit(this);
@@ -564,7 +564,7 @@ llvm::Value* FilePointerExprAST::Address()
     return builder.CreateLoad(v, "buffer");
 }
 
-void FilePointerExprAST::accept(Visitor& v)
+void FilePointerExprAST::accept(ASTVisitor& v)
 {
     pointer->accept(v);
     v.visit(this);
@@ -1250,7 +1250,7 @@ llvm::Value* CallExprAST::CodeGen()
     return inst;
 }
 
-void CallExprAST::accept(Visitor& v)
+void CallExprAST::accept(ASTVisitor& v)
 {
     for(auto i : args)
     {
@@ -1269,7 +1269,7 @@ void BlockAST::DoDump(std::ostream& out) const
     out << "Block End;" << std::endl;
 }
 
-void BlockAST::accept(Visitor& v)
+void BlockAST::accept(ASTVisitor& v)
 {
     for(auto i : content)
     {
@@ -1534,7 +1534,7 @@ void FunctionAST::DoDump(std::ostream& out) const
     body->dump(out);
 }
 
-void FunctionAST::accept(Visitor& v)
+void FunctionAST::accept(ASTVisitor& v)
 {
     for(auto i : subFunctions)
     {
@@ -1905,7 +1905,7 @@ void IfExprAST::DoDump(std::ostream& out) const
     }
 }
 
-void IfExprAST::accept(Visitor& v)
+void IfExprAST::accept(ASTVisitor& v)
 {
     cond->accept(v);
     if (then)
@@ -1991,7 +1991,7 @@ void ForExprAST::DoDump(std::ostream& out) const
     body->dump(out);
 }
 
-void ForExprAST::accept(Visitor& v)
+void ForExprAST::accept(ASTVisitor& v)
 {
     start->accept(v);
     end->accept(v);
@@ -2129,7 +2129,7 @@ llvm::Value* WhileExprAST::CodeGen()
     return afterBB;
 }
 
-void WhileExprAST::accept(Visitor& v)
+void WhileExprAST::accept(ASTVisitor& v)
 {
     cond->accept(v);
     body->accept(v);
@@ -2168,7 +2168,7 @@ llvm::Value* RepeatExprAST::CodeGen()
     return afterBB;
 }
 
-void RepeatExprAST::accept(Visitor& v)
+void RepeatExprAST::accept(ASTVisitor& v)
 {
     cond->accept(v);
     body->accept(v);
@@ -2207,7 +2207,7 @@ void WriteAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-void WriteAST::accept(Visitor& v)
+void WriteAST::accept(ASTVisitor& v)
 {
     file->accept(v);
     for(auto a : args)
@@ -2438,7 +2438,7 @@ void ReadAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-void ReadAST::accept(Visitor& v)
+void ReadAST::accept(ASTVisitor& v)
 {
     file->accept(v);
     for(auto a : args)
@@ -2686,7 +2686,7 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
     return caseBB;
 }
 
-void LabelExprAST::accept(Visitor& v)
+void LabelExprAST::accept(ASTVisitor& v)
 {
     if (stmt)
     {
@@ -2711,7 +2711,7 @@ void CaseExprAST::DoDump(std::ostream& out) const
     }
 }
 
-void CaseExprAST::accept(Visitor& v)
+void CaseExprAST::accept(ASTVisitor& v)
 {
     expr->accept(v);
     for(auto l : labels)
@@ -3191,7 +3191,7 @@ llvm::Value* BuiltinExprAST::CodeGen()
     return bif->CodeGen(builder);
 }
 
-void BuiltinExprAST::accept(Visitor& v)
+void BuiltinExprAST::accept(ASTVisitor& v)
 {
     bif->accept(v);
     v.visit(this);
@@ -3296,7 +3296,7 @@ void UnitAST::DoDump(std::ostream& out) const
     out << "Unit "  << std::endl;
 }
 
-void UnitAST::accept(Visitor& v)
+void UnitAST::accept(ASTVisitor& v)
 {
     for(auto i : code)
     {
@@ -3390,7 +3390,7 @@ llvm::Value* TrampolineAST::CodeGen()
     return 0;
 }
 
-void TrampolineAST::accept(Visitor& v)
+void TrampolineAST::accept(ASTVisitor& v)
 {
     func->accept(v);
 }

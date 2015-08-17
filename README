@@ -1,12 +1,10 @@
 This is the a nearly complete Pascal compiler, based on LLVM.
 
-Major missing feature: 
-goto.
-
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
 * Started work on objects.
+- Cross procedural goto.
 - Good error handling. Now slightly improved.
 - Proper type checking. Now better - but not perfect.
 - Support for unsigned integral types. Some support.

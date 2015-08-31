@@ -141,28 +141,6 @@ size_t AlignOfType(llvm::Type* ty)
     return dl.getPrefTypeAlignment(ty);
 }
 
-bool FileInfo(llvm::Value* f, int& recSize, bool& isText)
-{
-    if (!f->getType()->isPointerTy())
-    {
-	return false;
-    }
-    llvm::Type* ty = f->getType()->getContainedType(0);
-    llvm::StructType* st = llvm::dyn_cast<llvm::StructType>(ty);
-
-    assert(st && "Should be a StructType at this point");
-
-    ty = st->getElementType(Types::FileDecl::Buffer);
-    if (ty->isPointerTy())
-    {
-	ty = ty->getContainedType(0);
-	const llvm::DataLayout dl(theModule);
-	recSize = dl.getTypeAllocSize(ty);
-	return true;
-    }
-    return false;
-}
-
 static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty, const std::string& name)
 {
     TRACE();
@@ -262,7 +240,7 @@ llvm::Constant* MakeIntegerConstant(int val)
     return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Integer));
 }
 
-static llvm::Constant* MakeBooleanConstant(int val)
+llvm::Constant* MakeBooleanConstant(int val)
 {
     return MakeConstant(val, Types::GetType(Types::TypeDecl::TK_Boolean));
 }
@@ -316,13 +294,6 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
     llvm::Value* v = builder.CreateLoad(src);
     builder.CreateStore(v, dest);
     return dest;
-}
-
-std::string ExprAST::ToString()
-{
-    std::stringstream ss;
-    dump(ss);
-    return ss.str();
 }
 
 void ExprAST::EnsureSized() const
@@ -2543,25 +2514,6 @@ void VarDeclAST::DoDump(std::ostream& out) const
     }
 }
 
-static llvm::Constant* FileInitializer(Types::TypeDecl* type)
-{
-    llvm::Type* ty = type->LlvmType();
-    assert(type->SubType() && "Expect subtype to be valid here");
-    assert(llvm::isa<Types::FileDecl>(type) && "Expect a FileDecl!");
-    llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
-    llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);
-    std::vector<llvm::Constant*> inits(sty->getNumElements());
-    unsigned i = 0;
-    while(llvm::Constant *c = nullValue->getAggregateElement(i))
-    {
-	inits[i] = c;
-	i++;
-    }
-    inits[Types::FileDecl::RecordSize] = MakeIntegerConstant(type->SubType()->Size());
-    inits[Types::FileDecl::IsText] = MakeBooleanConstant(llvm::isa<Types::TextDecl>(type));
-    return llvm::ConstantStruct::get(sty, inits);
-}
-
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
@@ -2595,9 +2547,10 @@ llvm::Value* VarDeclAST::CodeGen()
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
 	    }
-	    else if (llvm::isa<Types::FileDecl>(var.Type()))
+	    else if (InitializerAST* ia = 
+		     llvm::dyn_cast_or_null<InitializerAST>(var.Type()->GetInitializer()))
 	    {
-		init = FileInitializer(var.Type());
+		init = ia->GlobalValue();
 	    }
 	    else
 	    {
@@ -2626,10 +2579,9 @@ llvm::Value* VarDeclAST::CodeGen()
 		llvm::Value* dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
 	    }
-	    else if (llvm::isa<Types::FileDecl>(var.Type()))
+	    else if (InitializerAST* ia = var.Type()->GetInitializer())
 	    {
-		llvm::Constant* init = FileInitializer(var.Type());
-		builder.CreateStore(init, v);
+		ia->Initialize(v);
 	    }
 	}
 	if (!variables.Add(var.Name(), v))
@@ -3393,6 +3345,26 @@ llvm::Value* TrampolineAST::CodeGen()
 void TrampolineAST::accept(ASTVisitor& v)
 {
     func->accept(v);
+}
+
+void InitializerAST::DoDump(std::ostream& out) const
+{
+    out << "Intializer [";
+    for(auto i : indexList)
+    {
+	out << i << ", ";
+    }
+    out << "]";
+    value->dump();
+}
+
+llvm::Constant* InitializerAST::GlobalValue()
+{
+    return value;
+}
+
+void InitializerAST::Initialize(llvm::Value* v)
+{
 }
 
 static void BuildUnitInitList()

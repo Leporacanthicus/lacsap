@@ -5,7 +5,7 @@ template<typename T>
 class Visitor
 {
 public:
-    virtual void visit(T* expr) = 0;
+    virtual void visit(T* elem) = 0;
     virtual ~Visitor() {};
 };
 
@@ -19,5 +19,11 @@ public:
 
 class ExprAST;
 using ASTVisitor = Visitor<ExprAST>;
+namespace Types
+{
+    class TypeDecl;
+}
+
+using TypeVisitor = Visitor<Types::TypeDecl>;
 
 #endif

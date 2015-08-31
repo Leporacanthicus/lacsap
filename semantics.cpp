@@ -9,7 +9,7 @@ class TypeCheckVisitor : public ASTVisitor
 {
 public:
     TypeCheckVisitor(Semantics* s) : sema(s) {};
-    virtual void visit(ExprAST* expr);
+    void visit(ExprAST* expr) override;
 private:
     void CheckBinExpr(BinaryExprAST* b);
     void CheckAssignExpr(AssignExprAST* a);

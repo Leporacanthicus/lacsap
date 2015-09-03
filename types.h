@@ -106,7 +106,7 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Type; }
 	virtual size_t Size() const;
 	size_t AlignSize() const;
-	void accept(Visitor& v) override { v.visit(this, 0); }
+	void accept(Visitor& v) override { v.visit(this, -1); }
 	virtual InitializerAST* GetInitializer();
     protected:
 	virtual llvm::Type* GetLlvmType() const = 0;

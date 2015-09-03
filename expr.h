@@ -794,17 +794,22 @@ private:
 class InitializerAST : public ExprAST
 {
 public:
+    struct IndexTy
+    {
+	Types::TypeDecl* ty;
+	int index;
+    };
     InitializerAST(const Location& w, Types::TypeDecl* ty, llvm::Constant* v)
 	: ExprAST(w, EK_Initializer, ty), value(v) {}
 	
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override { assert(0 && "Don't call me, I'll call you!"); return 0; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Initializer; }
-    void AddIndex(int i) { indexList.push_back(i); }
+    void AddIndex(Types::TypeDecl* ty, int i) { indexList.push_back( { ty, i } ); }
     llvm::Constant* GlobalValue();
     void Initialize(llvm::Value* v);
 private:
-    std::vector<int> indexList;
+    std::vector<IndexTy> indexList;
     llvm::Constant* value;
 };
 

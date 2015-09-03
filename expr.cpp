@@ -2547,8 +2547,7 @@ llvm::Value* VarDeclAST::CodeGen()
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
 	    }
-	    else if (InitializerAST* ia = 
-		     llvm::dyn_cast_or_null<InitializerAST>(var.Type()->GetInitializer()))
+	    else if (InitializerAST* ia = var.Type()->GetInitializer())
 	    {
 		init = ia->GlobalValue();
 	    }
@@ -3352,7 +3351,7 @@ void InitializerAST::DoDump(std::ostream& out) const
     out << "Intializer [";
     for(auto i : indexList)
     {
-	out << i << ", ";
+	out << i.index << ", ";
     }
     out << "]";
     value->dump();
@@ -3360,7 +3359,26 @@ void InitializerAST::DoDump(std::ostream& out) const
 
 llvm::Constant* InitializerAST::GlobalValue()
 {
-    return value;
+    if (!indexList.size())
+    {
+	return value;
+    }
+    llvm::Constant* prev = value;
+    for(auto r = indexList.rbegin(); r != indexList.rend(); r++)
+    {
+	llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(r->ty->LlvmType());
+	llvm::Constant* nullValue = llvm::Constant::getNullValue(sty);
+	std::vector<llvm::Constant*> initValue(sty->getNumElements());
+	int i = 0;
+	while(llvm::Constant *c = nullValue->getAggregateElement(i))
+	{
+	    initValue[i] = c;
+	    i++;
+	}
+	initValue[r->index] = prev;
+	prev = llvm::ConstantStruct::get(sty, initValue);
+    }
+    return prev;
 }
 
 void InitializerAST::Initialize(llvm::Value* v)

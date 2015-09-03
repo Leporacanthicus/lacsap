@@ -683,6 +683,7 @@ namespace Types
 	{
 	    v.visit(variant, i);
 	}
+	v.visit(this, 0);
     }
 
     llvm::Type* RecordDecl::GetLlvmType() const
@@ -1249,6 +1250,13 @@ namespace Types
 	if (FileDecl* fd = llvm::dyn_cast<FileDecl>(type))
 	{
 	    init = fd->Initializer();
+	}
+	else
+	{
+	    if (init && i != -1)
+	    {
+		init->AddIndex(type, i);
+	    }
 	}
     }
 }

@@ -82,7 +82,7 @@ void OptimizerInit()
 	// Promote allocas to registers.
 	mpm->add(llvm::createPromoteMemoryToRegisterPass());
 	// Provide basic AliasAnalysis support for GVN.
-	mpm->add(llvm::createBasicAliasAnalysisPass());
+//	mpm->add(llvm::createBasicAliasAnalysisPass());
 	// Do simple "peephole" optimizations and bit-twiddling optzns.
 	mpm->add(llvm::createInstructionCombiningPass());
 	// Reassociate expressions.

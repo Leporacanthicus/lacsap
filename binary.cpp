@@ -202,7 +202,7 @@ llvm::Module* CreateModule()
     std::unique_ptr<llvm::TargetMachine> tm(target->createTargetMachine(triple.getTriple(), MCPU,
 									FeaturesStr, options));
     assert(tm && "Could not create TargetMachine");
-    const llvm::DataLayout* dl = tm->getDataLayout();
-    module->setDataLayout(*dl);
+    const llvm::DataLayout dl = tm->createDataLayout();
+    module->setDataLayout(dl);
     return module;
 }

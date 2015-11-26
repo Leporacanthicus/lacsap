@@ -1,7 +1,5 @@
-CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
-#CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O0
-CC  = clang
-#CC  = gcc
+#CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
+CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O0
 
 OBJECTS = main.o math.o fileio.o write.o read.o readbin.o writebin.o alloc.o set.o string.o array.o panic.o \
           clock.o rangeerror.o assign.o getput.o params.o
@@ -32,7 +30,7 @@ ${RUNTIME_LIB32} : ${OBJECTS32}
 	${CC} ${CFLAGS} -fPIC -m32 -c $< -o $@
 
 clean:
-	rm -f ${OBJECTS} ${RUNTIME_LIB}
+	rm -f ${OBJECTS} ${OBJECTS32} ${RUNTIME_LIB}  ${RUNTIME_LIB32}
 
 include .depends
 

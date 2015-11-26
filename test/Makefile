@@ -2,8 +2,7 @@ all: testrunner
 
 OBJECTS = testrunner.o
 
-CXX = g++
-LD  = g++
+LD  = ${CXX}
 
 LLVM_DIR = /usr/local/llvm-debug
 

@@ -3383,6 +3383,7 @@ llvm::Constant* InitializerAST::GlobalValue()
 
 void InitializerAST::Initialize(llvm::Value* v)
 {
+    builder.CreateStore(value, v);
 }
 
 static void BuildUnitInitList()

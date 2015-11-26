@@ -1,5 +1,7 @@
 This is the a nearly complete Pascal compiler, based on LLVM.
 
+See BUILD.md for build instructions.
+
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:

@@ -11,7 +11,7 @@
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile ="");
+    Lexer(const std::string& sourceFile);
     Token GetToken();
 
     bool Good() { return inFile.good(); }

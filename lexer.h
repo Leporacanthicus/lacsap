@@ -1,9 +1,11 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include "location.h"
 #include "token.h"
 #include "types.h"
 #include "constants.h"
+#include "source.h"
 #include <string>
 #include <fstream>
 #include <exception>
@@ -11,10 +13,8 @@
 class Lexer
 {
 public:
-    Lexer(const std::string& sourceFile);
+    Lexer(Source &source);
     Token GetToken();
-
-    bool Good() { return inFile.good(); }
 
 private:
     int NextChar();
@@ -25,16 +25,13 @@ private:
     Token NumberToken();
     Token StringToken();
 
-    Location Where() const { return Location(fName, lineNo, column); }
+    Location Where() const { return Location(source); }
 
 private:
-    std::string   fName;
-    int           lineNo;
-    int           column;
-    std::ifstream inFile;
-    int           curChar;
-    int           nextChar;
-    int           curValid;
+    Source &source;
+    int     curChar;
+    int     nextChar;
+    int     curValid;
 };
 
 #endif

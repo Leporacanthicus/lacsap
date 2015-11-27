@@ -1,6 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include "source.h"
 #include "namedobject.h"
 #include "stack.h"
 #include "expr.h"
@@ -16,7 +17,7 @@ public:
 	Unit
     };
 public:
-    Parser(const std::string& fname);
+    Parser(Source &source);
     ExprAST* Parse(ParserType type);
 
     int GetErrors() { return errCnt; }

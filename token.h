@@ -1,26 +1,13 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+#include "location.h"
+
 #include <cassert>
 #include <string>
 #include <fstream>
 #include <cstdint>
 
-class Location
-{
-public:
-    Location(const std::string& file, int line, int column);
-    Location() { Location("", 0, 0); }
-    std::string to_string() const;
-    std::string FileName() const { return fname; }
-    unsigned int LineNumber() const { return lineNum; }
-private:
-    std::string fname;
-    unsigned int lineNum;
-    unsigned int column;
-};
-
-std::ostream& operator<<(std::ostream &os, const Location& loc);
 
 class Token
 {

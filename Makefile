@@ -1,11 +1,10 @@
-OBJECTS = lexer.o token.o expr.o parser.o types.o constants.o builtin.o binary.o lacsap.o \
-	  namedobject.o semantics.o trace.o stack.o
+OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.o builtin.o \
+	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o
 
-#LLVM_DIR = /usr/local/llvm-only
 LLVM_DIR ?= /usr/local/llvm-debug
 
 #For now at least.
-USECLANG=1
+USECLANG ?= 1
 
 ifdef USECLANG
   CC = ${LLVM_DIR}/bin/clang
@@ -25,7 +24,7 @@ CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
 LDFLAGS  = -g -rdynamic
 
 ifeq (${CC},clang)
-LDFLAGS += -fstandalone-debug
+  LDFLAGS += -fstandalone-debug
 endif
 LDFLAGS += `${LLVM_DIR}/bin/llvm-config --ldflags`
 LLVMLIBS  = `${LLVM_DIR}/bin/llvm-config --libs`

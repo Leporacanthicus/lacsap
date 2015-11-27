@@ -1,3 +1,4 @@
+#include "source.h"
 #include "lexer.h"
 #include "parser.h"
 #include "binary.h"
@@ -109,12 +110,18 @@ void OptimizerInit()
     }
 }
 
-static int Compile(const std::string& filename)
+static int Compile(const std::string& fileName)
 {
     TIME_TRACE();
     theModule = CreateModule();
     Builtin::InitBuiltins();
-    Parser p(filename);
+    FileSource source(fileName);
+    if (!source)
+    {
+	std::cerr << "Could not open " << fileName << std::endl;
+	return 1;
+    }
+    Parser p(source);
 
     OptimizerInit();
 
@@ -150,7 +157,7 @@ static int Compile(const std::string& filename)
     {
 	DumpModule(theModule);
     }
-    CreateBinary(theModule, filename, EmitSelection);
+    CreateBinary(theModule, fileName, EmitSelection);
     return 0;
 }
 

@@ -6,24 +6,13 @@
 #include <cctype>
 #include <iostream>
 
-Lexer::Lexer(const std::string& sourceFile) 
-    : fName(sourceFile), lineNo(1),column(1), curValid(0)
+Lexer::Lexer(Source& source) : source(source), curValid(0)
 {
-    inFile.open(fName);
 }
 
 int Lexer::GetChar()
 {
-    int ch = inFile.get();
-    if (ch == '\n')
-    {
-	lineNo++;
-	column = 0;
-    }
-    else
-    {
-	column++;
-    }
+    int ch = source.Get();
     return ch;
 }
 

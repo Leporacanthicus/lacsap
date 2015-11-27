@@ -1,3 +1,4 @@
+#include "source.h"
 #include "lexer.h"
 #include "parser.h"
 #include "expr.h"
@@ -2991,7 +2992,14 @@ ExprAST* Parser::ParseUses()
 	{
 	    /* TODO: Loop over commaseparated list */
 	    strlower(unitname);
-	    Parser p(unitname + ".pas");
+	    std::string fileName = unitname + ".pas";
+	    FileSource source(fileName);
+	    if (!source)
+	    {
+		std::cerr << "Could not open " << fileName << std::endl;
+		return 0;
+	    }
+	    Parser p(source);
 	    ExprAST* e = p.Parse(Unit);
 	    if (!Expect(Token::Semicolon, true))
 	    {
@@ -3188,11 +3196,6 @@ ExprAST* Parser::Parse(ParserType type)
 {
     TIME_TRACE();
 
-    if (!lexer.Good())
-    {
-	std::cerr << "Could not open " << fileName << std::endl;
-	return 0;
-    }
     NextToken();
     if (type == Program)
     {
@@ -3207,8 +3210,8 @@ ExprAST* Parser::Parse(ParserType type)
     return ParseUnit(type);
 }
 
-Parser::Parser(const std::string& fn)
-    : lexer(fn), nextTokenValid(false), fileName(fn), errCnt(0)
+Parser::Parser(Source &source)
+    : lexer(source), nextTokenValid(false), errCnt(0)
 {
     Types::TypeDecl* ty = new Types::BoolDecl;
     if (!(AddType("integer", new Types::IntegerDecl) &&

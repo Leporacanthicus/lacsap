@@ -157,7 +157,10 @@ static int Compile(const std::string& fileName)
     {
 	DumpModule(theModule);
     }
-    CreateBinary(theModule, fileName, EmitSelection);
+    if (!CreateBinary(theModule, fileName, EmitSelection))
+    {
+	return 1;
+    }
     return 0;
 }
 

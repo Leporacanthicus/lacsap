@@ -4,7 +4,7 @@
 #include <string>
 #include <llvm/IR/Module.h>
 
-void CreateBinary(llvm::Module *module, const std::string& fileName, EmitType emit);
+bool CreateBinary(llvm::Module *module, const std::string& fileName, EmitType emit);
 
 llvm::Module* CreateModule();
 

@@ -121,7 +121,7 @@ std::string replace_ext(const std::string &origName,
     return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
 }
 
-void CreateBinary(llvm::Module *module, const std::string& filename, EmitType emit)
+bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType emit)
 {
     TIME_TRACE();
     if (emit == Exe)
@@ -149,8 +149,9 @@ void CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	if (res != 0)
 	{
 	    std::cerr << "Error: " << res << std::endl;
+	    return false;
 	}
-	return;
+	return true;
     }
     assert(emit == LlvmIr && "Expect LLVM IR here..");
 
@@ -159,7 +160,7 @@ void CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
     llvm::formatted_raw_ostream FOS(Out->os());
     module->print(FOS, 0);
     Out->keep();
-    return;
+    return true;
 }
 
 llvm::Module* CreateModule()

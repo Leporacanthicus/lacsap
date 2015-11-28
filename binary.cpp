@@ -162,7 +162,6 @@ void CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
     return;
 }
 
-
 llvm::Module* CreateModule()
 {
     llvm::InitializeNativeTarget();

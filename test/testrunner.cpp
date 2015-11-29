@@ -200,10 +200,14 @@ public:
 	{
 	    cases++;
 	}
+
     void RegisterPass(const TestCase* /* tc */)
 	{
 	    pass++;
 	}
+
+    bool AnyFail() { return fail != 0; }
+
     void Report()
 	{
 	    std::cout << "Cases:  " << std::setw(5) << cases << std::endl;
@@ -422,9 +426,12 @@ int main(int argc, char **argv)
     }
 
     res.Report();
+    bool anyFail = res.AnyFail();
 
     for(auto i : tc)
     {
 	delete i;
     }
+    
+    return static_cast<int>(anyFail);
 }

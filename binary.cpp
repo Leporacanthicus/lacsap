@@ -129,6 +129,13 @@ bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	std::string objname = replace_ext(filename, ".pas", ".o");
 	std::string exename = replace_ext(filename, ".pas", "");
 	std::string modelStr;
+
+// Order matters here: clang, being gcc-compatible, will have __GNUC__ defined.
+#ifdef __clang__
+	std::string compiler = "clang";
+#elif defined(__GNUC__)
+	std::string compiler = "gcc";
+#endif
 	if (model == m32)
 	{
 	    modelStr = "-m32";
@@ -137,9 +144,9 @@ bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	std::string verboseflags;
 	if (verbosity)
 	{
-	    verboseflags = "-v ";
+	    verboseflags = " -v";
 	}
-	std::string cmd = "clang " + modelStr + " " + verboseflags + objname +
+	std::string cmd = compiler + " " + modelStr + verboseflags + " " + objname +
 	    " -L" + libpath + " -lruntime" + modelStr + " -lm -o " + exename;
 	if (verbosity)
 	{

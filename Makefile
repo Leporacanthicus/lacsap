@@ -3,12 +3,12 @@ OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.
 
 LLVM_DIR ?= /usr/local/llvm-debug
 
-#For now at least.
+#For now at least, we use clang as default.
 USECLANG ?= 1
 
-ifdef USECLANG
-  CC = ${LLVM_DIR}/bin/clang
-  CXX = ${LLVM_DIR}/bin/clang++
+ifeq (${USECLANG}, 1)
+  CC = clang
+  CXX = clang++
 endif
 
 LD = ${CXX}

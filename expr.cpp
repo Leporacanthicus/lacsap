@@ -3313,7 +3313,7 @@ void TrampolineAST::DoDump(std::ostream& out) const
 {
     out << "Trampoline for "; 
     func->DoDump(out);
-};
+}
 
 llvm::Value* TrampolineAST::CodeGen()
 {

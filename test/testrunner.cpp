@@ -383,6 +383,8 @@ int main(int argc, char **argv)
     std::vector<std::string> models = { "", "-m32", "-m64" };
     std::vector<std::string> others = { "", "-Cr" };
 
+    std::cout << "PATH=" << getenv("PATH") << std::endl;
+
     int flags = 0;
 
     for(int i = 1; i < argc; i++)

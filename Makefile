@@ -18,7 +18,7 @@ CXXFLAGS += -fno-exceptions -fno-rtti
 ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug
 endif
-CXXFLAGS += `${LLVM_DIR}/bin/llvm-config --cxxflags`
+CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
 #CXX_EXTRA = --analyze
 
 LDFLAGS  = -g -rdynamic
@@ -26,9 +26,9 @@ LDFLAGS  = -g -rdynamic
 ifeq (${CC},clang)
   LDFLAGS += -fstandalone-debug
 endif
-LDFLAGS += `${LLVM_DIR}/bin/llvm-config --ldflags`
-LLVMLIBS  = `${LLVM_DIR}/bin/llvm-config --libs`
-LLVMLIBS += `${LLVM_DIR}/bin/llvm-config --system-libs`
+LDFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --ldflags)
+LLVMLIBS  = $(shell ${LLVM_DIR}/bin/llvm-config --libs)
+LLVMLIBS += $(shell ${LLVM_DIR}/bin/llvm-config --system-libs)
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 

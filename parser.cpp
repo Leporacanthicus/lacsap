@@ -2797,7 +2797,7 @@ ExprAST* Parser::ParseWrite()
 		return 0;
 	    }
 	}
-	assert(args.size() >= 1 || isWriteln && "Expected at least one expression for output in write");
+	assert((args.size() >= 1 || isWriteln) && "Expected at least one expression for output in write");
     }
     return new WriteAST(loc, file, args, isWriteln);
 }
@@ -2859,7 +2859,7 @@ ExprAST* Parser::ParseRead()
 		return 0;
 	    }
 	}
-	assert(args.size() >= 1 || isReadln && "Expected at least one variable in read statement");
+	assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
     }
     return new ReadAST(loc, file, args, isReadln);
 }

@@ -37,7 +37,7 @@ LLVMLIBS += $(shell ${LLVM_DIR}/bin/llvm-config --system-libs)
 
 SOURCES = $(patsubst %.o,%.cpp,${OBJECTS})
 
-all: lacsap .depends tests runtime_lib
+all: lacsap .depends tests runtime_lib llvmversion
 
 .cpp.o:
 	${CXX} ${CXXFLAGS} ${CXX_EXTRA} -c -o $@ $<
@@ -64,12 +64,10 @@ fulltests: lacsap tests
 fasttests: lacsap tests
 	${MAKE} -C test fasttests M32=${M32}
 
+.phony: llvmversion
 llvmversion:
 	${LLVM_DIR}/bin/clang --version | head -1 | \
 	awk -e '{ print "git clone " substr($$6, 2) " llvm && cd llvm && git checkout " substr($$7, 0, length($$7)-1); }' > $@
-
-.phony: llvmversion
-
 
 clean:
 	rm -f ${OBJECTS} libruntime.a llvmversion

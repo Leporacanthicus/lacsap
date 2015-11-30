@@ -61,13 +61,14 @@ static llvm::cl::opt<bool, true>     RangeCheck("Cr",
 						llvm::cl::desc("Enable range checking"),
 						llvm::cl::location(rangeCheck));
 
+#if M32_DISABLE==0
 static llvm::cl::opt<Model, true> ModelSetting(llvm::cl::desc("Model:"),
 					       llvm::cl::values(
 								clEnumVal(m32, "32-bit model"),
 								clEnumVal(m64, "64-bit model"),
 								clEnumValEnd),
 					       llvm::cl::location(model));
-
+#endif
 
 void DumpModule(llvm::Module* module)
 {

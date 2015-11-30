@@ -3,8 +3,9 @@ OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.
 
 LLVM_DIR ?= /usr/local/llvm-debug
 
-#For now at least, we use clang as default.
+# If not specified, use clang and enable 32-bit build.
 USECLANG ?= 1
+M32 ?= 1
 
 ifeq (${USECLANG}, 1)
   CC = clang
@@ -19,6 +20,10 @@ ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug
 endif
 CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
+ifeq (${M32}, 0)
+  CXXFLAGS += -DM32_DISABLE=1
+endif
+
 #CXX_EXTRA = --analyze
 
 LDFLAGS  = -g -rdynamic
@@ -42,22 +47,22 @@ lacsap: ${OBJECTS} .depends
 
 .phony: tests
 tests: runtime_lib
-	${MAKE} -C test CC=${CC} CXX=${CXX}
+	${MAKE} -C test CC=${CC} CXX=${CXX} M32=${M32}
 
 .phony: runtime_lib
 runtime_lib:
-	${MAKE} -C runtime CC=${CC}
+	${MAKE} -C runtime CC=${CC} M32=${M32}
 
 .phony: runtests
 runtests: fulltests
 
 .phony: fulltests 
 fulltests: lacsap tests
-	${MAKE} -C test fulltests
+	${MAKE} -C test fulltests M32=${M32}
 
 .phony: fasttests 
 fasttests: lacsap tests
-	${MAKE} -C test fasttests
+	${MAKE} -C test fasttests M32=${M32}
 
 llvmversion:
 	${LLVM_DIR}/bin/clang --version | head -1 | \

@@ -380,7 +380,11 @@ int main(int argc, char **argv)
     TestResult res;
     std::string mode = "full";
     std::vector<std::string> optimizations = { "", "-O0", "-O1", "-O2" };
-    std::vector<std::string> models = { "", "-m32", "-m64" };
+    std::vector<std::string> models = { "", 
+#if M32_DISABLE == 0
+					"-m32", "-m64" 
+#endif
+    };
     std::vector<std::string> others = { "", "-Cr" };
 
     std::cout << "PATH=" << getenv("PATH") << std::endl;

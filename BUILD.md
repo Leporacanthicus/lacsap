@@ -109,12 +109,19 @@ Go to the directory where you have your sources (from above
 
 and finally, using `gcc` to build the Pascal compiler:
 
-     make CC=gcc CXX=g++
+     make USECLANG=0
 
+Extra options: 
+    
+     M32={1,0}   
+         Enable or disable 32-bit build option.
+
+     LLVM_DIR={where-llvm-install}
+         The directory used to install LLVM into.
 
 Optionally, you could build with my favoured C++ compiler `clang` instead:
 
-     make
+     make 
 
 
 [1] http://llvm.org/docs/CMake.html

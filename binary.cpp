@@ -148,7 +148,7 @@ bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	    verboseflags = " -v";
 	}
 	std::string cmd = compiler + " " + modelStr + verboseflags + " " + objname +
-	    " -L" + libpath + " -lruntime" + modelStr + " -lm -o " + exename;
+	    " -L\"" + libpath + "\" -lruntime" + modelStr + " -lm -o " + exename;
 	if (verbosity)
 	{
 	    std::cerr << "Executing final link command: " << cmd << std::endl;

@@ -140,6 +140,7 @@ bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
 	{
 	    modelStr = "-m32";
 	}
+	std::cout << "PATH=" << getenv("PATH") << std::endl;
 	CreateObject(module, objname);
 	std::string verboseflags;
 	if (verbosity)

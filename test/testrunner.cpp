@@ -333,6 +333,7 @@ struct
     { LACSAP_ONLY, "Basic", "GPC varrec1",   "varrec1.pas",     "" },
     { 0,           "Basic", "GPC Transpose", "transpose.pas",   "" },
     { 0,           "Basic", "Double Begin",  "doublebegin.pas", "" },
+    { 0,           "Basic", "Simple unit",   "unit_main.pas",   "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

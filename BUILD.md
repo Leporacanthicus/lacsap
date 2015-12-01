@@ -75,7 +75,6 @@ usage. `make -j 8` works fine currently on a machine with 16GB of RAM
 and fairly light load otherwise. Too large a value will cause
 swapping, and actually slow down the process. 
 
-
 This will take a little while. On a decent desktop machine compilng a
 debug build of llvm takes 10-20 minutes, so now is probably a good
 time to go get a cup of coffee, walk the dog, feed the fish, browse
@@ -95,6 +94,13 @@ This will build a few extra components that are needed for testing
 only, and then run several thousand test-cases. It should all pass. If
 it doesn't, it's hard to say here what is the right thing to
 do. Trying another version is probably the first step.
+
+Now you need to install the llvm into the "install prefix" directory:
+
+    make install 
+
+(You may need to do this with `sudo` if the install directory is
+something like `/usr/...`)
 
 
 ### Building lacsap.

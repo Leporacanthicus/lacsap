@@ -1368,7 +1368,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	{
 	    const Types::FieldDecl* f = rd->GetElement(i);
 	    ind[1] = MakeIntegerConstant(i);
-	    llvm::Value* a = builder.CreateGEP(ai, ind, f->Name());
+	    llvm::Value* a = builder.CreateGEP(&*ai, ind, f->Name());
 	    a = builder.CreateLoad(a);
 	    if (!variables.Add(f->Name(), a))
 	    {
@@ -1383,12 +1383,12 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::Value* a;
 	if (args[idx].IsRef() || args[idx].Type()->isCompound())
 	{
-	    a = ai;
+	    a = &*ai;
 	}
 	else
 	{
 	    a = CreateAlloca(fn, args[idx]);
-	    builder.CreateStore(ai, a);
+	    builder.CreateStore(&*ai, a);
 	}
 	if (!variables.Add(args[idx].Name(), a))
 	{

@@ -29,7 +29,7 @@ ${RUNTIME_LIB} : ${OBJECTS}
 ${RUNTIME_LIB32} : ${OBJECTS32}
 	ar r $@ ${OBJECTS32}
 
-%c.%o:
+.c.o:
 	${CC} ${CFLAGS} -fPIC -c $< -o $@
 
 .c.o32:
@@ -38,7 +38,9 @@ ${RUNTIME_LIB32} : ${OBJECTS32}
 clean:
 	rm -f ${OBJECTS} ${OBJECTS32} ${RUNTIME_LIB}  ${RUNTIME_LIB32}
 
-include .depends
+-include .depends
+-include .depends32
 
 .depends: Makefile ${SOURCES}
 	${CC} -MM ${CFLAGS} ${SOURCES} > $@
+	sed $@ -e s/\\.o/\\.o32/g > .depends32

@@ -32,10 +32,7 @@ void SetupFile(File* f, int recSize, int isText)
 {
     f->recordSize = (isText)? 1024 : recSize;
     f->isText = isText;
-    if (!f->buffer)
-    {
-	f->buffer = malloc(f->recordSize);
-    }
+    f->buffer = malloc(f->recordSize);
 }
 
 /*******************************************

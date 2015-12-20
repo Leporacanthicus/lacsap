@@ -2325,23 +2325,8 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV("Argument codegen failed");
 	    }
 	    argsV.push_back(v);
-	    llvm::Value*    w;
-	    if (!arg.width)
-	    {
-		if (type->Type() == Types::TypeDecl::TK_Integer)
-		{
-		    w = MakeIntegerConstant(1);
-		}
-		else if (type->Type() == Types::TypeDecl::TK_Real)
-		{
-		    w = MakeIntegerConstant(1);
-		}
-		else
-		{
-		    w = MakeIntegerConstant(0);
-		}
-	    }
-	    else
+	    llvm::Value* w = MakeIntegerConstant(1);
+	    if (arg.width)
 	    {
 		w = arg.width->CodeGen();
 		assert(w && "Expect width expression to generate code ok");

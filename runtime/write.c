@@ -49,7 +49,7 @@ void __write_char(File* file, char v, int width)
 void __write_bool(File* file, int v, int width)
 {
     FILE* f = getFile(file);
-    const char* vstr = (v)?"TRUE":"FALSE";
+    const char* vstr = (v & 1)?"TRUE":"FALSE";
     if (width > 0)
     {
 	fprintf(f, "%*s", width, vstr);

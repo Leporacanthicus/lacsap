@@ -17,9 +17,25 @@ void InitFiles()
     __assign(&input, "INPUT");
     __assign(&output, "OUTPUT");
 
+    SetupFile(&input, 1, 1 | (2 * (!!isatty(fileno(stdin)))));
+    SetupFile(&output, 1, 1);
+
     files[input.handle].file = stdin;
-    input.isText |= (bool)(2 * (!!isatty(fileno(stdin))));
     files[output.handle].file = stdout;
+}
+
+/*******************************************
+ * SetupFile
+ *******************************************
+ */
+void SetupFile(File* f, int recSize, int isText)
+{
+    f->recordSize = (isText)? 1024 : recSize;
+    f->isText = isText;
+    if (!f->buffer)
+    {
+	f->buffer = malloc(f->recordSize);
+    }
 }
 
 /*******************************************
@@ -36,12 +52,7 @@ void __assign(File* f, char* name)
 	fprintf(stderr, "No free files... Exiting\n");
 	exit(1);
     }
-    if (f->isText)
-    {
-	f->recordSize = 1024;
-    }
     f->handle = i;
-    f->buffer = malloc(f->recordSize);
     files[i].inUse = 1;
     files[i].name = malloc(strlen(name)+1);
     files[i].fileData = f;
@@ -70,3 +81,4 @@ void __assign_unnamed(File* f)
     }
     __assign(f, name);
 }
+

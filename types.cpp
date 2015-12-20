@@ -14,17 +14,6 @@ namespace Types
     static TextDecl* textType = 0;
     static StringDecl* strType = 0;
 
-    class InitializerVisitor : public Visitor
-    {
-    public:
-	InitializerVisitor() : init(0) {}
-	void visit(TypeDecl* type, int elem) override;
-	InitializerAST* Init() const { return init; }
-	void AddInitializer(TypeDecl* ty, int i);
-    private:
-	InitializerAST* init;
-    };
-
     llvm::Type* ErrorT(const std::string& msg)
     {
 	std::cerr << msg << std::endl;
@@ -91,13 +80,6 @@ namespace Types
     {
 	const llvm::DataLayout dl(theModule);
 	return dl.getPrefTypeAlignment(LlvmType());
-    }
-
-    InitializerAST* TypeDecl::GetInitializer()
-    {
-	InitializerVisitor v;
-	accept(v);
-	return  v.Init();
     }
 
     Range* TypeDecl::GetRange() const
@@ -671,21 +653,6 @@ namespace Types
 	}
     }
 
-    void RecordDecl::accept(Visitor& v)
-    {
-	int i = 0;
-	for(auto f : fields)
-	{
-	    v.visit(f->FieldType(), i);
-	    i++;
-	}
-	if (variant)
-	{
-	    v.visit(variant, i);
-	}
-	v.visit(this, 0);
-    }
-
     llvm::Type* RecordDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
@@ -1072,25 +1039,6 @@ namespace Types
 	baseType->DoDump(out);
     }
 
-    InitializerAST* FileDecl::Initializer()
-    {
-	llvm::Type* ty = LlvmType();
-	assert(SubType() && "Expect subtype to be valid here");
-	llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(ty);
-	llvm::Constant* nullValue = llvm::Constant::getNullValue(ty);
-	std::vector<llvm::Constant*> inits(sty->getNumElements());
-	unsigned i = 0;
-	while(llvm::Constant *c = nullValue->getAggregateElement(i))
-	{
-	    inits[i] = c;
-	    i++;
-	}
-	inits[Types::FileDecl::RecordSize] = MakeIntegerConstant(SubType()->Size());
-	inits[Types::FileDecl::IsText] = MakeBooleanConstant(Type() == TK_Text);
-	llvm::Constant* c = llvm::ConstantStruct::get(sty, inits);
-	return new InitializerAST(Location(), this, c);
-    }
-
     void TextDecl::DoDump(std::ostream& out) const
     {
 	out << "Text ";
@@ -1243,21 +1191,6 @@ namespace Types
 	    textType = new TextDecl();
 	}
 	return textType;
-    }
-
-    void InitializerVisitor::visit(TypeDecl* type, int i)
-    {
-	if (FileDecl* fd = llvm::dyn_cast<FileDecl>(type))
-	{
-	    init = fd->Initializer();
-	}
-	else
-	{
-	    if (init && i != -1)
-	    {
-		init->AddIndex(type, i);
-	    }
-	}
     }
 }
 

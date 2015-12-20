@@ -327,6 +327,14 @@ namespace Builtin
 	std::string funcname;
     };
 
+    class BuiltinFunctionFileInfo : public BuiltinFunctionFile
+    {
+    public:
+	BuiltinFunctionFileInfo(const std::string& fn, const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionFile(fn, a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class BuiltinFunctionFileBool : public BuiltinFunctionFile
     {
     public:
@@ -748,6 +756,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
     {
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	assert(fvar && "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
 	llvm::Constant* f = GetFunction(Type()->Type(), { faddr->getType() },
 					"__" + funcname);
@@ -766,6 +775,25 @@ namespace Builtin
 	    return false;
 	}
 	return true;
+    }
+
+    llvm::Value* BuiltinFunctionFileInfo::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	assert(fvar && "Should be a variable here");
+	llvm::Value* faddr = fvar->Address();
+	std::vector<llvm::Type*> argTypes =  { faddr->getType(), 
+					       IntType()->LlvmType(), 
+					       BoolType()->LlvmType() };
+	llvm::Constant* f = GetFunction(Type()->Type(), argTypes, "__" + funcname);
+
+	Types::FileDecl* fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
+	llvm::Value* sz = MakeIntegerConstant(fd->SubType()->Size());
+	llvm::Value* isText = MakeBooleanConstant(fd->Type() == Types::TypeDecl::TK_Text);
+
+	std::vector<llvm::Value*> argList = { faddr, sz, isText };
+
+	return builder.CreateCall(f, argList);
     }
 
     // Used for eof/eoln, where no argument means the "input" file.
@@ -1139,9 +1167,9 @@ namespace Builtin
 	AddBIFCreator("tan",        NEW2(Float, "tan"));
 	AddBIFCreator("arctan2",    NEW2(Float2Arg, "atan2"));
 	AddBIFCreator("fmod",       NEW2(Float2Arg, "fmod"));
-	AddBIFCreator("reset",      NEW2(File, "reset"));
-	AddBIFCreator("rewrite",    NEW2(File, "rewrite"));
-	AddBIFCreator("append",     NEW2(File, "append"));
+	AddBIFCreator("reset",      NEW2(FileInfo, "reset"));
+	AddBIFCreator("rewrite",    NEW2(FileInfo, "rewrite"));
+	AddBIFCreator("append",     NEW2(FileInfo, "append"));
 	AddBIFCreator("close",      NEW2(File, "close"));
 	AddBIFCreator("get",        NEW2(File, "get"));
 	AddBIFCreator("put",        NEW2(File, "put"));

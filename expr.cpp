@@ -2547,10 +2547,6 @@ llvm::Value* VarDeclAST::CodeGen()
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
 	    }
-	    else if (InitializerAST* ia = var.Type()->GetInitializer())
-	    {
-		init = ia->GlobalValue();
-	    }
 	    else
 	    {
 		init = nullValue;
@@ -2577,10 +2573,6 @@ llvm::Value* VarDeclAST::CodeGen()
 		std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
 		llvm::Value* dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
-	    }
-	    else if (InitializerAST* ia = var.Type()->GetInitializer())
-	    {
-		ia->Initialize(v);
 	    }
 	}
 	if (!variables.Add(var.Name(), v))

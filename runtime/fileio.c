@@ -12,12 +12,14 @@ static void FileError(const char *op)
     fprintf(stderr, "Attempt to %s file failed\n", op);
 }
 
-void __reset(File* f)
+void __reset(File* f, int recSize, int isText)
 {
+    
     if (!f->handle) 
     {
 	__assign_unnamed(f);
     }
+    SetupFile(f, recSize, isText);
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "r");
@@ -30,12 +32,13 @@ void __reset(File* f)
     FileError("open");
 }
 
-void __rewrite(File* f)
+void __rewrite(File* f, int recSize, int isText)
 {
     if (!f->handle) 
     {
 	__assign_unnamed(f);
     }
+    SetupFile(f, recSize, isText);
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "w");
@@ -47,12 +50,13 @@ void __rewrite(File* f)
     FileError("open");
 }
 
-void __append(File* f)
+void __append(File* f, int recSize, int isText)
 {
     if (!f->handle) 
     {
 	__assign_unnamed(f);
     }
+    SetupFile(f, recSize, isText);
     if (files[f->handle].inUse && files[f->handle].file == NULL)
     {
 	files[f->handle].file = fopen(files[f->handle].name, "a");

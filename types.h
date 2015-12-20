@@ -5,7 +5,6 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <string>
 
-
 class PrototypeAST;
 class ExprAST;
 class InitializerAST;
@@ -32,25 +31,9 @@ namespace Types
 	int end;
     };
 
-    class TypeDecl;
+    using InitializerList = std::vector<std::pair<int, InitializerAST*>>;
 
-    class Visitor
-    {
-    public:
-	virtual void visit(TypeDecl* type, int elem) = 0;
-	virtual ~Visitor() {};
-    };
-    
-    class Visitable
-    {
-    public:
-	virtual void accept(Visitor &v) = 0;
-	virtual ~Visitable() {}
-    };
-
-
-
-    class TypeDecl : public Visitable
+    class TypeDecl
     {
     public:
 	enum TypeKind
@@ -106,8 +89,6 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Type; }
 	virtual size_t Size() const;
 	size_t AlignSize() const;
-	void accept(Visitor& v) override { v.visit(this, -1); }
-	virtual InitializerAST* GetInitializer();
     protected:
 	virtual llvm::Type* GetLlvmType() const = 0;
     protected:
@@ -437,7 +418,6 @@ namespace Types
 	VariantDecl* Variant() { return variant; }
 	bool SameAs(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
-	void accept(Visitor& v) override;
     protected:
 	llvm::Type* GetLlvmType() const override;
     private:
@@ -541,7 +521,6 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) 
 	{ return e->getKind() == TK_File || e->getKind() == TK_Text; }
-	InitializerAST* Initializer();
     protected:
 	llvm::Type* GetLlvmType() const override;
     };

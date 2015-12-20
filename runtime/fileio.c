@@ -10,62 +10,7 @@
 static void FileError(const char *op)
 {
     fprintf(stderr, "Attempt to %s file failed\n", op);
-}
-
-void __reset(File* f, int recSize, int isText)
-{
-    
-    if (!f->handle) 
-    {
-	__assign_unnamed(f);
-    }
-    SetupFile(f, recSize, isText);
-    if (files[f->handle].inUse && files[f->handle].file == NULL)
-    {
-	files[f->handle].file = fopen(files[f->handle].name, "r");
-	if (files[f->handle].file)
-	{
-	    __get(f);
-	    return;
-	}
-    }
-    FileError("open");
-}
-
-void __rewrite(File* f, int recSize, int isText)
-{
-    if (!f->handle) 
-    {
-	__assign_unnamed(f);
-    }
-    SetupFile(f, recSize, isText);
-    if (files[f->handle].inUse && files[f->handle].file == NULL)
-    {
-	files[f->handle].file = fopen(files[f->handle].name, "w");
-	if (files[f->handle].file)
-	{
-	    return;
-	}
-    }
-    FileError("open");
-}
-
-void __append(File* f, int recSize, int isText)
-{
-    if (!f->handle) 
-    {
-	__assign_unnamed(f);
-    }
-    SetupFile(f, recSize, isText);
-    if (files[f->handle].inUse && files[f->handle].file == NULL)
-    {
-	files[f->handle].file = fopen(files[f->handle].name, "a");
-	if (files[f->handle].file)
-	{
-	    return;
-	}
-    }
-    FileError("append");
+    exit(1);
 }
 
 void __close(File* f)
@@ -77,4 +22,42 @@ void __close(File* f)
 	return;
     }
     FileError("close");
+}
+
+static void OpenFile(File* f, int recSize, int isText, const char* mode)
+{
+    if (!f->handle)
+    {
+	__assign_unnamed(f);
+    }
+    SetupFile(f, recSize, isText);
+    if (files[f->handle].inUse)
+    {
+	if (files[f->handle].file) 
+	{
+	    __close(f);
+	}
+	files[f->handle].file = fopen(files[f->handle].name,  mode);
+	if (files[f->handle].file)
+	{
+	    return;
+	}
+    }
+    FileError("open");
+}
+
+void __reset(File* f, int recSize, int isText)
+{
+    OpenFile(f, recSize, isText, "r");
+    __get(f);
+}
+
+void __rewrite(File* f, int recSize, int isText)
+{
+    OpenFile(f, recSize, isText, "w");
+}
+
+void __append(File* f, int recSize, int isText)
+{
+    OpenFile(f, recSize, isText, "a");
 }

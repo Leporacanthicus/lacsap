@@ -29,7 +29,8 @@ void __write_real(File* file, double v, int width, int precision)
     }
     else
     {
-	fprintf(f, "%*E", width, v);
+	precision = (width > 8)?width-7:1;
+	fprintf(f, "% *.*E", width, precision, v);
     }
 }
 
@@ -60,16 +61,20 @@ void __write_bool(File* file, int v, int width)
     }
 }   
  
-void __write_chars(File* file, const char* v, int width)
+void __write_chars(File* file, const char* v, int len, int width)
 {
     FILE* f = getFile(file);
     if (width > 0)
     {
-	fprintf(f, "%*s", width, v);
+	if (len > width)
+	{
+	    len = width;
+	}
+	fprintf(f, "%*.*s", width, len, v);
     }
     else
     {
-	fprintf(f, "%s", v);
+	fprintf(f, "%.*s", len, v);
     }
 }
 

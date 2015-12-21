@@ -1986,6 +1986,7 @@ llvm::Value* ForExprAST::CodeGen()
     }
 
     llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
+    llvm::Value* endV = end->CodeGen();
 
     builder.CreateStore(startV, var);
 
@@ -1993,7 +1994,6 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", theFunction);
 
     llvm::Value* curVar = builder.CreateLoad(var, varName);
-    llvm::Value* endV = end->CodeGen();
     llvm::Value* endCond;
 
     if (start->Type()->isUnsigned())
@@ -2253,6 +2253,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetType(Types::TypeDecl::TK_Char));
 	argTypes.push_back(pty);
 	argTypes.push_back(intTy);
+	argTypes.push_back(intTy);
 	suffix = "chars";
 	break;
     }
@@ -2307,14 +2308,22 @@ llvm::Value* WriteAST::CodeGen()
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
 	    else if (type->Type() == Types::TypeDecl::TK_Array &&
-		     type->SubType()->Type() == Types::TypeDecl::TK_Char &&
-		     !llvm::isa<StringExprAST>(arg.expr))
+		     type->SubType()->Type() == Types::TypeDecl::TK_Char)
 	    {
-		AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
-		assert(a && "Expected addressable value");
-		v = a->Address();
-		std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
-		v = builder.CreateGEP(v, ind, "str_addr");
+		if (llvm::isa<StringExprAST>(arg.expr))
+		{
+		    v = arg.expr->CodeGen();
+		}
+		else
+		{
+		    AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
+		    assert(a && "Expected addressable value");
+		    v = a->Address();
+		    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(0)};
+		    v = builder.CreateGEP(v, ind, "str_addr");
+		}
+		argsV.push_back(v);
+		v = MakeIntegerConstant(type->Size());
 	    }
 	    else
 	    {
@@ -2325,7 +2334,7 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV("Argument codegen failed");
 	    }
 	    argsV.push_back(v);
-	    llvm::Value* w = MakeIntegerConstant(1);
+	    llvm::Value* w = MakeIntegerConstant(0);
 	    if (arg.width)
 	    {
 		w = arg.width->CodeGen();

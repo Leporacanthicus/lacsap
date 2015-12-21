@@ -334,6 +334,7 @@ struct
     { 0,           "Basic", "GPC Transpose", "transpose.pas",   "" },
     { 0,           "Basic", "Double Begin",  "doublebegin.pas", "" },
     { 0,           "Basic", "Simple unit",   "unit_main.pas",   "" },
+    { 0,           "Basic", "Pack & Unpack", "packunpack.pas",  "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

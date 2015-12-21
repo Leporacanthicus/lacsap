@@ -708,7 +708,8 @@ namespace Builtin
 	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	if (ty0->Ranges()[0]->GetStart())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(), start->getType()));
+	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(),
+							  start->getType()));
 	}
 
 	llvm::Value* pA = var0->Address();
@@ -741,10 +742,11 @@ namespace Builtin
 	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 
 	llvm::Value* start = args[2]->CodeGen();
-	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
-	if (ty0->Ranges()[0]->GetStart())
+	Types::ArrayDecl* ty1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
+	if (ty1->Ranges()[0]->GetStart())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(), start->getType()));
+	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->GetStart(),
+							  start->getType()));
 	}
 
 	llvm::Value* pA = var0->Address();
@@ -752,7 +754,7 @@ namespace Builtin
 
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
 	llvm::Value *dest = builder.CreateGEP(pB, ind, "dest");
-	return builder.CreateMemCpy(dest, pA, ty0->Size(), 1);
+	return builder.CreateMemCpy(dest, pA, args[0]->Type()->Size(), 1);
     }
 
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)

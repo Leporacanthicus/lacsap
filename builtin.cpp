@@ -705,18 +705,18 @@ namespace Builtin
 	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[2]);
 
 	llvm::Value* start = args[1]->CodeGen();
-	Types::ArrayDecl* ty2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
-	if (ty2->Ranges()[0]->GetStart())
+	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	if (ty0->Ranges()[0]->GetStart())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty2->Ranges()[0]->GetStart(), start->getType()));
+	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(), start->getType()));
 	}
 
 	llvm::Value* pA = var0->Address();
 	llvm::Value* pB = var2->Address();
 
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
-	llvm::Value *dest = builder.CreateGEP(pB, ind, "dest");
-	return builder.CreateMemCpy(dest, pA, ty2->Size(), 1);
+	llvm::Value *src = builder.CreateGEP(pA, ind, "dest");
+	return builder.CreateMemCpy(pB, src, args[2]->Type()->Size(), 1);
     }
 
     // Unpack(apacked, a, start);

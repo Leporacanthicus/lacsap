@@ -29,6 +29,10 @@ void __write_real(File* file, double v, int width, int precision)
     }
     else
     {
+	if (width == 0)
+	{
+	    width = 13;
+	}
 	precision = (width > 8)?width-7:1;
 	fprintf(f, "% *.*E", width, precision, v);
     }

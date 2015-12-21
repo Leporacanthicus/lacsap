@@ -2686,40 +2686,56 @@ ExprAST* Parser::ParseWithBlock()
     TRACE();
     Location loc = CurrentToken().Loc();
     AssertToken(Token::With);
-    std::vector<VariableExprAST*> vars;
+    int levels = 0;
+    bool error = false;
     do
     {
+	nameStack.NewLevel();
+	levels++;
 	ExprAST* e = ParseIdentifierExpr();
 	if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
 	{
-	    vars.push_back(v);
+	    if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
+	    {
+		ExpandWithNames(rd, v, 0);
+		if (Types::VariantDecl* variant = rd->Variant())
+		{
+		    ExpandWithNames(variant, v, rd->FieldCount());
+		}
+	    }
+	    else
+	    {
+		Error("Type for with statement should be a record type");
+		error = true;
+	    }
 	    if (CurrentToken().GetToken() != Token::Do && !Expect(Token::Comma, true))
 	    {
-		return 0;
+		error = true;
 	    }
 	}
 	else
 	{
-	    return Error("With statement must contain only variable expression");
+	    Error("With statement must contain only variable expression");
+	    error = true;
 	}
-    } while(!AcceptToken(Token::Do));
-    NameWrapper wrapper(nameStack);
-    for(auto v : vars)
+    } while(!AcceptToken(Token::Do) && !error);
+
+    ExprAST* body = 0;
+    if (!error)
     {
-	if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
-	{
-	    ExpandWithNames(rd, v, 0);
-	    if (Types::VariantDecl* variant = rd->Variant())
-	    {
-		ExpandWithNames(variant, v, rd->FieldCount());
-	    }
-	}
-	else
-	{
-	    return Error("Type for with statement should be a record type");
-	}
+	body = ParseStatement();
     }
-    ExprAST* body = ParseStatement();
+
+    for(int i = 0; i < levels; i++)
+    {
+	nameStack.DropLevel();
+    }
+
+    if (error)
+    {
+	return 0;
+    }
+
     return new WithExprAST(loc, body);
 }
 

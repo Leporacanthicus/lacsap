@@ -33,6 +33,9 @@ void SetupFile(File* f, int recSize, int isText)
     f->recordSize = (isText)? 1024 : recSize;
     f->isText = isText;
     f->buffer = malloc(f->recordSize);
+    files[f->handle].readPos = 0;
+    files[f->handle].bufferSize = 0;
+    files[f->handle].readAhead = 0;
 }
 
 /*******************************************
@@ -54,8 +57,6 @@ void __assign(File* f, char* name)
     files[i].name = malloc(strlen(name)+1);
     files[i].fileData = f;
     files[i].readAhead = 0;
-    files[i].readPos = 0;
-    files[i].bufferSize = 0;
     strcpy(files[i].name, name);
 }
 

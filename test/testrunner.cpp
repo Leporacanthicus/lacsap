@@ -336,6 +336,7 @@ struct
     { 0,           "Basic", "Simple unit",   "unit_main.pas",   "" },
     { 0,           "Basic", "Pack & Unpack", "packunpack.pas",  "" },
     { 0,           "Basic", "With statement","with.pas",        "" },
+    { 0,           "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

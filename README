@@ -1,20 +1,22 @@
 This is the a nearly complete Pascal compiler, based on LLVM.
 
+*The compiler now passes the ISO7185 Pascal Acceptance Test suite.*
+
 See BUILD.md for build instructions.
 
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-* Started work on objects.
-- Cross procedural goto.
+- Debug symbols.
+- Classes & objects are only somewhat supported.
+- Cross procedural goto - probably won't support, but needs an error message.
 - Good error handling. Now slightly improved.
 - Proper type checking. Now better - but not perfect.
 - Support for unsigned integral types. Some support.
 - Constant expressions (e.g. const x = 7; type arr = array [1..x+1] of integer;)
 - Refactor AST dump functions to use visitors.
-- Separate compile units.
-- Debug symbols.
-- Stop using clang as the "linker". This may never happen...
+- Separate compile units - partly working.
+- Stop using clang as the "linker". This may never happen... (Now supporting gcc as alternative)
 
 Lots of other small and large things that I can't think of right now.
 

@@ -67,15 +67,15 @@ project. Now we it's time to run `make`:
 
      make -j 6
 
-where the 6 is the number of parallel compilations to run, whcih
+where the 6 is the number of parallel compilations to run, which
 should be approximately 30-50% higher than the number of processor
 cores of the build system. So `-j 6` on a quad-core machine. It's
-approximagely, since the actual number also affects memory
+approximately, since the actual number also affects memory
 usage. `make -j 8` works fine currently on a machine with 16GB of RAM
 and fairly light load otherwise. Too large a value will cause
 swapping, and actually slow down the process. 
 
-This will take a little while. On a decent desktop machine compilng a
+This will take a little while. On a decent desktop machine compiling a
 debug build of llvm takes 10-20 minutes, so now is probably a good
 time to go get a cup of coffee, walk the dog, feed the fish, browse
 the web, [fight with swords on office chairs][2] or all of the above.
@@ -85,7 +85,7 @@ probably because some pre-requisite component isn't installed. Check
 the link to the LLVM build instructions at the beginning of this
 section.
 
-*Opptional*: Check that the llvm build is "good". This is a good idea,
+*Optional*: Check that the llvm build is "good". This is a good idea,
 to make sure that you don't have a bad version of llvm itself.
 
     make check-llvm

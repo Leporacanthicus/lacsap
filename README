@@ -1,4 +1,4 @@
-This is the a nearly complete Pascal compiler, based on LLVM.
+This is a nearly complete Pascal compiler, based on LLVM.
 
 *The compiler now passes the ISO7185 Pascal Acceptance Test suite.*
 

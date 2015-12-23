@@ -63,7 +63,7 @@ users". The actual location isn't particularly important.
 
 
 Now cmake should have created a `Makefile` that builds the llvm
-project. Now we it's time to run `make`:
+project. Now it's time to run `make`:
 
      make -j 6
 
@@ -80,7 +80,7 @@ debug build of llvm takes 10-20 minutes, so now is probably a good
 time to go get a cup of coffee, walk the dog, feed the fish, browse
 the web, [fight with swords on office chairs][2] or all of the above.
 
-Hopefully nothign goes wrong with the compilation - if it does, it's
+Hopefully nothing goes wrong with the compilation - if it does, it's
 probably because some pre-requisite component isn't installed. Check
 the link to the LLVM build instructions at the beginning of this
 section.

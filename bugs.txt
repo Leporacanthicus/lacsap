@@ -96,3 +96,9 @@ have to be copied to the directory where the compiler runs.
 
 Fix in: 5ecdd2e11ce0032046d573e719f08bd46a020569
 ----------------------------------------------------------------
+Bug11:
+Date: 23-Dec-2015
+
+Parser should detect extra-procedural goto and issue error.
+
+----------------------------------------------------------------

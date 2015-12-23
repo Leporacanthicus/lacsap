@@ -26,6 +26,7 @@ extern int         verbosity;
 extern bool        timetrace;
 extern bool        disableMemcpyOpt;
 extern bool        rangeCheck;
+extern bool        debugInfo;
 extern OptLevel    optimization;
 extern Model       model;
 extern bool        caseInsensitive;

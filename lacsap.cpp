@@ -26,6 +26,7 @@ bool     timetrace;
 bool     disableMemcpyOpt;
 OptLevel optimization;
 bool     rangeCheck;
+bool     debugInfo;
 Model    model = m64;
 bool     caseInsensitive = true;
 
@@ -69,6 +70,10 @@ static llvm::cl::opt<Model, true> ModelSetting(llvm::cl::desc("Model:"),
 								clEnumValEnd),
 					       llvm::cl::location(model));
 #endif
+static llvm::cl::opt<bool, true>     DebugInfo("g",
+					       llvm::cl::desc("Enable debug info"),
+					       llvm::cl::location(debugInfo));
+
 
 void DumpModule(llvm::Module* module)
 {

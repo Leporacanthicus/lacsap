@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 					"-m32", "-m64" 
 #endif
     };
-    std::vector<std::string> others = { "", "-Cr" };
+    std::vector<std::string> others = { "", "-Cr", "-g" };
 
     std::cout << "PATH=" << getenv("PATH") << std::endl;
 

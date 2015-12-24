@@ -22,5 +22,8 @@ fulltests: testrunner
 fasttests: testrunner
 	./testrunner -O1
 
+debugtests: testrunner
+	./testrunner -g
+
 clean:
 	rm -f ${OBJECTS}

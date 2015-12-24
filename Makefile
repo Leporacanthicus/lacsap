@@ -64,6 +64,11 @@ fulltests: lacsap tests
 fasttests: lacsap tests
 	${MAKE} -C test fasttests M32=${M32}
 
+.phony: debugtests
+debugtests: lacsap tests
+	${MAKE} -C test debugtests M32=${M32}
+
+
 .phony: llvmversion
 llvmversion:
 	${LLVM_DIR}/bin/clang --version | head -1 | \

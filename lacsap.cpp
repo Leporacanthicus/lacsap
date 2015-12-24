@@ -155,6 +155,10 @@ static int Compile(const std::string& fileName)
 	    ast->dump(std::cerr);
 	    return 1;
 	}
+	if (debugInfo)
+	{
+	    ast->DebugGen(0);
+	}
 	BackPatch();
     }
 
@@ -177,7 +181,6 @@ static void FindLibPath(const char* exename)
     std::string::size_type pos = compiler.find_last_of("/");
     libpath = compiler.substr(0, pos);
 }
-
 
 int main(int argc, char** argv)
 {

@@ -12,8 +12,17 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Casting.h>
+#include <llvm/IR/DIBuilder.h>
 #include <string>
 #include <vector>
+
+
+class DebugInfo
+{
+public:
+    llvm::DICompileUnit* cu;
+    llvm::DIBuilder* builder;
+};
 
 class ExprAST : public Visitable<ExprAST>
 {
@@ -85,7 +94,7 @@ public:
     }
     void accept(ASTVisitor& v) override { v.visit(this); }
     virtual llvm::Value* CodeGen() = 0;
-    virtual void DebugGen() {}
+    virtual void DebugGen(DebugInfo* di) {}
     ExprKind getKind() const { return kind; }
     void SetType(Types::TypeDecl* ty) { type = ty; }
     virtual Types::TypeDecl* Type() const { return type; }
@@ -755,6 +764,7 @@ public:
 	: ExprAST(w, EK_Unit), initFunc(init), code(c), interfaceList(iList) { };
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
+    void DebugGen(DebugInfo* di) override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Unit; }
     void accept(ASTVisitor& v) override;
     const InterfaceList& Interface() { return interfaceList; }

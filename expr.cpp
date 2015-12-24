@@ -127,8 +127,7 @@ llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llv
 
 static bool IsConstant(ExprAST* e)
 {
-    if (llvm::isa<IntegerExprAST>(e) ||
-	llvm::isa<CharExprAST>(e))
+    if (llvm::isa<IntegerExprAST>(e) ||	llvm::isa<CharExprAST>(e))
     {
 	return true;
     }
@@ -3247,11 +3246,9 @@ void UnitAST::accept(ASTVisitor& v)
 
 llvm::Value* UnitAST::CodeGen()
 {
-    llvm::Value* v = MakeIntegerConstant(0);
-    for(ExprAST* a : code)
+    for(auto a : code)
     {
-	v = a->CodeGen();
-	if (!v)
+	if (!a->CodeGen())
 	{
 	    return 0;
 	}
@@ -3264,7 +3261,27 @@ llvm::Value* UnitAST::CodeGen()
 	    unitInit.push_back(initFunc);
 	}
     }
-    return v;
+    return MakeIntegerConstant(0);
+}
+
+void UnitAST::DebugGen(DebugInfo* /* di not used */)
+{
+    Location loc = Loc();
+    // TODO: Fix path and add flags.
+    
+    DebugInfo di;
+    di.builder = new llvm::DIBuilder(*theModule);
+    di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, loc.FileName(), ".", 
+					  "Lacsap", optimization >= O1, "", 0);
+    
+    for(auto a : code)
+    {
+	a->DebugGen(&di);
+    }
+    if (initFunc)
+    {
+	initFunc->DebugGen(&di);
+    }    
 }
 
 void ClosureAST::DoDump(std::ostream& out) const
@@ -3360,3 +3377,4 @@ void BackPatch()
     }
     BuildUnitInitList();
 }
+

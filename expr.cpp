@@ -3332,46 +3332,6 @@ void TrampolineAST::accept(ASTVisitor& v)
     func->accept(v);
 }
 
-void InitializerAST::DoDump(std::ostream& out) const
-{
-    out << "Intializer [";
-    for(auto i : indexList)
-    {
-	out << i.index << ", ";
-    }
-    out << "]";
-    value->dump();
-}
-
-llvm::Constant* InitializerAST::GlobalValue()
-{
-    if (!indexList.size())
-    {
-	return value;
-    }
-    llvm::Constant* prev = value;
-    for(auto r = indexList.rbegin(); r != indexList.rend(); r++)
-    {
-	llvm::StructType* sty = llvm::dyn_cast<llvm::StructType>(r->ty->LlvmType());
-	llvm::Constant* nullValue = llvm::Constant::getNullValue(sty);
-	std::vector<llvm::Constant*> initValue(sty->getNumElements());
-	int i = 0;
-	while(llvm::Constant *c = nullValue->getAggregateElement(i))
-	{
-	    initValue[i] = c;
-	    i++;
-	}
-	initValue[r->index] = prev;
-	prev = llvm::ConstantStruct::get(sty, initValue);
-    }
-    return prev;
-}
-
-void InitializerAST::Initialize(llvm::Value* v)
-{
-    builder.CreateStore(value, v);
-}
-
 static void BuildUnitInitList()
 {
     std::vector<llvm::Constant*> unitList(unitInit.size()+1);

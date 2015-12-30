@@ -12,6 +12,8 @@ public:
     std::string to_string() const;
     std::string FileName() const { return fname; }
     unsigned int LineNumber() const { return lineNum; }
+    unsigned int Column() const { return column; }
+
 private:
     std::string fname;
     unsigned int lineNum;

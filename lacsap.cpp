@@ -155,10 +155,6 @@ static int Compile(const std::string& fileName)
 	    ast->dump(std::cerr);
 	    return 1;
 	}
-	if (debugInfo)
-	{
-	    ast->DebugGen(0);
-	}
 	BackPatch();
     }
 

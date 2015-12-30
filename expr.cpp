@@ -37,10 +37,15 @@ void Stack<llvm::Value*>::dump(std::ostream& out) const
     }
 }
 
-const size_t MEMCPY_THRESHOLD = 16;
-const size_t MIN_ALIGN = 4;
-
-extern llvm::Module* theModule;
+class DebugInfo
+{
+public:
+    llvm::DICompileUnit* cu;
+    llvm::DIBuilder* builder;
+    std::vector<llvm::DIScope*> lexicalBlocks;
+    void EmitLocation(Location loc);
+    ~DebugInfo();
+};
 
 class MangleMap
 {
@@ -79,6 +84,11 @@ typedef StackWrapper<llvm::Value*> VarStackWrapper;
 typedef Stack<MangleMap*> MangleStack;
 typedef StackWrapper<MangleMap*> MangleWrapper;
 
+const size_t MEMCPY_THRESHOLD = 16;
+const size_t MIN_ALIGN = 4;
+
+extern llvm::Module* theModule;
+
 static VarStack variables;
 static MangleStack mangles;
 static LabelStack labels;
@@ -87,10 +97,42 @@ static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
 static std::vector<FunctionAST*> unitInit;
 
+// Debug stack. We just use push_back and pop_back to make it like a stack.
+static std::vector<DebugInfo> debugStack;
+
+static DebugInfo& GetDebugInfo()
+{
+    return debugStack.back();
+}
+
+void DebugInfo::EmitLocation(Location loc)
+{
+    if (loc.LineNumber() == 0)
+    {
+	::builder.SetCurrentDebugLocation(llvm::DebugLoc());
+	return;
+    }
+    llvm::DIScope* scope;
+    if (lexicalBlocks.empty())
+    {
+	scope = cu;
+    }
+    else
+    {
+	scope = lexicalBlocks.back();
+    }
+    ::builder.SetCurrentDebugLocation(llvm::DebugLoc::get(loc.LineNumber(), loc.Column(), scope));
+}
+
+DebugInfo::~DebugInfo()
+{
+    builder->finalize();
+}
+
 static llvm::BasicBlock* CreateGotoTarget(int label)
 {
     std::string name = std::to_string(label);
-    if (Label *lab = labels.Find(name))
+    if (Label* lab = labels.Find(name))
     {
 	return lab->GetBB();
     }
@@ -593,7 +635,7 @@ void BinaryExprAST::DoDump(std::ostream& out) const
     rhs->dump(out);
 }
 
-static llvm::Value *SetOperation(const std::string& name, llvm::Value* res, llvm::Value *src)
+static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm::Value* src)
 {
 
     if (name == "Union")
@@ -1325,6 +1367,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     }
 
     llvm::Function* f = llvm::dyn_cast<llvm::Function>(GetFunction(resTy, argTypes, actualName));
+    assert(f && "Should have found a function here!");
     if (!f->empty())
     {
 	return ErrorF("redefinition of function: " + name);
@@ -1484,8 +1527,7 @@ bool PrototypeAST::IsMatchWithoutClosure(const PrototypeAST* rhs) const
     return true;
 }
 
-
-FunctionAST::FunctionAST(const Location& w, PrototypeAST *prot, const std::vector<VarDeclAST*>& v,
+FunctionAST::FunctionAST(const Location& w, PrototypeAST* prot, const std::vector<VarDeclAST*>& v,
 			 BlockAST* b)
     : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0), closureType(0)
 {
@@ -1520,6 +1562,12 @@ void FunctionAST::accept(ASTVisitor& v)
     }
 }
 
+static llvm::DISubroutineType* CreateFunctionType(DebugInfo& di)
+{
+    std::vector<llvm::Metadata*> eltTys;
+    return di.builder->createSubroutineType(di.builder->getOrCreateTypeArray(eltTys));
+}
+
 llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
@@ -1527,6 +1575,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     LabelWrapper l(labels);
     assert(namePrefix != "" && "Prefix should not be empty");
     llvm::Function* theFunction = proto->CodeGen(namePrefix);
+
     if (!theFunction)
     {
 	return 0;
@@ -1536,6 +1585,24 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	return theFunction;
     }
 
+    if (debugInfo)
+    {
+	DebugInfo& di = GetDebugInfo();
+	Location loc = Loc();
+	llvm::DIFile* unit = di.builder->createFile(di.cu->getFilename(), di.cu->getDirectory());
+	llvm::DIScope* fnContext = unit;
+	llvm::DISubroutineType* st = CreateFunctionType(di);
+	std::string name = proto->Name();
+	int lineNum = loc.LineNumber();
+	llvm::DISubprogram* sp = di.builder->createFunction(fnContext, name, "", unit,
+							    lineNum, st, false, true,
+							    lineNum,
+							    llvm::DINode::FlagPrototyped, false);
+
+	theFunction->setSubprogram(sp);
+	di.lexicalBlocks.push_back(sp);
+	di.EmitLocation(Location());
+    }
     llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
     builder.SetInsertPoint(bb);
 
@@ -1561,6 +1628,11 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	mangles.dump(std::cerr);
     }
 
+    if (debugInfo)
+    {
+	DebugInfo& di = GetDebugInfo();
+	di.EmitLocation(body->Loc());
+    }
     builder.SetInsertPoint(bb, ip);
     llvm::Value* block = body->CodeGen();
     if (!block && !body->IsEmpty())
@@ -1576,7 +1648,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     {
 	std::string shortname = ShortName(proto->Name());
 	llvm::Value* v = variables.Find(shortname);
-	assert(v);
+	assert(v && "Expect function result 'variable' to exist");
 	llvm::Value* retVal = builder.CreateLoad(v);
 	builder.CreateRet(retVal);
     }
@@ -1785,7 +1857,7 @@ llvm::Value* AssignExprAST::AssignSet()
 		    w = MakeIntegerConstant(0);
 		}
 		ind[1] = MakeIntegerConstant(p);
-		llvm::Value *desti = builder.CreateGEP(dest, ind);
+		llvm::Value* desti = builder.CreateGEP(dest, ind);
 		builder.CreateStore(w, desti);
 		p++;
 	    }
@@ -2533,7 +2605,7 @@ llvm::Value* VarDeclAST::CodeGen()
 		std::vector<llvm::Constant*> vtable(sty->getNumElements());
 		vtable[0] = gv;
 		unsigned i = 1;
-		while(llvm::Constant *c = nullValue->getAggregateElement(i))
+		while(llvm::Constant* c = nullValue->getAggregateElement(i))
 		{
 		    vtable[i] = c;
 		    i++;
@@ -3161,7 +3233,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
     std::vector<llvm::Constant*> vtInit(classDecl->NumVirtFuncs());
     for(size_t i = 0; i < classDecl->MembFuncCount(); i++)
     {
-	Types::MemberFuncDecl *m = classDecl->GetMembFunc(i);
+	Types::MemberFuncDecl* m = classDecl->GetMembFunc(i);
 	if (m->IsVirtual() || m->IsOverride())
 	{
 	    if (llvm::Constant* c = theModule->getFunction("P." + m->LongName()))
@@ -3246,6 +3318,19 @@ void UnitAST::accept(ASTVisitor& v)
 
 llvm::Value* UnitAST::CodeGen()
 {
+    if(debugInfo)
+    {
+	Location loc = Loc();
+
+	// TODO: Fix path and add flags.
+	DebugInfo di;
+	di.builder = new llvm::DIBuilder(*theModule);
+	di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, loc.FileName(), ".",
+					      "Lacsap", optimization >= O1, "", 0);
+
+	debugStack.push_back(di);
+    }
+
     for(auto a : code)
     {
 	if (!a->CodeGen())
@@ -3261,27 +3346,11 @@ llvm::Value* UnitAST::CodeGen()
 	    unitInit.push_back(initFunc);
 	}
     }
-    return MakeIntegerConstant(0);
-}
-
-void UnitAST::DebugGen(DebugInfo* /* di not used */)
-{
-    Location loc = Loc();
-    // TODO: Fix path and add flags.
-    
-    DebugInfo di;
-    di.builder = new llvm::DIBuilder(*theModule);
-    di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, loc.FileName(), ".", 
-					  "Lacsap", optimization >= O1, "", 0);
-    
-    for(auto a : code)
+    if (debugInfo)
     {
-	a->DebugGen(&di);
+	debugStack.pop_back();
     }
-    if (initFunc)
-    {
-	initFunc->DebugGen(&di);
-    }    
+    return MakeIntegerConstant(0);
 }
 
 void ClosureAST::DoDump(std::ostream& out) const

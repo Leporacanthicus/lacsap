@@ -706,9 +706,9 @@ namespace Builtin
 
 	llvm::Value* start = args[1]->CodeGen();
 	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
-	if (ty0->Ranges()[0]->GetStart())
+	if (ty0->Ranges()[0]->Start())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->GetStart(),
+	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->Start(),
 							  start->getType()));
 	}
 
@@ -743,9 +743,9 @@ namespace Builtin
 
 	llvm::Value* start = args[2]->CodeGen();
 	Types::ArrayDecl* ty1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
-	if (ty1->Ranges()[0]->GetStart())
+	if (ty1->Ranges()[0]->Start())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->GetStart(),
+	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->Start(),
 							  start->getType()));
 	}
 

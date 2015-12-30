@@ -350,7 +350,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     {
 	Types::Range* r = lty->GetRange();
 	int64_t v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
-	if (r->GetStart() > v || v > r->GetEnd())
+	if (r->Start() > v || v > r->End())
 	{
 	    Error(a, "Value out of range");
 	}

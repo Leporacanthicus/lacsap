@@ -119,16 +119,30 @@ namespace Types
 
     llvm::Type* TypeDecl::LlvmType() const
     {
-	if (!ltype)
+	if (!lType)
 	{
-	    ltype = GetLlvmType();
+	    lType = GetLlvmType();
 	}
-	return ltype;
+	return lType;
+    }
+
+    llvm::DIType* TypeDecl::DebugType(llvm::DIBuilder* builder) const
+    {
+	if (!diType)
+	{
+	    diType = GetDIType(builder);
+	}
+	return diType;
     }
 
     llvm::Type* CharDecl::GetLlvmType() const
     {
 	return llvm::Type::getInt8Ty(llvm::getGlobalContext());
+    }
+
+    llvm::DIType* CharDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	return builder->createBasicType("CHAR", 8, 8, llvm::dwarf::DW_ATE_unsigned_char);
     }
 
     const TypeDecl* CharDecl::CompatibleType(const TypeDecl* ty) const
@@ -147,6 +161,11 @@ namespace Types
     llvm::Type* IntegerDecl::GetLlvmType() const
     {
 	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
+    }
+
+    llvm::DIType* IntegerDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	return builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_signed);
     }
 
     const TypeDecl* IntegerDecl::CompatibleType(const TypeDecl* ty) const
@@ -176,6 +195,11 @@ namespace Types
 	return llvm::Type::getInt64Ty(llvm::getGlobalContext());
     }
 
+    llvm::DIType* Int64Decl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	return builder->createBasicType("LONGINT", 64, 64, llvm::dwarf::DW_ATE_signed);
+    }
+
     const TypeDecl* Int64Decl::CompatibleType(const TypeDecl* ty) const
     {
 	if (ty->Type() == TK_Int64 || ty->Type() == TK_Integer)
@@ -201,6 +225,11 @@ namespace Types
     llvm::Type* RealDecl::GetLlvmType() const
     {
 	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
+    }
+
+    llvm::DIType* RealDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	return builder->createBasicType("REAL", 64, 64, llvm::dwarf::DW_ATE_float);
     }
 
     const TypeDecl* RealDecl::CompatibleType(const TypeDecl* ty) const
@@ -229,6 +258,11 @@ namespace Types
     llvm::Type* BoolDecl::GetLlvmType() const
     {
 	return llvm::Type::getInt1Ty(llvm::getGlobalContext());
+    }
+
+    llvm::DIType* BoolDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	return builder->createBasicType("BOOLEAN", 1, 1, llvm::dwarf::DW_ATE_boolean);
     }
 
     void PointerDecl::DoDump(std::ostream& out) const
@@ -297,6 +331,19 @@ namespace Types
 	return llvm::ArrayType::get(ty, nelems);
     }
 
+    llvm::DIType* ArrayDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	std::vector<llvm::Metadata*> subscripts;
+	for(auto r : ranges)
+	{
+	    Range* rr = r->GetRange();
+	    subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
+	}
+	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), 
+					baseType->DebugType(builder), subsArray);
+    }
+
     bool ArrayDecl::SameAs(const TypeDecl* ty) const
     {
 	if (!CompoundDecl::SameAs(ty))
@@ -362,6 +409,13 @@ namespace Types
     {
 	return GetType(baseType);
     }
+
+    llvm::DIType* SimpleCompoundDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
+    }
+
 
     bool SimpleCompoundDecl::SameAs(const TypeDecl* ty) const
     {
@@ -572,6 +626,13 @@ namespace Types
 	return llvm::StructType::create(fv);
     }
 
+    llvm::DIType* VariantDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
+    }
+
+
     void FieldCollection::EnsureSized() const
     {
 	if (opaqueType && opaqueType->isOpaque())
@@ -685,6 +746,12 @@ namespace Types
 	    fv.push_back(llvm::Type::getInt8Ty(llvm::getGlobalContext()));
 	}
 	return llvm::StructType::create(fv);
+    }
+
+    llvm::DIType* RecordDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
     }
 
     bool RecordDecl::SameAs(const TypeDecl* ty) const
@@ -948,6 +1015,12 @@ namespace Types
 	return llvm::StructType::create(fv, Name());
     }
 
+    llvm::DIType* ClassDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
+    }
+
     bool ClassDecl::SameAs(const TypeDecl* ty) const
     {
 	return this == ty;
@@ -983,6 +1056,12 @@ namespace Types
 	}
 	llvm::Type*  ty = llvm::FunctionType::get(resty, argTys, false);
 	return llvm::PointerType::getUnqual(ty);
+    }
+
+    llvm::DIType* FuncPtrDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Implement this.
+	return 0;
     }
 
     FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
@@ -1033,6 +1112,12 @@ namespace Types
 	return llvm::StructType::create(fv, Type() == TK_Text?"text":"file");
     }
 
+    llvm::DIType* FileDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
+    }
+
     void FileDecl::DoDump(std::ostream& out) const
     {
 	out << "File of ";
@@ -1063,6 +1148,12 @@ namespace Types
 	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(TK_Integer));
 	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
+    }
+
+    llvm::DIType* SetDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	// TODO: Fill in. 
+	return 0;
     }
 
     void SetDecl::DoDump(std::ostream& out) const
@@ -1138,8 +1229,7 @@ namespace Types
 	}
 	if (ty->Type() == TK_String)
 	{
-	    if (llvm::dyn_cast<StringDecl>(ty)->Ranges()[0]->GetEnd() > 
-		Ranges()[0]->GetEnd())
+	    if (llvm::dyn_cast<StringDecl>(ty)->Ranges()[0]->End() > Ranges()[0]->End())
 	    {
 		return ty;
 	    }
@@ -1201,7 +1291,7 @@ bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty)
 
 bool operator==(const Types::Range& a, const Types::Range& b)
 {
-    return (a.GetStart() == b.GetStart() && a.GetEnd() == b.GetEnd());
+    return (a.Start() == b.Start() && a.End() == b.End());
 }
 
 bool operator==(const Types::EnumValue& a, const Types::EnumValue& b)

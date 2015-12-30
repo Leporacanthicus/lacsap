@@ -3,6 +3,7 @@
 
 #include <llvm/IR/Type.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/DIBuilder.h>
 #include <string>
 
 class PrototypeAST;
@@ -21,8 +22,8 @@ namespace Types
 	    assert( ((int64_t)e - (int64_t)s) > 0 && "Range should have start before end.");
 	}
     public:
-	int GetStart() const { return start; }
-	int GetEnd() const { return end; }
+	int Start() const { return start; }
+	int End() const { return end; }
 	size_t Size() const { return (size_t) ((int64_t)end - (int64_t)start) + 1; }
 	void dump() const;
 	void DoDump(std::ostream& out) const;
@@ -64,7 +65,7 @@ namespace Types
 	};
 
 	TypeDecl(TypeKind k)
-	    : kind(k), ltype(0)
+	    : kind(k), lType(0), diType(0)
 	{
 	}
 
@@ -81,6 +82,7 @@ namespace Types
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 	llvm::Type* LlvmType() const;
+	llvm::DIType* DebugType(llvm::DIBuilder* builder) const;
 	virtual bool hasLlvmType() const = 0;
 	void dump(std::ostream& out) const { DoDump(out); }
 	void dump() const;
@@ -91,9 +93,11 @@ namespace Types
 	size_t AlignSize() const;
     protected:
 	virtual llvm::Type* GetLlvmType() const = 0;
+	virtual llvm::DIType* GetDIType(llvm::DIBuilder* builder) const = 0;
     protected:
 	const TypeKind kind;
-	mutable llvm::Type* ltype;
+	mutable llvm::Type* lType;
+	mutable llvm::DIType* diType;
     };
 
     class BasicTypeDecl : public TypeDecl
@@ -118,6 +122,7 @@ namespace Types
 	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class IntegerDecl : public BasicTypeDecl
@@ -132,6 +137,7 @@ namespace Types
 	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class Int64Decl : public BasicTypeDecl
@@ -146,6 +152,7 @@ namespace Types
 	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class RealDecl : public BasicTypeDecl
@@ -159,6 +166,7 @@ namespace Types
 	bool hasLlvmType() const override { return true; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class VoidDecl : public BasicTypeDecl
@@ -172,18 +180,23 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Void; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
+	{ assert(0 && "Huh?"); }
     };
 
     class CompoundDecl : public TypeDecl
     {
     public:
-	CompoundDecl(TypeKind tk, TypeDecl *b) 
+	CompoundDecl(TypeKind tk, TypeDecl* b)
 	    : TypeDecl(tk), baseType(b) { }
 	bool SameAs(const TypeDecl* ty) const override;
 	bool isCompound() const override { return true; }
 	TypeDecl* SubType() const override { return baseType; }
 	bool hasLlvmType() const override { return baseType->hasLlvmType(); }
 	static bool classof(const TypeDecl* e);
+    protected:
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
+	{ return baseType->DebugType(builder);	}
     protected:
 	TypeDecl* baseType;
     };	
@@ -200,6 +213,7 @@ namespace Types
 	static bool classof(const TypeDecl* e);
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     protected:
 	TypeKind baseType;
     };
@@ -216,13 +230,13 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Range; }
 	bool SameAs(const TypeDecl* ty) const override;
-	int GetStart() const { return range->GetStart(); }
-	int GetEnd() const { return range->GetEnd(); }
-	bool isUnsigned() const override { return GetStart() >= 0; }
+	int Start() const { return range->Start(); }
+	int End() const { return range->End(); }
+	bool isUnsigned() const override { return Start() >= 0; }
 	unsigned Bits() const override;
 	Range* GetRange() const override { return range; }
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
-	const TypeDecl* AssignableType(const TypeDecl *ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
     private:
 	Range* range;
     };
@@ -245,13 +259,14 @@ namespace Types
 	bool isStringLike() const override { return (baseType->Type() == TK_Char); }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e)
 	{
 	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray;
 	}
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	std::vector<RangeDecl*> ranges;
     };
@@ -298,6 +313,7 @@ namespace Types
 	    EnumDecl(std::vector<std::string>{"false", "true"}, TK_Boolean) { }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
 
@@ -335,8 +351,8 @@ namespace Types
     public:
 	FunctionDecl(PrototypeAST* proto);
 	void DoDump(std::ostream& out) const override;
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override { return baseType->CompatibleType(ty); }
-	const TypeDecl* AssignableType(const TypeDecl *ty) const override { return baseType->AssignableType(ty); }
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return baseType->CompatibleType(ty); }
+	const TypeDecl* AssignableType(const TypeDecl* ty) const override { return baseType->AssignableType(ty); }
 	bool isCompound() const override { return false; }
 	bool hasLlvmType() const override { return false; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Function; }
@@ -386,7 +402,7 @@ namespace Types
 	virtual int FieldCount() const { return fields.size(); }
 	bool isCompound() const override { return true; }
 	bool SameAs(const TypeDecl* ty) const override;
-	bool hasLlvmType() const override { return ltype; }
+	bool hasLlvmType() const override { return lType; }
 	static bool classof(const TypeDecl* e)
 	{
 	    return e->getKind() == TK_Variant || e->getKind() == TK_Record || 
@@ -406,6 +422,7 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Variant; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class RecordDecl : public FieldCollection
@@ -420,6 +437,7 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	VariantDecl* variant;
     };
@@ -452,6 +470,7 @@ namespace Types
     protected:
 	// We don't actually have an LLVM type for member functions.
 	llvm::Type* GetLlvmType() const override { return 0; }
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override { return 0; }
     private:
 	PrototypeAST* proto;
 	int flags;
@@ -478,11 +497,12 @@ namespace Types
 	MemberFuncDecl* GetMembFunc(size_t index) const;
 	size_t NumVirtFuncs() const;
 	std::string Name() const { return name; }
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	llvm::Type* VTableType(bool opaque) const;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	ClassDecl* baseobj;
 	std::string name;
@@ -502,6 +522,7 @@ namespace Types
 	bool SameAs(const TypeDecl* ty) const override;
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	PrototypeAST* proto;
     };
@@ -523,6 +544,7 @@ namespace Types
 	{ return e->getKind() == TK_File || e->getKind() == TK_Text; }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
     class TextDecl : public FileDecl
@@ -546,7 +568,7 @@ namespace Types
 	    SetMask = SetBits-1,
 	    SetPow2Bits = 5
 	};
-	SetDecl(RangeDecl* r, TypeDecl *ty);
+	SetDecl(RangeDecl* r, TypeDecl* ty);
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Set; }
 	size_t SetWords() const { return (range->GetRange()->Size() + SetMask) >> SetPow2Bits; }
@@ -554,10 +576,11 @@ namespace Types
 	void UpdateRange(RangeDecl* r) { range = r; }
 	void UpdateSubtype(TypeDecl* ty);
 	bool SameAs(const TypeDecl* ty) const override;
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	bool hasLlvmType() const override { return true; }
     private:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	RangeDecl* range;
     };
@@ -575,7 +598,7 @@ namespace Types
 	bool isStringLike() const override { return true; }
 	void DoDump(std::ostream& out) const override;
 	bool hasLlvmType() const override { return true; }
-	const TypeDecl* CompatibleType(const TypeDecl *ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
     };
 
     llvm::Type* GetType(TypeDecl::TypeKind type);

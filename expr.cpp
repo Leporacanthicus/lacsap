@@ -13,6 +13,7 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/DIBuilder.h>
 
 #include <iostream>
 #include <sstream>
@@ -838,7 +839,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value* l = lhs->CodeGen();
 	llvm::Value* setV = MakeAddressable(rhs);
 	Types::TypeDecl* type = rhs->Type();
-	int start = type->GetRange()->GetStart();
+	int start = type->GetRange()->Start();
 	l = builder.CreateZExt(l, Types::GetType(Types::TypeDecl::TK_Integer), "zext.l");
 	l = builder.CreateSub(l, MakeIntegerConstant(start));
 	llvm::Value* index;
@@ -1826,13 +1827,13 @@ llvm::Value* AssignExprAST::AssignSet()
 	    llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
 	    llvm::Value* src = MakeAddressable(rhs);
 	    size_t p = 0;
-	    for(auto i = lrange->GetStart(); i < lrange->GetEnd(); i++)
+	    for(auto i = lrange->Start(); i < lrange->End(); i++)
 	    {
-		if (i >= (rrange->GetStart() & ~Types::SetDecl::SetMask) && i < rrange->GetEnd())
+		if (i >= (rrange->Start() & ~Types::SetDecl::SetMask) && i < rrange->End())
 		{
-		    if (i > rrange->GetStart())
+		    if (i > rrange->Start())
 		    {
-			size_t index = i - rrange->GetStart();
+			size_t index = i - rrange->Start();
 			size_t sp = index >> Types::SetDecl::SetPow2Bits;
 			ind[1] = MakeIntegerConstant(sp);
 			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
@@ -1855,7 +1856,7 @@ llvm::Value* AssignExprAST::AssignSet()
 			ind[1] = MakeIntegerConstant(0);
 			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
 			w = builder.CreateLoad(srci, "w");
-			w = builder.CreateShl(w, rrange->GetStart() - i, "wsh");
+			w = builder.CreateShl(w, rrange->Start() - i, "wsh");
 		    }
 		}
 		else
@@ -2823,7 +2824,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	{
 	    IntegerExprAST* le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
 	    IntegerExprAST* he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
-	    int start = type->GetRange()->GetStart();
+	    int start = type->GetRange()->Start();
 	    int low = le->Int() - start;
 	    int high = he->Int() - start;
 	    assert(low >= 0 && "Range should end up positive ok");
@@ -2835,7 +2836,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	else
 	{
 	    IntegerExprAST* e = llvm::dyn_cast<IntegerExprAST>(v);
-	    int start = type->GetRange()->GetStart();
+	    int start = type->GetRange()->Start();
 	    unsigned i = e->Int() - start;
 	    elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
 	}
@@ -2931,7 +2932,7 @@ llvm::Value* SetExprAST::Address()
 	    low  = builder.CreateSExt(low, Types::GetType(Types::TypeDecl::TK_Integer), "sext.low");
 	    high = builder.CreateSExt(high, Types::GetType(Types::TypeDecl::TK_Integer), "sext.high");
 
-	    llvm::Value* rangeStart = MakeIntegerConstant(range->GetStart());
+	    llvm::Value* rangeStart = MakeIntegerConstant(range->Start());
 	    low = builder.CreateSub(low, rangeStart);
 	    high = builder.CreateSub(high, rangeStart);
 
@@ -2975,7 +2976,7 @@ llvm::Value* SetExprAST::Address()
 	else
 	{
 	    Types::Range* range = type->GetRange();
-	    llvm::Value* rangeStart = MakeIntegerConstant(range->GetStart());
+	    llvm::Value* rangeStart = MakeIntegerConstant(range->Start());
 	    llvm::Value* x = v->CodeGen();
 	    assert(x && "Expect codegen to work!");
 	    x = builder.CreateZExt(x, Types::GetType(Types::TypeDecl::TK_Integer), "zext");
@@ -3035,7 +3036,7 @@ llvm::Value* RangeReduceAST::CodeGen()
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
 
     llvm::Type* ty = index->getType();
-    int start = range->GetStart();
+    int start = range->Start();
     if (start)
     {
 	index = builder.CreateSub(index, MakeConstant(start, ty));
@@ -3074,7 +3075,7 @@ llvm::Value* RangeCheckAST::CodeGen()
     llvm::Type* intTy = Types::GetType(Types::TypeDecl::TK_Integer);
 
     llvm::Type* ty = index->getType();
-    int start = range->GetStart();
+    int start = range->Start();
     if (start)
     {
 	index = builder.CreateSub(index, MakeConstant(start, ty));

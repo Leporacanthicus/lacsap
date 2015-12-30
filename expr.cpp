@@ -103,6 +103,7 @@ static std::vector<DebugInfo> debugStack;
 
 static DebugInfo& GetDebugInfo()
 {
+    assert(!debugStack.empty() && "Debugstack should not be empty!");
     return debugStack.back();
 }
 
@@ -128,6 +129,14 @@ void DebugInfo::EmitLocation(Location loc)
 DebugInfo::~DebugInfo()
 {
     builder->finalize();
+}
+
+static void BasicDebugInfo(ExprAST* e)
+{
+    if (debugInfo)
+    {
+	GetDebugInfo().EmitLocation(e->Loc());
+    }
 }
 
 static llvm::BasicBlock* CreateGotoTarget(int label)
@@ -355,6 +364,9 @@ void RealExprAST::DoDump(std::ostream& out) const
 llvm::Value* RealExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(val));
 }
 
@@ -366,6 +378,9 @@ void IntegerExprAST::DoDump(std::ostream& out) const
 llvm::Value* IntegerExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     return MakeConstant(val, type->LlvmType());
 }
 
@@ -377,6 +392,9 @@ void NilExprAST::DoDump(std::ostream& out) const
 llvm::Value* NilExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     return llvm::ConstantPointerNull::get(llvm::dyn_cast<llvm::PointerType>(Types::GetVoidPtrType()));
 }
 
@@ -393,13 +411,18 @@ void CharExprAST::DoDump(std::ostream& out) const
 llvm::Value* CharExprAST::CodeGen()
 {
     TRACE();
-    llvm::Value* v = MakeCharConstant(val);
-    return v;
+
+    BasicDebugInfo(this);
+
+    return MakeCharConstant(val);
 }
 
 llvm::Value* AddressableAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* v = Address();
     assert(v && "Expected to get an address");
     return builder.CreateLoad(v);
@@ -592,6 +615,7 @@ llvm::Value* FunctionExprAST::CodeGen()
 {
     if (MangleMap* mm = mangles.Find(name))
     {
+	BasicDebugInfo(this);
 	return theModule->getFunction(mm->Name());
     }
     return ErrorV("Name " + name + " could not be found...");
@@ -933,6 +957,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
 
+    BasicDebugInfo(this);
+
     if (verbosity)
     {
 	lhs->dump(); oper.dump(); rhs->dump();
@@ -1113,6 +1139,10 @@ Types::TypeDecl* UnaryExprAST::Type() const
 
 llvm::Value* UnaryExprAST::CodeGen()
 {
+    TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* r = rhs->CodeGen();
     llvm::Type::TypeID rty = r->getType()->getTypeID();
     if (rty == llvm::Type::IntegerTyID)
@@ -1154,6 +1184,8 @@ llvm::Value* CallExprAST::CodeGen()
 {
     TRACE();
     assert(proto && "Function prototype should be set");
+
+    BasicDebugInfo(this);
 
     llvm::Value* calleF = callee->CodeGen();
     if (!calleF)
@@ -1293,13 +1325,13 @@ void BlockAST::accept(ASTVisitor& v)
 llvm::Value* BlockAST::CodeGen()
 {
     TRACE();
-    llvm::Value* v = MakeIntegerConstant(0);
+
     for(auto e : content)
     {
-	v = e->CodeGen();
+	llvm::Value* v = e->CodeGen();
 	assert(v && "Expect codegen to work!");
     }
-    return v;
+    return MakeIntegerConstant(0);
 }
 
 void PrototypeAST::DoDump(std::ostream& out) const
@@ -1317,6 +1349,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 {
     TRACE();
     assert(namePrefix != "" && "Prefix should never be empty");
+
     std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
     std::vector<llvm::Type*> argTypes;
     unsigned index = 0;
@@ -1641,6 +1674,12 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	return 0;
     }
 
+    // Mark end of function!
+    if (debugInfo)
+    {
+	DebugInfo& di = GetDebugInfo();
+	di.EmitLocation(endLoc);
+    }
     if (proto->Type()->Type() == Types::TypeDecl::TK_Void)
     {
 	builder.CreateRetVoid();
@@ -1769,12 +1808,18 @@ void StringExprAST::DoDump(std::ostream& out) const
 llvm::Value* StringExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     return builder.CreateGlobalStringPtr(val, "_string");
 }
 
 llvm::Value* StringExprAST::Address()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     return builder.CreateGlobalStringPtr(val, "_string");
 }
 
@@ -1878,6 +1923,8 @@ llvm::Value* AssignExprAST::CodeGen()
 {
     TRACE();
 
+    BasicDebugInfo(this);
+
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
@@ -1970,6 +2017,9 @@ void IfExprAST::accept(ASTVisitor& v)
 llvm::Value* IfExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* condV = cond->CodeGen();
     if (!condV)
     {
@@ -2050,6 +2100,8 @@ void ForExprAST::accept(ASTVisitor& v)
 llvm::Value* ForExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::Value* var = variables.Find(varName);
@@ -2159,6 +2211,8 @@ llvm::Value* WhileExprAST::CodeGen()
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
 							 theFunction);
 
+    BasicDebugInfo(this);
+
     builder.CreateBr(preBodyBB);
     builder.SetInsertPoint(preBodyBB);
 
@@ -2201,6 +2255,8 @@ llvm::Value* RepeatExprAST::CodeGen()
 							 theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
 							 theFunction);
+
+    BasicDebugInfo(this);
 
     builder.CreateBr(bodyBB);
     builder.SetInsertPoint(bodyBB);
@@ -2359,6 +2415,9 @@ static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* f = file->Address();
     llvm::Value* v = NULL;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
@@ -2530,6 +2589,9 @@ static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* f = file->Address();
     llvm::Value* v;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
@@ -2589,6 +2651,9 @@ void VarDeclAST::DoDump(std::ostream& out) const
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* v = 0;
     for(auto var : vars)
     {
@@ -2674,6 +2739,9 @@ void LabelExprAST::DoDump(std::ostream& out) const
 llvm::Value* LabelExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     assert(!stmt && "Expected no statement for 'goto' label expression");
     llvm::BasicBlock* labelBB = CreateGotoTarget(labelValues[0]);
     // Make LLVM-IR valid by jumping to the neew block!
@@ -2686,6 +2754,9 @@ llvm::Value* LabelExprAST::CodeGen()
 llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     assert(stmt && "Expected a statement for 'case' label expression");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
@@ -2742,6 +2813,9 @@ void CaseExprAST::accept(ASTVisitor& v)
 llvm::Value* CaseExprAST::CodeGen()
 {
     TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::Value* v  = expr->CodeGen();
     llvm::Type*  ty = v->getType();
     if (!v->getType()->isIntegerTy())
@@ -3012,6 +3086,10 @@ void WithExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* WithExprAST::CodeGen()
 {
+    TRACE();
+
+    BasicDebugInfo(this);
+
     return body->CodeGen();
 }
 
@@ -3032,6 +3110,7 @@ void RangeReduceAST::DoDump(std::ostream& out) const
 llvm::Value* RangeReduceAST::CodeGen()
 {
     TRACE();
+
     llvm::Value* index = expr->CodeGen();
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
 
@@ -3067,6 +3146,7 @@ void RangeCheckAST::DoDump(std::ostream& out) const
 llvm::Value* RangeCheckAST::CodeGen()
 {
     TRACE();
+
     llvm::Value* index = expr->CodeGen();
     assert(index && "Expected expression to generate code");
     assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
@@ -3184,6 +3264,10 @@ llvm::Value* TypeCastAST::Address()
 
 llvm::Value* SizeOfExprAST::CodeGen()
 {
+    TRACE();
+
+    BasicDebugInfo(this);
+
     return MakeIntegerConstant(type->Size());
 }
 
@@ -3203,6 +3287,10 @@ void BuiltinExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* BuiltinExprAST::CodeGen()
 {
+    TRACE();
+
+    BasicDebugInfo(this);
+
     return bif->CodeGen(builder);
 }
 
@@ -3221,6 +3309,8 @@ void VTableAST::DoDump(std::ostream& out) const
 
 llvm::Value* VTableAST::CodeGen()
 {
+    TRACE();
+
     llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
     assert(ty && "Huh? No vtable?");
     std::vector<llvm::Constant*> vtInit = GetInitializer();
@@ -3296,6 +3386,10 @@ void GotoAST::DoDump(std::ostream& out) const
 
 llvm::Value* GotoAST::CodeGen()
 {
+    TRACE();
+
+    BasicDebugInfo(this);
+
     llvm::BasicBlock* labelBB = CreateGotoTarget(dest);
     // Make LLVM-IR valid by jumping to the neew block!
     llvm::Value* v = builder.CreateBr(labelBB);
@@ -3325,6 +3419,8 @@ void UnitAST::accept(ASTVisitor& v)
 
 llvm::Value* UnitAST::CodeGen()
 {
+    TRACE();
+
     if(debugInfo)
     {
 	Location loc = Loc();
@@ -3372,6 +3468,8 @@ void ClosureAST::DoDump(std::ostream& out) const
 
 llvm::Value* ClosureAST::CodeGen()
 {
+    TRACE();
+
     std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), 0 };
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
     llvm::Value* closure = CreateNamedAlloca(fn, type, "$$ClosureStruct");
@@ -3396,6 +3494,8 @@ void TrampolineAST::DoDump(std::ostream& out) const
 
 llvm::Value* TrampolineAST::CodeGen()
 {
+    TRACE();
+
     if (MangleMap* mm = mangles.Find(func->Name()))
     {
 	llvm::Function* destFn = theModule->getFunction(mm->Name());

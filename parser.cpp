@@ -2405,6 +2405,8 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
+
+	    fn->EndLoc(CurrentToken().Loc());
 	    return fn;
 	}
 
@@ -3174,6 +3176,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
 	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
+	    initFunction->EndLoc(CurrentToken().Loc());
 	    finished = true;
 	    break;
 	}
@@ -3205,7 +3208,8 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    ast.push_back(curAst);
 	}
     } while(!finished);
-    return new UnitAST(unitloc, ast, initFunction, interfaceList);
+    UnitAST* unit = new UnitAST(unitloc, ast, initFunction, interfaceList);
+    return unit;
 }
 
 ExprAST* Parser::Parse(ParserType type)

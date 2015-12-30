@@ -460,6 +460,7 @@ public:
     const std::string ClosureName() { return "$$CLOSURE"; };
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void accept(ASTVisitor& v) override;
+    void EndLoc(Location loc) { endLoc = loc; }
 private:
     PrototypeAST*              proto;
     std::vector<VarDeclAST*>   varDecls;
@@ -468,6 +469,7 @@ private:
     std::vector<VarDef>        usedVariables;
     FunctionAST*               parent;
     Types::TypeDecl*           closureType;
+    Location                   endLoc;
 };
 
 class CallExprAST : public ExprAST

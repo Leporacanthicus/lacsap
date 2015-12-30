@@ -1653,6 +1653,12 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	builder.CreateRet(retVal);
     }
 
+    if (debugInfo)
+    {
+	DebugInfo& di = GetDebugInfo();
+	di.lexicalBlocks.pop_back();
+    }
+
     verifyFunction(*theFunction);
     return theFunction;
 }

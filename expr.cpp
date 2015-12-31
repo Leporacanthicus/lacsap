@@ -1002,9 +1002,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
-		size_t size = rr[0]->Size();
-
-		return MakeStrCompare(oper, CallArrFunc("Compare", size));
+		return MakeStrCompare(oper, CallArrFunc("Compare", rr[0]->Size()));
 	    }
 	}
     }
@@ -2210,7 +2208,7 @@ llvm::Value* ForExprAST::CodeGen()
     curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
     builder.CreateStore(curVar, var);
 
-
+    BasicDebugInfo(this);
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
     builder.SetInsertPoint(afterBB);

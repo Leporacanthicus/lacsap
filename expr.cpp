@@ -2727,6 +2727,11 @@ llvm::Value* VarDeclAST::CodeGen()
 	    al = std::max(size_t(4), al);
 	    gv->setAlignment(al);
 	    v = gv;
+#if 0
+	    GV = DBuilder.createGlobalVariable(DContext, FieldName, LinkageName, Unit,
+					       LineNo, FieldTy,
+					       Var->hasInternalLinkage(), Var, nullptr);
+#endif
 	}
 	else
 	{	
@@ -2738,6 +2743,32 @@ llvm::Value* VarDeclAST::CodeGen()
 		std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
 		llvm::Value* dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
+	    }
+	    if (debugInfo)
+	    {
+		DebugInfo& di = GetDebugInfo();
+		assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
+		llvm::DIScope *sp = di.lexicalBlocks.back();
+		llvm::DIType* debugType = var.Type()->DebugType(di.builder);
+		if (!debugType)
+		{
+		    // Ugly hack until we have all debug types.
+		    std::cerr << "Skipping unknown debug type element." << std::endl;
+		    var.Type()->dump();
+		    goto skip;
+		}
+		{
+	        // Create a debug descriptor for the variable.
+		int lineNum = this->Loc().LineNumber();
+		llvm::DIFile* unit = sp->getFile();
+		llvm::DILocalVariable *dv =
+		    di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
+						   debugType, true);
+		di.builder->insertDeclare(v, dv, di.builder->createExpression(),
+					  llvm::DebugLoc::get(lineNum, 0, sp),
+					  ::builder.GetInsertBlock());
+		}
+	    skip: ;
 	    }
 	}
 	if (!variables.Add(var.Name(), v))

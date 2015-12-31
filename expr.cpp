@@ -2252,7 +2252,9 @@ llvm::Value* WhileExprAST::CodeGen()
     {
 	return 0;
     }
+    BasicDebugInfo(this);
     builder.CreateBr(preBodyBB);
+
     builder.SetInsertPoint(afterBB);
 
     return afterBB;
@@ -2292,6 +2294,7 @@ llvm::Value* RepeatExprAST::CodeGen()
     }
     llvm::Value* condv = cond->CodeGen();
     llvm::Value* endCond = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "untilcond");
+    BasicDebugInfo(this);
     builder.CreateCondBr(endCond, afterBB, bodyBB);
 
     builder.SetInsertPoint(afterBB);
@@ -2725,11 +2728,27 @@ llvm::Value* VarDeclAST::CodeGen()
 	    al = std::max(size_t(4), al);
 	    gv->setAlignment(al);
 	    v = gv;
-#if 0
-	    GV = DBuilder.createGlobalVariable(DContext, FieldName, LinkageName, Unit,
-					       LineNo, FieldTy,
-					       Var->hasInternalLinkage(), Var, nullptr);
-#endif
+	    if (debugInfo)
+	    {
+		DebugInfo& di = GetDebugInfo();
+		llvm::DIType* debugType = var.Type()->DebugType(di.builder);
+		if (!debugType)
+		{
+		    // Ugly hack until we have all debug types.
+		    std::cerr << "Skipping unknown debug type element." << std::endl;
+		    var.Type()->dump();
+		    goto skip1;
+		}
+		{
+		int lineNum = this->Loc().LineNumber();
+		llvm::DIScope* scope = di.cu;
+		llvm::DIFile* unit = scope->getFile();
+
+		di.builder->createGlobalVariable(scope, var.Name(), var.Name(), unit, lineNum,
+						 debugType, gv->hasInternalLinkage(), gv);
+		}
+	    skip1:;
+	    }
 	}
 	else
 	{	

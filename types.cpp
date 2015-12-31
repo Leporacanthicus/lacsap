@@ -339,9 +339,14 @@ namespace Types
 	    Range* rr = r->GetRange();
 	    subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
 	}
+	llvm::DIType* bd = baseType->DebugType(builder);
+	if (!bd)
+	{
+	    return 0;
+	}
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
 	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), 
-					baseType->DebugType(builder), subsArray);
+					bd, subsArray);
     }
 
     bool ArrayDecl::SameAs(const TypeDecl* ty) const

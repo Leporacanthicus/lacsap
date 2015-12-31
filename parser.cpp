@@ -2201,7 +2201,10 @@ ExprAST* Parser::ParseStatement()
     switch(CurrentToken().GetToken())
     {
     case Token::Begin:
-	return ParseBlock();
+    {
+	Location dummy;
+	return ParseBlock(dummy);
+    }
 
     case Token::Semicolon:
     case Token::End:
@@ -2233,7 +2236,7 @@ ExprAST* Parser::ParseStatement()
     return 0;
 }
 
-BlockAST* Parser::ParseBlock()
+BlockAST* Parser::ParseBlock(Location& endLoc)
 {
     TRACE();
     AssertToken(Token::Begin);
@@ -2265,6 +2268,7 @@ BlockAST* Parser::ParseBlock()
 	{
 	    return 0;
 	}
+	endLoc = CurrentToken().Loc();
     }
     return new BlockAST(loc, v);
 }
@@ -2380,9 +2384,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 
 	case Token::Begin:
 	{
+	    Location endLoc; 
 	    assert(!body && "Multiple body declarations for function?");
 
-	    if (!(body = ParseBlock()) || !Expect(Token::Semicolon, true))
+	    if (!(body = ParseBlock(endLoc)) || !Expect(Token::Semicolon, true))
 	    {
 		return 0;
 	    }
@@ -2405,8 +2410,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 	    UpdateCallVisitor updater(proto);
 	    fn->accept(updater);
-
-	    fn->EndLoc(CurrentToken().Loc());
+	    fn->EndLoc(endLoc);
 	    return fn;
 	}
 
@@ -3172,11 +3176,12 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	case Token::Begin:
 	{
 	    Location loc = CurrentToken().Loc();
-	    BlockAST* body = ParseBlock();
+	    Location endLoc;
+	    BlockAST* body = ParseBlock(endLoc);
 	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
 	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
-	    initFunction->EndLoc(CurrentToken().Loc());
+	    initFunction->EndLoc(endLoc);
 	    finished = true;
 	    break;
 	}

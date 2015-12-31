@@ -63,7 +63,7 @@ private:
     // Statements, blocks and calls
     ExprAST*      ParseStatement();
     VarDeclAST*   ParseVarDecls();
-    BlockAST*     ParseBlock();
+    BlockAST*     ParseBlock(Location& endLoc);
     FunctionAST*  ParseDefinition(int level);
     PrototypeAST* ParsePrototype(bool unnamed);
     bool          ParseProgram(ParserType type);

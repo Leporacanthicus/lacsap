@@ -1470,6 +1470,34 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	{
 	    ErrorF("Duplicate variable name " + args[idx].Name());
 	}
+
+	if (debugInfo)
+	{
+	    DebugInfo& di = GetDebugInfo();
+	    assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
+	    llvm::DIScope *sp = di.lexicalBlocks.back();
+	    llvm::DIType* debugType = args[idx].Type()->DebugType(di.builder);
+	    if (!debugType)
+	    {
+		// Ugly hack until we have all debug types.
+		std::cerr << "Skipping unknown debug type element." << std::endl;
+		args[idx].Type()->dump();
+		goto skip;
+	    }
+	    {
+	    // Create a debug descriptor for the variable.
+	    int lineNum = function->Loc().LineNumber();
+	    llvm::DIFile* unit = sp->getFile();
+	    llvm::DILocalVariable *dv =
+		di.builder->createParameterVariable(sp, args[idx].Name(), idx+1, unit, lineNum,
+						    debugType, true);
+	    di.builder->insertDeclare(a, dv, di.builder->createExpression(),
+				      llvm::DebugLoc::get(lineNum, 0, sp),
+				      ::builder.GetInsertBlock());
+	    }
+	skip: ;
+	}
+
     }
     if (type->Type() != Types::TypeDecl::TK_Void)
     {

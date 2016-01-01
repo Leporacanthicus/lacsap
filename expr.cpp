@@ -1415,6 +1415,11 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     {
 	f->addAttribute(v.first, v.second);
     }
+    // TODO: Allow this to be disabled.
+    llvm::AttributeSet attrs;
+    attrs = attrs.addAttribute(f->getContext(), llvm::AttributeSet::FunctionIndex,
+			       "no-frame-pointer-elim", "true");
+    f->addAttributes(llvm::AttributeSet::FunctionIndex, attrs);
 
     return f;
 }

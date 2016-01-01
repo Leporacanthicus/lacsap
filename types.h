@@ -181,7 +181,7 @@ namespace Types
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
-	{ assert(0 && "Huh?"); }
+	{ return 0; }
     };
 
     class CompoundDecl : public TypeDecl

@@ -1623,9 +1623,16 @@ void FunctionAST::accept(ASTVisitor& v)
     }
 }
 
-static llvm::DISubroutineType* CreateFunctionType(DebugInfo& di)
+static llvm::DISubroutineType* CreateFunctionType(DebugInfo& di, PrototypeAST* proto)
 {
     std::vector<llvm::Metadata*> eltTys;
+
+    eltTys.push_back(proto->Type()->DebugType(di.builder));
+
+    for(auto a : proto->Args())
+    {
+	eltTys.push_back(a.Type()->DebugType(di.builder));
+    }
     return di.builder->createSubroutineType(di.builder->getOrCreateTypeArray(eltTys));
 }
 
@@ -1652,7 +1659,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	Location loc = body->Loc();
 	llvm::DIFile* unit = di.builder->createFile(di.cu->getFilename(), di.cu->getDirectory());
 	llvm::DIScope* fnContext = unit;
-	llvm::DISubroutineType* st = CreateFunctionType(di);
+	llvm::DISubroutineType* st = CreateFunctionType(di, proto);
 	std::string name = proto->Name();
 	int lineNum = loc.LineNumber();
 	llvm::DISubprogram* sp = di.builder->createFunction(fnContext, name, "", unit,

@@ -192,7 +192,8 @@ size_t AlignOfType(llvm::Type* ty)
     return dl.getPrefTypeAlignment(ty);
 }
 
-static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty, const std::string& name)
+static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty,
+					   const std::string& name)
 {
     TRACE();
    /* Save where we were... */
@@ -1648,7 +1649,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     if (debugInfo)
     {
 	DebugInfo& di = GetDebugInfo();
-	Location loc = Loc();
+	Location loc = body->Loc();
 	llvm::DIFile* unit = di.builder->createFile(di.cu->getFilename(), di.cu->getDirectory());
 	llvm::DIScope* fnContext = unit;
 	llvm::DISubroutineType* st = CreateFunctionType(di);
@@ -1800,7 +1801,7 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	    {
 		v->dump(std::cerr);
 	    }
-	     usedVariables.push_back(*v);
+	    usedVariables.push_back(*v);
 	}
     }
 }
@@ -3070,11 +3071,12 @@ llvm::Value* SetExprAST::Address()
 	{
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();
+	    assert(high && low && "Expected expressions to evalueate");
+
 	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
 	    llvm::Value* loopVar = CreateTempAlloca(new Types::IntegerDecl());
 
-	    assert(high && low && "Expected expressions to evalueate");
 
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();

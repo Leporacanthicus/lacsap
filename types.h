@@ -302,6 +302,8 @@ namespace Types
 	unsigned Bits() const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Enum; }
 	bool SameAs(const TypeDecl* ty) const override;
+    protected:
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	EnumValues  values;
     };

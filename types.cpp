@@ -417,10 +417,8 @@ namespace Types
 
     llvm::DIType* SimpleCompoundDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
 	return 0;
     }
-
 
     bool SimpleCompoundDecl::SameAs(const TypeDecl* ty) const
     {
@@ -551,6 +549,21 @@ namespace Types
 	return b;
     }
 
+    llvm::DIType* EnumDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	const int size = 32;
+	const int align = 32;
+	std::vector<llvm::Metadata*> enumerators;
+	for (const auto i : values ) 
+	{
+	    enumerators.push_back(builder->createEnumerator(i.name, i.value));
+	}
+	llvm::DINodeArray eltArray = builder->getOrCreateArray(enumerators);
+	int line = 0;
+	return builder->createEnumerationType(0, "", 0,
+					      line, size, align, eltArray, 0, "");
+    }
+
     FunctionDecl:: FunctionDecl(PrototypeAST* p)
 	: CompoundDecl(TK_Function, p->Type()), proto(p)
     {
@@ -636,7 +649,6 @@ namespace Types
 	// TODO: Fill in. 
 	return 0;
     }
-
 
     void FieldCollection::EnsureSized() const
     {

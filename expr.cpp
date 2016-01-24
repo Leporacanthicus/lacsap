@@ -41,6 +41,7 @@ void Stack<llvm::Value*>::dump(std::ostream& out) const
 class DebugInfo
 {
 public:
+    DebugInfo() : cu(0), builder(0) {}
     llvm::DICompileUnit* cu;
     llvm::DIBuilder* builder;
     std::vector<llvm::DIScope*> lexicalBlocks;
@@ -128,8 +129,12 @@ void DebugInfo::EmitLocation(Location loc)
 
 DebugInfo::~DebugInfo()
 {
-    Types::Finalize(builder);
-    builder->finalize();
+    if (builder)
+    {
+	Types::Finalize(builder);
+	builder->finalize();
+    }
+    delete builder;
 }
 
 static void BasicDebugInfo(ExprAST* e)

@@ -99,12 +99,12 @@ static std::vector<VTableAST*> vtableBackPatchList;
 static std::vector<FunctionAST*> unitInit;
 
 // Debug stack. We just use push_back and pop_back to make it like a stack.
-static std::vector<DebugInfo> debugStack;
+static std::vector<DebugInfo*> debugStack;
 
 static DebugInfo& GetDebugInfo()
 {
     assert(!debugStack.empty() && "Debugstack should not be empty!");
-    return debugStack.back();
+    return *debugStack.back();
 }
 
 void DebugInfo::EmitLocation(Location loc)
@@ -128,6 +128,7 @@ void DebugInfo::EmitLocation(Location loc)
 
 DebugInfo::~DebugInfo()
 {
+    Types::Finalize(builder);
     builder->finalize();
 }
 
@@ -3511,17 +3512,17 @@ llvm::Value* UnitAST::CodeGen()
 {
     TRACE();
 
+    DebugInfo di;
     if(debugInfo)
     {
 	Location loc = Loc();
 
 	// TODO: Fix path and add flags.
-	DebugInfo di;
-	di.builder = new llvm::DIBuilder(*theModule);
+	di.builder = new llvm::DIBuilder(*theModule, true);
 	di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, loc.FileName(), ".",
 					      "Lacsap", optimization >= O1, "", 0);
 
-	debugStack.push_back(di);
+	debugStack.push_back(&di);
     }
 
     for(auto a : code)

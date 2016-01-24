@@ -83,6 +83,7 @@ namespace Types
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 	llvm::Type* LlvmType() const;
 	llvm::DIType* DebugType(llvm::DIBuilder* builder) const;
+	llvm::DIType* DiType() const { return diType; }
 	virtual bool hasLlvmType() const = 0;
 	void dump(std::ostream& out) const { DoDump(out); }
 	void dump() const;
@@ -343,6 +344,7 @@ namespace Types
 	bool hasLlvmType() const override { return baseType->hasLlvmType(); }
     protected:
 	llvm::Type* GetLlvmType() const override;
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	std::string name;
 	bool incomplete;
@@ -609,6 +611,8 @@ namespace Types
     TypeDecl* GetVoidType();
     TextDecl* GetTextType();
     StringDecl* GetStringType();
+
+    void Finalize(llvm::DIBuilder* builder);
 } // Namespace Types
 
 bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty);

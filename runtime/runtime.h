@@ -23,7 +23,7 @@ typedef struct File
     int    handle;
     char*  buffer;
     int    recordSize;
-    bool   isText; 
+    int    isText;
 } File;
 
 struct FileEntry

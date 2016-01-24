@@ -14,6 +14,8 @@ namespace Types
     static TextDecl* textType = 0;
     static StringDecl* strType = 0;
 
+    static std::vector<std::pair <TypeDecl *, llvm::TrackingMDRef>> fwdMap;
+
     llvm::Type* ErrorT(const std::string& msg)
     {
 	std::cerr << msg << std::endl;
@@ -303,6 +305,18 @@ namespace Types
     llvm::Type* PointerDecl::GetLlvmType() const
     {
 	return llvm::PointerType::getUnqual(baseType->LlvmType());
+    }
+
+    llvm::DIType* PointerDecl::GetDIType(llvm::DIBuilder* builder) const
+    {
+	llvm::DIType* pointeeType = baseType->DebugType(builder);
+	if (!pointeeType)
+	{
+	    return 0;
+	}
+	uint64_t size = Size() * CHAR_BIT;
+	uint64_t align = AlignSize() * CHAR_BIT;
+	return builder->createPointerType(pointeeType, size, align);
     }
 
     void ArrayDecl::DoDump(std::ostream& out) const
@@ -767,15 +781,57 @@ namespace Types
 
     llvm::DIType* RecordDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
-	return 0;
+	std::vector<llvm::Metadata *> eltTys;
+
+	// TODO: Add unit and name (if available).
+	llvm::DIScope* scope = 0;
+	llvm::DIFile* unit = 0;
+	int lineNo = 0;
+
+	// TODO: Need to deal with recursive types here...
+	for(auto f : fields)
+	{
+	    llvm::DIType* d = 0;
+	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
+	    {
+		if (pf->SubType() == this && !pf->SubType()->DiType())
+		{
+		    std::string fullname = "";
+		    size_t size = pf->SubType()->Size();
+		    size_t align = pf->SubType()->AlignSize();
+		    d = builder->createReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
+								"", scope, unit, lineNo, 0, size, align,
+								llvm::DINode::FlagFwdDecl, fullname);
+		    fwdMap.push_back(std::make_pair(pf->SubType(), llvm::TrackingMDRef(d)));
+		    size = pf->Size();
+		    align = pf->AlignSize();
+		    d = builder->createPointerType(d, size, align);
+		}
+		else
+		{
+		    d = pf->SubType()->DiType();
+		}
+	    }
+	    if (!d)
+	    {
+		d = f->DebugType(builder);
+	    }
+	    eltTys.push_back(d);
+	}
+	llvm::DINodeArray elements = builder->getOrCreateArray(eltTys);
+
+	std::string name = "";
+	uint64_t size = Size() * CHAR_BIT;
+	uint64_t align = AlignSize() * CHAR_BIT;
+	unsigned flags = 0;
+	llvm::DIType* derivedFrom = 0;
+	return builder->createStructType(scope, name, unit, lineNo, size, align, flags, derivedFrom, elements);
     }
 
     bool RecordDecl::SameAs(const TypeDecl* ty) const
     {
 	return this == ty;
     }
-
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
@@ -1125,7 +1181,7 @@ namespace Types
 	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
 	std::vector<llvm::Type*> fv = 
 	    { GetType(TypeDecl::TK_Integer), ty, GetType(TypeDecl::TK_Integer), 
-	      GetType(TypeDecl::TK_Boolean) };
+	      GetType(TypeDecl::TK_Integer) };
 	return llvm::StructType::create(fv, Type() == TK_Text?"text":"file");
     }
 
@@ -1298,6 +1354,19 @@ namespace Types
 	    textType = new TextDecl();
 	}
 	return textType;
+    }
+
+
+    void Finalize(llvm::DIBuilder* builder)
+    {
+	for(auto t : fwdMap)
+	{
+	    llvm::DIType* ty = llvm::cast<llvm::DIType>(t.second);
+
+	    llvm::DIType* newTy = t.first->DebugType(builder);
+
+	    builder->replaceTemporary(llvm::TempDIType(ty), newTy);
+	}
     }
 }
 

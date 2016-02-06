@@ -433,6 +433,7 @@ namespace Types
     {
 	switch(baseType)
 	{
+	case TK_Enum:
 	case TK_Integer:
 	    return builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
 
@@ -1265,8 +1266,13 @@ namespace Types
 
     llvm::DIType* SetDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
-	return 0;
+	std::vector<llvm::Metadata*> subscripts;
+	Range* rr = range->GetRange();
+	subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
+	llvm::DIType* bd = builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
+	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), 
+					bd, subsArray);
     }
 
     void SetDecl::DoDump(std::ostream& out) const

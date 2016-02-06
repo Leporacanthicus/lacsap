@@ -1,6 +1,5 @@
 program sets;
 
-
 type 
    set1	= set of 1..9;
    set2	= set of 12..46;

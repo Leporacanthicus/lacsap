@@ -3207,19 +3207,16 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	}
 
 	case Token::End:
-	    if (type == Unit)
-	    {
-		AssertToken(Token::End);
-		if (!Expect(Token::Period, true))
-		{
-		    return 0;
-		}
-		finished = true;
-	    }
-	    else
+	    if (type != Unit)
 	    {
 		return Error("Unexpected 'end' token");
 	    }
+	    AssertToken(Token::End);
+	    if (!Expect(Token::Period, true))
+	    {
+		return 0;
+	    }
+	    finished = true;
 	    break;
 
 	default:

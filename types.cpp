@@ -752,7 +752,7 @@ namespace Types
 	{
 	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->FieldType()))
 	    {
-		if (pf->IsIncomplete() || !f->hasLlvmType())
+		if (pf->IsIncomplete() || !f->HasLlvmType())
 		{
 		    if (!opaqueType)
 		    {
@@ -786,37 +786,65 @@ namespace Types
 	// TODO: Add unit and name (if available).
 	llvm::DIScope* scope = 0;
 	llvm::DIFile* unit = 0;
-	int lineNo = 0;
+	int lineNo = 0; 
+	int index = 0;
+
+	llvm::StructType* st = llvm::cast<llvm::StructType>(LlvmType());
+	const llvm::DataLayout dl(theModule);
+	const llvm::StructLayout* sl = 0;
+	if (!st->isOpaque())
+	{
+	    sl = dl.getStructLayout(st);
+	}
 
 	// TODO: Need to deal with recursive types here...
 	for(auto f : fields)
 	{
 	    llvm::DIType* d = 0;
+	    size_t size = 0;
+	    size_t align = 0;
 	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
 	    {
-		if (pf->SubType() == this && !pf->SubType()->DiType())
+		if (pf->IsForward() && !pf->DiType())
 		{
 		    std::string fullname = "";
-		    size_t size = pf->SubType()->Size();
-		    size_t align = pf->SubType()->AlignSize();
+		    size = pf->SubType()->Size();
+		    align = pf->SubType()->AlignSize();
 		    d = builder->createReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
 								"", scope, unit, lineNo, 0, size, align,
 								llvm::DINode::FlagFwdDecl, fullname);
+		    pf->SubType()->DiType(d);
 		    fwdMap.push_back(std::make_pair(pf->SubType(), llvm::TrackingMDRef(d)));
 		    size = pf->Size();
 		    align = pf->AlignSize();
 		    d = builder->createPointerType(d, size, align);
+		    pf->DiType(d);
 		}
 		else
 		{
-		    d = pf->SubType()->DiType();
+		    d = pf->DiType();
 		}
 	    }
 	    if (!d)
 	    {
 		d = f->DebugType(builder);
 	    }
+	    size = f->Size() * CHAR_BIT;
+	    align = f->AlignSize() * CHAR_BIT;
+	    size_t offsetInBits = 0;
+	    if (sl) 
+	    {
+		offsetInBits = sl->getElementOffsetInBits(index);
+	    }
+	    d = builder->createMemberType(scope, f->Name(), unit, lineNo, size,
+					  align, offsetInBits, 0, d);
+	    index++;
 	    eltTys.push_back(d);
+	}
+
+	if (diType)
+	{
+	    return diType;
 	}
 	llvm::DINodeArray elements = builder->getOrCreateArray(eltTys);
 
@@ -1058,7 +1086,7 @@ namespace Types
 	    {
 		if (PointerDecl* pd = llvm::dyn_cast<PointerDecl>(f->FieldType()))
 		{
-		    if (pd->IsIncomplete() && !pd->hasLlvmType())
+		    if (pd->IsIncomplete() && !pd->HasLlvmType())
 		    {
 			if (!opaqueType)
 			{
@@ -1356,13 +1384,13 @@ namespace Types
 	return textType;
     }
 
-
     void Finalize(llvm::DIBuilder* builder)
     {
 	for(auto t : fwdMap)
 	{
 	    llvm::DIType* ty = llvm::cast<llvm::DIType>(t.second);
 
+	    t.first->ResetDebugType();
 	    llvm::DIType* newTy = t.first->DebugType(builder);
 
 	    builder->replaceTemporary(llvm::TempDIType(ty), newTy);

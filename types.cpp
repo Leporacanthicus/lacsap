@@ -431,7 +431,18 @@ namespace Types
 
     llvm::DIType* SimpleCompoundDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return 0;
+	switch(baseType)
+	{
+	case TK_Integer:
+	    return builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
+
+	case TK_Char:
+	    return builder->createBasicType("CHAR", 8, 8, llvm::dwarf::DW_ATE_unsigned);
+
+	default:
+	    assert(0 && "Huh? Type is not known...");
+	    return 0;
+	}
     }
 
     bool SimpleCompoundDecl::SameAs(const TypeDecl* ty) const
@@ -786,7 +797,7 @@ namespace Types
 	// TODO: Add unit and name (if available).
 	llvm::DIScope* scope = 0;
 	llvm::DIFile* unit = 0;
-	int lineNo = 0; 
+	int lineNo = 0;
 	int index = 0;
 
 	llvm::StructType* st = llvm::cast<llvm::StructType>(LlvmType());
@@ -828,11 +839,12 @@ namespace Types
 	    if (!d)
 	    {
 		d = f->DebugType(builder);
+		assert(d && "Expected debug type here");
 	    }
 	    size = f->Size() * CHAR_BIT;
 	    align = f->AlignSize() * CHAR_BIT;
 	    size_t offsetInBits = 0;
-	    if (sl) 
+	    if (sl)
 	    {
 		offsetInBits = sl->getElementOffsetInBits(index);
 	    }

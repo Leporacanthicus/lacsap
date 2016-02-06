@@ -7,7 +7,7 @@ See BUILD.md for build instructions.
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.
 
 Among things NOT yet supported are:
-- Debug symbols.
+- Debug symbols (somewhat working).
 - Classes & objects are only somewhat supported.
 - Cross procedural goto - probably won't support, but needs an error message.
 - Good error handling. Now slightly improved.

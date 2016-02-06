@@ -2,4 +2,3 @@ List of things to fix in debug info generation:
 
 - Store names of types and generate debug type names.
 - Store location of types and generate debug locations.
-

@@ -270,7 +270,12 @@ ExprAST* Parser::ParseGoto()
     {
 	return 0;
     }
-    return new GotoAST(t.Loc(), t.GetIntVal());
+    int n = t.GetIntVal();
+    if (!nameStack.FindTopLevel(std::to_string(n)))
+    {
+	return Error("Label and GOTO need to be declared in the same scope");
+    }
+    return new GotoAST(t.Loc(), n);
 }
 
 const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
@@ -1326,6 +1331,11 @@ ExprAST* Parser::ParseIntegerOrLabel(Token token)
     {
 	AssertToken(Token::Integer);
 	AssertToken(Token::Colon);
+	int n = token.GetIntVal();
+	if (!nameStack.FindTopLevel(std::to_string(n)))
+	{
+	    return Error("Can't use label in a different scope than the declaration");
+	}
 	return new LabelExprAST(token.Loc(), { (int)token.GetIntVal() }, NULL);
     }
     return ParseIntegerExpr(token);
@@ -2254,7 +2264,13 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 	    Token token = CurrentToken();
 	    AcceptToken(Token::Integer);
 	    AcceptToken(Token::Colon);
-	    v.push_back(new LabelExprAST(token.Loc(), { static_cast<int>(token.GetIntVal()) }, 0));
+	    int n = token.GetIntVal();
+	    if (!nameStack.FindTopLevel(std::to_string(n)))
+	    {
+		return reinterpret_cast<BlockAST*>
+		    (Error("Can't use label in a different scope than the declaration"));
+	    }
+	    v.push_back(new LabelExprAST(token.Loc(), { n }, 0));
 	}
 	else if (ExprAST* ast = ParseStatement())
 	{
@@ -3178,6 +3194,10 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    Location loc = CurrentToken().Loc();
 	    Location endLoc;
 	    BlockAST* body = ParseBlock(endLoc);
+	    if (!body)
+	    {
+		return 0;
+	    }
 	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
 						   Types::GetVoidType(), 0);
 	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);

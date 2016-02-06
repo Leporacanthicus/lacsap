@@ -3,3 +3,6 @@ This is a list of "things to improve in general".
 - Stop using TypeKind for base-types, use TypeDecl instead. Will make so many things easier.
   In other words, remove SimpleCompoundDecl, and use the CompoundDecl instead.
   This should also remove all uses of Types::GetType() - instead add Types::GetXXTypeDecl()
+
+- Support integer types with variable size automagically (through type declaratio, e.g
+  type byte = 0..255; should make an 8-bit unsigned)

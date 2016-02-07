@@ -110,6 +110,7 @@ LongInt can't be used as index to array (Detecting large array bounds is
 not discovering > 32 bit -> not accepting index as 64-bit - but a 64-bit
 index should probably be accepted either way).
 
+Fix in: a36384e253316561c4d926ccf00a82e1934488d8
 ----------------------------------------------------------------
 Bug13:
 Date: 29-Dec-2015
@@ -118,4 +119,5 @@ Constants of 64-bit value can't be compared with 32-bit variables.
 This leads to a compile-time assert. The sema-checks should introduce
 automatic convert or complain.
 
+Fix in: a36384e253316561c4d926ccf00a82e1934488d8
 ----------------------------------------------------------------

@@ -1,16 +1,15 @@
 program SieveOfEratosthenes;
 
 const
-   maxNum = 100000;
-   nLoops = 10000;
+   maxNum = 1000000000;
+   nLoops = 1;
 
-type
-   int32 =  integer;
+var
+   Data : array [1..maxNum] of boolean;
 
 procedure Sieve;
 var
-   Data: array [1..maxNum] of boolean;
-    i,j: int32;
+    i,j: LongInt;
 begin
    for i := 1 to maxNum do
       Data[i] := true;

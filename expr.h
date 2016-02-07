@@ -528,14 +528,15 @@ private:
 class ForExprAST : public ExprAST
 {
 public:
-    ForExprAST(const Location& w, const std::string& var, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
-	: ExprAST(w, EK_ForExpr), varName(var), start(s), stepDown(down), end(e), body(b) {}
+    friend class TypeCheckVisitor;
+    ForExprAST(const Location& w, VariableExprAST* v, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
+	: ExprAST(w, EK_ForExpr), variable(v), start(s), stepDown(down), end(e), body(b) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_ForExpr; }
     void accept(ASTVisitor& v) override;
 private:
-    std::string varName;
+    VariableExprAST* variable;
     ExprAST* start;
     bool     stepDown;   // true for "downto"
     ExprAST* end;

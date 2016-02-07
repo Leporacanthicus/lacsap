@@ -101,13 +101,14 @@ Date: 23-Dec-2015
 
 Parser should detect extra-procedural goto and issue error.
 
+Fix in: 31eed44ae87489dec25d422d8ba83fb961f8cb28
 ----------------------------------------------------------------
 Bug12:
 Date: 29-Dec-2015
 
 LongInt can't be used as index to array (Detecting large array bounds is
 not discovering > 32 bit -> not accepting index as 64-bit - but a 64-bit
-index should probably be accepted either way.
+index should probably be accepted either way).
 
 ----------------------------------------------------------------
 Bug13:

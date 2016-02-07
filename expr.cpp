@@ -2140,35 +2140,31 @@ void ForExprAST::accept(ASTVisitor& v)
     start->accept(v);
     end->accept(v);
     body->accept(v);
+    v.visit(this);
 }
 
 llvm::Value* ForExprAST::CodeGen()
 {
     TRACE();
-
     BasicDebugInfo(this);
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::Value* var = variables.Find(varName);
-    if (!var)
-    {
-	return 0;
-    }
+    llvm::Value* var = variable->Address();
+    assert(var && "Expected variable here");
+
     llvm::Value* startV = start->CodeGen();
-    if (!startV)
-    {
-	return 0;
-    }
+    assert(startV && "Expected start to generate code");
 
     llvm::Value* stepVal = MakeConstant((stepDown)?-1:1, startV->getType());
     llvm::Value* endV = end->CodeGen();
+    assert(endV && "Expected end to generate code");
 
     builder.CreateStore(startV, var);
 
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", theFunction);
 
-    llvm::Value* curVar = builder.CreateLoad(var, varName);
+    llvm::Value* curVar = builder.CreateLoad(var, variable->Name());
     llvm::Value* endCond;
 
     if (start->Type()->isUnsigned())
@@ -2201,7 +2197,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    curVar = builder.CreateLoad(var, varName);
+    curVar = builder.CreateLoad(var, variable->Name());
     if (start->Type()->isUnsigned())
     {
 	if (stepDown)

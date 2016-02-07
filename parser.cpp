@@ -2480,6 +2480,9 @@ ExprAST* Parser::ParseForExpr()
     }
     std::string varName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
+    NamedObject* def = nameStack.Find(varName);
+    assert(def && "Expected name to be found");
+    VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
     if (!Expect(Token::Assign, true))
     {
 	return 0;
@@ -2508,7 +2511,7 @@ ExprAST* Parser::ParseForExpr()
     }
     if (ExprAST* body = ParseStatement())
     {
-	return new ForExprAST(loc, varName, start, end, down, body);
+	return new ForExprAST(loc, varExpr, start, end, down, body);
     }
     return 0;
 }

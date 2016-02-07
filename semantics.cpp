@@ -18,6 +18,7 @@ private:
     void CheckArrayExpr(ArrayExprAST* a);
     void CheckBuiltinExpr(BuiltinExprAST* b);
     void CheckCallExpr(CallExprAST* c);
+    void CheckForExpr(ForExprAST* f);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -135,6 +136,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (CallExprAST* c = llvm::dyn_cast<CallExprAST>(expr))
     {
 	CheckCallExpr(c);
+    }
+    else if (ForExprAST* f = llvm::dyn_cast<ForExprAST>(expr))
+    {
+	CheckForExpr(f);
     }
 }
 
@@ -422,7 +427,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	Types::RangeDecl* r = a->ranges[i];
 	if(llvm::isa<RangeReduceAST>(e))
 	    continue;
-	if (r->Type() != e->Type()->Type())
+	if (r->Type() != e->Type()->Type() && !e->Type()->CompatibleType(r))
 	{
 	    Error(a, "Incorrect index type");
 	}
@@ -496,6 +501,40 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	    Error(a, "Incompatible argument type");
 	}
 	idx++;
+    }
+}
+
+void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
+{
+    // Check start + end and cast if necessary. Fail if incompatible types.
+    bool bad = false;
+    if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(f->variable->Type()))
+    {
+	if (*ty != *f->start->Type())
+	{
+	    ExprAST* e = f->start;
+	    f->start = new TypeCastAST(e->Loc(), e, ty);
+	}
+    }
+    else
+    {
+	bad = true;
+    }
+    if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(f->variable->Type()))
+    {
+	if (*ty != *f->end->Type())
+	{
+	    ExprAST* e = f->end;
+	    f->end = new TypeCastAST(e->Loc(), e, ty);
+	}
+    }
+    else
+    {
+	bad = true;
+    }
+    if (bad)
+    {
+	Error(f, "Bad for loop");
     }
 }
 

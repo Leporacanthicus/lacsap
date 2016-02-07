@@ -1343,11 +1343,7 @@ ExprAST* Parser::ParseIntegerOrLabel(Token token)
 
 ExprAST* Parser::ParseStringExpr(Token token)
 {
-    int len =  token.GetStrVal().length()-1;
-    if (len < 1)
-    {
-	len = 1;
-    }
+    int len =  std::max(1, (int)(token.GetStrVal().length()-1));
     std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), 
 							      Types::TypeDecl::TK_Integer)};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
@@ -2590,16 +2586,12 @@ ExprAST* Parser::ParseCaseExpr()
 	    break;
 
 	case Token::Identifier:
-	{
-	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
-	    if (ed)
+	    if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
 	    {
 		lab.push_back(ed->Value());
 		break;
 	    }
 	    return Error("Expected enumerated type value");
-	}
-
 
 	case Token::Else:
 	case Token::Otherwise:
@@ -2631,8 +2623,7 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Otherwise:
 	case Token::Else:
 	{
-	    NextToken();
-	    Location locColon = CurrentToken().Loc();
+	    Location locColon = NextToken().Loc();
 	    ExprAST* s = ParseStatement();
 	    if (isOtherwise)
 	    {

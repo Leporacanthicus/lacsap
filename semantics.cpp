@@ -77,7 +77,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 	r = ty->SubType()->GetRange();
     }
 
-    if (ty->isIntegral())
+    if (ty->IsIntegral())
     {
 	base = ty;
     }
@@ -154,7 +154,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (op == Token::In)
     {
-	if (!lty->isIntegral())
+	if (!lty->IsIntegral())
 	{
 	    Error(b, "Left hand of 'in' expression should be integral.");
 	}
@@ -243,14 +243,14 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    Error(b, "Invalid (non-numeric) type for divide");
 	}
-	if (lty->isIntegral())
+	if (lty->IsIntegral())
 	{
 	    ExprAST* e = b->lhs;
 	    ty = new Types::RealDecl;
 	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 	    lty = ty;
 	}
-	if (rty->isIntegral())
+	if (rty->IsIntegral())
 	{
 	    ExprAST* e = b->rhs;
 	    if (!ty)
@@ -299,7 +299,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
 	{
-	    if (!ty->isCompound())
+	    if (!ty->IsCompound())
 	    {
 		if (lty != ty)
 		{
@@ -507,8 +507,15 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
 {
     // Check start + end and cast if necessary. Fail if incompatible types.
-    bool bad = false;
-    if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(f->variable->Type()))
+    Types::TypeDecl* vty = f->variable->Type();
+    bool bad = !vty->IsIntegral();
+    if (bad)
+    {
+	Error(f->variable, "Loop iteration variable must be integral type");
+	return;
+    }
+
+    if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(vty))
     {
 	if (*ty != *f->start->Type())
 	{
@@ -520,7 +527,7 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
     {
 	bad = true;
     }
-    if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(f->variable->Type()))
+    if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(vty))
     {
 	if (*ty != *f->end->Type())
 	{

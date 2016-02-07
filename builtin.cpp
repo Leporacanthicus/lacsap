@@ -455,14 +455,14 @@ namespace Builtin
 	return (args.size() == 1) &&
 	    (args[0]->Type()->Type() != Types::TypeDecl::TK_Char) &&
 	    (args[0]->Type()->Type() != Types::TypeDecl::TK_Enum) &&
-	    (args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
+	    (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     bool BuiltinFunctionSameAsArg2::Semantics()
     {
 	return (args.size() == 2) &&
-	    ((args[0]->Type()->isIntegral()) || args[0]->Type()->Type() == Types::TypeDecl::TK_Real) &&
-	    ((args[1]->Type()->isIntegral()) || args[1]->Type()->Type() == Types::TypeDecl::TK_Real);
+	    ((args[0]->Type()->IsIntegral()) || args[0]->Type()->Type() == Types::TypeDecl::TK_Real) &&
+	    ((args[1]->Type()->IsIntegral()) || args[1]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
@@ -472,7 +472,7 @@ namespace Builtin
 	{
 	    return a;
 	}
-	if (args[0]->Type()->isIntegral())
+	if (args[0]->Type()->IsIntegral())
 	{
 	    llvm::Value* neg = builder.CreateNeg(a, "neg");
 	    llvm::Value* cmp = builder.CreateICmpSGE(a, MakeIntegerConstant(0), "abscond");
@@ -491,13 +491,13 @@ namespace Builtin
 
     bool BuiltinFunctionOdd::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral();
+	return args.size() == 1 && args[0]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	if (args[0]->Type()->isIntegral())
+	if (args[0]->Type()->IsIntegral())
 	{
 	    return builder.CreateMul(a, a, "sqr");
 	}
@@ -509,7 +509,7 @@ namespace Builtin
 	return args.size() == 1 &&
 	    args[0]->Type()->Type() != Types::TypeDecl::TK_Char &&
 	    args[0]->Type()->Type() != Types::TypeDecl::TK_Enum &&
-	    (args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
+	    (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     llvm::Value* BuiltinFunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
@@ -526,7 +526,7 @@ namespace Builtin
 	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
 	    // Implicit typecast.
-	    if (args[0]->Type()->isIntegral())
+	    if (args[0]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[0];
 		args[0] = new TypeCastAST(Location("",0,0), e, RealType());
@@ -574,7 +574,7 @@ namespace Builtin
 
     bool BuiltinFunctionChr::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral();
+	return args.size() == 1 && args[0]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionOrd::CodeGen(llvm::IRBuilder<>& builder)
@@ -585,7 +585,7 @@ namespace Builtin
 
     bool BuiltinFunctionOrd::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral();
+	return args.size() == 1 && args[0]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionSucc::CodeGen(llvm::IRBuilder<>& builder)
@@ -596,7 +596,7 @@ namespace Builtin
 
     bool BuiltinFunctionSucc::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral();
+	return args.size() == 1 && args[0]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionPred::CodeGen(llvm::IRBuilder<>& builder)
@@ -641,7 +641,7 @@ namespace Builtin
 
     bool BuiltinFunctionHalt::Semantics()
     {
-	return args.size() <= 1 && (args.size() == 0 || args[0]->Type()->isIntegral());
+	return args.size() <= 1 && (args.size() == 0 || args[0]->Type()->IsIntegral());
     }
 
     llvm::Value* BuiltinFunctionHalt::CodeGen(llvm::IRBuilder<>& builder)
@@ -660,7 +660,7 @@ namespace Builtin
 
     bool BuiltinFunctionInc::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral() && llvm::isa<VariableExprAST>(args[0]);
+	return args.size() == 1 && args[0]->Type()->IsIntegral() && llvm::isa<VariableExprAST>(args[0]);
     }
 
     llvm::Value* BuiltinFunctionInc::CodeGen(llvm::IRBuilder<>& builder)
@@ -694,7 +694,7 @@ namespace Builtin
 	Types::ArrayDecl* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
 	return  t0 && t2 && t0->SubType() == t2->SubType() &&
 	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
-	    args[1]->Type()->isIntegral() &&
+	    args[1]->Type()->IsIntegral() &&
 	    llvm::isa<VariableExprAST>(args[2]) && t2->Ranges().size() == 1;
     }
 
@@ -732,7 +732,7 @@ namespace Builtin
 	return t0 && t1 && t0->SubType() == t1->SubType() &&
 	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
 	    llvm::isa<VariableExprAST>(args[1]) && t1->Ranges().size() == 1 &&
-	    args[2]->Type()->isIntegral();
+	    args[2]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
@@ -852,7 +852,7 @@ namespace Builtin
 	{
 	    return false;
 	}
-	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->isStringLike())
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->IsStringLike())
 	{
 	    return false;
 	}
@@ -907,14 +907,14 @@ namespace Builtin
 
     bool BuiltinFunctionPanic::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isStringLike();
+	return args.size() == 1 && args[0]->Type()->IsStringLike();
     }
 
     llvm::Value* BuiltinFunctionPopcnt::CodeGen(llvm::IRBuilder<>& builder)
     {
 	Types::TypeDecl* type = args[0]->Type();
 	std::string name = "llvm.ctpop.i";
-	if (type->isIntegral())
+	if (type->IsIntegral())
 	{
 	    name += std::to_string(type->Size() * 8);
 	    llvm::Type* ty = type->LlvmType();
@@ -946,7 +946,7 @@ namespace Builtin
     bool BuiltinFunctionPopcnt::Semantics()
     {
 	return args.size() == 1 &&
-	    (args[0]->Type()->isIntegral() ||
+	    (args[0]->Type()->IsIntegral() ||
 	     llvm::isa<Types::SetDecl>(args[0]->Type()));
     }
 
@@ -978,7 +978,7 @@ namespace Builtin
 	}
 	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
-	    if (args[0]->Type()->isIntegral())
+	    if (args[0]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[0];
 		args[0] = new TypeCastAST(Location("", 0, 0), e, RealType());
@@ -990,7 +990,7 @@ namespace Builtin
 	}
 	if (args[1]->Type()->Type() != Types::TypeDecl::TK_Real)
 	{
-	    if (args[1]->Type()->isIntegral())
+	    if (args[1]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[1];
 		args[1] = new TypeCastAST(Location("", 0, 0), e, RealType());
@@ -1015,7 +1015,7 @@ namespace Builtin
 
     bool BuiltinFunctionParamstr::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->isIntegral();
+	return args.size() == 1 && args[0]->Type()->IsIntegral();
     }
 
     llvm::Value* BuiltinFunctionParamcount::CodeGen(llvm::IRBuilder<>& builder)
@@ -1077,7 +1077,7 @@ namespace Builtin
 
     bool BuiltinFunctionSign::Semantics()
     {
-	return args[0]->Type()->isIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real;
+	return args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real;
     }
 
     llvm::Value* BuiltinFunctionSign::CodeGen(llvm::IRBuilder<>& builder)

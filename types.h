@@ -71,9 +71,9 @@ namespace Types
 
 	virtual TypeKind Type() const { return kind; }
 	virtual ~TypeDecl() { }
-	virtual bool isIntegral() const { return false; }
-	virtual bool isCompound() const { return false; }
-	virtual bool isStringLike() const { return false; }
+	virtual bool IsIntegral() const { return false; }
+	virtual bool IsCompound() const { return false; }
+	virtual bool IsStringLike() const { return false; }
 	virtual bool isUnsigned() const { return false; }
 	virtual Range* GetRange() const;
 	virtual TypeDecl* SubType() const { return 0; }
@@ -117,9 +117,9 @@ namespace Types
 	CharDecl() : BasicTypeDecl(TK_Char)
 	{
 	}
-	bool isIntegral() const override { return true; }
+	bool IsIntegral() const override { return true; }
 	bool isUnsigned() const override { return true; }
-	bool isStringLike() const override { return true; }
+	bool IsStringLike() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 8; }
 	bool HasLlvmType() const override { return true; }
@@ -133,7 +133,7 @@ namespace Types
     public:
 	IntegerDecl()
 	    : BasicTypeDecl(TK_Integer) { }
-	bool isIntegral() const override { return true; }
+	bool IsIntegral() const override { return true; }
 	unsigned Bits() const override { return 32; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
@@ -148,7 +148,7 @@ namespace Types
     public:
 	Int64Decl()
 	    : BasicTypeDecl(TK_Int64) { }
-	bool isIntegral() const override { return true; }
+	bool IsIntegral() const override { return true; }
 	unsigned Bits() const override { return 64; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
@@ -193,7 +193,7 @@ namespace Types
 	CompoundDecl(TypeKind tk, TypeDecl* b)
 	    : TypeDecl(tk), baseType(b) { }
 	bool SameAs(const TypeDecl* ty) const override;
-	bool isCompound() const override { return true; }
+	bool IsCompound() const override { return true; }
 	TypeDecl* SubType() const override { return baseType; }
 	bool HasLlvmType() const override { return baseType->HasLlvmType(); }
 	static bool classof(const TypeDecl* e);
@@ -210,7 +210,7 @@ namespace Types
 	SimpleCompoundDecl(TypeKind k, TypeKind b)
 	    : TypeDecl(k), baseType(b) {}
 	bool SameAs(const TypeDecl* ty) const override;
-	bool isIntegral() const override { return true; }
+	bool IsIntegral() const override { return true; }
 	TypeKind Type() const override { return baseType; }
 	bool HasLlvmType() const override { return true; }
 	static bool classof(const TypeDecl* e);
@@ -259,7 +259,7 @@ namespace Types
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	const std::vector<RangeDecl*>& Ranges() const { return ranges; }
-	bool isStringLike() const override { return (baseType->Type() == TK_Char); }
+	bool IsStringLike() const override { return (baseType->Type() == TK_Char); }
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
@@ -361,7 +361,7 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return baseType->CompatibleType(ty); }
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override { return baseType->AssignableType(ty); }
-	bool isCompound() const override { return false; }
+	bool IsCompound() const override { return false; }
 	bool HasLlvmType() const override { return false; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Function; }
 	PrototypeAST* Proto() const { return proto; }
@@ -381,8 +381,8 @@ namespace Types
 	const std::string& Name() const { return name; }
 	TypeDecl* FieldType() const { return baseType; }
 	void DoDump(std::ostream& out) const override;
-	bool isIntegral() const override { return baseType->isIntegral(); }
-	bool isCompound() const override { return baseType->isCompound(); }
+	bool IsIntegral() const override { return baseType->IsIntegral(); }
+	bool IsCompound() const override { return baseType->IsCompound(); }
 	bool IsStatic() const { return isStatic; }
 	bool SameAs(const TypeDecl* ty) const override { return baseType->SameAs(ty); }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
@@ -408,7 +408,7 @@ namespace Types
 	}
 	void EnsureSized() const;
 	virtual int FieldCount() const { return fields.size(); }
-	bool isCompound() const override { return true; }
+	bool IsCompound() const override { return true; }
 	bool SameAs(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return lType; }
 	static bool classof(const TypeDecl* e)
@@ -526,7 +526,7 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	PrototypeAST* Proto() const { return proto; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }
-	bool isCompound() const override { return false; }
+	bool IsCompound() const override { return false; }
 	bool SameAs(const TypeDecl* ty) const override;
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -603,7 +603,7 @@ namespace Types
 	    assert(size > 0 && "Zero size not allowed");
 	}
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_String; }
-	bool isStringLike() const override { return true; }
+	bool IsStringLike() const override { return true; }
 	void DoDump(std::ostream& out) const override;
 	bool HasLlvmType() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;

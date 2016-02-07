@@ -86,7 +86,7 @@ namespace Types
 
     Range* TypeDecl::GetRange() const
     {
-	assert(isIntegral());
+	assert(IsIntegral());
 	switch(kind)
 	{
 	case TK_Char:
@@ -1162,7 +1162,7 @@ namespace Types
 	for(auto v : proto->Args())
 	{
 	    llvm::Type* ty = v.Type()->LlvmType();
-	    if (v.IsRef() || v.Type()->isCompound() )
+	    if (v.IsRef() || v.Type()->IsCompound() )
 	    {
 		ty = llvm::PointerType::getUnqual(ty);
 	    }

@@ -865,7 +865,7 @@ Types::TypeDecl* BinaryExprAST::Type() const
 llvm::Value* BinaryExprAST::SetCodeGen()
 {
     TRACE();
-    if (lhs->Type() && lhs->Type()->isIntegral() && oper.GetToken() == Token::In)
+    if (lhs->Type() && lhs->Type()->IsIntegral() && oper.GetToken() == Token::In)
     {
 	llvm::Value* l = lhs->CodeGen();
 	llvm::Value* setV = MakeAddressable(rhs);
@@ -1257,7 +1257,7 @@ llvm::Value* CallExprAST::CodeGen()
 
 		if (!v)
 		{
-		    if (i->Type()->isCompound())
+		    if (i->Type()->IsCompound())
 		    {
 			if (vi)
 			{
@@ -1373,7 +1373,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	{
 	    argAttr.push_back(std::make_pair(index, llvm::Attribute::Nest));
 	}
-	if (i.IsRef() || ty->isCompound() )
+	if (i.IsRef() || ty->IsCompound() )
 	{
 	    argTy = llvm::PointerType::getUnqual(ty->LlvmType());
 	    if (!i.IsRef())
@@ -1467,7 +1467,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     for(unsigned idx = offset; idx < args.size(); idx++, ai++)
     {
 	llvm::Value* a;
-	if (args[idx].IsRef() || args[idx].Type()->isCompound())
+	if (args[idx].IsRef() || args[idx].Type()->IsCompound())
 	{
 	    a = &*ai;
 	}
@@ -3311,7 +3311,7 @@ llvm::Value* TypeCastAST::CodeGen()
     }
     
     Types::TypeDecl* current = expr->Type();
-    if (type->isIntegral() && current->isIntegral())
+    if (type->IsIntegral() && current->IsIntegral())
     {
 	if (type->isUnsigned())
 	{

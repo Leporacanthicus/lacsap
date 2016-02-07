@@ -427,7 +427,7 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
     {
 	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
 	{
-	    if (!type->isIntegral())
+	    if (!type->IsIntegral())
 	    {
 		return ErrorR("Type used as index specification should be integral type");
 	    }
@@ -960,7 +960,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		AssertToken(Token::Colon);
 	    }
 	    markerTy = ParseType("", false);
-	    if (!markerTy->isIntegral())
+	    if (!markerTy->IsIntegral())
 	    {
 		return (bool)Error("Expect variant selector to be integral type");
 	    }

@@ -3224,8 +3224,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    ast.push_back(curAst);
 	}
     } while(!finished);
-    UnitAST* unit = new UnitAST(unitloc, ast, initFunction, interfaceList);
-    return unit;
+    return new UnitAST(unitloc, ast, initFunction, interfaceList);
 }
 
 ExprAST* Parser::Parse(ParserType type)

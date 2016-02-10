@@ -466,13 +466,14 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
 {
     for(;;)
     {
-	int tokPrec = CurrentToken().Precedence();
+	Token binOp = CurrentToken();
+	int tokPrec = binOp.Precedence();
+	// Lower precedence, so don't use up the binOp.
 	if (tokPrec < exprPrec)
 	{
 	    return lhs;
 	}
-	
-	Token binOp = CurrentToken();
+
 	NextToken();
 
 	const Constants::ConstDecl* rhs = ParseConstExpr();
@@ -482,27 +483,13 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
 	}
 	
 	int nextPrec = CurrentToken().Precedence();
-	if (verbosity)
-	{
-	    CurrentToken().dump(std::cerr);
-	    std::cerr << " tokprec=" << tokPrec << " nextPrec="  << nextPrec << std::endl;
-	}
 	if (tokPrec < nextPrec)
 	{
-	    std::cout << "Going deeper!";
-	    std::cout << " lhs="; lhs->dump();
-	    std::cout << " "; binOp.dump();
-	    std::cout << " rhs="; rhs->dump();
-	    rhs = ParseConstRHS(tokPrec + 1, rhs);
-	    if (!rhs)
+	    if (!(rhs = ParseConstRHS(tokPrec + 1, rhs)))
 	    {
 		return 0;
 	    }
 	}
-	lhs->dump();
-	binOp.dump();
-	rhs->dump();
-	std::cout << std::endl;
 	lhs = ParseConstEval(lhs, binOp, rhs);
     }
 }
@@ -515,12 +502,6 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
     int mul = 1;
     do
     {
-	if (verbosity)
-	{
-	    std::cerr << __FILE__ << ":" << __LINE__ << ": ";
-	    CurrentToken().dump(std::cerr);
-	}
-
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Minus:
@@ -577,8 +558,7 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 
 	case Token::Identifier:
 	{
-	    EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName());
-	    if (ed)
+	    if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
 	    {
 		if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
 		{
@@ -1375,13 +1355,13 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 {
     for(;;)
     {
-	int tokPrec = CurrentToken().Precedence();
+	Token binOp = CurrentToken();
+	int tokPrec = binOp.Precedence();
 	if (tokPrec < exprPrec)
 	{
 	    return lhs;
 	}
 
-	Token binOp = CurrentToken();
 	NextToken();
 	
 	ExprAST* rhs = ParsePrimary();
@@ -1395,8 +1375,7 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 	int nextPrec = CurrentToken().Precedence();
 	if (tokPrec < nextPrec)
 	{
-	    rhs = ParseBinOpRHS(tokPrec+1, rhs);
-	    if (!rhs)
+	    if (!(rhs = ParseBinOpRHS(tokPrec+1, rhs)))
 	    {
 		return 0;
 	    }

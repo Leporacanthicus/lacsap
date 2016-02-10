@@ -10,7 +10,7 @@ Token Constants::IntConstDecl::Translate() const
 
 void Constants::IntConstDecl::dump() const
 {
-    std::cout << "IntConstDecl: " << Value();
+    std::cerr << "IntConstDecl: " << Value() << std::endl;
 }
 
 Token Constants::RealConstDecl::Translate() const
@@ -20,7 +20,7 @@ Token Constants::RealConstDecl::Translate() const
 
 void Constants::RealConstDecl::dump() const
 {
-    std::cout << "RealConstDelc: " << Value();
+    std::cerr << "RealConstDelc: " << Value() << std::endl;
 }
 
 Token Constants::CharConstDecl::Translate() const
@@ -30,7 +30,7 @@ Token Constants::CharConstDecl::Translate() const
 
 void Constants::CharConstDecl::dump() const
 {
-    std::cout << "CharConstDecl: " << Value();
+    std::cerr << "CharConstDecl: " << Value() << std::endl;
 }
 
 Token Constants::BoolConstDecl::Translate() const
@@ -41,7 +41,7 @@ Token Constants::BoolConstDecl::Translate() const
 
 void Constants::BoolConstDecl::dump() const
 {
-    std::cout << "BoolConstDecl: " << Value();
+    std::cerr << "BoolConstDecl: " << Value() << std::endl;
 }
 
 Token Constants::StringConstDecl::Translate() const
@@ -51,7 +51,7 @@ Token Constants::StringConstDecl::Translate() const
 
 void Constants::StringConstDecl::dump() const
 {
-    std::cout << "StringConstDecl: " << Value();
+    std::cerr << "StringConstDecl: " << Value() << std::endl;
 }
 
 static bool GetAsReal(double& lValue, double& rValue, 

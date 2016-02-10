@@ -152,6 +152,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     Types::TypeDecl* ty = 0;
     Token::TokenType op = b->oper.GetToken();
 
+    assert(rty && lty && "Expect to have types here");
+
     if (op == Token::In)
     {
 	if (!lty->IsIntegral())

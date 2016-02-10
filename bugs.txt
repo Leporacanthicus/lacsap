@@ -121,3 +121,15 @@ automatic convert or complain.
 
 Fix in: a36384e253316561c4d926ccf00a82e1934488d8
 ----------------------------------------------------------------
+Bug14:
+Date: 10-Feb-2016
+
+Constants are not allowed as case-labels.
+
+----------------------------------------------------------------
+Bug15:
+Date: 07-Feb-2016
+
+Parser is completely b0rked. Accepts all kinds of nonsense.
+
+----------------------------------------------------------------

@@ -82,6 +82,7 @@ private:
     Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs,
 					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
+    const Constants::ConstDecl* ParseConstTerm(Location loc);
 
     Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
     Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);

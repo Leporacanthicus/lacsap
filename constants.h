@@ -26,6 +26,7 @@ public:
 	virtual Token Translate() const = 0;
 	ConstKind getKind() const { return kind; }
 	virtual void dump() const = 0;
+	Location Loc() const { return loc; }
     protected:
 	const ConstKind kind;
 	Location loc;

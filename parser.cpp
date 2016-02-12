@@ -462,6 +462,140 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
     return 0;
 }
 
+const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
+{
+    Token::TokenType unaryToken = Token::Unknown;
+    const Constants::ConstDecl* cd = 0;
+    int mul = 1;
+
+    switch(CurrentToken().GetToken())
+    {
+    case Token::Minus:
+	mul = -1;
+    case Token::Plus:
+    case Token::Not:
+	unaryToken = CurrentToken().GetToken();
+	NextToken();
+	break; 
+    default:
+	break;
+    }
+
+    switch(CurrentToken().GetToken())
+    {
+    case Token::LeftParen:
+	AssertToken(Token::LeftParen);
+	cd = ParseConstExpr();
+	// We don't eat the right paren here, it gets eaten later.
+	if (!Expect(Token::RightParen, false))
+	{
+	    return 0;
+	}
+	break;
+
+    case Token::StringLiteral:
+	if (unaryToken != Token::Unknown)
+	{
+	    return ErrorC("Unary + or - not allowed for string constants");
+	}
+	cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
+	break;
+
+    case Token::Integer:
+    {
+	uint64_t v = CurrentToken().GetIntVal();
+	if (unaryToken == Token::Not)
+	{
+	    v = ~v;
+	}
+	cd = new Constants::IntConstDecl(loc,  v * mul);
+	break;
+    }
+
+    case Token::Real:
+	if (unaryToken == Token::Not)
+	{
+	    return ErrorC("Unary 'not' is not allowed for real constants");
+	}
+	cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
+	break;
+
+    case Token::Char:
+	if (unaryToken != Token::Unknown)
+	{
+	    return ErrorC("Unary + or - not allowed for char constants");
+	}
+	cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
+	break;
+
+    case Token::Identifier:
+    {
+	if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
+	{
+	    if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
+	    {
+		uint64_t v = ed->Value();
+		if (unaryToken == Token::Not)
+		{
+		    v = !v;
+		}
+		else if (unaryToken != Token::Unknown)
+		{
+		    return ErrorC("Unary + or - not allowed for bool constants");
+		}
+		cd = new Constants::BoolConstDecl(loc, v);
+	    }
+	    else
+	    {
+		if (unaryToken != Token::Unknown)
+		{
+		    return ErrorC("Unary + or - not allowed for enum constants");
+		}
+		cd = new Constants::IntConstDecl(loc, ed->Value());
+	    }
+	}
+	else
+	{
+	    cd = GetConstDecl(CurrentToken().GetIdentName());
+	    assert(cd && "Expected to get an identifier!");
+	    if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
+	    {
+		const Constants::BoolConstDecl* bd =
+		    llvm::dyn_cast<Constants::BoolConstDecl>(cd);
+		cd = new Constants::BoolConstDecl(loc, !bd->Value());
+	    }
+	    
+	    if (mul == -1)
+	    {
+		if (llvm::isa<Constants::RealConstDecl>(cd))
+		{
+		    const Constants::RealConstDecl* rd =
+			llvm::dyn_cast<Constants::RealConstDecl>(cd);
+		    cd = new Constants::RealConstDecl(loc, -rd->Value());
+		}
+		else if (llvm::isa<Constants::IntConstDecl>(cd))
+		{
+		    const Constants::IntConstDecl* id =
+			llvm::dyn_cast<Constants::IntConstDecl>(cd);
+		    cd = new Constants::IntConstDecl(loc, -id->Value());
+		}
+		else
+		{
+		    return ErrorC("Can't negate the type of " + CurrentToken().GetIdentName() +
+				  " only integer and real types can be negated");
+		}
+	    }
+	}
+	break;
+    }
+    default:
+	return 0;
+    }
+    NextToken();
+    return cd;
+}
+
+
 const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs)
 {
     for(;;)
@@ -476,7 +610,7 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
 
 	NextToken();
 
-	const Constants::ConstDecl* rhs = ParseConstExpr();
+	const Constants::ConstDecl* rhs = ParseConstTerm(lhs->Loc());
 	if (!rhs)
 	{
 	    return 0;
@@ -496,131 +630,13 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
 
 const Constants::ConstDecl* Parser::ParseConstExpr()
 {
-    Token::TokenType unaryToken = Token::Unknown;
     Location loc = CurrentToken().Loc();
     const Constants::ConstDecl* cd;
-    int mul = 1;
+
     do
     {
-	switch(CurrentToken().GetToken())
-	{
-	case Token::Minus:
-	    mul = -1;
-	case Token::Plus:
-	case Token::Not:
-	    unaryToken = CurrentToken().GetToken();
-	    break;
-
-	case Token::LeftParen:
-	    AssertToken(Token::LeftParen);
-	    cd = ParseConstExpr();
-	    // We don't eat the right paren here, it gets eaten later.
-	    if (!Expect(Token::RightParen, false))
-	    {
-		return 0;
-	    }
-	    break;
-
-	case Token::StringLiteral:
-	    if (unaryToken != Token::Unknown)
-	    {
-		return ErrorC("Unary + or - not allowed for string constants");
-	    }
-	    cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
-	    break;
-
-	case Token::Integer:
-	{
-	    uint64_t v = CurrentToken().GetIntVal();
-	    if (unaryToken == Token::Not)
-	    {
-		v = ~v;
-	    }
-	    cd = new Constants::IntConstDecl(loc,  v * mul);
-	    break;
-	}
-
-	case Token::Real:
-	    if (unaryToken == Token::Not)
-	    {
-		return ErrorC("Unary 'not' is not allowed for real constants");
-	    }
-	    cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
-	    break;
-
-	case Token::Char:
-	    if (unaryToken != Token::Unknown)
-	    {
-		return ErrorC("Unary + or - not allowed for char constants");
-	    }
-	    cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
-	    break;
-
-	case Token::Identifier:
-	{
-	    if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
-	    {
-		if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
-		{
-		    uint64_t v = ed->Value();
-		    if (unaryToken == Token::Not)
-		    {
-			v = !v;
-		    }
-		    else if (unaryToken != Token::Unknown)
-		    {
-			return ErrorC("Unary + or - not allowed for bool constants");
-		    }
-		    cd = new Constants::BoolConstDecl(loc, v);
-		}
-		else
-		{
-		    if (unaryToken != Token::Unknown)
-		    {
-			return ErrorC("Unary + or - not allowed for enum constants");
-		    }
-		    cd = new Constants::IntConstDecl(loc, ed->Value());
-		}
-	    }
-	    else
-	    {
-		cd = GetConstDecl(CurrentToken().GetIdentName());
-		assert(cd && "Expected to get an identifier!");
-		if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
-		{
-		    const Constants::BoolConstDecl* bd =
-			llvm::dyn_cast<Constants::BoolConstDecl>(cd);
-		    cd = new Constants::BoolConstDecl(loc, !bd->Value());
-		}
-		
-		if (mul == -1)
-		{
-		    if (llvm::isa<Constants::RealConstDecl>(cd))
-		    {
-			const Constants::RealConstDecl* rd =
-			    llvm::dyn_cast<Constants::RealConstDecl>(cd);
-			cd = new Constants::RealConstDecl(loc, -rd->Value());
-		    }
-		    else if (llvm::isa<Constants::IntConstDecl>(cd))
-		    {
-			const Constants::IntConstDecl* id =
-			    llvm::dyn_cast<Constants::IntConstDecl>(cd);
-			cd = new Constants::IntConstDecl(loc, -id->Value());
-		    }
-		    else
-		    {
-			return ErrorC("Can't negate the type of " + CurrentToken().GetIdentName() +
-				      " only integer and real types can be negated");
-		    }
-		}
-	    }
-	    break;
-	}
+	cd = ParseConstTerm(loc);
 	
-	default:
-	    return 0;
-	}
-	NextToken();
 	if (CurrentToken().GetToken() != Token::Semicolon &&
 	    CurrentToken().GetToken() != Token::RightParen)
 	{

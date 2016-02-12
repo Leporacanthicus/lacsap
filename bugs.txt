@@ -133,3 +133,9 @@ Date: 07-Feb-2016
 Parser is completely b0rked. Accepts all kinds of nonsense.
 
 ----------------------------------------------------------------
+Bug15:
+Date: 12-Feb-2016
+
+Lexer bails with exception on overflow.
+
+----------------------------------------------------------------

@@ -529,7 +529,6 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	break;
 
     case Token::Identifier:
-    {
 	if (EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
 	{
 	    if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
@@ -556,8 +555,11 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	}
 	else
 	{
-	    cd = GetConstDecl(CurrentToken().GetIdentName());
-	    assert(cd && "Expected to get an identifier!");
+	    if (!(cd = GetConstDecl(CurrentToken().GetIdentName())))
+	    {
+		NextToken();
+		return ErrorC("Expected constant name");
+	    }
 	    if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 	    {
 		const Constants::BoolConstDecl* bd =
@@ -569,14 +571,12 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	    {
 		if (llvm::isa<Constants::RealConstDecl>(cd))
 		{
-		    const Constants::RealConstDecl* rd =
-			llvm::dyn_cast<Constants::RealConstDecl>(cd);
+		    const Constants::RealConstDecl* rd = llvm::dyn_cast<Constants::RealConstDecl>(cd);
 		    cd = new Constants::RealConstDecl(loc, -rd->Value());
 		}
 		else if (llvm::isa<Constants::IntConstDecl>(cd))
 		{
-		    const Constants::IntConstDecl* id =
-			llvm::dyn_cast<Constants::IntConstDecl>(cd);
+		    const Constants::IntConstDecl* id = llvm::dyn_cast<Constants::IntConstDecl>(cd);
 		    cd = new Constants::IntConstDecl(loc, -id->Value());
 		}
 		else
@@ -587,14 +587,13 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	    }
 	}
 	break;
-    }
+
     default:
 	return 0;
     }
     NextToken();
     return cd;
 }
-
 
 const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs)
 {
@@ -635,12 +634,18 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 
     do
     {
-	cd = ParseConstTerm(loc);
-	
+	if (!(cd = ParseConstTerm(loc)))
+	{
+	    return 0;
+	}
+
 	if (CurrentToken().GetToken() != Token::Semicolon &&
 	    CurrentToken().GetToken() != Token::RightParen)
 	{
-	    cd = ParseConstRHS(0, cd);
+	    if(!(cd = ParseConstRHS(0, cd)))
+	    {
+		return 0;
+	    }
 	}
     } while(CurrentToken().GetToken() != Token::Semicolon &&
 	    CurrentToken().GetToken() != Token::RightParen);
@@ -2513,12 +2518,14 @@ ExprAST* Parser::ParseWhile()
     Location loc = CurrentToken().Loc();
     AssertToken(Token::While);
     ExprAST* cond = ParseExpression();
-    if (!cond || !Expect(Token::Do, true))
+    if (cond && Expect(Token::Do, true))
     {
-	return 0;
+	if (ExprAST* stmt = ParseStatement())
+	{
+	    return new WhileExprAST(loc, cond, stmt);
+	}
     }
-
-    return new WhileExprAST(loc, cond, ParseStatement());
+    return 0;
 }
 
 ExprAST* Parser::ParseRepeat()

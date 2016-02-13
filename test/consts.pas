@@ -10,7 +10,6 @@ const
    bb  = true;
    cc  = not bb;
    dd  = a + b;
-   pi  = 3.1415926;
    sq2 = 1.414213562;
    m   = pi + sq2;
    n   = pi - sq2;

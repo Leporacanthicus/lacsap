@@ -343,6 +343,7 @@ struct
     { LACSAP_ONLY, "Basic", "Pack & Unpack", "packunpack.pas",  "" },
     { 0,           "Basic", "With statement","with.pas",        "" },
     { LACSAP_ONLY, "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
+    { 0,           "Basic", "Const Expr",    "consts.pas",      "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.

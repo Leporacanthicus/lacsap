@@ -185,11 +185,7 @@ llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llv
 
 static bool IsConstant(ExprAST* e)
 {
-    if (llvm::isa<IntegerExprAST>(e) ||	llvm::isa<CharExprAST>(e))
-    {
-	return true;
-    }
-    return false;
+    return llvm::isa<IntegerExprAST>(e) || llvm::isa<CharExprAST>(e);
 }
 
 size_t AlignOfType(llvm::Type* ty)

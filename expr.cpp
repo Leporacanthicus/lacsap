@@ -1414,6 +1414,13 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	return ErrorF("Change in number of arguemts for function: " + name);
     }
 
+    auto a = args.begin();
+    for(auto& arg : f->args())
+    {
+	arg.setName(a->Name());
+	a++;
+    }
+    
     for(auto v : argAttr)
     {
 	f->addAttribute(v.first, v.second);

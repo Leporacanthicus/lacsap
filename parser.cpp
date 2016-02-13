@@ -2212,11 +2212,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     // If we have a function, expect ": type".
     if (isFunction)
     {
-	if (!Expect(Token::Colon, true))
-	{
-	    return 0;
-	}
-	if (!(resultType = ParseSimpleType()))
+	if (!Expect(Token::Colon, true) || !(resultType = ParseSimpleType()))
 	{
 	    return 0;
 	}
@@ -2275,16 +2271,14 @@ ExprAST* Parser::ParseStatement()
 		}
 		else
 		{
-		    // TODO: Error recovery.
-		    return 0;
+		    return Error("Invalid assignment");
 		}
 	    }
 	    return expr;
 	}
 	break;
     }
-    // TODO: Error recovery.
-    return 0;
+    return Error("Syntax error");
 }
 
 BlockAST* Parser::ParseBlock(Location& endLoc)
@@ -2472,7 +2466,6 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 
 	default:
-	    assert(0 && "Unexpected token");
 	    return ErrorF("Unexpected token");
 	}
     }
@@ -2945,7 +2938,7 @@ ExprAST* Parser::ParseRead()
 
 ExprAST* Parser::ParsePrimary()
 {
-    Token token = TranslateToken(CurrentToken());
+    Token token = CurrentToken();
 
     switch(token.GetToken())
     {	
@@ -2982,9 +2975,8 @@ ExprAST* Parser::ParsePrimary()
 	return ParseGoto();
 
     default:
-	CurrentToken().dump(std::cerr);
-	assert(0 && "Unexpected token");
-	return 0;
+	NextToken();
+	return Error("Syntax error");
     }
 }
 

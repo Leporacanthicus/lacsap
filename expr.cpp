@@ -1017,7 +1017,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     llvm::Type* lty = l->getType();
     llvm::Type* rty = r->getType();
-
+    (void) lty;
     assert(rty == lty && "Expect same types");
 
     // Can compare for (in)equality with pointers and integers
@@ -1330,6 +1330,7 @@ llvm::Value* BlockAST::CodeGen()
     for(auto e : content)
     {
 	llvm::Value* v = e->CodeGen();
+	(void)v;
 	assert(v && "Expect codegen to work!");
     }
     return MakeIntegerConstant(0);
@@ -1876,8 +1877,7 @@ llvm::Value* AssignExprAST::AssignStr()
     TRACE();
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     assert(lhsv && "Expect variable in lhs");
-    Types::StringDecl* sty = llvm::dyn_cast<Types::StringDecl>(lhsv->Type());
-    assert(sty && "Expect string type in lhsv->Type()");
+    assert(llvm::isa<Types::StringDecl>(lhsv->Type()) && "Expect string type in lhsv->Type()");
 
     if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
@@ -2619,9 +2619,6 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
 static llvm::Constant* CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
-    llvm::Type* vTy = llvm::PointerType::getUnqual(ty->LlvmType());
-    assert(vTy && "Type should not be NULL!");
-
     return GetFunction(Types::TypeDecl::TK_Void, { fty, Types::GetVoidPtrType() }, "__read_bin");
 }
 
@@ -3326,6 +3323,7 @@ llvm::Value* TypeCastAST::CodeGen()
     }
     dump();
     assert(0 && "Expected to get something out of this function");
+    return 0;
 }
 
 llvm::Value* TypeCastAST::Address()
@@ -3627,8 +3625,10 @@ static void BuildUnitInitList()
     unitList[unitInit.size()] = llvm::Constant::getNullValue(vp);
     llvm::ArrayType* arr = llvm::ArrayType::get(vp, unitInit.size()+1);
     llvm::Constant* init = llvm::ConstantArray::get(arr, unitList);
-    llvm::Value* unitInitList = new llvm::GlobalVariable(*theModule, arr, true, llvm::GlobalValue::ExternalLinkage, init,
+    llvm::Value* unitInitList = new llvm::GlobalVariable(*theModule, arr, true,
+							 llvm::GlobalValue::ExternalLinkage, init,
 							 "UnitIniList");
+    (void) unitInitList;
     assert(unitInitList && "Unit Initializer List not built correctly?");
 }
 

@@ -340,9 +340,9 @@ struct
     { 0,           "Basic", "GPC Transpose", "transpose.pas",   "" },
     { 0,           "Basic", "Double Begin",  "doublebegin.pas", "" },
     { 0,           "Basic", "Simple unit",   "unit_main.pas",   "" },
-    { 0,           "Basic", "Pack & Unpack", "packunpack.pas",  "" },
+    { LACSAP_ONLY, "Basic", "Pack & Unpack", "packunpack.pas",  "" },
     { 0,           "Basic", "With statement","with.pas",        "" },
-    { 0,           "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
+    { LACSAP_ONLY, "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
     // get from files not supported.
@@ -396,9 +396,6 @@ int main(int argc, char **argv)
 #endif
     };
     std::vector<std::string> others = { "", "-Cr", "-g" };
-
-    std::cout << "PATH=" << getenv("PATH") << std::endl;
-
     int flags = 0;
 
     for(int i = 1; i < argc; i++)

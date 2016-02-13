@@ -14,7 +14,7 @@ endif
 
 LD = ${CXX}
 
-CXXFLAGS  = -g -Wall -Werror -Wextra -std=c++11 -O0
+CXXFLAGS  = -g -Wall -Werror -Wextra -std=c++11 -O2
 CXXFLAGS += -fno-exceptions -fno-rtti
 ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug

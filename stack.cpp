@@ -1,10 +1,11 @@
 #include "stack.h"
+#include "utils.h"
 
 bool InterfaceList::Add(std::string name, const NamedObject* obj) 
 {
     if (caseInsensitive)
     {
-	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	strlower(name);
     }
     auto it = list.find(name);
     if (it == list.end())

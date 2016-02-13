@@ -9,7 +9,6 @@ namespace Builtin
 {
     typedef const std::vector<ExprAST*> ArgList;
 
-
     static Types::TypeDecl* intTy = 0;
     static Types::TypeDecl* realTy = 0;
     static Types::TypeDecl* charTy = 0;
@@ -1119,7 +1118,7 @@ namespace Builtin
 
     BuiltinFunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args)
     {
-	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+	strlower(name);
 	auto it = BIFMap.find(name);
 	if (it != BIFMap.end())
 	{

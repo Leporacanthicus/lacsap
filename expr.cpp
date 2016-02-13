@@ -170,7 +170,7 @@ std::string ShortName(const std::string& name)
 }
 
 llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
-			    const std::string&name)
+			    const std::string& name)
 {
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, args, false);
     return theModule->getOrInsertFunction(name, ft);
@@ -1359,11 +1359,11 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     {
 	llvm::AttrBuilder attrs;
 	Types::TypeDecl* ty = i.Type();
-	llvm::Type* argTy = ty->LlvmType();
 	if (!ty)
 	{
 	    return ErrorF("Invalid type for argument" + i.Name() + "...");
 	}
+	llvm::Type* argTy = ty->LlvmType();
 	
 	index++;
 	if (index == 1 && Function()->ClosureType())
@@ -1482,7 +1482,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	{
 	    DebugInfo& di = GetDebugInfo();
 	    assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
-	    llvm::DIScope *sp = di.lexicalBlocks.back();
+	    llvm::DIScope* sp = di.lexicalBlocks.back();
 	    llvm::DIType* debugType = args[idx].Type()->DebugType(di.builder);
 	    if (!debugType)
 	    {
@@ -1495,7 +1495,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    // Create a debug descriptor for the variable.
 	    int lineNum = function->Loc().LineNumber();
 	    llvm::DIFile* unit = sp->getFile();
-	    llvm::DILocalVariable *dv =
+	    llvm::DILocalVariable* dv =
 		di.builder->createParameterVariable(sp, args[idx].Name(), idx+1, unit, lineNum,
 						    debugType, true);
 	    di.builder->insertDeclare(a, dv, di.builder->createExpression(),
@@ -2772,7 +2772,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    {
 		DebugInfo& di = GetDebugInfo();
 		assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
-		llvm::DIScope *sp = di.lexicalBlocks.back();
+		llvm::DIScope* sp = di.lexicalBlocks.back();
 		llvm::DIType* debugType = var.Type()->DebugType(di.builder);
 		if (!debugType)
 		{
@@ -2785,7 +2785,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	        // Create a debug descriptor for the variable.
 		int lineNum = this->Loc().LineNumber();
 		llvm::DIFile* unit = sp->getFile();
-		llvm::DILocalVariable *dv =
+		llvm::DILocalVariable* dv =
 		    di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
 						   debugType, true);
 		di.builder->insertDeclare(v, dv, di.builder->createExpression(),
@@ -3082,7 +3082,6 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
 	    llvm::Value* loopVar = CreateTempAlloca(new Types::IntegerDecl());
-
 
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();

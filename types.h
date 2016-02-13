@@ -321,7 +321,6 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
-
     // Since we need to do "late" binding of pointer types, we just keep
     // the name and resolve the actual type at a later point. If the
     // type is known, store it directly. (Otherwise, when we call the fixup).

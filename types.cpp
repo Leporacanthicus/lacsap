@@ -14,7 +14,7 @@ namespace Types
     static TextDecl* textType = 0;
     static StringDecl* strType = 0;
 
-    static std::vector<std::pair <TypeDecl *, llvm::TrackingMDRef>> fwdMap;
+    static std::vector<std::pair <TypeDecl*, llvm::TrackingMDRef>> fwdMap;
 
     llvm::Type* ErrorT(const std::string& msg)
     {
@@ -389,7 +389,7 @@ namespace Types
 	return false;
     }
 
-    const TypeDecl* ArrayDecl::CompatibleType(const TypeDecl *ty) const
+    const TypeDecl* ArrayDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (SameAs(ty))
 	{
@@ -454,11 +454,7 @@ namespace Types
 	}
 	if (const SimpleCompoundDecl* sty = llvm::dyn_cast<SimpleCompoundDecl>(ty))
 	{
-	    if (sty->baseType != baseType)
-	    {
-		return false;
-	    }
-	    return true;
+	    return sty->baseType != baseType;
 	}
 	return false;
     }
@@ -794,7 +790,7 @@ namespace Types
 
     llvm::DIType* RecordDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	std::vector<llvm::Metadata *> eltTys;
+	std::vector<llvm::Metadata*> eltTys;
 
 	// TODO: Add unit and name (if available).
 	llvm::DIScope* scope = 0;
@@ -1067,7 +1063,7 @@ namespace Types
 	return fields.size() + (baseobj ? baseobj->FieldCount(): 0);
     }
     
-    const TypeDecl* ClassDecl::CompatibleType(const TypeDecl *ty) const
+    const TypeDecl* ClassDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (*ty == *this)
 	{
@@ -1332,11 +1328,7 @@ namespace Types
 
 	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
 	{
-	    if (!sty->range || *range != *sty->range)
-	    {
-		return false;
-	    }
-	    return true;
+	    return sty->range && *range == *sty->range;
 	}
 	return false;
     }

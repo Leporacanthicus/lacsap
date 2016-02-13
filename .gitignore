@@ -10,7 +10,7 @@
 *.ll
 *~
 a.out
-.depends
+.depends*
 lacsap
 \#*
 .\#*

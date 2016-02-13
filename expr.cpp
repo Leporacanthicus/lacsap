@@ -1749,11 +1749,11 @@ llvm::Function* FunctionAST::CodeGen()
     return CodeGen("P");
 }
 
-void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
-			      const Stack<NamedObject*>& nameStack)
+void FunctionAST::SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
+			      const Stack<const NamedObject*>& nameStack)
 {
     TRACE();
-    std::map<std::string, NamedObject*> nonLocal;
+    std::map<std::string, const NamedObject*> nonLocal;
     size_t maxLevel = nameStack.MaxLevel();
 
     if (verbosity > 1)
@@ -1765,7 +1765,6 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 	size_t level;
 	if (!nameStack.Find(v->Name(), level))
 	{
-	    v->dump(std::cerr);
 	    assert(0 && "Hhhm. Variable has gone missing!");
 	}
 	if (!(level == 0 || level == maxLevel))
@@ -1801,10 +1800,10 @@ void FunctionAST::SetUsedVars(const std::vector<NamedObject*>& varsUsed,
 
     for(auto n : nonLocal)
     {
-	VarDef* v = llvm::dyn_cast<VarDef>(n.second);
+	const VarDef* v = llvm::dyn_cast<VarDef>(n.second);
 	if (!v)
 	{
-	    if (FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
+	    if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
 	    {
 		v = new VarDef(fd->Name(), fd->Proto()->Type());
 	    }

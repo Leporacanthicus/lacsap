@@ -1,6 +1,6 @@
 #include "stack.h"
 
-bool InterfaceList::Add(std::string name, NamedObject* obj) 
+bool InterfaceList::Add(std::string name, const NamedObject* obj) 
 {
     if (caseInsensitive)
     {

@@ -453,8 +453,8 @@ public:
     const PrototypeAST* Proto() const { return proto; }
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
-    void SetUsedVars(const std::vector<NamedObject*>& varsUsed,
-		     const Stack<NamedObject*>& nameStack);
+    void SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
+		     const Stack<const NamedObject*>& nameStack);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
     Types::TypeDecl* ClosureType();
     const std::string ClosureName() { return "$$CLOSURE"; };

@@ -59,7 +59,7 @@ public:
     }
 
     /* Returns false on failure */
-    bool Add(std::string name, T v) 
+    bool Add(std::string name, const T v) 
     {
 	if (caseInsensitive)
 	{
@@ -187,10 +187,10 @@ class InterfaceList
 {
 public:
     InterfaceList() {};
-    bool Add(std::string name, NamedObject* obj);
-    const Stack<NamedObject*>::MapType& List() const { return list; }
+    bool Add(std::string name, const NamedObject* obj);
+    const Stack<const NamedObject*>::MapType& List() const { return list; }
 private:
-    Stack<NamedObject*>::MapType list;
+    Stack<const NamedObject*>::MapType list;
 };
 
 #endif

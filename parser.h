@@ -30,7 +30,9 @@ private:
 
     // Simple expression parsing
     ExprAST* ParseExpression();
-    ExprAST* ParseIdentifierExpr();
+    ExprAST* ParseExprElement();
+    ExprAST* ParseIdentifierExpr(Token token);
+    ExprAST* ParseVariableExpr(const NamedObject* def);
     ExprAST* ParseIntegerExpr(Token token);
     ExprAST* ParseStringExpr(Token token);
     ExprAST* ParseParenExpr();
@@ -45,7 +47,7 @@ private:
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
-    VariableExprAST* ParseStaticMember(TypeDef* def, Types::TypeDecl*& type);
+    VariableExprAST* ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type);
 
     // Control flow functionality
     ExprAST* ParseRepeat();
@@ -127,18 +129,18 @@ private:
     // Helper functions for expression evaluation.
     bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(VariableExprAST* expr,
-			  NamedObject* def,
+			  const NamedObject* def,
 			  const std::string& funcName,
 			  std::vector<ExprAST*>& args);
     // Helper functions for identifier access/checking.
-    EnumDef* GetEnumValue(const std::string& name);
+    const EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);
     bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
     
 private:
-    typedef StackWrapper<NamedObject*> NameWrapper;
+    typedef StackWrapper<const NamedObject*> NameWrapper;
 
     Lexer                 lexer;
     Token                 curToken;
@@ -147,8 +149,8 @@ private:
     std::string           moduleName;
     std::string           fileName;
     int                   errCnt;
-    Stack<NamedObject*>   nameStack;
-    Stack<NamedObject*>   usedVariables;
+    Stack<const NamedObject*> nameStack;
+    Stack<const NamedObject*> usedVariables;
     std::vector<ExprAST*> ast;
 };
 

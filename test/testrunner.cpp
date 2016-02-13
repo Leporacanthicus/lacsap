@@ -299,11 +299,14 @@ struct
     // Free pascal doesn't support __FILE__ and __LINE__
     { LACSAP_ONLY, "Basic", "Line & File",   "linefile.pas",    "" },
     { 0,           "Basic", "Set Values",    "set.pas",         "" },
+    { 0,           "Basic", "Set Values 2",  "set2.pas",        "" },
+    { 0,           "Basic", "Set Values 3",  "set3.pas",        "" },
     // Free Pascal doesn't support popcount!
     { LACSAP_ONLY, "Basic", "Pop Count",     "popcnt.pas",      "" },
     { 0,           "Basic", "Sudoku",        "sudoku.pas",      "" },
     { 0,           "Basic", "General",       "general.pas",     "< general.in" },
     { 0,           "Basic", "Array",         "arr.pas",         "" },
+    { 0,           "Basic", "Array 2",       "arr2.pas",        "" },
     { LACSAP_ONLY, "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
     { LACSAP_ONLY, "Basic", "pi",            "pi.pas",          "" },
     // Sizes of types are different.
@@ -321,6 +324,9 @@ struct
     // Function arguments not the same yet.
     { LACSAP_ONLY, "Basic", "Function arg",  "func.pas",        "" },
     { LACSAP_ONLY, "Basic", "Function arg2", "func2.pas",       "" },
+    { LACSAP_ONLY, "Basic", "Function arg3", "func3.pas",       "" },
+    { LACSAP_ONLY, "Basic", "Function arg4", "func4.pas",       "" },
+    { LACSAP_ONLY, "Basic", "Function arg5", "func5.pas",       "" },
     { 0,           "Basic", "Multiple decl", "multidecl.pas",   "" },
     { 0,           "Basic", "Numeric",       "numeric.pas",     "" },
     { 0,           "Basic", "Goto",          "goto.pas",        "" },

@@ -9,46 +9,11 @@ extern llvm::Module* theModule;
 
 namespace Types
 {
-/* Static variables in Types. */
-    static TypeDecl* voidType = 0;
-    static TextDecl* textType = 0;
-    static StringDecl* strType = 0;
-
     static std::vector<std::pair <TypeDecl*, llvm::TrackingMDRef>> fwdMap;
 
     llvm::Type* ErrorT(const std::string& msg)
     {
 	std::cerr << msg << std::endl;
-	return 0;
-    }
-
-    llvm::Type* GetType(TypeDecl::TypeKind type)
-    {
-	switch(type)
-	{
-	case TypeDecl::TK_Enum:
-	case TypeDecl::TK_Integer:
-	    return llvm::Type::getInt32Ty(llvm::getGlobalContext());
-
-	case TypeDecl::TK_Int64:
-	    return llvm::Type::getInt64Ty(llvm::getGlobalContext());
-
-	case TypeDecl::TK_Real:
-	    return llvm::Type::getDoubleTy(llvm::getGlobalContext());
-
-	case TypeDecl::TK_Char:
-	    return llvm::Type::getInt8Ty(llvm::getGlobalContext());
-
-	case TypeDecl::TK_Boolean:
-	    return llvm::Type::getInt1Ty(llvm::getGlobalContext());
-
-	case TypeDecl::TK_Void:
-	    return llvm::Type::getVoidTy(llvm::getGlobalContext());
-
-	default:
-	    assert(0 && "Not a known type...");
-	    break;
-	}
 	return 0;
     }
 
@@ -411,54 +376,6 @@ namespace Types
 	return this;
     }
 
-    bool SimpleCompoundDecl::classof(const TypeDecl* e)
-    {
-	switch(e->getKind())
-	{
-	case TK_Range:
-	case TK_Enum:
-	    return true;
-	default:
-	    break;
-	}
-	return false;
-    }
-
-    llvm::Type* SimpleCompoundDecl::GetLlvmType() const
-    {
-	return GetType(baseType);
-    }
-
-    llvm::DIType* SimpleCompoundDecl::GetDIType(llvm::DIBuilder* builder) const
-    {
-	switch(baseType)
-	{
-	case TK_Enum:
-	case TK_Integer:
-	    return builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
-
-	case TK_Char:
-	    return builder->createBasicType("CHAR", 8, 8, llvm::dwarf::DW_ATE_unsigned);
-
-	default:
-	    assert(0 && "Huh? Type is not known...");
-	    return 0;
-	}
-    }
-
-    bool SimpleCompoundDecl::SameAs(const TypeDecl* ty) const
-    {
-	if (Type() != ty->Type())
-	{
-	    return false;
-	}
-	if (const SimpleCompoundDecl* sty = llvm::dyn_cast<SimpleCompoundDecl>(ty))
-	{
-	    return sty->baseType != baseType;
-	}
-	return false;
-    }
-
     void Range::dump() const
     {
 	DoDump(std::cerr);
@@ -471,7 +388,9 @@ namespace Types
 
     void RangeDecl::DoDump(std::ostream& out) const
     {
-	out << "RangeDecl: " << TypeToStr(baseType) << " ";
+	out << "RangeDecl: ";
+	baseType->DoDump(out);
+	out << " ";
 	range->DoDump(out);
     }
 
@@ -660,7 +579,7 @@ namespace Types
 	if (maxAlignElt != maxSizeElt)
 	{
 	    size_t nelems = maxSize - maxAlignSize;
-	    llvm::Type* ty = llvm::ArrayType::get(GetType(TK_Char), nelems);
+	    llvm::Type* ty = llvm::ArrayType::get(GetCharType()->LlvmType(), nelems);
 	    fv.push_back(ty);
 	}
 	return llvm::StructType::create(fv);
@@ -1217,9 +1136,8 @@ namespace Types
     llvm::Type* FileDecl::GetLlvmType() const
     {
 	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	std::vector<llvm::Type*> fv = 
-	    { GetType(TypeDecl::TK_Integer), ty, GetType(TypeDecl::TK_Integer), 
-	      GetType(TypeDecl::TK_Integer) };
+	llvm::Type* intTy = GetIntegerType()->LlvmType();
+	std::vector<llvm::Type*> fv = { intTy, ty, intTy, intTy };
 	return llvm::StructType::create(fv, Type() == TK_Text?"text":"file");
     }
 
@@ -1256,7 +1174,7 @@ namespace Types
     {
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetType(TK_Integer));
+	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetIntegerType()->LlvmType());
 	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
@@ -1368,6 +1286,16 @@ namespace Types
 	return llvm::PointerType::getUnqual(base);
     }
 
+/* Static variables in Types. */
+    static TypeDecl* voidType = 0;
+    static TypeDecl* textType = 0;
+    static TypeDecl* strType = 0;
+    static TypeDecl* integerType = 0;
+    static TypeDecl* longIntType = 0;
+    static TypeDecl* realType = 0;
+    static TypeDecl* charType = 0;
+    static TypeDecl* booleanType = 0;
+
     TypeDecl* GetVoidType()
     {
 	if (!voidType)
@@ -1377,7 +1305,7 @@ namespace Types
 	return voidType;
     }
 
-    StringDecl* GetStringType()
+    TypeDecl* GetStringType()
     {
 	if (!strType)
 	{
@@ -1386,13 +1314,58 @@ namespace Types
 	return strType;
     }
 
-    TextDecl* GetTextType()
+    TypeDecl* GetTextType()
     {
 	if (!textType)
 	{
-	    textType = new TextDecl();
+	    textType = new TextDecl;
 	}
 	return textType;
+    }
+
+    TypeDecl* GetIntegerType()
+    {
+	if (!integerType)
+	{
+	    integerType = new IntegerDecl;
+	}
+	return integerType;
+    }
+
+    TypeDecl* GetLongIntType()
+    {
+	if (!longIntType)
+	{
+	    longIntType = new Int64Decl;
+	}
+	return longIntType;
+    }
+
+    TypeDecl* GetCharType()
+    {
+	if (!charType)
+	{
+	    charType = new CharDecl;
+	}
+	return charType;
+    }
+
+    TypeDecl* GetRealType()
+    {
+	if (!realType)
+	{
+	    realType = new RealDecl;
+	}
+	return realType;
+    }
+
+    TypeDecl* GetBooleanType()
+    {
+	if (!booleanType)
+	{
+	    booleanType = new BoolDecl;
+	}
+	return booleanType;
     }
 
     void Finalize(llvm::DIBuilder* builder)

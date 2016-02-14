@@ -9,67 +9,6 @@ namespace Builtin
 {
     typedef const std::vector<ExprAST*> ArgList;
 
-    static Types::TypeDecl* intTy = 0;
-    static Types::TypeDecl* realTy = 0;
-    static Types::TypeDecl* charTy = 0;
-    static Types::TypeDecl* boolTy = 0;
-    static Types::TypeDecl* longTy = 0;
-    static Types::TypeDecl* strTy = 0;
-
-    static Types::TypeDecl* IntType()
-    {
-	if (!intTy)
-	{
-	    intTy = new Types::IntegerDecl;
-	}
-	return intTy;
-    }
-
-    static Types::TypeDecl* RealType()
-    {
-	if (!realTy)
-	{
-	    realTy = new Types::RealDecl;
-	}
-	return realTy;
-    }
-
-    static Types::TypeDecl* BoolType()
-    {
-	if (!boolTy)
-	{
-	    boolTy = new Types::BoolDecl;
-	}
-	return boolTy;
-    }
-
-    static Types::TypeDecl* CharType()
-    {
-	if (!charTy)
-	{
-	    charTy = new Types::CharDecl;
-	}
-	return charTy;
-    }
-
-    static Types::TypeDecl* LongIntType()
-    {
-	if (!longTy)
-	{
-	    longTy = new Types::Int64Decl;
-	}
-	return longTy;
-    }
-
-    static Types::TypeDecl* StringType()
-    {
-	if (!strTy)
-	{
-	    strTy = new Types::StringDecl(255);
-	}
-	return strTy;
-    }
-
     typedef std::function<BuiltinFunctionBase*(const std::vector<ExprAST*>&)> CreateBIFObject;
     std::map<std::string, CreateBIFObject> BIFMap;
 
@@ -78,7 +17,7 @@ namespace Builtin
 					  const std::vector<ExprAST*>& args)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	llvm::Type* ty = Types::GetType(Types::TypeDecl::TK_Real);
+	llvm::Type* ty = Types::GetRealType()->LlvmType();
 	llvm::Constant* f = GetFunction(ty, { ty }, func);
 	return builder.CreateCall(f, a, "calltmp");
     }
@@ -106,7 +45,7 @@ namespace Builtin
     public:
 	BuiltinFunctionInt(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
-	Types::TypeDecl* Type() const override { return IntType(); }
+	Types::TypeDecl* Type() const override { return Types::GetIntegerType(); }
     };
 
     class BuiltinFunctionAbs : public BuiltinFunctionSameAsArg
@@ -132,7 +71,7 @@ namespace Builtin
 	BuiltinFunctionOdd(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return BoolType(); }
+	Types::TypeDecl* Type() const override { return Types::GetBooleanType(); }
 	bool Semantics() override;
     };
 
@@ -159,7 +98,7 @@ namespace Builtin
 	BuiltinFunctionRandom(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return RealType(); }
+	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
 	bool Semantics() override;
     };
 
@@ -169,7 +108,7 @@ namespace Builtin
 	BuiltinFunctionChr(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return CharType(); }
+	Types::TypeDecl* Type() const override { return Types::GetCharType(); }
 	bool Semantics() override;
     };
 
@@ -223,7 +162,7 @@ namespace Builtin
 	BuiltinFunctionFloat(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return RealType(); }
+	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
 	bool Semantics() override;
     protected:
 	std::string funcname;
@@ -235,7 +174,7 @@ namespace Builtin
 	BuiltinFunctionFloat2Arg(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionFloat(fn, a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return RealType(); }
+	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
 	bool Semantics() override;
     };
 
@@ -340,7 +279,7 @@ namespace Builtin
 	BuiltinFunctionFileBool(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionFile(fn, a) {}
 	bool Semantics() override;
-	Types::TypeDecl* Type() const override { return BoolType(); }
+	Types::TypeDecl* Type() const override { return Types::GetBooleanType(); }
     };
 
     class BuiltinFunctionAssign : public BuiltinFunctionVoid
@@ -366,7 +305,7 @@ namespace Builtin
     public:
 	BuiltinFunctionLongInt(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
-	Types::TypeDecl* Type() const override { return LongIntType(); }
+	Types::TypeDecl* Type() const override { return Types::GetLongIntType(); }
     };
 
  
@@ -402,7 +341,7 @@ namespace Builtin
 	BuiltinFunctionParamstr(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return StringType(); }
+	Types::TypeDecl* Type() const override { return Types::GetStringType(); }
 	bool Semantics() override;
     };
 
@@ -412,7 +351,7 @@ namespace Builtin
 	BuiltinFunctionCopy(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionBase(a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return StringType(); }
+	Types::TypeDecl* Type() const override { return Types::GetStringType(); }
 	bool Semantics() override;
     };
 
@@ -467,7 +406,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	if (args[0]->Type()->isUnsigned())
+	if (args[0]->Type()->IsUnsigned())
 	{
 	    return a;
 	}
@@ -485,7 +424,7 @@ namespace Builtin
     {
 	llvm::Value* v = args[0]->CodeGen();
 	v = builder.CreateAnd(v, MakeIntegerConstant(1));
-	return builder.CreateTrunc(v, Types::GetType(Types::TypeDecl::TK_Boolean), "odd");
+	return builder.CreateTrunc(v, Types::GetBooleanType()->LlvmType(), "odd");
     }
 
     bool BuiltinFunctionOdd::Semantics()
@@ -528,7 +467,7 @@ namespace Builtin
 	    if (args[0]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[0];
-		args[0] = new TypeCastAST(Location("",0,0), e, RealType());
+		args[0] = new TypeCastAST(Location("",0,0), e, Types::GetRealType());
 		return true;
 	    }
 	    return false;
@@ -539,7 +478,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionRound::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = CallRuntimeFPFunc(builder, "llvm.round.f64", args);
-	return builder.CreateFPToSI(v, Types::GetType(Types::TypeDecl::TK_Integer), "to.int");
+	return builder.CreateFPToSI(v, Types::GetIntegerType()->LlvmType(), "to.int");
     }
 
     bool BuiltinFunctionRound::Semantics()
@@ -550,13 +489,12 @@ namespace Builtin
     llvm::Value* BuiltinFunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* v = args[0]->CodeGen();
-	return builder.CreateFPToSI(v, Types::GetType(Types::TypeDecl::TK_Integer), "to.int");
+	return builder.CreateFPToSI(v, Types::GetIntegerType()->LlvmType(), "to.int");
     }
 
     llvm::Value* BuiltinFunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Real, {},
-					"__random");
+	llvm::Constant* f = GetFunction(Types::GetRealType(), {}, "__random");
 	return builder.CreateCall(f, {}, "calltmp");
     }
 
@@ -568,7 +506,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionChr::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateTrunc(a, Types::GetType(Types::TypeDecl::TK_Char), "chr");
+	return builder.CreateTrunc(a, Types::GetCharType()->LlvmType(), "chr");
     }
 
     bool BuiltinFunctionChr::Semantics()
@@ -579,7 +517,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionOrd::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateZExt(a, Types::GetType(Types::TypeDecl::TK_Integer), "ord");
+	return builder.CreateZExt(a, Types::GetIntegerType()->LlvmType(), "ord");
     }
 
     bool BuiltinFunctionOrd::Semantics()
@@ -590,7 +528,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionSucc::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateAdd(a, MakeConstant(1, a->getType()), "succ");
+	return builder.CreateAdd(a, MakeConstant(1, args[0]->Type()), "succ");
     }
 
     bool BuiltinFunctionSucc::Semantics()
@@ -601,14 +539,14 @@ namespace Builtin
     llvm::Value* BuiltinFunctionPred::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateSub(a, MakeConstant(1, a->getType()), "pred");
+	return builder.CreateSub(a, MakeConstant(1, args[0]->Type()), "pred");
     }
 
     llvm::Value* BuiltinFunctionNew::CodeGen(llvm::IRBuilder<>& builder)
     {
 	Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
 	size_t size = pd->SubType()->Size();
-	llvm::Type* ty = Types::GetType(Types::TypeDecl::TK_Integer);
+	llvm::Type* ty = Types::GetIntegerType()->LlvmType();
 
 	// Result is "void *"
 	llvm::Type* resTy = Types::GetVoidPtrType();
@@ -632,7 +570,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Type* ty = args[0]->Type()->LlvmType();
-	llvm::Constant* f = GetFunction(Types::GetType(Types::TypeDecl::TK_Void),
+	llvm::Constant* f = GetFunction(Types::GetVoidType(),
 					{ ty }, "__dispose");
 
 	return builder.CreateCall(f, { args[0]->CodeGen() });
@@ -651,8 +589,8 @@ namespace Builtin
 	    v = args[0]->CodeGen();
 	}
 
-	llvm::Constant* f = GetFunction(Types::GetType(Types::TypeDecl::TK_Void),
-					{ Types::GetType(Types::TypeDecl::TK_Integer) }, "exit");
+	llvm::Constant* f = GetFunction(Types::GetVoidType(),
+					{ Types::GetIntegerType()->LlvmType() }, "exit");
 
 	return builder.CreateCall(f, { v });
     }
@@ -668,7 +606,7 @@ namespace Builtin
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Value* a = builder.CreateLoad(pA, "inc");
-	a = builder.CreateAdd(a, MakeConstant(1, a->getType()), "inc");
+	a = builder.CreateAdd(a, MakeConstant(1, var->Type()), "inc");
 	return builder.CreateStore(a, pA);
     }
 
@@ -678,7 +616,7 @@ namespace Builtin
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Value* a = builder.CreateLoad(pA, "dec");
-	a = builder.CreateSub(a, MakeConstant(1, a->getType()), "dec");
+	a = builder.CreateSub(a, MakeConstant(1, var->Type()), "dec");
 	return builder.CreateStore(a, pA);
     }
 
@@ -707,8 +645,7 @@ namespace Builtin
 	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	if (ty0->Ranges()[0]->Start())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->Start(),
-							  start->getType()));
+	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->Start(), args[1]->Type()));
 	}
 
 	llvm::Value* pA = var0->Address();
@@ -744,8 +681,7 @@ namespace Builtin
 	Types::ArrayDecl* ty1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
 	if (ty1->Ranges()[0]->Start())
 	{
-	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->Start(),
-							  start->getType()));
+	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->Start(), args[2]->Type()));
 	}
 
 	llvm::Value* pA = var0->Address();
@@ -761,8 +697,7 @@ namespace Builtin
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
-	llvm::Constant* f = GetFunction(Type()->Type(), { faddr->getType() },
-					"__" + funcname);
+	llvm::Constant* f = GetFunction(Type(), { faddr->getType() }, "__" + funcname);
 
 	return builder.CreateCall(f, { faddr });
     }
@@ -786,9 +721,9 @@ namespace Builtin
 	assert(fvar && "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
 	std::vector<llvm::Type*> argTypes =  { faddr->getType(), 
-					       IntType()->LlvmType(), 
-					       BoolType()->LlvmType() };
-	llvm::Constant* f = GetFunction(Type()->Type(), argTypes, "__" + funcname);
+					       Types::GetIntegerType()->LlvmType(), 
+					       Types::GetBooleanType()->LlvmType() };
+	llvm::Constant* f = GetFunction(Type(), argTypes, "__" + funcname);
 
 	Types::FileDecl* fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
 	llvm::Value* sz = MakeIntegerConstant(fd->SubType()->Size());
@@ -817,7 +752,7 @@ namespace Builtin
 	v = builder.CreateGEP(v, ind, "str_0");
 	v = builder.CreateLoad(v, "len");
 
-	return builder.CreateZExt(v, Types::GetType(Types::TypeDecl::TK_Integer), "extend");
+	return builder.CreateZExt(v, Types::GetIntegerType()->LlvmType(), "extend");
     }
 
     bool BuiltinFunctionLength::Semantics()
@@ -838,8 +773,7 @@ namespace Builtin
 	llvm::Type* ty = filename->getType();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), ty };
 
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, argTypes,
-					"__assign");
+	llvm::Constant* f = GetFunction(Types::GetVoidType(), argTypes, "__assign");
 
 	std::vector<llvm::Value*> argsV = { faddr, filename };
 	return builder.CreateCall(f, argsV);
@@ -883,8 +817,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionClock::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Int64, {},
-					"__Clock");
+	llvm::Constant* f = GetFunction(Types::GetLongIntType(), {}, "__Clock");
 
 	return builder.CreateCall(f, {}, "clock");
     }
@@ -898,8 +831,7 @@ namespace Builtin
     {
 	llvm::Value* message = args[0]->CodeGen();
 	llvm::Type* ty = message->getType();
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Void, { ty },
-					"__Panic");
+	llvm::Constant* f = GetFunction(Types::GetVoidType(), { ty }, "__Panic");
 
 	return builder.CreateCall(f,  { message });
     }
@@ -951,15 +883,14 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionCycles::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Int64, { },
-					"llvm.readcyclecounter");
+	llvm::Constant* f = GetFunction(Types::GetLongIntType(), { }, "llvm.readcyclecounter");
 
 	return builder.CreateCall(f, { }, "cycles");
     }
 
     llvm::Value* BuiltinFunctionFloat2Arg::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Type* realTy = Types::GetType(Types::TypeDecl::TK_Real);
+	llvm::Type* realTy = Types::GetRealType()->LlvmType();
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 
@@ -980,7 +911,7 @@ namespace Builtin
 	    if (args[0]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[0];
-		args[0] = new TypeCastAST(Location("", 0, 0), e, RealType());
+		args[0] = new TypeCastAST(Location("", 0, 0), e, Types::GetRealType());
 	    }
 	    else
 	    {
@@ -992,7 +923,7 @@ namespace Builtin
 	    if (args[1]->Type()->IsIntegral())
 	    {
 		ExprAST* e = args[1];
-		args[1] = new TypeCastAST(Location("", 0, 0), e, RealType());
+		args[1] = new TypeCastAST(Location("", 0, 0), e, Types::GetRealType());
 		return true;
 	    }
 	    return false;
@@ -1019,7 +950,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionParamcount::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::TypeDecl::TK_Integer,
+	llvm::Constant* f = GetFunction(Types::GetIntegerType(),
 					{ }, "__ParamCount");
 	return builder.CreateCall(f, {},  "paramcount");
     }
@@ -1041,7 +972,7 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 	llvm::Value* sel;
-	if (args[0]->Type()->isUnsigned() || args[1]->Type()->isUnsigned())
+	if (args[0]->Type()->IsUnsigned() || args[1]->Type()->IsUnsigned())
 	{
 	    sel = builder.CreateICmpUGT(a, b, "sel");
 	}
@@ -1063,7 +994,7 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 	llvm::Value* sel;
-	if (args[0]->Type()->isUnsigned() || args[1]->Type()->isUnsigned())
+	if (args[0]->Type()->IsUnsigned() || args[1]->Type()->IsUnsigned())
 	{
 	    sel = builder.CreateICmpULT(a, b, "sel");
 	}
@@ -1093,7 +1024,7 @@ namespace Builtin
 	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
 	    return builder.CreateSelect(sel2, mone, res, "sgn2");
 	}
-	if (args[0]->Type()->isUnsigned())
+	if (args[0]->Type()->IsUnsigned())
 	{
 	    llvm::Value* sel1 = builder.CreateICmpUGT(v, zero, "gt");
 	    return builder.CreateSelect(sel1, one, zero, "sgn1");

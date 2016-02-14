@@ -10,3 +10,4 @@ This is a list of "things to improve in general".
   type byte = 0..255; should make an 8-bit unsigned)
 
 - Use proper names for arguments and typenames.
+   + Arguments done.

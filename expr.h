@@ -15,7 +15,6 @@
 #include <string>
 #include <vector>
 
-
 class ExprAST : public Visitable<ExprAST>
 {
     friend class TypeCheckVisitor;
@@ -142,7 +141,7 @@ class NilExprAST : public ExprAST
 {
 public:
     NilExprAST(const Location& w)
-	: ExprAST(w, EK_NilExpr, new Types::PointerDecl(new Types::VoidDecl)) {}
+	: ExprAST(w, EK_NilExpr, new Types::PointerDecl(Types::GetVoidType())) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_NilExpr; }
@@ -705,7 +704,7 @@ public:
 	: ExprAST(w, EK_SizeOfExpr, t) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    Types::TypeDecl* Type() const override { return new Types::IntegerDecl; }
+    Types::TypeDecl* Type() const override { return Types::GetIntegerType(); }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_SizeOfExpr; }
 };
 
@@ -798,13 +797,13 @@ private:
 /* Useful global functions */
 llvm::Constant* MakeIntegerConstant(int val);
 llvm::Constant* MakeBooleanConstant(int val);
-llvm::Constant* MakeConstant(uint64_t val, llvm::Type* ty);
+llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty);
 llvm::Value* ErrorV(const std::string& msg);
 llvm::Value* MakeAddressable(ExprAST* e);
 void BackPatch();
 llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
 			    const std::string&name);
-llvm::Constant* GetFunction(Types::TypeDecl::TypeKind res, const std::vector<llvm::Type*>& args,
+llvm::Constant* GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
 			    const std::string& name);
 std::string ShortName(const std::string& name);
 

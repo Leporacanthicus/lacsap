@@ -91,7 +91,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 	r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
     }
 
-    return new Types::RangeDecl(r, base->Type());
+    return new Types::RangeDecl(r, base);
 }
 
 void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
@@ -177,7 +177,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    Error(b, "Right hand of 'in' expression should be a set.");
 	}
-	ty = new Types::BoolDecl;
+	ty = Types::GetBooleanType();
     }
 
     if (!ty && b->oper.IsCompare() && 
@@ -194,7 +194,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    ExprAST* e = b->lhs;
 	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 	}
-	ty = new Types::BoolDecl;
+	ty = Types::GetBooleanType();
     }
 
     if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
@@ -248,7 +248,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	if (lty->IsIntegral())
 	{
 	    ExprAST* e = b->lhs;
-	    ty = new Types::RealDecl;
+	    ty = Types::GetRealType();
 	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
 	    lty = ty;
 	}
@@ -426,10 +426,14 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
     for(size_t i = 0; i < a->indices.size(); i++)
     {
 	ExprAST* e = a->indices[i];
+	if (!e->Type()->IsIntegral())
+	{
+	    Error(e, "Index should be an integral type");
+	}
 	Types::RangeDecl* r = a->ranges[i];
 	if(llvm::isa<RangeReduceAST>(e))
 	    continue;
-	if (r->Type() != e->Type()->Type() && !e->Type()->CompatibleType(r))
+	if (r->Type() != e->Type()->Type() && !r->CompatibleType(e->Type()))
 	{
 	    Error(a, "Incorrect index type");
 	}

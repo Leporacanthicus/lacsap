@@ -353,12 +353,12 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     switch(tt)
     {
     case Token::Integer:
-	type = new Types::IntegerDecl;
+	type = Types::GetIntegerType();
 	result = token.GetIntVal();
 	break;
 
     case Token::Char:
-	type = new Types::CharDecl;
+	type = Types::GetCharType();
 	result = token.GetIntVal();
 	break;
 
@@ -415,7 +415,7 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
     {
 	return ErrorR("Invalid range specification");
     }
-    return new Types::RangeDecl(new Types::Range(start, end), type->Type());
+    return new Types::RangeDecl(new Types::Range(start, end), type);
 }
 
 Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
@@ -429,7 +429,7 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 		return ErrorR("Type used as index specification should be integral type");
 	    }
 	    AssertToken(Token::Identifier);
-	    return new Types::RangeDecl(type->GetRange(), type->Type());
+	    return new Types::RangeDecl(type->GetRange(), type);
 	}
     }
 
@@ -755,7 +755,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    }
 	}
     }
-    Types::EnumDecl* ty = new Types::EnumDecl(values);
+    Types::EnumDecl* ty = new Types::EnumDecl(values, Types::GetIntegerType());
     for(auto v : ty->Values())
     {
 	if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
@@ -1341,7 +1341,7 @@ ExprAST* Parser::ParseStringExpr(Token token)
 {
     int len =  std::max(1, (int)(token.GetStrVal().length()-1));
     std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), 
-							      Types::TypeDecl::TK_Integer)};
+							      Types::GetIntegerType())};
     Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
@@ -3254,12 +3254,12 @@ ExprAST* Parser::Parse(ParserType type)
 Parser::Parser(Source &source)
     : lexer(source), nextTokenValid(false), errCnt(0)
 {
-    Types::TypeDecl* ty = new Types::BoolDecl;
-    if (!(AddType("integer", new Types::IntegerDecl) &&
-	  AddType("longint", new Types::Int64Decl) &&
-	  AddType("int64", new Types::Int64Decl) &&
-	  AddType("real", new Types::RealDecl) &&
-	  AddType("char", new Types::CharDecl) &&
+    Types::TypeDecl* ty = Types::GetBooleanType();
+    if (!(AddType("integer", Types::GetIntegerType()) &&
+	  AddType("longint", Types::GetLongIntType()) &&
+	  AddType("int64", Types::GetLongIntType()) &&
+	  AddType("real", Types::GetRealType()) &&
+	  AddType("char", Types::GetCharType()) &&
 	  AddType("text", Types::GetTextType()) &&
 	  AddType("boolean", ty) &&
 	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&

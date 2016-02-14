@@ -158,7 +158,10 @@ Token Lexer::StringToken()
 		break;
 	    }
 	    NextChar();
-
+	}
+	if (ch == '\n')
+	{
+	    return Token(Token::Unknown, w);
 	}
 	str += ch;
 	ch = NextChar();

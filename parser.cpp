@@ -755,6 +755,10 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    }
 	}
     }
+    if (values.empty())
+    {
+	return reinterpret_cast<Types::EnumDecl*>(Error("No enumerated values?"));
+    }
     Types::EnumDecl* ty = new Types::EnumDecl(values, Types::GetIntegerType());
     for(auto v : ty->Values())
     {
@@ -819,6 +823,11 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	    return 0;
 	}
 	AcceptToken(Token::Comma);
+    }
+    if (rv.empty())
+    {
+	Error("Expected array size to be declared");
+	return 0;
     }
     if (!Expect(Token::Of, true))
     {
@@ -948,7 +957,6 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	if (AcceptToken(Token::Case))
 	{
 	    std::string marker = "";
-	    Types::TypeDecl* markerTy;
 	    if (CurrentToken().GetToken() == Token::Identifier &&
 		PeekToken().GetToken() == Token::Colon)
 	    {
@@ -956,7 +964,11 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		AssertToken(Token::Identifier);
 		AssertToken(Token::Colon);
 	    }
-	    markerTy = ParseType("", false);
+	    Types::TypeDecl* markerTy = ParseType("", false);
+	    if (!markerTy)
+	    {
+		return false;
+	    }
 	    if (!markerTy->IsIntegral())
 	    {
 		return (bool)Error("Expect variant selector to be integral type");
@@ -2534,7 +2546,10 @@ ExprAST* Parser::ParseForExpr()
     std::string varName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
     const NamedObject* def = nameStack.Find(varName);
-    assert(def && "Expected name to be found");
+    if (!def)
+    {
+	return Error("Loop variable not found");
+    }
     VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
     if (!Expect(Token::Assign, true))
     {
@@ -2604,8 +2619,12 @@ ExprAST* Parser::ParseRepeat()
 	    return 0;
 	}
     }
-    ExprAST* cond = ParseExpression();
-    return new RepeatExprAST(loc, cond, new BlockAST(loc2, v));
+
+    if (ExprAST* cond = ParseExpression())
+    {
+	return new RepeatExprAST(loc, cond, new BlockAST(loc2, v));
+    }
+    return 0;
 }
 
 ExprAST* Parser::ParseCaseExpr()
@@ -2767,6 +2786,10 @@ ExprAST* Parser::ParseWithBlock()
     {
 	nameStack.NewLevel();
 	levels++;
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
 	ExprAST* e = ParseIdentifierExpr(CurrentToken());
 	if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
 	{
@@ -2888,7 +2911,10 @@ ExprAST* Parser::ParseWrite()
 		return 0;
 	    }
 	}
-	assert((args.size() >= 1 || isWriteln) && "Expected at least one expression for output in write");
+	if (!isWriteln && args.empty())
+	{
+	    return Error("At least one argument expected");
+	}
     }
     return new WriteAST(loc, file, args, isWriteln);
 }

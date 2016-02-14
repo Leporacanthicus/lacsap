@@ -560,7 +560,11 @@ class RepeatExprAST : public ExprAST
 {
 public:
     RepeatExprAST(const Location& w, ExprAST* c, ExprAST* b)
-	: ExprAST(w, EK_RepeatExpr), cond(c), body(b) {}
+	: ExprAST(w, EK_RepeatExpr), cond(c), body(b)
+    {
+	assert(body && "Expect body");
+	assert(cond && "Expect condition");
+    }
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RepeatExpr; }

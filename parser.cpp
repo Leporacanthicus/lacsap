@@ -1351,6 +1351,7 @@ void Parser::ParseLabels()
 {
     AssertToken(Token::Label);
     std::vector<int> labels;
+    bool done = false;
     do
     {
 	if (CurrentToken().GetToken() == Token::Integer)
@@ -1363,8 +1364,22 @@ void Parser::ParseLabels()
 	    }
 	    NextToken();
 	}
-	AcceptToken(Token::Comma);
-    } while(!AcceptToken(Token::Semicolon));
+	else
+	{
+	    Error("Expected label integer value");
+	}
+	if (AcceptToken(Token::Semicolon))
+	{
+	    done = true;
+	}
+	else
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return;
+	    }
+	}
+    } while(!done);
 }
 
 ExprAST* Parser::ParseExprElement()
@@ -3003,6 +3018,7 @@ bool Parser::ParseProgram(ParserType type)
     AssertToken(Token::Identifier);
     if (type == Program && AcceptToken(Token::LeftParen))
     {
+	bool done = false;
 	// We completely ignore "file" specifications on the program.
 	do
 	{
@@ -3010,11 +3026,22 @@ bool Parser::ParseProgram(ParserType type)
 	    {
 		return false;
 	    }
-	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
+	    if (CurrentToken().GetToken() == Token::RightParen)
 	    {
-		return false;
+		done = true;
 	    }
-	} while(!AcceptToken(Token::RightParen));
+	    else
+	    {
+		if (!Expect(Token::Comma, true))
+		{
+		    return false;
+		}
+	    }
+	} while(!done);
+	if (!Expect(Token::RightParen, true))
+	{
+	    return false;
+	}
     }
     return true;
 }

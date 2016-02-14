@@ -314,7 +314,7 @@ namespace Types
 	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
-	EnumValues  values;
+	EnumValues values;
     };
 
     class BoolDecl : public EnumDecl

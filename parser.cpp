@@ -2367,6 +2367,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 	if (AcceptToken(Token::Forward))
 	{
 	    proto->SetIsForward(true);
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return 0;
+	    }
 	    return new FunctionAST(CurrentToken().Loc(), proto, {}, 0);
 	}
     }
@@ -3024,8 +3028,11 @@ ExprAST* Parser::ParseUses()
 	AssertToken(Token::Identifier);
 	if (unitname == "math")
 	{
-	    /* Math unit is "fake", so nothing inside it for now */
-	    return new UnitAST(CurrentToken().Loc(), { }, 0, { });
+	    if (Expect(Token::Semicolon, true))
+	    {
+		/* Math unit is "fake", so nothing inside it for now */
+		return new UnitAST(CurrentToken().Loc(), { }, 0, { });
+	    }
 	}
 	else
 	{
@@ -3143,9 +3150,11 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	}
 	    break;
 
+#if 0
 	case Token::Semicolon:
 	    NextToken();
 	    break;
+#endif
 
 	case Token::Label:
 	    ParseLabels();
@@ -3202,6 +3211,10 @@ ExprAST* Parser::ParseUnit(ParserType type)
 						   Types::GetVoidType(), 0);
 	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
 	    initFunction->EndLoc(endLoc);
+	    if (!Expect(Token::Period, true))
+	    {
+		return 0;
+	    }
 	    finished = true;
 	    break;
 	}
@@ -3221,7 +3234,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	default:
 	    Error("Unexpected token");
-	    assert(0);
+	    NextToken();
 	    break;
 	}
 

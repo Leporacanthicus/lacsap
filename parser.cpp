@@ -259,6 +259,35 @@ ExprAST* Parser::ParseSizeOfExpr()
     return expr;
 }
 
+bool Parser::ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty)
+{
+    bool done = false;
+    // We completely ignore "file" specifications on the program.
+    do
+    {
+	if (allowEmpty && CurrentToken().GetToken() == end)
+	{
+	    done = true;
+	}
+	else if (!cc.Consume(*this))
+	{
+	    return false;
+	}
+	if (CurrentToken().GetToken() == end)
+	{
+	    done = true;
+	}
+	else
+	{
+	    if (!Expect(Token::Comma, true))
+	    {
+		return false;
+	    }
+	}
+    } while(!done);
+    return Expect(end, true);
+}
+
 ExprAST* Parser::ParseGoto()
 {
     AssertToken(Token::Goto);
@@ -735,40 +764,44 @@ void Parser::ParseTypeDef()
     }
 }
 
+class CCNames : public Parser::CommaConsumer
+{
+public:
+    bool Consume(Parser& parser)
+    {
+	// Don't move forward here.
+	if (parser.Expect(Token::Identifier, false))
+	{
+	    names.push_back(parser.CurrentToken().GetIdentName());
+	    parser.AssertToken(Token::Identifier);
+	    return true;
+	}
+	return false;
+    }
+    std::vector<std::string>& Names() { return names; }
+private:
+    std::vector<std::string> names;
+};
+
 Types::EnumDecl* Parser::ParseEnumDef()
 {
     AssertToken(Token::LeftParen);
-    std::vector<std::string> values;
-    while(!AcceptToken(Token::RightParen))
+    CCNames ccv;
+    
+    if (ParseCommaList(ccv, Token::RightParen, false))
     {
-	if (!Expect(Token::Identifier, false))
+	Types::EnumDecl* ty = new Types::EnumDecl(ccv.Names(), Types::GetIntegerType());
+	for(auto v : ty->Values())
 	{
-	    return 0;
-	}
-	values.push_back(CurrentToken().GetIdentName());
-	AssertToken(Token::Identifier);
-	if (CurrentToken().GetToken() != Token::RightParen)
-	{
-	    if (!Expect(Token::Comma, true))
+	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
 	    {
-		return 0;
+		return reinterpret_cast<Types::EnumDecl*>
+		    (Error("Enumerated value by name " + v.name + " already exists..."));
 	    }
 	}
+	return ty;
     }
-    if (values.empty())
-    {
-	return reinterpret_cast<Types::EnumDecl*>(Error("No enumerated values?"));
-    }
-    Types::EnumDecl* ty = new Types::EnumDecl(values, Types::GetIntegerType());
-    for(auto v : ty->Values())
-    {
-	if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
-	{
-	    return reinterpret_cast<Types::EnumDecl*>
-		(Error("Enumerated value by name " + v.name + " already exists..."));
-	}
-    }
-    return ty;
+    return 0;
 }
 
 Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
@@ -1033,23 +1066,15 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    /* Cope with empty classes - but not empty Record! */
 	    if (!isClass || CurrentToken().GetToken() != Token::End)
 	    {
-		do
+		CCNames ccv;
+		if (!ParseCommaList(ccv, Token::Colon, false))
 		{
-		    if (!Expect(Token::Identifier, false))
-		    {
-			return false;
-		    }
-		    names.push_back(CurrentToken().GetIdentName());
-		    AssertToken(Token::Identifier);
-		    if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
-		    {
-			return false;
-		    }
-		} while(!AcceptToken(Token::Colon));
-		assert(names.size() != 0 && "Should have some names here...");
+		    return false;
+		}
+		assert(!ccv.Names().empty() && "Should have some names here...");
 		if (Types::TypeDecl* ty = ParseType("", false))
 		{
-		    for(auto n : names)
+		    for(auto n : ccv.Names())
 		    {
 			for(auto f : fields)
 			{
@@ -1359,39 +1384,40 @@ ExprAST* Parser::ParseStringExpr(Token token)
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
 }
 
+class CCLabels : public Parser::CommaConsumer
+{
+public:
+    bool Consume(Parser& parser)
+    {
+	// Don't move forward here.
+	if (parser.Expect(Token::Integer, false))
+	{
+	    labels.push_back(parser.CurrentToken().GetIntVal());
+	    parser.AssertToken(Token::Integer);
+	    return true;
+	}
+	return false;
+    }
+    std::vector<int>& Labels() { return labels; }
+private:
+    std::vector<int> labels;
+};
+
 void Parser::ParseLabels()
 {
     AssertToken(Token::Label);
-    std::vector<int> labels;
-    bool done = false;
-    do
+    CCLabels labels;
+    if (ParseCommaList(labels, Token::Semicolon, false))
     {
-	if (CurrentToken().GetToken() == Token::Integer)
+	for (auto n : labels.Labels())
 	{
-	    int n = CurrentToken().GetIntVal();
 	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
 	    {
 		Error("Multiple label defintions?");
 		return;
 	    }
-	    NextToken();
 	}
-	else
-	{
-	    Error("Expected label integer value");
-	}
-	if (AcceptToken(Token::Semicolon))
-	{
-	    done = true;
-	}
-	else
-	{
-	    if (!Expect(Token::Comma, true))
-	    {
-		return;
-	    }
-	}
-    } while(!done);
+    }
 }
 
 ExprAST* Parser::ParseExprElement()
@@ -1405,7 +1431,7 @@ ExprAST* Parser::ParseExprElement()
 
     case Token::Real:
 	NextToken();
-	return new RealExprAST(token.Loc(), token.GetRealVal(), GetTypeDecl("real"));
+	return new RealExprAST(token.Loc(), token.GetRealVal(), Types::GetRealType());
 
     case Token::Integer:
 	return ParseIntegerExpr(token);
@@ -2004,37 +2030,46 @@ ExprAST* Parser::ParseParenExpr()
     return 0;
 }
 
+class CCSetList : public Parser::CommaConsumer
+{
+public:
+    bool Consume(Parser& parser) override
+    {
+	if (ExprAST* v = parser.ParseExpression())
+	{
+	    if (parser.AcceptToken(Token::DotDot))
+	    {
+		ExprAST* vEnd = parser.ParseExpression();
+		v = new RangeExprAST(parser.CurrentToken().Loc(), v, vEnd);
+	    }
+	    values.push_back(v);
+	    return true;
+	}
+	return false;
+    }
+    std::vector<ExprAST*>& Values() { return values; }
+private:
+    std::vector<ExprAST*> values;
+};
+
+
 ExprAST* Parser::ParseSetExpr()
 {
     TRACE();
     AssertToken(Token::LeftSquare);
 
     Location loc = CurrentToken().Loc();
-    std::vector<ExprAST*> values;
-    while(!AcceptToken(Token::RightSquare))
+    CCSetList ccs;
+    if (ParseCommaList(ccs, Token::RightSquare, true))
     {
-	ExprAST* v = ParseExpression();
-	if (!v)
+	Types::TypeDecl* type = NULL;
+	if (!ccs.Values().empty())
 	{
-	    return 0;
+	    type = ccs.Values()[0]->Type();
 	}
-	if (AcceptToken(Token::DotDot))
-	{
-	    ExprAST* vEnd = ParseExpression();
-	    v = new RangeExprAST(loc, v, vEnd);
-	}
-	values.push_back(v);
-	if (CurrentToken().GetToken() != Token::RightSquare && !Expect(Token::Comma, true))
-	{
-	    return 0;
-	}
-    } 
-    Types::TypeDecl* type = NULL;
-    if (!values.empty())
-    {
-	type = values[0]->Type();
+	return new SetExprAST(loc, ccs.Values(), new Types::SetDecl(NULL, type));
     }
-    return new SetExprAST(loc, values, new Types::SetDecl(NULL, type));
+    return 0;
 }
 
 VarDeclAST* Parser::ParseVarDecls()
@@ -2043,21 +2078,14 @@ VarDeclAST* Parser::ParseVarDecls()
     AssertToken(Token::Var);
 
     std::vector<VarDef> varList;
-    std::vector<std::string> names;
     do
     {
-	// Don't move forward here.
-	if (!Expect(Token::Identifier, false))
-	{
-	    return 0;
-	}
-	names.push_back(CurrentToken().GetIdentName());
-	AssertToken(Token::Identifier);
-	if (AcceptToken( Token::Colon))
+	CCNames ccv;
+	if (ParseCommaList(ccv, Token::Colon, false))
 	{
 	    if (Types::TypeDecl* type = ParseType("", false))
 	    {
-		for(auto n : names)
+		for(auto n : ccv.Names())
 		{
 		    VarDef v(n, type);
 		    varList.push_back(v);
@@ -2070,7 +2098,6 @@ VarDeclAST* Parser::ParseVarDecls()
 		{
 		    return 0;
 		}
-		names.clear();
 	    }
 	    else
 	    {
@@ -2079,10 +2106,7 @@ VarDeclAST* Parser::ParseVarDecls()
 	}
 	else
 	{
-	    if (!Expect(Token::Comma, true))
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
     } while(CurrentToken().GetToken() == Token::Identifier);
 
@@ -2173,6 +2197,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     {
 	std::vector<std::string> names;
 	bool isRef = false;
+
 	while(!AcceptToken(Token::RightParen))
 	{
 	    if (CurrentToken().GetToken() == Token::Function ||
@@ -2775,48 +2800,58 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
     }
 }
 
+class CCWith : public Parser::CommaConsumer
+{
+public:
+    CCWith(Stack<const NamedObject*>& ns) 
+	: levels(0), nameStack(ns)
+	{
+	}
+    bool Consume(Parser& parser) override
+    {
+	nameStack.NewLevel();
+	levels++;
+	if (parser.Expect(Token::Identifier, false))
+	{
+	    ExprAST* e = parser.ParseIdentifierExpr(parser.CurrentToken());
+	    if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
+	    {
+		if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
+		{
+		    parser.ExpandWithNames(rd, v, 0);
+		    if (Types::VariantDecl* variant = rd->Variant())
+		    {
+			parser.ExpandWithNames(variant, v, rd->FieldCount());
+		    }
+		}
+		else
+		{
+		    return (bool) parser.Error("Type for with statement should be a record type");
+		}
+
+	    }
+	    else
+	    {
+		return (bool)parser.Error("With statement must contain only variable expression");
+	    }
+	    return true;
+	}
+	return false;
+    }
+    int Levels() { return levels; }
+private:
+    int levels;
+    Stack<const NamedObject*>& nameStack;
+};
+
 ExprAST* Parser::ParseWithBlock()
 {
     TRACE();
     Location loc = CurrentToken().Loc();
     AssertToken(Token::With);
-    int levels = 0;
-    bool error = false;
-    do
-    {
-	nameStack.NewLevel();
-	levels++;
-	if (!Expect(Token::Identifier, false))
-	{
-	    return 0;
-	}
-	ExprAST* e = ParseIdentifierExpr(CurrentToken());
-	if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
-	{
-	    if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
-	    {
-		ExpandWithNames(rd, v, 0);
-		if (Types::VariantDecl* variant = rd->Variant())
-		{
-		    ExpandWithNames(variant, v, rd->FieldCount());
-		}
-	    }
-	    else
-	    {
-		Error("Type for with statement should be a record type");
-		error = true;
-	    }
-	    if (CurrentToken().GetToken() != Token::Do && !Expect(Token::Comma, true))
-	    {
-		error = true;
-	    }
-	}
-	else
-	{
-	    Error("With statement must contain only variable expression");
-	    error = true;
-	}
-    } while(!AcceptToken(Token::Do) && !error);
+
+    CCWith ccw(nameStack);
+    bool error = !ParseCommaList(ccw, Token::Do, false);
 
     ExprAST* body = 0;
     if (!error)
@@ -2824,18 +2859,76 @@ ExprAST* Parser::ParseWithBlock()
 	body = ParseStatement();
     }
 
+    int levels = ccw.Levels();
     for(int i = 0; i < levels; i++)
     {
 	nameStack.DropLevel();
     }
 
-    if (error)
+    if (!error)
     {
-	return 0;
+	return new WithExprAST(loc, body);
+    }
+    return 0;
+}
+
+
+class CCWrite : public Parser::CommaConsumer
+{
+public:
+    CCWrite(std::vector<WriteAST::WriteArg>& a,  VariableExprAST*& f)
+	: args(a), file(f)
+	{
+	}
+    bool Consume(Parser& parser) override
+    {
+	WriteAST::WriteArg wa;
+	if ((wa.expr = parser.ParseExpression()))
+	{
+	    if (args.size() == 0)
+	    {
+		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
+		{
+		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
+		    {
+			file = vexpr;
+			wa.expr = 0;
+		    }
+		}
+		if (file == 0)
+		{
+		    file = new VariableExprAST(parser.CurrentToken().Loc(), "output", Types::GetTextType());
+		}
+	    }
+	    if (wa.expr)
+	    {
+		if (parser.AcceptToken(Token::Colon))
+		{
+		    wa.width = parser.ParseExpression();
+		    if (!wa.width)
+		    {
+			return (bool) parser.Error("Invalid width expression");
+		    }
+		}
+		if (parser.AcceptToken(Token::Colon))
+		{
+		    wa.precision = parser.ParseExpression();
+		    if (!wa.precision)
+		    {
+			return (bool) parser.Error("Invalid precision expression");
+		    }
+		}
+		args.push_back(wa);
+	    }
+	    return true;
+	}
+	return false;
     }
 
-    return new WithExprAST(loc, body);
-}
+private:
+    std::vector<WriteAST::WriteArg>& args;
+    VariableExprAST*& file;
+};
 
 ExprAST* Parser::ParseWrite()
 {
@@ -2863,53 +2956,10 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return 0;
 	}
-	
-	while(!AcceptToken(Token::RightParen))
+	CCWrite ccw(args, file);
+	if (!ParseCommaList(ccw, Token::RightParen, false))
 	{
-	    WriteAST::WriteArg wa;
-	    if (!(wa.expr = ParseExpression()))
-	    {
-		return 0;
-	    }
-	    if (args.size() == 0)
-	    {
-		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
-		{
-		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
-		    {
-			file = vexpr;
-			wa.expr = 0;
-		    }
-		}
-		if (file == 0)
-		{
-			file = new VariableExprAST(loc, "output", Types::GetTextType());
-		}
-	    }
-	    if (wa.expr)
-	    {
-		if (AcceptToken(Token::Colon))
-		{
-		    wa.width = ParseExpression();
-		    if (!wa.width)
-		    {
-			return Error("Invalid width expression");
-		    }
-		}
-		if (AcceptToken(Token::Colon))
-		{
-		    wa.precision = ParseExpression();
-		    if (!wa.precision)
-		    {
-			return Error("Invalid precision expression");
-		    }
-		}
-		args.push_back(wa);
-	    }
-	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
 	if (!isWriteln && args.empty())
 	{
@@ -2918,6 +2968,46 @@ ExprAST* Parser::ParseWrite()
     }
     return new WriteAST(loc, file, args, isWriteln);
 }
+
+
+class CCRead: public Parser::CommaConsumer
+{
+public:
+    CCRead(std::vector<ExprAST*>& a, VariableExprAST*& f)
+	: args(a), file(f)
+	{
+	}
+    bool Consume(Parser& parser) override
+    {
+	if (ExprAST* expr = parser.ParseExpression())
+	{
+	    if (args.size() == 0)
+	    {
+		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
+		{
+		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
+		    {
+			file = vexpr;
+			expr = 0;
+		    }
+		}
+		if (file == 0)
+		{
+		    file = new VariableExprAST(parser.CurrentToken().Loc(), "input", Types::GetTextType());
+		}
+	    }
+	    if (expr)
+	    {
+		args.push_back(expr);
+	    }
+	    return true;
+	}
+	return false;
+    }
+private:
+    std::vector<ExprAST*>& args;
+    VariableExprAST*& file;
+};
 
 ExprAST* Parser::ParseRead()
 {
@@ -2945,36 +3035,10 @@ ExprAST* Parser::ParseRead()
 	{
 	    return 0;
 	}
-	while(!AcceptToken(Token::RightParen))
+	CCRead ccr(args, file);
+	if (!ParseCommaList(ccr, Token::RightParen, false))
 	{
-	    ExprAST* expr = ParseExpression();
-	    if (!expr)
-	    {
-		return 0;
-	    }
-	    if (args.size() == 0)
-	    {
-		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
-		{
-		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
-		    {
-			file = vexpr;
-			expr = 0;
-		    }
-		}
-		if (file == 0)
-		{
-		    file = new VariableExprAST(loc, "input", Types::GetTextType());
-		}
-	    }
-	    if (expr)
-	    {
-		args.push_back(expr);
-	    }
-	    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Comma, true))
-	    {
-		return 0;
-	    }
+	    return 0;
 	}
 	assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
     }
@@ -3025,6 +3089,19 @@ ExprAST* Parser::ParsePrimary()
     }
 }
 
+class CCProgram: public Parser::CommaConsumer
+{
+public:
+    bool Consume(Parser& parser) override
+    {
+	if (!parser.Expect(Token::Identifier, true))
+	{
+	    return false;
+	}
+	return true;
+    }
+};
+
 bool Parser::ParseProgram(ParserType type)
 {
     Token::TokenType t  = Token::Program;
@@ -3044,30 +3121,8 @@ bool Parser::ParseProgram(ParserType type)
     AssertToken(Token::Identifier);
     if (type == Program && AcceptToken(Token::LeftParen))
     {
-	bool done = false;
-	// We completely ignore "file" specifications on the program.
-	do
-	{
-	    if (!Expect(Token::Identifier, true))
-	    {
-		return false;
-	    }
-	    if (CurrentToken().GetToken() == Token::RightParen)
-	    {
-		done = true;
-	    }
-	    else
-	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return false;
-		}
-	    }
-	} while(!done);
-	if (!Expect(Token::RightParen, true))
-	{
-	    return false;
-	}
+	CCProgram ccp;
+	return ParseCommaList(ccp, Token::RightParen, false);
     }
     return true;
 }

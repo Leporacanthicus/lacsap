@@ -16,13 +16,20 @@ public:
 	Program,
 	Unit
     };
+
+    class CommaConsumer
+    {
+    public:
+	virtual bool Consume(Parser& parser) = 0;
+	virtual ~CommaConsumer() {}
+    };
+
 public:
     Parser(Source &source);
     ExprAST* Parse(ParserType type);
 
     int GetErrors() { return errCnt; }
 
-private:
     // Token handling functions
     const Token& CurrentToken() const;
     const Token& NextToken(const char* file, int line);
@@ -41,6 +48,7 @@ private:
     ExprAST* ParseUnaryOp();
     ExprAST* ParseSetExpr();
     ExprAST* ParseSizeOfExpr();
+    bool ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);
 
     ExprAST* ParseIntegerOrLabel(Token token);
 

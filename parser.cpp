@@ -263,13 +263,13 @@ bool Parser::ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowE
 {
     bool done = false;
     // We completely ignore "file" specifications on the program.
-    do
+    if (allowEmpty && CurrentToken().GetToken() == end)
     {
-	if (allowEmpty && CurrentToken().GetToken() == end)
-	{
-	    done = true;
-	}
-	else if (!cc.Consume(*this))
+	done = true;
+    }
+    while(!done)
+    {
+	if (!cc.Consume(*this))
 	{
 	    return false;
 	}
@@ -284,7 +284,7 @@ bool Parser::ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowE
 		return false;
 	    }
 	}
-    } while(!done);
+    }
     return Expect(end, true);
 }
 

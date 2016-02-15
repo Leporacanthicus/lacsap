@@ -110,7 +110,7 @@ public:
     Types::SetDecl*     ParseSetDecl();
     Types::StringDecl*  ParseStringDecl();
     Types::VariantDecl* ParseVariantDecl(Types::TypeDecl*& type);
-    int                 ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
+    int ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
     bool                ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
 
     // Helper for syntax checking
@@ -131,8 +131,8 @@ public:
     Types::TypeDecl* ErrorT(const std::string& msg);
     Types::RangeDecl* ErrorR(const std::string& msg);
     VariableExprAST* ErrorV(const std::string& msg);
-    int ErrorI(const std::string& msg);
     Constants::ConstDecl* ErrorC(const std::string& msg);
+    int ErrorI(const std::string& msg);
 
     // Helper functions for expression evaluation.
     bool     IsCall(const NamedObject* def);

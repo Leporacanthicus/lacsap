@@ -112,7 +112,7 @@ Constants::ConstDecl* Parser::ErrorC(const std::string& msg)
 
 int Parser::ErrorI(const std::string& msg)
 {
-    return reinterpret_cast<uintptr_t>(Error(msg));
+    return reinterpret_cast<intptr_t>(Error(msg));
 }
 
 const Token& Parser::CurrentToken() const
@@ -327,7 +327,7 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 {
     if (!nameStack.Add(name, new ConstDef(name, cd)))
     {
-	return (bool)ErrorI("Name " + name + " is already declared as a constant");
+	return (bool)Error("Name " + name + " is already declared as a constant");
     }
     return true;
 
@@ -370,11 +370,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 
     Token token = TranslateToken(CurrentToken());
 
-    if (tt != Token::Unknown && token.GetToken() != tt)
-    {
-	tt = Token::Unknown;
-	return ErrorI("Expected token to match type");
-    }
+    Token::TokenType oldtt = tt;
 
     tt = token.GetToken();
     int result = 0;
@@ -411,11 +407,19 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	tt = Token::Unknown;
 	return ErrorI("Invalid constant value, expected char, integer or enum value");
     }
+
+    if (oldtt != Token::Unknown && oldtt != tt)
+    {
+	tt = Token::Unknown;
+	return ErrorI("Expected token to match type");
+    }
+
     NextToken();
     if (negative)
     {
 	if (tt != Token::Integer)
 	{
+	    tt = Token::Unknown;
 	    return ErrorI("Invalid negative constant");
 	}
 	result = -result;
@@ -783,6 +787,44 @@ private:
     std::vector<std::string> names;
 };
 
+class CCIntegers : public Parser::CommaConsumer
+{
+public:
+    virtual bool GetValue(Parser& parser, int& val)
+    {
+	val = parser.CurrentToken().GetIntVal();
+	return parser.Expect(Token::Integer, true);
+    }
+    bool Consume(Parser& parser) override
+    {
+	// Don't move forward here.
+	int val;
+	if (GetValue(parser, val))
+	{
+	    values.push_back(val);
+	    return true;
+	}
+	return false;
+    }
+    std::vector<int>& Values() { return values; }
+private:
+    std::vector<int> values;
+};
+
+class CCConstants : public CCIntegers
+{
+public:
+    CCConstants(Types::TypeDecl*& ty) : tt(Token::Unknown), type(ty) {}
+    bool GetValue(Parser& parser, int& val) override
+    {
+	val = parser.ParseConstantValue(tt, type); 
+	return tt != Token::Unknown; 
+    }
+private:
+    Token::TokenType tt;
+    Types::TypeDecl*& type;
+};
+
 Types::EnumDecl* Parser::ParseEnumDef()
 {
     AssertToken(Token::LeftParen);
@@ -825,7 +867,7 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 	    else
 	    {
 		return reinterpret_cast<Types::PointerDecl*>
-		    (ErrorI("Unknown type '" + name + "' in pointer declaration"));
+		    (Error("Unknown type '" + name + "' in pointer declaration"));
 	    }
 	}
 	// Otherwise, forward declare...
@@ -875,32 +917,26 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 
 Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 {
-    Token::TokenType tt = Token::Unknown;
-    std::vector<int> variantsSeen;
     std::vector<Types::FieldDecl*> variants;
     do
     {
-	do
+	CCConstants labels(type);
+	if (!ParseCommaList(labels, Token::Colon, false))
 	{
-	    int v = ParseConstantValue(tt, type);
-	    if (tt == Token::Unknown)
-	    {
-		return 0;
-	    }
-	    if (std::find(variantsSeen.begin(), variantsSeen.end(), v) != variantsSeen.end())
+	    return 0;
+	}
+	std::vector<int>& vals = labels.Values();
+	auto e = vals.end();
+	auto b = vals.begin();
+	for(auto i = b; i != e; i++)
+	{
+	    auto f = std::find(b, e, *i);
+	    if (f != i && f != e)
 	    {
 		return reinterpret_cast<Types::VariantDecl*>
-		    (Error("Value already used: " + std::to_string(v) + " in variant declaration"));
+		    (Error("Value already used: " + std::to_string(*i) + " in variant declaration"));
 	    }
-	    variantsSeen.push_back(v);
-	    if (CurrentToken().GetToken() != Token::Colon)
-	    {
-		if (!Expect(Token::Comma, true))
-		{
-		    return 0;
-		}
-	    }
-	} while (!AcceptToken(Token::Colon));
+	}
 	if (!Expect(Token::LeftParen, true))
 	{
 	    return 0;
@@ -1384,32 +1420,13 @@ ExprAST* Parser::ParseStringExpr(Token token)
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
 }
 
-class CCLabels : public Parser::CommaConsumer
-{
-public:
-    bool Consume(Parser& parser)
-    {
-	// Don't move forward here.
-	if (parser.Expect(Token::Integer, false))
-	{
-	    labels.push_back(parser.CurrentToken().GetIntVal());
-	    parser.AssertToken(Token::Integer);
-	    return true;
-	}
-	return false;
-    }
-    std::vector<int>& Labels() { return labels; }
-private:
-    std::vector<int> labels;
-};
-
 void Parser::ParseLabels()
 {
     AssertToken(Token::Label);
-    CCLabels labels;
+    CCIntegers labels;
     if (ParseCommaList(labels, Token::Semicolon, false))
     {
-	for (auto n : labels.Labels())
+	for (auto n : labels.Values())
 	{
 	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
 	    {

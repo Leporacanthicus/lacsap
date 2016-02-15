@@ -102,6 +102,9 @@ Now you need to install the llvm into the "install prefix" directory:
 (You may need to do this with `sudo` if the install directory is
 something like `/usr/...`)
 
+Finally, go back up to where your main sources direcotry is:
+
+    cd ..
 
 ### Building lacsap.
 

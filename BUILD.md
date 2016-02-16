@@ -1,5 +1,21 @@
 ## Build instructions
 
+A "premade" version of these instructions can be found in the file
+can be found in the build.sh, and there is also a "clean up" script
+called clean.sh 
+
+You can get the build.sh by (suggest that you create a directory to do
+this in):
+
+     wget https://raw.githubusercontent.com/Leporacanthicus/lacsap/master/build.sh
+
+and clean using:
+
+     wget https://raw.githubusercontent.com/Leporacanthicus/lacsap/master/clean.sh
+
+You will need to `chmod +x build.sh` since wget doesn't allow the
+automatically mark the file as executable.
+
 This file tries to describe the minimal steps required to build the
 `lacsap` Pascal compiler. In many cases, "you may also want to ..."
 examples are provided to give suggestions of things that may help your

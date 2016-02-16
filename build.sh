@@ -23,4 +23,4 @@ cd lacsap
 rm -f -R *.o
 
 make -i -k USECLANG=0  M32=0  LLVM_DIR=${Current_Directory}/LLVM_Binaries 
-make -i -k fulltests
+make -i -k fulltests USECLANG=0 M32=0

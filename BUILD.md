@@ -1,8 +1,8 @@
 ## Build instructions
 
 A "premade" version of these instructions can be found in the file
-can be found in the build.sh, and there is also a "clean up" script
-called clean.sh 
+build.sh, and there is also a "clean up" script called clean.sh (that
+removes all of the files that are checked out or made)
 
 You can get the build.sh by (suggest that you create a directory to do
 this in):
@@ -118,7 +118,7 @@ Now you need to install the llvm into the "install prefix" directory:
 (You may need to do this with `sudo` if the install directory is
 something like `/usr/...`)
 
-Finally, go back up to where your main sources direcotry is:
+Finally, go back up to where your main sources directory is:
 
     cd ..
 

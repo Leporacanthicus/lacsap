@@ -125,6 +125,15 @@ namespace Types
 	return 0;
     }
 
+    const TypeDecl* CharDecl::AssignableType(const TypeDecl* ty) const
+    {
+	if (*this == *ty)
+	{
+	    return this;
+	}
+	return 0;
+    }
+
     llvm::Type* IntegerDecl::GetLlvmType() const
     {
 	return llvm::Type::getInt32Ty(llvm::getGlobalContext());

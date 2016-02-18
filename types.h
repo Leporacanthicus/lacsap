@@ -132,6 +132,7 @@ namespace Types
 	bool IsUnsigned() const override { return true; }
 	bool IsStringLike() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 8; }
 	bool HasLlvmType() const override { return true; }
     protected:

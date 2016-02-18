@@ -629,10 +629,17 @@ namespace Builtin
 	}
 	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	Types::ArrayDecl* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
-	return  t0 && t2 && t0->SubType() == t2->SubType() &&
-	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
-	    args[1]->Type()->IsIntegral() &&
-	    llvm::isa<VariableExprAST>(args[2]) && t2->Ranges().size() == 1;
+	if (t0 && t2)
+	{
+	    if (args[1]->Type()->IsIntegral() &&
+		args[1]->Type()->AssignableType(t0->Ranges()[0]))
+	    {
+		return  t0->SubType() == t2->SubType() &&
+		    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
+		    llvm::isa<VariableExprAST>(args[2]) && t2->Ranges().size() == 1;
+	    }
+	}
+	return false;
     }
 
     llvm::Value* BuiltinFunctionPack::CodeGen(llvm::IRBuilder<>& builder)
@@ -665,10 +672,18 @@ namespace Builtin
 	}
 	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	Types::ArrayDecl* t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
-	return t0 && t1 && t0->SubType() == t1->SubType() &&
-	    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
-	    llvm::isa<VariableExprAST>(args[1]) && t1->Ranges().size() == 1 &&
-	    args[2]->Type()->IsIntegral();
+	if (t0 && t1)
+	{
+	    if (args[2]->Type()->IsIntegral() &&
+		args[2]->Type()->AssignableType(t1->Ranges()[0]))
+	    {
+		return t0->SubType() == t1->SubType() &&
+		    llvm::isa<VariableExprAST>(args[0]) && t0->Ranges().size() == 1 &&
+		    llvm::isa<VariableExprAST>(args[1]) && t1->Ranges().size() == 1 &&
+		    args[2]->Type()->IsIntegral();
+	    }
+	}
+	return false;
     }
 
     llvm::Value* BuiltinFunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)

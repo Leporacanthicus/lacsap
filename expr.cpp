@@ -2476,7 +2476,10 @@ llvm::Value* WriteAST::CodeGen()
 	{
 	    Types::TypeDecl* type = arg.expr->Type();
 	    assert(type && "Expected type here");
-	    fn = CreateWriteFunc(type, f->getType());
+	    if (!(fn = CreateWriteFunc(type, f->getType())))
+	    {
+		return 0;
+	    }
 	    if (type->Type() == Types::TypeDecl::TK_String)
 	    {
 		if (AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr))

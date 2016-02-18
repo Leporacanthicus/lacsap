@@ -8,10 +8,15 @@ var
 
 begin
    for x := 1 to 10 do
-      for y := 1 to 10 do begin da[y, x] := z; z := z + 1 end;
+      for y := 1 to 10 do
+      begin
+	 da[y, x] := z;
+	 z := z + 1
+      end;
    for x := 1 to 10 do
    begin
-      for y := 1 to 10 do write(da[x][y]:2, ' ');
+      for y := 1 to 10 do
+	 write(da[x][y]:2, ' ');
       writeln;
    end;
 end.

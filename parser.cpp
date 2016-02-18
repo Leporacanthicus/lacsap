@@ -1548,30 +1548,75 @@ ExprAST* Parser::ParseExpression()
     return 0;
 }
 
+class CCExpressions : public Parser::CommaConsumer
+{
+public:
+    bool Consume(Parser& parser)
+    {
+	if (ExprAST* e = parser.ParseExpression())
+	{
+	    exprs.push_back(e);
+	    return true;
+	}
+	return parser.ErrorV("Expected index expression");
+    }
+    std::vector<ExprAST*>& Exprs() { return exprs; }
+private:
+    std::vector<ExprAST*> exprs;
+};
+
 VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
+    TRACE();
+
     Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
     if (!adecl)
     {
 	return ErrorV("Expected variable of array type when using index");
     }
-    NextToken();
-    std::vector<ExprAST*> indices;
-    while(!AcceptToken(Token::RightSquare))
+    AssertToken(Token::LeftSquare);
+    CCExpressions cce;
+    size_t taken = 0;
+    bool ok;
+    while((ok = ParseCommaList(cce, Token::RightSquare, false)))
     {
-	ExprAST* index = ParseExpression();
-	if (!index)
+	if (CurrentToken().GetToken() == Token::LeftSquare)
 	{
-	    return ErrorV("Expected index expression");
+	    AssertToken(Token::LeftSquare);
 	}
-	indices.push_back(index);
-	if (indices.size() == adecl->Ranges().size())
+	else
 	{
+	    break;
+	}
+    }
+    if (!ok)
+    {
+	return 0;
+    }
+    std::vector<ExprAST*> indices = cce.Exprs();
+    while(!indices.empty())
+    {
+	if (indices.size() >= adecl->Ranges().size())
+	{
+	    taken += adecl->Ranges().size();
+	    indices.resize(adecl->Ranges().size());
 	    expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
-	    indices.clear();
 	    type = adecl->SubType();
-	    adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
+	    assert(type && "Expected a type here!");
+	    indices = cce.Exprs();
+	    indices.erase(indices.begin(), indices.begin() + taken);
+	    if (!(adecl = llvm::dyn_cast<Types::ArrayDecl>(type)))
+	    {
+		if (!indices.empty())
+		{
+		    return ErrorV("Too many indices");
+		}
+		return expr;
+	    }
 	}
+    }
+    return expr;
+#if 0
 	if (CurrentToken().GetToken() == Token::RightSquare && PeekToken().GetToken() == Token::LeftSquare)
 	{
 	    AssertToken(Token::RightSquare);
@@ -1591,6 +1636,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	type = adecl->SubType();
     }
     return expr;
+#endif
 }
 
 ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, const std::string& funcName,
@@ -1918,6 +1964,8 @@ VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*&
 
 ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 {
+    TRACE();
+
     VariableExprAST* expr = 0;
     Types::TypeDecl* type = def->Type();
     assert(type && "Expect type here...");
@@ -2314,6 +2362,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 
 ExprAST* Parser::ParseStatement()
 {
+    TRACE();
     switch(CurrentToken().GetToken())
     {
     case Token::Begin:
@@ -3064,6 +3113,7 @@ ExprAST* Parser::ParseRead()
 
 ExprAST* Parser::ParsePrimary()
 {
+    TRACE();
     Token token = CurrentToken();
 
     switch(token.GetToken())

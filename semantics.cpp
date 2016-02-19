@@ -257,7 +257,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    ExprAST* e = b->rhs;
 	    if (!ty)
 	    {
-		ty = new Types::RealDecl;
+		ty = Types::GetRealType();
 	    }
 	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
 	    rty = ty;
@@ -332,8 +332,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 
     if (lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
-	assert(lty->GetRange() && lty->SubType() &&
-	       "Expected left type to be well defined.");
+	assert(lty->GetRange() && lty->SubType() && "Expected left type to be well defined.");
 
 	if (!rty->GetRange())
 	{

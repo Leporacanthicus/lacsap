@@ -792,7 +792,10 @@ class CCIntegers : public Parser::CommaConsumer
 public:
     virtual bool GetValue(Parser& parser, int& val)
     {
-	val = parser.CurrentToken().GetIntVal();
+	if (parser.CurrentToken().GetToken() == Token::Integer)
+	{
+	    val = parser.CurrentToken().GetIntVal();
+	}
 	return parser.Expect(Token::Integer, true);
     }
     bool Consume(Parser& parser) override

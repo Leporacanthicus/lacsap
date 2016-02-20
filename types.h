@@ -135,6 +135,7 @@ namespace Types
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 8; }
 	bool HasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Char; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
@@ -150,6 +151,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Integer; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
@@ -165,6 +167,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Int64; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
@@ -179,6 +182,7 @@ namespace Types
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 64; }
 	bool HasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Real; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;

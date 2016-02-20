@@ -19,6 +19,8 @@ private:
     void CheckBuiltinExpr(BuiltinExprAST* b);
     void CheckCallExpr(CallExprAST* c);
     void CheckForExpr(ForExprAST* f);
+    void CheckReadExpr(ReadAST* f);
+    void CheckWriteExpr(ReadAST* f);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -140,6 +142,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (ForExprAST* f = llvm::dyn_cast<ForExprAST>(expr))
     {
 	CheckForExpr(f);
+    }
+    else if (ReadAST* r = llvm::dyn_cast<ReadAST>(expr))
+    {
+	CheckReadExpr(r);
     }
 }
 
@@ -547,6 +553,60 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
     if (bad)
     {
 	Error(f, "Bad for loop");
+    }
+}
+
+void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
+{
+    bool isText = llvm::isa<Types::TextDecl>(r->file->Type());
+
+    if (isText)
+    {
+	for(auto arg : r->args)
+	{
+	    if (!llvm::isa<VariableExprAST>(arg))
+	    {
+		Error(arg, "Invalid argument for read/readln - must be a variable-expression");
+	    }
+	    if (arg->Type()->IsCompound())
+	    {
+		bool bad = true;
+		if (Types::ArrayDecl* a = llvm::dyn_cast<Types::ArrayDecl>(arg->Type()))
+		{
+		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
+		}
+		else 
+		{
+		    bad = !llvm::isa<Types::StringDecl>(arg->Type());
+		}
+		if (bad)
+		{
+		    Error(arg, "Read argument must be simple type or array of char");
+		}
+	    }
+	}
+    }
+    else
+    {
+	if (r->args.size() != 1)
+	{
+	    Error(r, "Read of binary file must have exactly one argument");
+	}
+	else
+	{
+	    ExprAST* arg = r->args[0];
+	    if (!llvm::isa<VariableExprAST>(arg))
+	    {
+		Error(arg, "Invalid argument for read - must be a variable-expression");
+	    }
+	    else
+	    {
+		if (!r->file->Type()->SubType()->AssignableType(arg->Type()))
+		{
+		    Error(arg, "Read argument should match elements of the file");
+		}
+	    }
+	}
     }
 }
 

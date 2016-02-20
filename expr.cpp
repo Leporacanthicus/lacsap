@@ -2597,6 +2597,7 @@ void ReadAST::accept(ASTVisitor& v)
     {
 	a->accept(v);
     }
+    v.visit(this);
 }
 
 static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
@@ -2643,22 +2644,16 @@ llvm::Value* ReadAST::CodeGen()
     llvm::Value* v;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
     llvm::Type* fTy =  f->getType();
-    for(auto arg: args)
+    for(auto arg : args)
     {
 	std::vector<llvm::Value*> argsV = { f };
 	VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(arg);
-	if (!vexpr)
-	{
-	    return ErrorV("Argument for read/readln should be a variable");
-	}
+	assert(vexpr && "Argument for read/readln should be a variable");
 	
 	Types::TypeDecl* ty = vexpr->Type();
 	v = vexpr->Address();
-	if (!v)
-	{
-	    assert(0 && "Could not evaluate address of expression for read");
-	    return 0;
-	}
+	assert(v && "Could not evaluate address of expression for read");
+
 	if (!isText)
 	{
 	    v = builder.CreateBitCast(v, Types::GetVoidPtrType());

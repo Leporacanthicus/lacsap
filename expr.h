@@ -600,6 +600,7 @@ private:
 
 class ReadAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     ReadAST(const Location& w, VariableExprAST* fi, const std::vector<ExprAST*> &a, bool isLn)
 	: ExprAST(w, EK_Read), file(fi), args(a), isReadln(isLn) {}

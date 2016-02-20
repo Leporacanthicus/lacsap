@@ -505,7 +505,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     case Token::Not:
 	unaryToken = CurrentToken().GetToken();
 	NextToken();
-	break; 
+	break;
     default:
 	break;
     }
@@ -595,7 +595,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 		    llvm::dyn_cast<Constants::BoolConstDecl>(cd);
 		cd = new Constants::BoolConstDecl(loc, !bd->Value());
 	    }
-	    
+
 	    if (mul == -1)
 	    {
 		if (llvm::isa<Constants::RealConstDecl>(cd))
@@ -819,8 +819,8 @@ public:
     CCConstants(Types::TypeDecl*& ty) : tt(Token::Unknown), type(ty) {}
     bool GetValue(Parser& parser, int& val) override
     {
-	val = parser.ParseConstantValue(tt, type); 
-	return tt != Token::Unknown; 
+	val = parser.ParseConstantValue(tt, type);
+	return tt != Token::Unknown;
     }
 private:
     Token::TokenType tt;
@@ -831,7 +831,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 {
     AssertToken(Token::LeftParen);
     CCNames ccv;
-    
+
     if (ParseCommaList(ccv, Token::RightParen, false))
     {
 	Types::EnumDecl* ty = new Types::EnumDecl(ccv.Names(), Types::GetIntegerType());
@@ -1400,7 +1400,7 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
 ExprAST* Parser::ParseStringExpr(Token token)
 {
     int len =  std::max(1, (int)(token.GetStrVal().length()-1));
-    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), 
+    std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len),
 							      Types::GetIntegerType())};
     Types::ArrayDecl *ty = new Types::ArrayDecl(Types::GetCharType(), rv);
     NextToken();
@@ -1691,7 +1691,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	{
 	    std::string objname;
 	    const Types::FieldDecl* fd = cd->GetElement(elem, objname);
-	    
+
 	    type = fd->FieldType();
 	    if (fd->IsStatic())
 	    {
@@ -1786,7 +1786,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
-    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) 
+    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At)
 	   && "Expected @ or ^ token...");
     NextToken();
     if (llvm::isa<Types::FileDecl>(type))
@@ -2524,7 +2524,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 
 	case Token::Begin:
 	{
-	    Location endLoc; 
+	    Location endLoc;
 	    assert(!body && "Multiple body declarations for function?");
 
 	    if (!(body = ParseBlock(endLoc)) || !Expect(Token::Semicolon, true))
@@ -2709,7 +2709,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    isFirst = false;
 	}
 	else if (CurrentToken().GetToken() != Token::Otherwise &&
-		 CurrentToken().GetToken() != Token::Else && 
+		 CurrentToken().GetToken() != Token::Else &&
 		 prevTT != CurrentToken().GetToken())
 	{
 	    return Error("Type of case labels must not change type");
@@ -2836,7 +2836,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 class CCWith : public Parser::CommaConsumer
 {
 public:
-    CCWith(Stack<const NamedObject*>& ns) 
+    CCWith(Stack<const NamedObject*>& ns)
 	: levels(0), nameStack(ns)
 	{
 	}
@@ -3233,10 +3233,10 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    break;
 
 	case Token::Var:
-	{
-	    VarDeclAST* v = ParseVarDecls();
-	    ast.push_back(v);
-	}   
+	    if (VarDeclAST* v = ParseVarDecls())
+	    {
+		ast.push_back(v);
+	    }
 	    break;
 
 	default:

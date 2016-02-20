@@ -12,9 +12,9 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
 {
     if (where.to_string() != ":0:0")
     {
-	assert(t != Token::Identifier && 
+	assert(t != Token::Identifier &&
 	       t != Token::StringLiteral &&
-	       t != Token::Integer && 
+	       t != Token::Integer &&
 	       t != Token::Real);
     }
 }
@@ -230,7 +230,7 @@ int Token::Precedence() const
     return t->precedence;
 }
 
-Token::TokenType Token::KeyWordToToken(const std::string &str) 
+Token::TokenType Token::KeyWordToToken(const std::string &str)
 {
     const TokenEntry* t = FindToken(str);
     if (t && t->isKeyWord)

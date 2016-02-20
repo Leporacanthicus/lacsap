@@ -83,7 +83,7 @@ Token Lexer::NumberToken()
 		ch = NextChar();
 	    }
 	    break;
-	    
+
 	case Fraction:
 	    assert(ch == '.' && "Fraction should start with '.'");
 	    if (PeekChar() == '.' || PeekChar() == ')')
@@ -119,7 +119,7 @@ Token Lexer::NumberToken()
 	    assert(0 && "Huh? We should not be here...");
 	    break;
 	}
-	    
+
 	if (ch == '.' && state != Fraction && base != 16)
 	{
 	    state = Fraction;
@@ -128,7 +128,7 @@ Token Lexer::NumberToken()
 	{
 	    state = Exponent;
 	}
-	else 
+	else
 	{
 	    state = Done;
 	}
@@ -141,7 +141,7 @@ Token Lexer::NumberToken()
     return Token(Token::Integer, w, (uint64_t)std::stoull(num, 0, base));
 }
 
-// String or character. 
+// String or character.
 // Needs to deal with '' in the middle of string and '''' as a char constant.
 Token Lexer::StringToken()
 {
@@ -312,8 +312,8 @@ Token Lexer::GetToken()
     // Identifiers start with alpha characters, or underscore.
     if (std::isalpha(ch) || ch == '_')
     {
-	std::string str; 
-	// Default to the "most likely". 
+	std::string str;
+	// Default to the "most likely".
 	str = static_cast<char>(ch);	
 	// Allow alphanumeric and underscore.
 	while(std::isalnum(ch = NextChar()) || ch == '_')
@@ -333,7 +333,7 @@ Token Lexer::GetToken()
 	    }
 	    return Token(tt, w);
 	}
-	else 
+	else
 	{
 	    tt = Token::Identifier;
 	}

@@ -252,7 +252,7 @@ llvm::Value* MakeAddressable(ExprAST* e)
     {
 	return store;
     }
-    
+
     llvm::Value* v = CreateTempAlloca(e->Type());
     assert(v && "Expect address to be non-zero");
     builder.CreateStore(store, v);
@@ -788,7 +788,7 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 
     llvm::Constant* f = GetFunction(Types::GetVoidType(), {pty, lV->getType(), rV->getType()},
 				    "__StrConcat");
-    
+
     llvm::Value* dest = CreateTempAlloca(Types::GetStringType());
     builder.CreateCall(f, {dest, lV, rV});
     return dest;
@@ -884,7 +884,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::GetBooleanType()->LlvmType());
     }
-    
+
     if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))
     {
 	switch(oper.GetToken())
@@ -987,7 +987,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	return MakeStrCompare(oper, CallStrFunc("Compare"));
     }
-    
+
     if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
@@ -1418,7 +1418,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	arg.setName(a->Name());
 	a++;
     }
-    
+
     for(auto v : argAttr)
     {
 	f->addAttribute(v.first, v.second);
@@ -1889,7 +1889,7 @@ llvm::Value* AssignExprAST::AssignStr()
 	llvm::Value* dest = lhsv->Address();
 	return TempStringFromStringExpr(dest, srhs);
     }
-    
+
     assert(llvm::isa<Types::StringDecl>(rhs->Type()));
     return CallStrFunc("Assign", lhs, rhs, Types::GetVoidType(), "");
 }
@@ -2836,7 +2836,7 @@ llvm::Value* LabelExprAST::CodeGen()
     // Make LLVM-IR valid by jumping to the neew block!
     llvm::Value* v = builder.CreateBr(labelBB);
     builder.SetInsertPoint(labelBB);
-    
+
     return v;
 }
 
@@ -3124,7 +3124,7 @@ llvm::Value* SetExprAST::Address()
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 
-	    loop = builder.CreateAdd(loop, MakeConstant(1, llvm::dyn_cast<Types::SetDecl>(type)->SubType()), 
+	    loop = builder.CreateAdd(loop, MakeConstant(1, llvm::dyn_cast<Types::SetDecl>(type)->SubType()),
 				     "update");
 	    builder.CreateStore(loop, loopVar);
 
@@ -3143,7 +3143,7 @@ llvm::Value* SetExprAST::Address()
 	    assert(x && "Expect codegen to work!");
 	    x = builder.CreateZExt(x, Types::GetIntegerType()->LlvmType(), "zext");
 	    x = builder.CreateSub(x, rangeStart);
-	    
+
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
 	    llvm::Value* offset = builder.CreateAnd(x, mask);
 	    llvm::Value* bit = builder.CreateShl(MakeIntegerConstant(1), offset);
@@ -3304,7 +3304,7 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
-    
+
     Types::TypeDecl* current = expr->Type();
     if (type->IsIntegral() && current->IsIntegral())
     {
@@ -3319,7 +3319,7 @@ llvm::Value* TypeCastAST::CodeGen()
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
     if (((current->Type() == Types::TypeDecl::TK_Array && current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
-	 current->Type() == Types::TypeDecl::TK_Char ) && 
+	 current->Type() == Types::TypeDecl::TK_Char ) &&
 	type->Type() == Types::TypeDecl::TK_String)
     {
 	return MakeStringFromExpr(expr, type);
@@ -3347,7 +3347,6 @@ llvm::Value* TypeCastAST::Address()
     }
     assert(v && "Expected to get a value here...");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));
-    
 }
 
 llvm::Value* SizeOfExprAST::CodeGen()
@@ -3446,7 +3445,7 @@ void VTableAST::Fixup()
 }
 
 VirtFunctionAST::VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
-	: AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf) 
+	: AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf)
 {
     assert(index >= 0 && "Index should not be negative!");
 }
@@ -3576,7 +3575,7 @@ llvm::Value* ClosureAST::CodeGen()
 
 void TrampolineAST::DoDump(std::ostream& out) const
 {
-    out << "Trampoline for "; 
+    out << "Trampoline for ";
     func->DoDump(out);
 }
 
@@ -3596,7 +3595,7 @@ llvm::Value* TrampolineAST::CodeGen()
 	llvm::Type* voidPtrTy = Types::GetVoidPtrType();
 	nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
 	llvm::Value* castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
-	llvm::Constant* llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(), 
+	llvm::Constant* llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(),
 						{ voidPtrTy, voidPtrTy, voidPtrTy },
 						"llvm.init.trampoline");
 	builder.CreateCall(llvmTramp, { tptr, castFn, nest });

@@ -308,7 +308,6 @@ namespace Builtin
 	Types::TypeDecl* Type() const override { return Types::GetLongIntType(); }
     };
 
- 
     class BuiltinFunctionClock : public BuiltinFunctionLongInt
     {
     public:
@@ -563,7 +562,7 @@ namespace Builtin
 
     bool BuiltinFunctionNew::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type()) && 
+	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type()) &&
 	    llvm::isa<VariableExprAST>(args[0]);
     }
 
@@ -735,8 +734,8 @@ namespace Builtin
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
-	std::vector<llvm::Type*> argTypes =  { faddr->getType(), 
-					       Types::GetIntegerType()->LlvmType(), 
+	std::vector<llvm::Type*> argTypes =  { faddr->getType(),
+					       Types::GetIntegerType()->LlvmType(),
 					       Types::GetBooleanType()->LlvmType() };
 	llvm::Constant* f = GetFunction(Type(), argTypes, "__" + funcname);
 
@@ -1043,7 +1042,7 @@ namespace Builtin
 	{
 	    llvm::Value* sel1 = builder.CreateICmpUGT(v, zero, "gt");
 	    return builder.CreateSelect(sel1, one, zero, "sgn1");
-	} 
+	}
 	llvm::Value* sel1 = builder.CreateICmpSGT(v, zero, "gt");
 	llvm::Value* sel2 = builder.CreateICmpSLT(v, zero, "lt");
 	llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");

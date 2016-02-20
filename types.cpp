@@ -333,7 +333,7 @@ namespace Types
 	    return 0;
 	}
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), 
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(),
 					bd, subsArray);
     }
 
@@ -504,7 +504,7 @@ namespace Types
 	const int size = 32;
 	const int align = 32;
 	std::vector<llvm::Metadata*> enumerators;
-	for (const auto i : values ) 
+	for (const auto i : values )
 	{
 	    enumerators.push_back(builder->createEnumerator(i.name, i.value));
 	}
@@ -596,7 +596,7 @@ namespace Types
 
     llvm::DIType* VariantDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
+	// TODO: Fill in.
 	return 0;
     }
 
@@ -799,10 +799,10 @@ namespace Types
 	return this == ty;
     }
 
-    ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds, 
+    ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
 	: FieldCollection(TK_Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
-    { 
+    {
 	if (baseobj)
 	{
 	    membfuncs = baseobj->membfuncs;
@@ -990,7 +990,7 @@ namespace Types
     {
 	return fields.size() + (baseobj ? baseobj->FieldCount(): 0);
     }
-    
+
     const TypeDecl* ClassDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (*ty == *this)
@@ -1056,7 +1056,7 @@ namespace Types
 
     llvm::DIType* ClassDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
+	// TODO: Fill in.
 	return 0;
     }
 
@@ -1152,7 +1152,7 @@ namespace Types
 
     llvm::DIType* FileDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	// TODO: Fill in. 
+	// TODO: Fill in.
 	return 0;
     }
 
@@ -1195,7 +1195,7 @@ namespace Types
 	subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
 	llvm::DIType* bd = builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), 
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(),
 					bd, subsArray);
     }
 

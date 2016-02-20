@@ -1,4 +1,4 @@
-#include <string> 
+#include <string>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -63,7 +63,7 @@ void TestCase::Clean()
 {
     std::string resname = replace_ext(source, ".pas", ".res");
     remove(resname.c_str());
-}    
+}
 
 bool TestCase::Compile(const std::string& options)
 {
@@ -133,7 +133,6 @@ TimeTestCase::TimeTestCase(const std::string& nm, const std::string& src, const 
 {
 }
 
-
 bool TimeTestCase::Compile(const std::string& options)
 {
     start = std::chrono::steady_clock::now();
@@ -156,8 +155,7 @@ bool TimeTestCase::Result()
     return true;
 }
 
-
-TestCase* TestCaseFactory(const std::string& type, 
+TestCase* TestCaseFactory(const std::string& type,
 			  const std::string& name,
 			  const std::string& source,
 			  const std::string& args)
@@ -175,7 +173,6 @@ TestCase* TestCaseFactory(const std::string& type,
     assert(type == "Basic");
     return new TestCase(name, source, args);
 }
-
 
 class TestResult
 {
@@ -213,7 +210,7 @@ public:
 	    std::cout << "Cases:  " << std::setw(5) << cases << std::endl;
 	    std::cout << "Pass:   " << std::setw(5) << pass << std::endl;
 	    std::cout << "Fail:   " << std::setw(5) << fail << std::endl;
-	    
+
 	    for(auto f : failStageMap)
 	    {
 		std::cout << f.first << " fail: " << std::setw(5) << f.second << std::endl;
@@ -230,7 +227,7 @@ public:
 		std::cout << std::setw(20) << t.name << " " << t.stage << std::endl;
 	    }
 	}
-    
+
 private:
     int cases;
     int pass;
@@ -252,7 +249,7 @@ struct
     const char *name;
     const char *source;
     const char *args;
-} testCaseList[] = 
+} testCaseList[] =
 {
     { 0,           "Basic", "Math",          "mathtest.pas",    "" },
     // Results differ due to different random number generator
@@ -387,13 +384,13 @@ void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::
 
 int main(int argc, char **argv)
 {
-    std::vector<TestCase*> tc; 
+    std::vector<TestCase*> tc;
     TestResult res;
     std::string mode = "full";
     std::vector<std::string> optimizations = { "", "-O0", "-O1", "-O2" };
-    std::vector<std::string> models = { "", 
+    std::vector<std::string> models = { "",
 #if M32_DISABLE == 0
-					"-m32", "-m64" 
+					"-m32", "-m64"
 #endif
     };
     std::vector<std::string> others = { "", "-Cr", "-g" };
@@ -446,6 +443,6 @@ int main(int argc, char **argv)
     {
 	delete i;
     }
-    
+
     return static_cast<int>(anyFail);
 }

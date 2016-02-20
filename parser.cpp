@@ -330,7 +330,6 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 	return (bool)Error("Name " + name + " is already declared as a constant");
     }
     return true;
-
 }
 
 Types::TypeDecl* Parser::ParseSimpleType()
@@ -1174,6 +1173,7 @@ Types::FileDecl* Parser::ParseFileDecl()
 
     if (Types::TypeDecl* type = ParseType("", false))
     {
+	assert(type && "Uh? Type is supposed to be set");
 	return new Types::FileDecl(type);
     }
     return 0;
@@ -1387,14 +1387,14 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
 {
     int64_t val = token.GetIntVal();
     Location loc = token.Loc();
-    const char* type = "integer";
+    Types::TypeDecl* type = Types::GetIntegerType();
 
     if (val > std::numeric_limits<unsigned int>::max())
     {
-	type = "longint";
+	type = Types::GetLongIntType();
     }
     NextToken();
-    return new IntegerExprAST(loc, val, GetTypeDecl(type));
+    return new IntegerExprAST(loc, val, type);
 }
 
 ExprAST* Parser::ParseStringExpr(Token token)
@@ -1402,7 +1402,7 @@ ExprAST* Parser::ParseStringExpr(Token token)
     int len =  std::max(1, (int)(token.GetStrVal().length()-1));
     std::vector<Types::RangeDecl*> rv = {new Types::RangeDecl(new Types::Range(0, len), 
 							      Types::GetIntegerType())};
-    Types::ArrayDecl *ty = new Types::ArrayDecl(GetTypeDecl("char"), rv);
+    Types::ArrayDecl *ty = new Types::ArrayDecl(Types::GetCharType(), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
 }
@@ -1603,27 +1603,6 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	}
     }
     return expr;
-#if 0
-	if (CurrentToken().GetToken() == Token::RightSquare && PeekToken().GetToken() == Token::LeftSquare)
-	{
-	    AssertToken(Token::RightSquare);
-	    AssertToken(Token::LeftSquare);
-	}
-	else if (!AcceptToken(Token::Comma))
-	{
-	    if (CurrentToken().GetToken() != Token::RightSquare && !adecl)
-	    {
-		return 0;
-	    }
-	}
-    }
-    if (indices.size())
-    {
-	expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
-	type = adecl->SubType();
-    }
-    return expr;
-#endif
 }
 
 ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, const std::string& funcName,
@@ -2930,10 +2909,7 @@ ExprAST* Parser::ParseWithBlock()
 class CCWrite : public Parser::CommaConsumer
 {
 public:
-    CCWrite(std::vector<WriteAST::WriteArg>& a,  VariableExprAST*& f)
-	: args(a), file(f)
-	{
-	}
+    CCWrite() : file(0) {};
     bool Consume(Parser& parser) override
     {
 	WriteAST::WriteArg wa;
@@ -2978,10 +2954,12 @@ public:
 	}
 	return false;
     }
+    std::vector<WriteAST::WriteArg>& Args() { return args; }
+    VariableExprAST* File() { return file; }
 
 private:
-    std::vector<WriteAST::WriteArg>& args;
-    VariableExprAST*& file;
+    std::vector<WriteAST::WriteArg> args;
+    VariableExprAST* file;
 };
 
 ExprAST* Parser::ParseWrite()
@@ -2994,7 +2972,7 @@ ExprAST* Parser::ParseWrite()
 	   "Expected write or writeln keyword here");
     NextToken();
 
-    VariableExprAST* file = 0;
+    VariableExprAST* file;
     std::vector<WriteAST::WriteArg> args;
     if (IsSemicolonOrEnd())
     {
@@ -3010,11 +2988,13 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return 0;
 	}
-	CCWrite ccw(args, file);
+	CCWrite ccw;
 	if (!ParseCommaList(ccw, Token::RightParen, false))
 	{
 	    return 0;
 	}
+	file = ccw.File();
+	args = ccw.Args();
 	if (!isWriteln && args.empty())
 	{
 	    return Error("At least one argument expected");
@@ -3027,10 +3007,7 @@ ExprAST* Parser::ParseWrite()
 class CCRead: public Parser::CommaConsumer
 {
 public:
-    CCRead(std::vector<ExprAST*>& a, VariableExprAST*& f)
-	: args(a), file(f)
-	{
-	}
+    CCRead(): file(0) {	}
     bool Consume(Parser& parser) override
     {
 	if (ExprAST* expr = parser.ParseExpression())
@@ -3058,9 +3035,12 @@ public:
 	}
 	return false;
     }
+    std::vector<ExprAST*>& Args() { return args; }
+    VariableExprAST* File() { return file; }
+
 private:
-    std::vector<ExprAST*>& args;
-    VariableExprAST*& file;
+    std::vector<ExprAST*> args;
+    VariableExprAST* file;
 };
 
 ExprAST* Parser::ParseRead()
@@ -3089,11 +3069,13 @@ ExprAST* Parser::ParseRead()
 	{
 	    return 0;
 	}
-	CCRead ccr(args, file);
+	CCRead ccr;
 	if (!ParseCommaList(ccr, Token::RightParen, false))
 	{
 	    return 0;
 	}
+	file = ccr.File();
+	args = ccr.Args();
 	assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
     }
     return new ReadAST(loc, file, args, isReadln);
@@ -3298,7 +3280,6 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    return Error("Unexpected end of file");
 
 	case Token::Uses:
-	{
 	    curAst = ParseUses();
 	    if (UnitAST *ua = llvm::dyn_cast_or_null<UnitAST>(curAst))
 	    {
@@ -3310,14 +3291,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 		    }
 		}
 	    }
-	}
 	    break;
-
-#if 0
-	case Token::Semicolon:
-	    NextToken();
-	    break;
-#endif
 
 	case Token::Label:
 	    ParseLabels();
@@ -3355,11 +3329,9 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    break;
 
 	case Token::Implementation:
-	{
 	    /* Start a new level of names */
 	    AssertToken(Token::Implementation);
 	    break;
-	}
 
 	case Token::Begin:
 	{
@@ -3430,16 +3402,15 @@ ExprAST* Parser::Parse(ParserType type)
 Parser::Parser(Source &source)
     : lexer(source), nextTokenValid(false), errCnt(0)
 {
-    Types::TypeDecl* ty = Types::GetBooleanType();
     if (!(AddType("integer", Types::GetIntegerType()) &&
 	  AddType("longint", Types::GetLongIntType()) &&
 	  AddType("int64", Types::GetLongIntType()) &&
 	  AddType("real", Types::GetRealType()) &&
 	  AddType("char", Types::GetCharType()) &&
 	  AddType("text", Types::GetTextType()) &&
-	  AddType("boolean", ty) &&
-	  nameStack.Add("false", new EnumDef("false", 0, ty)) &&
-	  nameStack.Add("true", new EnumDef("true", 1, ty)) &&
+	  AddType("boolean", Types::GetBooleanType()) &&
+	  nameStack.Add("false", new EnumDef("false", 0, Types::GetBooleanType())) &&
+	  nameStack.Add("true", new EnumDef("true", 1, Types::GetBooleanType())) &&
 	  AddConst("maxint", new Constants::IntConstDecl(Location("", 0, 0), INT_MAX)) &&
 	  AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
     {

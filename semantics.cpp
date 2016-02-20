@@ -20,7 +20,7 @@ private:
     void CheckCallExpr(CallExprAST* c);
     void CheckForExpr(ForExprAST* f);
     void CheckReadExpr(ReadAST* f);
-    void CheckWriteExpr(ReadAST* f);
+    void CheckWriteExpr(WriteAST* f);
     void Error(const ExprAST* e, const std::string& msg) const;
 private:
     Semantics* sema;
@@ -146,6 +146,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (ReadAST* r = llvm::dyn_cast<ReadAST>(expr))
     {
 	CheckReadExpr(r);
+    }
+    else if (WriteAST* w = llvm::dyn_cast<WriteAST>(expr))
+    {
+	CheckWriteExpr(w);
     }
 }
 
@@ -581,7 +585,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 		}
 		if (bad)
 		{
-		    Error(arg, "Read argument must be simple type or array of char");
+		    Error(arg, "Read argument must be simple type or array of char or string");
 		}
 	    }
 	}
@@ -604,6 +608,57 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 		if (!r->file->Type()->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Read argument should match elements of the file");
+		}
+	    }
+	}
+    }
+}
+
+void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
+{
+    bool isText = llvm::isa<Types::TextDecl>(w->file->Type());
+
+    if (isText)
+    {
+	for(auto arg : w->args)
+	{
+	    ExprAST* e = arg.expr;
+	    if (e->Type()->IsCompound())
+	    {
+		bool bad = true;
+		if (Types::ArrayDecl* a = llvm::dyn_cast<Types::ArrayDecl>(e->Type()))
+		{
+		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
+		}
+		else 
+		{
+		    bad = !llvm::isa<Types::StringDecl>(e->Type());
+		}
+		if (bad)
+		{
+		    Error(e, "Write argument must be simple type or array of char or string");
+		}
+	    }
+	}
+    }
+    else
+    {
+	if (w->args.size() != 1)
+	{
+	    Error(w, "Write of binary file must have exactly one argument");
+	}
+	else
+	{
+	    ExprAST* arg = w->args[0].expr;
+	    if (!llvm::isa<VariableExprAST>(arg))
+	    {
+		Error(arg, "Invalid argument for binary write - must be a variable-expression");
+	    }
+	    else
+	    {
+		if (!w->file->Type()->SubType()->AssignableType(arg->Type()))
+		{
+		    Error(arg, "Write argument should match elements of the file");
 		}
 	    }
 	}

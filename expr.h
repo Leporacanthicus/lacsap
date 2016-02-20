@@ -576,6 +576,7 @@ private:
 
 class WriteAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
 public:
     struct WriteArg
     {

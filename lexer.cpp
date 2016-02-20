@@ -159,7 +159,7 @@ Token Lexer::StringToken()
 	    }
 	    NextChar();
 	}
-	if (ch == '\n')
+	if (ch == '\n' || ch == EOF)
 	{
 	    return Token(Token::Unknown, w);
 	}

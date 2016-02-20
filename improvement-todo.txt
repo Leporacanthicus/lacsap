@@ -5,6 +5,14 @@ This is a list of "things to improve in general".
 
 - Use proper names for types.
 
-- Add supprt for runtime checking of:
-   * 
-    
+- Add support for runtime checking of:
+   * Nil pointers
+   * dispose of NIL.
+   * range check of pack/unpack.
+   * Overflow check of sqr, trunc, round, succ, pred using llvm.*.with.overflow.iNN
+   * Invalid argument for log, ln,sqrt, etc
+   * chr needs range-check.
+   * Check for zero divisor on mod, div and /.
+   * Unknown 'case' label?
+   * Range check for reading ranged values.
+   * Range check for set assignment.

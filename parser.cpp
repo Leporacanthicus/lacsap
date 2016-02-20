@@ -1397,22 +1397,6 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
     return new IntegerExprAST(loc, val, GetTypeDecl(type));
 }
 
-ExprAST* Parser::ParseIntegerOrLabel(Token token)
-{
-    if (PeekToken().GetToken() == Token::Colon)
-    {
-	AssertToken(Token::Integer);
-	AssertToken(Token::Colon);
-	int n = token.GetIntVal();
-	if (!nameStack.FindTopLevel(std::to_string(n)))
-	{
-	    return Error("Can't use label in a different scope than the declaration");
-	}
-	return new LabelExprAST(token.Loc(), { (int)token.GetIntVal() }, NULL);
-    }
-    return ParseIntegerExpr(token);
-}
-
 ExprAST* Parser::ParseStringExpr(Token token)
 {
     int len =  std::max(1, (int)(token.GetStrVal().length()-1));
@@ -2423,6 +2407,7 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 	    int n = token.GetIntVal();
 	    if (!nameStack.FindTopLevel(std::to_string(n)))
 	    {
+		std::cerr << "Label=" << n << " at " << token.Loc() << std::endl;
 		return reinterpret_cast<BlockAST*>
 		    (Error("Can't use label in a different scope than the declaration"));
 	    }

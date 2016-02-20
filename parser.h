@@ -50,8 +50,6 @@ public:
     ExprAST* ParseSizeOfExpr();
     bool ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);
 
-    ExprAST* ParseIntegerOrLabel(Token token);
-
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);

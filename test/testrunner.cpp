@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <iomanip>
@@ -24,7 +25,7 @@ std::string replace_ext(const std::string &origName, const std::string& expected
     return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
 }
 
-int runCmd(const std::string& cmd)
+int RunCmd(const std::string& cmd)
 {
     std::cout << "Executing: " << cmd << std::endl;
     return system(cmd.c_str());
@@ -32,11 +33,34 @@ int runCmd(const std::string& cmd)
 
 bool Diff(const std::string& args)
 {
-    if (runCmd("diff " + args))
+    return !RunCmd("diff " + args);
+}
+
+bool Check(const std::string& errFile, const std::string& tplFile)
+{
+    std::ifstream tp(tplFile);
+    std::string tpStr;
+    bool result = true;
+    while(getline(tp, tpStr))
     {
-	return false;
+	std::ifstream err(errFile);
+	std::string eStr;
+	bool found = false;
+	while(getline(err, eStr))
+	{
+	    if (eStr == tpStr)
+	    {
+		found = true;
+		break;
+	    }
+	}
+	result &= found;
+	if (!found)
+	{
+	    std::cout << "Failed to find " << tpStr << std::endl;
+	}
     }
-    return true;
+    return result;
 }
 
 class TestCase
@@ -74,7 +98,7 @@ void TestCase::Clean()
 
 bool TestCase::Compile(const std::string& options)
 {
-    if (runCmd(compiler + " " + options + " " + Dir() + "/" + source) == 0)
+    if (RunCmd(compiler + " " + options + " " + Dir() + "/" + source) == 0)
     {
 	return true;
     }
@@ -85,7 +109,7 @@ bool TestCase::Run()
 {
     std::string exename = replace_ext(source, ".pas", "");
     std::string resname = replace_ext(source, ".pas", ".res");
-    if (runCmd("cd " + Dir() + "; ./" + exename + " " + args + " > " + resname ))
+    if (RunCmd("cd " + Dir() + "; ./" + exename + " " + args + " > " + resname ))
     {
 	return false;
     }
@@ -95,7 +119,7 @@ bool TestCase::Run()
 bool TestCase::Result()
 {
     std::string resname = Dir() + "/" + replace_ext(source, ".pas", ".res");
-    std::string tplname = "expected/" + replace_ext(source, ".pas", ".tpl");
+    std::string tplname = "expected/" + Dir() + "/" + replace_ext(source, ".pas", ".tpl");
     return Diff(resname + " " + tplname);
 }
 
@@ -196,9 +220,8 @@ bool CompileTimeError::Run()
 bool CompileTimeError::Result()
 {
     std::string errname = Dir() + "/" + replace_ext(source, ".pas", ".err");
-    std::string tplname = "expected/" + replace_ext(source, ".pas", ".tpl");
-//    return Check(errname,  tplname);
-    return true;
+    std::string tplname = "expected/" + Dir() + "/" + replace_ext(source, ".pas", ".tpl");
+    return Check(errname,  tplname);
 }
 
 TestCase* TestCaseFactory(const std::string& type,
@@ -397,7 +420,7 @@ TestEntry testCaseList[] =
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "File/infile.dat File/outfile.dat" },
     // get from files not supported.
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "File/infile.dat File/outfile.dat" },
-    { 0,           "File",  "File",          "file.pas",        "File/test1.txt expected/test1.txt" },
+    { 0,           "File",  "File",          "file.pas",        "File/test1.txt expected/File/test1.txt" },
 
     // Check that compiler doesn't get too slow.
     { 0,           "Time",  "LongCompile",   "longcompile.pas", "1000" },
@@ -408,6 +431,7 @@ TestEntry negativeCaseList[] =
 {
     { 0,           "CompErr", "Goto err",   "goto.pas", "" },
     { 0,           "CompErr", "Goto err2",  "goto2.pas", "" },
+    { 0,           "CompErr", "Goto err3",  "goto3.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

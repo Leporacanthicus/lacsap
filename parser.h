@@ -153,7 +153,6 @@ private:
     Token                 nextToken;
     bool                  nextTokenValid;
     std::string           moduleName;
-    std::string           fileName;
     int                   errCnt;
     Stack<const NamedObject*> nameStack;
     Stack<const NamedObject*> usedVariables;

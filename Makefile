@@ -1,5 +1,5 @@
 OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.o builtin.o \
-	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o
+	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o utils.o
 
 LLVM_DIR ?= /usr/local/llvm-debug
 

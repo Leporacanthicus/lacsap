@@ -7,7 +7,11 @@
 #include <chrono>
 #include <cassert>
 
-std::string compilers[] = {"../lacsap", "fpc -Mdelphi" };
+std::string compilers[] = 
+{
+    "../lacsap", 
+    "fpc -Mdelphi" 
+};
 std::string compiler = compilers[0];
 
 // TODO: Move this to a "utility" library?
@@ -46,6 +50,7 @@ public:
     virtual bool Compile(const std::string& options);
     virtual bool Run();
     virtual bool Result();
+    virtual std::string Dir() { return "Basic"; }
     std::string  Name() const;
     virtual ~TestCase() {}
 protected:
@@ -63,11 +68,15 @@ void TestCase::Clean()
 {
     std::string resname = replace_ext(source, ".pas", ".res");
     remove(resname.c_str());
+    std::string exename = replace_ext(source, ".pas", "");
+    remove(exename.c_str());
+    std::string objname = replace_ext(source, ".pas", ".o");
+    remove(objname.c_str());
 }
 
 bool TestCase::Compile(const std::string& options)
 {
-    if (runCmd(compiler + " " + options + " " + source) == 0)
+    if (runCmd(compiler + " " + options + " " + Dir() + "/" + source) == 0)
     {
 	return true;
     }
@@ -78,7 +87,7 @@ bool TestCase::Run()
 {
     std::string exename = replace_ext(source, ".pas", "");
     std::string resname = replace_ext(source, ".pas", ".res");
-    if (runCmd(std::string("./") + exename + " " + args + " > " + resname ))
+    if (runCmd("cd " + Dir() + "; ./" + exename + " " + args + " > " + resname ))
     {
 	return false;
     }
@@ -87,9 +96,9 @@ bool TestCase::Run()
 
 bool TestCase::Result()
 {
-    std::string resname = replace_ext(source, ".pas", ".res");
-    std::string tplname = replace_ext(source, ".pas", ".tpl");
-    return Diff(resname + " expected/" + tplname);
+    std::string resname = Dir() + "/" + replace_ext(source, ".pas", ".res");
+    std::string tplname = "expected/" + replace_ext(source, ".pas", ".tpl");
+    return Diff(resname + " " + tplname);
 }
 
 std::string TestCase::Name() const
@@ -102,6 +111,7 @@ class FileTestCase : public TestCase
 public:
     FileTestCase(const std::string& nm, const std::string& src, const std::string& arg);
     virtual bool Result();
+    virtual std::string Dir() { return "File"; }
 private:
     std::string diffArgs;
 };
@@ -123,6 +133,7 @@ public:
     TimeTestCase(const std::string& nm, const std::string& src, const std::string& arg);
     virtual bool Result();
     virtual bool Compile(const std::string& options);
+    virtual std::string Dir() { return "Time"; }
 private:
     long maxTime;  // In milliseconds.
     std::chrono::time_point<std::chrono::steady_clock> start, end;
@@ -155,6 +166,31 @@ bool TimeTestCase::Result()
     return true;
 }
 
+// Class to test compile detection of errors.
+class CompileTimeError : public TestCase
+{
+public:
+    CompileTimeError(const std::string& nm, const std::string& src, const std::string& arg);
+    bool Result();
+    bool Run();
+};
+
+CompileTimeError::CompileTimeError(const std::string& nm, const std::string& src, const std::string& arg)
+    : TestCase(nm, src, arg)
+{
+}
+
+bool CompileTimeError::Run()
+{
+    std::cerr << "Huh? Error is supposed to be detected before we get here" << std::endl;
+    return false;
+}
+
+bool CompileTimeError::Result()
+{
+    return false;
+}
+				// 
 TestCase* TestCaseFactory(const std::string& type,
 			  const std::string& name,
 			  const std::string& source,
@@ -168,6 +204,11 @@ TestCase* TestCaseFactory(const std::string& type,
     if (type == "Time")
     {
 	return new TimeTestCase(name, source, args);
+    }
+
+    if (type == "CompErr")
+    {
+	return new CompileTimeError(name, source, args);
     }
 
     assert(type == "Basic");
@@ -342,14 +383,13 @@ struct
     { LACSAP_ONLY, "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
     { 0,           "Basic", "Const Expr",    "consts.pas",      "" },
 
-    { 0,           "File",  "CopyFile",      "copyfile.pas",    "infile.dat outfile.dat" },
+    { 0,           "File",  "CopyFile",      "copyfile.pas",    "File/infile.dat File/outfile.dat" },
     // get from files not supported.
-    { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "infile.dat outfile.dat" },
-    { 0,           "File",  "File",          "file.pas",        "test1.txt expected/test1.txt" },
+    { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "File/infile.dat File/outfile.dat" },
+    { 0,           "File",  "File",          "file.pas",        "File/test1.txt expected/test1.txt" },
 
     { 0,           "Time",  "LongCompile",   "longcompile.pas", "1000" },
 };
-
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)
 {

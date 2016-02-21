@@ -8,9 +8,7 @@
 #include "trace.h"
 #include "builtin.h"
 #include <iostream>
-#include <fstream>
 #include <llvm/IR/LegacyPassManager.h>
-#include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/Scalar.h>
@@ -170,17 +168,9 @@ static int Compile(const std::string& fileName)
     return 0;
 }
 
-static void FindLibPath(const char* exename)
-{
-    char path[PATH_MAX];
-    std::string compiler = realpath(exename, path) ;
-    std::string::size_type pos = compiler.find_last_of("/");
-    libpath = compiler.substr(0, pos);
-}
-
 int main(int argc, char** argv)
 {
-    FindLibPath(argv[0]);
+    libpath = GetPath(argv[0]);
     llvm::cl::ParseCommandLineOptions(argc, argv);
     int res = Compile(InputFilename);
     return res;

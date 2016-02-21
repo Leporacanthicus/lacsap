@@ -3183,7 +3183,8 @@ ExprAST* Parser::ParseUses()
 	{
 	    /* TODO: Loop over comma separated list */
 	    strlower(unitname);
-	    std::string fileName = unitname + ".pas";
+	    std::string path = GetPath(CurrentToken().Loc().FileName());
+	    std::string fileName = path + "/" + unitname + ".pas";
 	    FileSource source(fileName);
 	    if (!source)
 	    {

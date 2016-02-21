@@ -297,6 +297,10 @@ ExprAST* Parser::ParseGoto()
 	int n = t.GetIntVal();
 	if (!nameStack.FindTopLevel(std::to_string(n)))
 	{
+	    if (!nameStack.Find(std::to_string(n)))
+	    {
+		return Error("Label not defined");
+	    }
 	    return Error("Label and GOTO need to be declared in the same scope");
 	}
 	return new GotoAST(t.Loc(), n);

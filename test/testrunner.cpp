@@ -379,6 +379,7 @@ TestEntry testCaseList[] =
     { 0,           "Basic", "General",       "general.pas",     "< general.in" },
     { 0,           "Basic", "Array",         "arr.pas",         "" },
     { 0,           "Basic", "Array 2",       "arr2.pas",        "" },
+    { 0,           "Basic", "Array 3",       "arr3.pas",        "" },
     { LACSAP_ONLY, "Basic", "param",         "param.pas",       "1 fun \"quoted string\"" },
     { LACSAP_ONLY, "Basic", "pi",            "pi.pas",          "" },
     // Sizes of types are different.
@@ -429,12 +430,19 @@ TestEntry testCaseList[] =
 // Keep "negative" tests in a separate category
 TestEntry negativeCaseList[] =
 {
-    { 0,           "CompErr", "Goto err",    "goto.pas", "" },
-    { 0,           "CompErr", "Goto err2",   "goto2.pas", "" },
-    { 0,           "CompErr", "Goto err3",   "goto3.pas", "" },
-    { 0,           "CompErr", "For w. real", "forreal.pas", "" },
-    { 0,           "CompErr", "For w. ptr",  "forptr.pas", "" },
-    { 0,           "CompErr", "For w. rec",  "forrec.pas", "" },
+    { 0,           "CompErr", "Goto err",    "goto.pas",     "" },
+    { 0,           "CompErr", "Goto err2",   "goto2.pas",    "" },
+    { 0,           "CompErr", "Goto err3",   "goto3.pas",    "" },
+    { 0,           "CompErr", "For w. real", "forreal.pas",  "" },
+    { 0,           "CompErr", "For w. ptr",  "forptr.pas",   "" },
+    { 0,           "CompErr", "For w. rec",  "forrec.pas",   "" },
+    { 0,           "CompErr", "Arr Index",   "arr.pas",      "" },
+    { 0,           "CompErr", "Case Else",   "caseelse.pas", "" },
+    { 0,           "CompErr", "Const",       "const.pas",    "" },
+    { 0,           "CompErr", "Const 2",     "const2.pas",   "" },
+    { 0,           "CompErr", "Crazy",       "crazy.pas",    "" },
+    { 0,           "CompErr", "Crazy 2",     "crazy2.pas",   "" },
+    { 0,           "CompErr", "Packed",      "packed.pas",   "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

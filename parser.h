@@ -123,14 +123,14 @@ public:
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
 
     /* Error functions - all the same except for the return type */
-    ExprAST* Error(const std::string& msg, const char* file = 0, int line = 0);
-    PrototypeAST* ErrorP(const std::string& msg);
-    FunctionAST* ErrorF(const std::string& msg);
-    Types::TypeDecl* ErrorT(const std::string& msg);
-    Types::RangeDecl* ErrorR(const std::string& msg);
-    VariableExprAST* ErrorV(const std::string& msg);
-    Constants::ConstDecl* ErrorC(const std::string& msg);
-    int ErrorI(const std::string& msg);
+    ExprAST* Error(Token t, const std::string& msg);
+    PrototypeAST* ErrorP(Token t, const std::string& msg);
+    FunctionAST* ErrorF(Token t, const std::string& msg);
+    Types::TypeDecl* ErrorT(Token t, const std::string& msg);
+    Types::RangeDecl* ErrorR(Token t, const std::string& msg);
+    VariableExprAST* ErrorV(Token t, const std::string& msg);
+    Constants::ConstDecl* ErrorC(Token t, const std::string& msg);
+    int ErrorI(Token t, const std::string& msg);
 
     // Helper functions for expression evaluation.
     bool     IsCall(const NamedObject* def);

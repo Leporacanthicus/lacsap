@@ -13,6 +13,7 @@ public:
 	: fname(""), lineNum(0), column(0) {}
     std::string to_string() const;
     std::string FileName() const { return fname; }
+    operator bool () { return fname != "" || lineNum != 0; }
     unsigned int LineNumber() const { return lineNum; }
     unsigned int Column() const { return column; }
 

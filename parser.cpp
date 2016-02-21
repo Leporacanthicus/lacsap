@@ -64,15 +64,16 @@ void UpdateCallVisitor::visit(ExprAST* expr)
     }
 }
 
-ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
+ExprAST* Parser::Error(Token t, const std::string& msg)
 {
-    if (file)
+    Location loc = t.Loc();
+    if (loc)
     {
-	std::cerr << file << ":" << line << ": ";
+	std::cerr << loc << " ";
     }
     std::cerr << "Error: " << msg << std::endl;
     errCnt++;
-    if (errCnt > 256)
+    if (errCnt > 30)
     {
 	std::cerr << "Too many errors, quitting..." << std::endl;
 	exit(1);
@@ -80,39 +81,39 @@ ExprAST* Parser::Error(const std::string& msg, const char* file, int line)
     return 0;
 }
 
-PrototypeAST* Parser::ErrorP(const std::string& msg)
+PrototypeAST* Parser::ErrorP(Token t, const std::string& msg)
 {
-    return reinterpret_cast<PrototypeAST*>(Error(msg));
+    return reinterpret_cast<PrototypeAST*>(Error(t, msg));
 }
 
-FunctionAST* Parser::ErrorF(const std::string& msg)
+FunctionAST* Parser::ErrorF(Token t, const std::string& msg)
 {
-    return reinterpret_cast<FunctionAST*>(Error(msg));
+    return reinterpret_cast<FunctionAST*>(Error(t, msg));
 }
 
-Types::TypeDecl* Parser::ErrorT(const std::string& msg)
+Types::TypeDecl* Parser::ErrorT(Token t, const std::string& msg)
 {
-    return reinterpret_cast<Types::TypeDecl*>(Error(msg));
+    return reinterpret_cast<Types::TypeDecl*>(Error(t, msg));
 }
 
-Types::RangeDecl* Parser::ErrorR(const std::string& msg)
+Types::RangeDecl* Parser::ErrorR(Token t, const std::string& msg)
 {
-    return reinterpret_cast<Types::RangeDecl*>(Error(msg));
+    return reinterpret_cast<Types::RangeDecl*>(Error(t, msg));
 }
 
-VariableExprAST* Parser::ErrorV(const std::string& msg)
+VariableExprAST* Parser::ErrorV(Token t, const std::string& msg)
 {
-    return reinterpret_cast<VariableExprAST*>(Error(msg));
+    return reinterpret_cast<VariableExprAST*>(Error(t, msg));
 }
 
-Constants::ConstDecl* Parser::ErrorC(const std::string& msg)
+Constants::ConstDecl* Parser::ErrorC(Token t, const std::string& msg)
 {
-    return reinterpret_cast<Constants::ConstDecl*>(Error(msg));
+    return reinterpret_cast<Constants::ConstDecl*>(Error(t, msg));
 }
 
-int Parser::ErrorI(const std::string& msg)
+int Parser::ErrorI(Token t, const std::string& msg)
 {
-    return reinterpret_cast<intptr_t>(Error(msg));
+    return reinterpret_cast<intptr_t>(Error(t, msg));
 }
 
 const Token& Parser::CurrentToken() const
@@ -161,9 +162,8 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
-	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
-	      "'.", file, line);
-	return false;
+	return Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
+		     "'.");
     }
     if (eatIt)
     {
@@ -189,8 +189,7 @@ void Parser::AssertToken(Token::TokenType type, const char *file, int line)
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
-	Error(std::string("Expected '") + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
-	      "'.", file, line);
+	Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" +  CurrentToken().ToString() + "'.");
 	assert(0 && "Unexpected token");
     }
     NextToken(file, line);
@@ -299,9 +298,9 @@ ExprAST* Parser::ParseGoto()
 	{
 	    if (!nameStack.Find(std::to_string(n)))
 	    {
-		return Error("Label not defined");
+		return Error(t, "Label not defined");
 	    }
-	    return Error("Label and GOTO need to be declared in the same scope");
+	    return Error(t, "Label and GOTO need to be declared in the same scope");
 	}
 	return new GotoAST(t.Loc(), n);
     }
@@ -331,7 +330,8 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 {
     if (!nameStack.Add(name, new ConstDef(name, cd)))
     {
-	return (bool)Error("Name " + name + " is already declared as a constant");
+	// TODO: Track location better.
+	return Error(CurrentToken(), "Name " + name + " is already declared as a constant");
     }
     return true;
 }
@@ -345,7 +345,8 @@ Types::TypeDecl* Parser::ParseSimpleType()
 	    AssertToken(Token::Identifier);
 	    return ty;
 	}
-	return ErrorT("Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
+	return ErrorT(CurrentToken(),
+		      "Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
     }
     return 0;
 }
@@ -402,19 +403,19 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	else
 	{
 	    tt = Token::Unknown;
-	    return ErrorI("Invalid constant, expected identifier for enumerated type");
+	    return ErrorI(CurrentToken(), "Invalid constant, expected identifier for enumerated type");
 	}
 	break;
     }
     default:
 	tt = Token::Unknown;
-	return ErrorI("Invalid constant value, expected char, integer or enum value");
+	return ErrorI(CurrentToken(), "Invalid constant value, expected char, integer or enum value");
     }
 
     if (oldtt != Token::Unknown && oldtt != tt)
     {
 	tt = Token::Unknown;
-	return ErrorI("Expected token to match type");
+	return ErrorI(CurrentToken(), "Expected token to match type");
     }
 
     NextToken();
@@ -423,7 +424,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	if (tt != Token::Integer)
 	{
 	    tt = Token::Unknown;
-	    return ErrorI("Invalid negative constant");
+	    return ErrorI(CurrentToken(), "Invalid negative constant");
 	}
 	result = -result;
     }
@@ -449,7 +450,7 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
 
     if (end <= start)
     {
-	return ErrorR("Invalid range specification");
+	return ErrorR(CurrentToken(), "Invalid range specification");
     }
     return new Types::RangeDecl(new Types::Range(start, end), type);
 }
@@ -462,7 +463,7 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 	{
 	    if (!type->IsIntegral())
 	    {
-		return ErrorR("Type used as index specification should be integral type");
+		return ErrorR(CurrentToken(), "Type used as index specification should be integral type");
 	    }
 	    AssertToken(Token::Identifier);
 	    return new Types::RangeDecl(type->GetRange(), type);
@@ -529,7 +530,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     case Token::StringLiteral:
 	if (unaryToken != Token::Unknown)
 	{
-	    return ErrorC("Unary + or - not allowed for string constants");
+	    return ErrorC(CurrentToken(), "Unary + or - not allowed for string constants");
 	}
 	cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
 	break;
@@ -548,7 +549,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     case Token::Real:
 	if (unaryToken == Token::Not)
 	{
-	    return ErrorC("Unary 'not' is not allowed for real constants");
+	    return ErrorC(CurrentToken(), "Unary 'not' is not allowed for real constants");
 	}
 	cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
 	break;
@@ -556,7 +557,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     case Token::Char:
 	if (unaryToken != Token::Unknown)
 	{
-	    return ErrorC("Unary + or - not allowed for char constants");
+	    return ErrorC(CurrentToken(), "Unary + or - not allowed for char constants");
 	}
 	cd = new Constants::CharConstDecl(loc, (char) CurrentToken().GetIntVal());
 	break;
@@ -573,7 +574,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 		}
 		else if (unaryToken != Token::Unknown)
 		{
-		    return ErrorC("Unary + or - not allowed for bool constants");
+		    return ErrorC(CurrentToken(), "Unary + or - not allowed for bool constants");
 		}
 		cd = new Constants::BoolConstDecl(loc, v);
 	    }
@@ -581,7 +582,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	    {
 		if (unaryToken != Token::Unknown)
 		{
-		    return ErrorC("Unary + or - not allowed for enum constants");
+		    return ErrorC(CurrentToken(), "Unary + or - not allowed for enum constants");
 		}
 		cd = new Constants::IntConstDecl(loc, ed->Value());
 	    }
@@ -591,7 +592,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	    if (!(cd = GetConstDecl(CurrentToken().GetIdentName())))
 	    {
 		NextToken();
-		return ErrorC("Expected constant name");
+		return ErrorC(CurrentToken(), "Expected constant name");
 	    }
 	    if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 	    {
@@ -614,7 +615,8 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 		}
 		else
 		{
-		    return ErrorC("Can't negate the type of " + CurrentToken().GetIdentName() +
+		    return ErrorC(CurrentToken(),
+				  "Can't negate the type of " + CurrentToken().GetIdentName() +
 				  " only integer and real types can be negated");
 		}
 	    }
@@ -703,7 +705,7 @@ void Parser::ParseConstDef()
 	const Constants::ConstDecl *cd = ParseConstExpr();
 	if (!cd)
 	{
-	    Error("Invalid constant value");
+	    Error(CurrentToken(), "Invalid constant value");
 	}
 	if (!AddConst(nm, cd))
 	{
@@ -727,7 +729,8 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
-	std::string nm = CurrentToken().GetIdentName();
+	Token token = CurrentToken();
+	std::string nm = token.GetIdentName();
 	AssertToken(Token::Identifier);
 	if (!Expect(Token::Equal, true))
 	{
@@ -737,7 +740,7 @@ void Parser::ParseTypeDef()
 	{
 	    if (!AddType(nm,  ty))
 	    {
-		Error("Name " + nm + " is already in use.");
+		Error(token, "Name " + nm + " is already in use.");
 		return;
 	    }
 	    if (ty->Type() == Types::TypeDecl::TK_Pointer &&
@@ -765,7 +768,8 @@ void Parser::ParseTypeDef()
 	}
 	else
 	{
-	    Error("Forward declared pointer type not declared: " + p->Name());
+	    // TODO: Store token?
+	    Error(CurrentToken(), "Forward declared pointer type not declared: " + p->Name());
 	    return;
 	}
     }
@@ -844,7 +848,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
 	    {
 		return reinterpret_cast<Types::EnumDecl*>
-		    (Error("Enumerated value by name " + v.name + " already exists..."));
+		    (Error(CurrentToken(), "Enumerated value by name " + v.name + " already exists..."));
 	    }
 	}
 	return ty;
@@ -873,7 +877,7 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 	    else
 	    {
 		return reinterpret_cast<Types::PointerDecl*>
-		    (Error("Unknown type '" + name + "' in pointer declaration"));
+		    (Error(CurrentToken(), "Unknown type '" + name + "' in pointer declaration"));
 	    }
 	}
 	// Otherwise, forward declare...
@@ -907,7 +911,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     }
     if (rv.empty())
     {
-	Error("Expected array size to be declared");
+	Error(CurrentToken(), "Expected array size to be declared");
 	return 0;
     }
     if (!Expect(Token::Of, true))
@@ -939,8 +943,10 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    auto f = std::find(b, e, *i);
 	    if (f != i && f != e)
 	    {
+		// TODO: Track location.
 		return reinterpret_cast<Types::VariantDecl*>
-		    (Error("Value already used: " + std::to_string(*i) + " in variant declaration"));
+		    (Error(CurrentToken(),
+			   "Value already used: " + std::to_string(*i) + " in variant declaration"));
 	    }
 	}
 	if (!Expect(Token::LeftParen, true))
@@ -974,8 +980,9 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 			{
 			    if (n == f->Name())
 			    {
+				// TODO: Track location.
 				return reinterpret_cast<Types::VariantDecl*>
-				    (Error("Duplicate field name '" + n + "' in record"));
+				    (Error(CurrentToken(), "Duplicate field name '" + n + "' in record"));
 			    }
 			}
 			// Variants can't be static, can they?
@@ -1046,7 +1053,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	    if (!markerTy->IsIntegral())
 	    {
-		return (bool)Error("Expect variant selector to be integral type");
+		return Error(CurrentToken(), "Expect variant selector to be integral type");
 	    }
 	    if (marker != "")
 	    {
@@ -1063,7 +1070,8 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	    }
 	    if (*markerTy != *type)
 	    {
-		return (bool)Error("Marker type does not match member variant type");
+		// TODO: This needs a better location.
+		return Error(CurrentToken(), "Marker type does not match member variant type");
 	    }
 	}
 	else if (isClass &&
@@ -1122,7 +1130,8 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			{
 			    if (n == f->Name())
 			    {
-				return (bool)Error("Duplicate field name '" + n + "' in record");
+				// TODO: Needs better location.
+				return Error(CurrentToken(), "Duplicate field name '" + n + "' in record");
 			    }
 			}
 			bool isStatic = false;
@@ -1162,7 +1171,8 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     }
     if (fields.size() == 0 && !variant)
     {
-	return reinterpret_cast<Types::RecordDecl*>(Error("No elements in record declaration"));
+	return reinterpret_cast<Types::RecordDecl*>
+	    (Error(CurrentToken(), "No elements in record declaration"));
     }
     return new Types::RecordDecl(fields, variant);
 }
@@ -1177,7 +1187,6 @@ Types::FileDecl* Parser::ParseFileDecl()
 
     if (Types::TypeDecl* type = ParseType("", false))
     {
-	assert(type && "Uh? Type is supposed to be set");
 	return new Types::FileDecl(type);
     }
     return 0;
@@ -1203,14 +1212,13 @@ Types::SetDecl* Parser::ParseSetDecl()
 
 unsigned Parser::ParseStringSize()
 {
-	Token token = TranslateToken(CurrentToken());
-
-	if (token.GetToken() != Token::Integer)
-	{
-	    return reinterpret_cast<uintptr_t>(Error("Expected integer value!"));
-	}
-	NextToken();
-	return token.GetIntVal();
+    Token token = TranslateToken(CurrentToken());
+    if (token.GetToken() != Token::Integer)
+    {
+	return ErrorI(token, "Expected integer value!");
+    }
+    NextToken();
+    return token.GetIntVal();
 }
 
 Types::StringDecl* Parser::ParseStringDecl()
@@ -1258,7 +1266,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string &name)
 	std::string baseName = CurrentToken().GetIdentName();
 	if (!(base = llvm::dyn_cast_or_null<Types::ClassDecl>(GetTypeDecl(baseName))))
 	{
-	    return reinterpret_cast<Types::ClassDecl*>(Error("Expected class as base"));
+	    return reinterpret_cast<Types::ClassDecl*>(Error(CurrentToken(), "Expected class as base"));
 	}
 	AssertToken(Token::Identifier);
 	if (!Expect(Token::RightParen, true))
@@ -1321,7 +1329,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 	tt = NextToken().GetToken();
 	if (tt != Token::Array && tt != Token::Record && tt != Token::Set && tt != Token::File)
 	{
-	    return ErrorT("Expected 'array', 'record', 'file' or 'set' after 'packed'");
+	    return ErrorT(CurrentToken(), "Expected 'array', 'record', 'file' or 'set' after 'packed'");
 	}
     }
 
@@ -1383,7 +1391,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     }
 
     default:
-	return ErrorT("Can't understand type");
+	return ErrorT(CurrentToken(), "Can't understand type");
     }
 }
 
@@ -1421,7 +1429,7 @@ void Parser::ParseLabels()
 	{
 	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
 	    {
-		Error("Multiple label defintions?");
+		Error(CurrentToken(), "Multiple label defintions?");
 		return;
 	    }
 	}
@@ -1549,7 +1557,7 @@ public:
 	    exprs.push_back(e);
 	    return true;
 	}
-	return parser.ErrorV("Expected index expression");
+	return parser.ErrorV(parser.CurrentToken(), "Expected index expression");
     }
     std::vector<ExprAST*>& Exprs() { return exprs; }
 private:
@@ -1563,7 +1571,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
     if (!adecl)
     {
-	return ErrorV("Expected variable of array type when using index");
+	return ErrorV(CurrentToken(), "Expected variable of array type when using index");
     }
     AssertToken(Token::LeftSquare);
     CCExpressions cce;
@@ -1600,7 +1608,7 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
 	    {
 		if (!indices.empty())
 		{
-		    return ErrorV("Too many indices");
+		    return ErrorV(CurrentToken(), "Too many indices");
 		}
 		return expr;
 	    }
@@ -1632,7 +1640,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
 	    }
 	    else
 	    {
-		return Error("Expected function pointer");;
+		return Error(CurrentToken(), "Expected function pointer");;
 	    }
 	}
     }
@@ -1752,7 +1760,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     }
     else
     {
-	return ErrorV("Attempt to use filed of variable that hasn't got fields");
+	return ErrorV(CurrentToken(), "Attempt to use field of variable that hasn't got fields");
     }
     if (!e && v)
     {
@@ -1782,7 +1790,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     }
     if (!e)
     {
-	return ErrorV("Can't find element " + name + " in " + typedesc);
+	return ErrorV(CurrentToken(), "Can't find element " + name + " in " + typedesc);
     }
     NextToken();
     return e;
@@ -1854,7 +1862,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		auto& funcArgs = proto->Args();
 		if (argNo >= funcArgs.size())
 		{
-		    return (bool)Error("Too many arguments");
+		    return (bool)Error(CurrentToken(), "Too many arguments");
 		}
 		Types::TypeDecl* td = funcArgs[argNo].Type();
 		if (td->Type() == Types::TypeDecl::TK_FuncPtr)
@@ -1927,9 +1935,9 @@ VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*&
 	    std::string name = objname + "$" + field;
 	    return new VariableExprAST(CurrentToken().Loc(), name, type);
 	}
-	return ErrorV("Expected static variable '" + field + "'");
+	return ErrorV(CurrentToken(), "Expected static variable '" + field + "'");
     }
-    return ErrorV("Expected member variabe name '" + field + "'");
+    return ErrorV(CurrentToken(), "Expected member variabe name '" + field + "'");
 }
 
 ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
@@ -2023,7 +2031,7 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
     bool isBuiltin = false;
     if (!def && !(isBuiltin = Builtin::IsBuiltin(idName)))
     {
-	return Error("Undefined name '" + idName + "'");
+	return Error(CurrentToken(), "Undefined name '" + idName + "'");
     }
     if (def)
     {
@@ -2126,7 +2134,8 @@ VarDeclAST* Parser::ParseVarDecls()
 		    varList.push_back(v);
 		    if (!nameStack.Add(n, new VarDef(n, type)))
 		    {
-			return reinterpret_cast<VarDeclAST*>(Error("Name '"+ n +"' is already defined"));
+			return reinterpret_cast<VarDeclAST*>
+			    (Error(CurrentToken(), "Name '"+ n +"' is already defined"));
 		    }
 		}
 		if (!Expect(Token::Semicolon, true))
@@ -2200,14 +2209,15 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		    }
 		    if (!membfunc)
 		    {
-			return ErrorP("Member function '" + m + "' not found in '"  + funcName + "'.");
+			return ErrorP(CurrentToken(),
+				      "Member function '" + m + "' not found in '"  + funcName + "'.");
 		    }
 		    funcName = membfunc->LongName();
 		}
 	    }
 	    if (!od)
 	    {
-		return ErrorP("Expected object name");
+		return ErrorP(CurrentToken(), "Expected object name");
 	    }
 	}
 	// See if it's a "forward declaration"?
@@ -2313,7 +2323,8 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     {
 	if (*resultType != *fwdProto->Type())
 	{
-	    return ErrorP("Forward declared function should have same return type as definition");
+	    return ErrorP(CurrentToken(),
+			  "Forward declared function should have same return type as definition.");
 	}
 	// Todo: Check argument types...
 	return fwdProto;
@@ -2359,14 +2370,14 @@ ExprAST* Parser::ParseStatement()
 		}
 		else
 		{
-		    return Error("Invalid assignment");
+		    return Error(CurrentToken(), "Invalid assignment");
 		}
 	    }
 	    return expr;
 	}
 	break;
     }
-    return Error("Syntax error");
+    return Error(CurrentToken(), "Syntax error");
 }
 
 BlockAST* Parser::ParseBlock(Location& endLoc)
@@ -2392,7 +2403,7 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 	    {
 		std::cerr << "Label=" << n << " at " << token.Loc() << std::endl;
 		return reinterpret_cast<BlockAST*>
-		    (Error("Can't use label in a different scope than the declaration"));
+		    (Error(CurrentToken(), "Can't use label in a different scope than the declaration"));
 	    }
 	    v.push_back(new LabelExprAST(token.Loc(), { n }, 0));
 	}
@@ -2436,7 +2447,8 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    int elem = cd->MembFunc(shortname);
 	    if (elem < 0)
 	    {
-		return ErrorF("Name '" + shortname + "' doesn't appear to be a member function...");
+		return ErrorF(CurrentToken(),
+			      "Name '" + shortname + "' doesn't appear to be a member function...");
 	    }
 	    nmObj = new MembFuncDef(shortname, elem, proto->BaseObj());
 	}
@@ -2451,7 +2463,8 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 	if (!nameStack.Add(name, nmObj))
 	{
-	    return ErrorF("Name '" + name + "' already exists...");
+	    return ErrorF(CurrentToken(),
+			  "Name '" + name + "' already exists...");
 	}
 	if (AcceptToken(Token::Forward))
 	{
@@ -2482,7 +2495,8 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
-	    return ErrorF("Duplicate name " + v.Name() + " (1)");
+	    return ErrorF(CurrentToken(),
+			  "Duplicate name '" + v.Name() + "'.");
 	}
     }
 
@@ -2559,7 +2573,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
 
 	default:
-	    return ErrorF("Unexpected token");
+	    return ErrorF(CurrentToken(), "Unexpected token.");
 	}
     }
     return 0;
@@ -2603,14 +2617,14 @@ ExprAST* Parser::ParseForExpr()
     AssertToken(Token::For);
     if (CurrentToken().GetToken() != Token::Identifier)
     {
-	return Error("Expected identifier name, got " + CurrentToken().ToString());
+	return Error(CurrentToken(), "Expected identifier name, got " + CurrentToken().ToString());
     }
     std::string varName = CurrentToken().GetIdentName();
     AssertToken(Token::Identifier);
     const NamedObject* def = nameStack.Find(varName);
     if (!def)
     {
-	return Error("Loop variable not found");
+	return Error(CurrentToken(), "Loop variable not found");
     }
     VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
     if (!Expect(Token::Assign, true))
@@ -2631,7 +2645,7 @@ ExprAST* Parser::ParseForExpr()
     }
     else
     {
-	return Error("Expected 'to' or 'downto', got " + CurrentToken().ToString());
+	return Error(CurrentToken(), "Expected 'to' or 'downto', got " + CurrentToken().ToString());
     }
 
     ExprAST* end = ParseExpression();
@@ -2716,7 +2730,7 @@ ExprAST* Parser::ParseCaseExpr()
 		 CurrentToken().GetToken() != Token::Else &&
 		 prevTT != CurrentToken().GetToken())
 	{
-	    return Error("Type of case labels must not change type");
+	    return Error(CurrentToken(), "Type of case labels must not change type");
 	}
 	switch(CurrentToken().GetToken())
 	{
@@ -2731,19 +2745,19 @@ ExprAST* Parser::ParseCaseExpr()
 		lab.push_back(ed->Value());
 		break;
 	    }
-	    return Error("Expected enumerated type value");
+	    return Error(CurrentToken(), "Expected enumerated type value");
 
 	case Token::Else:
 	case Token::Otherwise:
 	    if (otherwise)
 	    {
-		return Error("An 'otherwise' or 'else' already used in this case block");
+		return Error(CurrentToken(), "An 'otherwise' or 'else' already used in this case block");
 	    }
 	    isOtherwise = true;
 	    break;
 
 	default:
-	    return Error("Syntax error, expected case label");
+	    return Error(CurrentToken(), "Syntax error, expected case label");
 	}
 	if (CurrentToken().GetToken() != Token::Else && CurrentToken().GetToken() != Token::Otherwise)
 	{
@@ -2752,10 +2766,6 @@ ExprAST* Parser::ParseCaseExpr()
 	switch(CurrentToken().GetToken())
 	{
 	case Token::Comma:
-	    if (isOtherwise)
-	    {
-		return Error("Can't have multiple case labels with 'otherwise' or else 'case' label");
-	    }
 	    AssertToken(Token::Comma);
 	    break;
 
@@ -2770,8 +2780,8 @@ ExprAST* Parser::ParseCaseExpr()
 		otherwise = s;
 		if (lab.size())
 		{
-		    return Error("Can't have multiple case labels with 'otherwise' or 'else'"
-				 " case label");
+		    return Error(CurrentToken(), "Can't have multiple case labels with 'otherwise' "
+				 "or 'else' case label");
 		}
 	    }
 	    else
@@ -2787,7 +2797,7 @@ ExprAST* Parser::ParseCaseExpr()
 	}
 	
 	default:
-	    return Error("Syntax error: Expected ',' or ':' in case-statement.");
+	    return Error(CurrentToken(), "Syntax error: Expected ',' or ':' in case-statement.");
 	}
     } while(!AcceptToken(Token::End));
     return new CaseExprAST(loc, expr, labels, otherwise);
@@ -2863,13 +2873,15 @@ public:
 		}
 		else
 		{
-		    return (bool) parser.Error("Type for with statement should be a record type");
+		    return parser.Error(parser.CurrentToken(),
+					"Type for with statement should be a record type");
 		}
 
 	    }
 	    else
 	    {
-		return (bool)parser.Error("With statement must contain only variable expression");
+		return parser.Error(parser.CurrentToken(),
+				    "With statement must contain only variable expression");
 	    }
 	    return true;
 	}
@@ -2941,7 +2953,7 @@ public:
 		    wa.width = parser.ParseExpression();
 		    if (!wa.width)
 		    {
-			return (bool) parser.Error("Invalid width expression");
+			return parser.Error(parser.CurrentToken(), "Invalid width expression");
 		    }
 		}
 		if (parser.AcceptToken(Token::Colon))
@@ -2949,7 +2961,7 @@ public:
 		    wa.precision = parser.ParseExpression();
 		    if (!wa.precision)
 		    {
-			return (bool) parser.Error("Invalid precision expression");
+			return parser.Error(parser.CurrentToken(), "Invalid precision expression");
 		    }
 		}
 		args.push_back(wa);
@@ -2982,7 +2994,7 @@ ExprAST* Parser::ParseWrite()
     {
 	if (!isWriteln)
 	{
-	    return Error("Write must have arguments.");
+	    return Error(CurrentToken(), "Write must have arguments.");
 	}
 	file = new VariableExprAST(loc, "output", Types::GetTextType());
     }
@@ -3001,7 +3013,7 @@ ExprAST* Parser::ParseWrite()
 	args = ccw.Args();
 	if (!isWriteln && args.empty())
 	{
-	    return Error("At least one argument expected");
+	    return Error(CurrentToken(), "At least one argument expected");
 	}
     }
     return new WriteAST(loc, file, args, isWriteln);
@@ -3063,7 +3075,7 @@ ExprAST* Parser::ParseRead()
     {
 	if (!isReadln)
 	{
-	    return Error("Read must have arguments.");
+	    return Error(CurrentToken(), "Read must have arguments.");
 	}
 	file = new VariableExprAST(loc, "input", Types::GetTextType());
     }
@@ -3126,7 +3138,7 @@ ExprAST* Parser::ParsePrimary()
 
     default:
 	NextToken();
-	return Error("Syntax error");
+	return Error(CurrentToken(), "Syntax error");
     }
 }
 
@@ -3232,7 +3244,7 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    FuncDef* nmObj = new FuncDef(name, ty, proto);
 	    if (!nameStack.Add(name, nmObj))
 	    {
-		return ErrorF("Interface name '" + name + "' already exists in...");
+		return ErrorF(CurrentToken(), "Interface name '" + name + "' already exists in...");
 	    }
 	}
 	    break;
@@ -3246,7 +3258,7 @@ bool Parser::ParseInterface(InterfaceList &iList)
 
 	default:
 	    assert(0);
-	    Error("Unexpected token");
+	    Error(CurrentToken(), "Unexpected token");
 	    break;
 	}
     } while(CurrentToken().GetToken() != Token::Implementation);
@@ -3282,7 +3294,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	switch(CurrentToken().GetToken())
 	{
 	case Token::EndOfFile:
-	    return Error("Unexpected end of file");
+	    return Error(CurrentToken(), "Unexpected end of file");
 
 	case Token::Uses:
 	    curAst = ParseUses();
@@ -3362,7 +3374,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	case Token::End:
 	    if (type != Unit)
 	    {
-		return Error("Unexpected 'end' token");
+		return Error(CurrentToken(), "Unexpected 'end' token");
 	    }
 	    AssertToken(Token::End);
 	    if (!Expect(Token::Period, true))
@@ -3373,7 +3385,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    break;
 
 	default:
-	    Error("Unexpected token");
+	    Error(CurrentToken(), "Unexpected token");
 	    NextToken();
 	    break;
 	}

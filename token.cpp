@@ -10,7 +10,7 @@ Token::Token() : type(Token::Unknown), where("", 0, 0) {}
 
 Token::Token(TokenType t, const Location& w): type(t), where(w)
 {
-    if (where.to_string() != ":0:0")
+    if (where)
     {
 	assert(t != Token::Identifier &&
 	       t != Token::StringLiteral &&
@@ -218,7 +218,7 @@ static const TokenEntry* FindToken(std::string kw)
     return 0;
 }
 
-const char* Token::TypeStr() const
+std::string Token::TypeStr() const
 {
     const TokenEntry* t  = FindToken(type);
     return t->str;

@@ -162,7 +162,7 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
-	return Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" +  CurrentToken().ToString() +
+	return Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" +  CurrentToken().TypeStr() +
 		     "'.");
     }
     if (eatIt)
@@ -706,6 +706,7 @@ void Parser::ParseConstDef()
 	if (!cd)
 	{
 	    Error(CurrentToken(), "Invalid constant value");
+	    return;
 	}
 	if (!AddConst(nm, cd))
 	{

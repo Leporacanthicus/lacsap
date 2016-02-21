@@ -241,10 +241,9 @@ llvm::Value* MakeAddressable(ExprAST* e)
 {
     if (AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e))
     {
-	if (llvm::Value* v = ea->Address())
-	{
-	    return v;
-	}
+	llvm::Value* v = ea->Address();
+	assert(v && "Expect addressable object to have address");
+	return v;
     }
 
     llvm::Value* store = e->CodeGen();
@@ -280,8 +279,7 @@ llvm::Value* ErrorV(const std::string& msg)
 
 static llvm::Function* ErrorF(const std::string& msg)
 {
-    ErrorV(msg);
-    return 0;
+    return reinterpret_cast<llvm::Function*>(ErrorV(msg));
 }
 
 llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty)
@@ -440,13 +438,12 @@ void VariableExprAST::DoDump(std::ostream& out) const
 llvm::Value* VariableExprAST::Address()
 {
     TRACE();
-    llvm::Value* v = variables.Find(name);
-    if (!v)
+    if ( llvm::Value* v = variables.Find(name))
     {
-	return ErrorV("Unknown variable name '" + name + "'");
+	EnsureSized();
+	return v;
     }
-    EnsureSized();
-    return v;
+    return ErrorV("Unknown variable name '" + name + "'");
 }
 
 ArrayExprAST::ArrayExprAST(const Location& loc,
@@ -485,11 +482,8 @@ llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
     llvm::Value* v = expr->Address();
+    assert(v && "Expected variable to have an address");
     EnsureSized();
-    if (!v)
-    {
-	return ErrorV("Unknown variable name '" + name + "'");
-    }
     llvm::Value* totalIndex = 0;
     for(size_t i = 0; i < indices.size(); i++)
     {
@@ -975,7 +969,6 @@ llvm::Value* BinaryExprAST::CodeGen()
     if (!lhs->Type() || !rhs->Type())
     {
 	assert(0 && "Huh? Both sides of expression should have type");
-	return ErrorV("One or both sides of binary expression does not have a type...");
     }
 
     if (BothStringish(lhs, rhs))
@@ -1122,7 +1115,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     oper.dump(std::cout);
     r->dump();
     assert(0 && "Should not get here!");
-    return ErrorV("Huh?");
+    return 0;
 }
 
 void UnaryExprAST::DoDump(std::ostream& out) const
@@ -1153,20 +1146,17 @@ llvm::Value* UnaryExprAST::CodeGen()
 	case Token::Not:
 	    return builder.CreateNot(r, "not");
 	default:
-	    return ErrorV("Unknown token: " + oper.ToString());
+	    break;
 	}
     }
     if (rty == llvm::Type::DoubleTyID)
     {
-	switch(oper.GetToken())
+	if(oper.GetToken() == Token::Minus)
 	{
-	case Token::Minus:
 	    return builder.CreateFNeg(r, "minus");
-	default:
-	    return ErrorV("Unknown token: " + oper.ToString());
 	}
     }
-    return ErrorV("Unknown type: " + oper.ToString());
+    return ErrorV("Unknown operation: " + oper.ToString());
 }
 
 void CallExprAST::DoDump(std::ostream& out) const
@@ -1407,10 +1397,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	return ErrorF("redefinition of function: " + name);
     }
 
-    if (f->arg_size() != args.size())
-    {
-	return ErrorF("Change in number of arguemts for function: " + name);
-    }
+    assert(f->arg_size() == args.size() && "Expect number of arguments to match");
 
     auto a = args.begin();
     for(auto& arg : f->args())
@@ -2426,10 +2413,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
     {
 	Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
 	assert(ad && "Expect array declaration to expand!");
-	if (ad->SubType()->Type() != Types::TypeDecl::TK_Char)
-	{
-	    return ErrorF("Invalid type argument for write");
-	}
+	assert(ad->SubType()->Type() == Types::TypeDecl::TK_Char && "Expected char type");
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetCharType()->LlvmType());
 	argTypes.push_back(pty);
 	argTypes.push_back(intTy);
@@ -2448,10 +2432,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 static llvm::Constant* CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
 {
     assert(ty && "Type should not be NULL!");
-    if (!ty->isPointerTy())
-    {
-	return ErrorF("Write argument is not a variable type!");
-    }
+    assert(ty->isPointerTy() && "Expected pointer argument");
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     llvm::Constant* f = GetFunction(Types::GetVoidType(), { fty, voidPtrTy }, "__write_bin");
 
@@ -3203,8 +3184,7 @@ llvm::Value* RangeReduceAST::CodeGen()
     llvm::Value* index = expr->CodeGen();
 
     llvm::Type* ty = index->getType();
-    int start = range->Start();
-    if (start)
+    if (int start = range->Start())
     {
 	index = builder.CreateSub(index, MakeConstant(start, expr->Type()));
     }
@@ -3264,7 +3244,8 @@ llvm::Value* RangeCheckAST::CodeGen()
     llvm::Value* cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range");
-    llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue", theFunction);
+    llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue",
+							   theFunction);
     builder.CreateCondBr(cmp, oorBlock, contBlock);
 
     theFunction->getBasicBlockList().push_back(oorBlock);
@@ -3642,4 +3623,3 @@ void BackPatch()
     }
     BuildUnitInitList();
 }
-

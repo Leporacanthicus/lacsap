@@ -1,10 +1,9 @@
 #include "location.h"
-#include <algorithm>
-
+//#include <algorithm>
 
 std::string Location::to_string() const
 {
-    return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column); 
+    return fname+ ":" + std::to_string(lineNum) + ":" + std::to_string(column) + ":";
 }
 
 std::ostream& operator<<(std::ostream &os, const Location& loc)

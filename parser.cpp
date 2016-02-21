@@ -2733,26 +2733,27 @@ ExprAST* Parser::ParseCaseExpr()
 	{
 	    return Error(CurrentToken(), "Type of case labels must not change type");
 	}
-	switch(CurrentToken().GetToken())
+	Token token = TranslateToken(CurrentToken());
+	switch(token.GetToken())
 	{
 	case Token::Char:
 	case Token::Integer:
-	    lab.push_back(CurrentToken().GetIntVal());
+	    lab.push_back(token.GetIntVal());
 	    break;
 
 	case Token::Identifier:
-	    if (const EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
+	    if (const EnumDef* ed = GetEnumValue(token.GetIdentName()))
 	    {
 		lab.push_back(ed->Value());
 		break;
 	    }
-	    return Error(CurrentToken(), "Expected enumerated type value");
+	    return Error(CurrentToken(), "Expected constant or enumerated value");
 
 	case Token::Else:
 	case Token::Otherwise:
 	    if (otherwise)
 	    {
-		return Error(CurrentToken(), "An 'otherwise' or 'else' already used in this case block");
+		return Error(token, "An 'otherwise' or 'else' already used in this case block");
 	    }
 	    isOtherwise = true;
 	    break;

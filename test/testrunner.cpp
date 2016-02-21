@@ -429,9 +429,12 @@ TestEntry testCaseList[] =
 // Keep "negative" tests in a separate category
 TestEntry negativeCaseList[] =
 {
-    { 0,           "CompErr", "Goto err",   "goto.pas", "" },
-    { 0,           "CompErr", "Goto err2",  "goto2.pas", "" },
-    { 0,           "CompErr", "Goto err3",  "goto3.pas", "" },
+    { 0,           "CompErr", "Goto err",    "goto.pas", "" },
+    { 0,           "CompErr", "Goto err2",   "goto2.pas", "" },
+    { 0,           "CompErr", "Goto err3",   "goto3.pas", "" },
+    { 0,           "CompErr", "For w. real", "forreal.pas", "" },
+    { 0,           "CompErr", "For w. ptr",  "forptr.pas", "" },
+    { 0,           "CompErr", "For w. rec",  "forrec.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

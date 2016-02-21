@@ -98,7 +98,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 
 void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
 {
-    std::cerr << e->Loc() << ": " << msg << std::endl;
+    std::cerr << e->Loc() << " Error: " << msg << std::endl;
     sema->AddError();
 }
 

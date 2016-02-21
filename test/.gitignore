@@ -1,4 +1,13 @@
 *.res
+!Basic
+!File
+!Time
+!CompErr
 !expected
+!expected/Basic
+!expected/File
+!expected/Time
+!expected/CompErr
 *.dat
+*.err
 core.*

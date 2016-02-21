@@ -335,6 +335,7 @@ TestEntry testCaseList[] =
     // Case-statement using otherwise not available in FPC.
     // Alternative implementation in CaseCompat test.
     { LACSAP_ONLY, "Basic", "Case",          "case.pas",        "" },
+    { 0,           "Basic", "Case 2",        "case2.pas",       " < case2.in" },
     { 0,           "Basic", "CaseCompat",    "casecompat.pas",  "" },
     { 0,           "Basic", "TestSet",       "testset.pas",     "" },
     { 0,           "Basic", "TestSet 2",     "testset2.pas",    "" },

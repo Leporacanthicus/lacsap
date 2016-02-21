@@ -157,7 +157,7 @@ bool TimeTestCase::Result()
     long elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
     if (elapsed > maxTime)
     {
-	std::cerr << "Took too long to compiel  " << source << " "
+	std::cerr << "Took too long to compile  " << source << " "
 		  << std::fixed << std::setprecision(3) << elapsed << " ms" << std::endl;
 	return false;
     }
@@ -187,17 +187,20 @@ bool CompileTimeError::Compile(const std::string& options)
     return !res;
 }
 
-
 bool CompileTimeError::Run()
 {
+    // We don't run, just say "it's good".
     return true;
 }
 
 bool CompileTimeError::Result()
 {
+    std::string errname = Dir() + "/" + replace_ext(source, ".pas", ".err");
+    std::string tplname = "expected/" + replace_ext(source, ".pas", ".tpl");
+//    return Check(errname,  tplname);
     return true;
 }
-				// 
+
 TestCase* TestCaseFactory(const std::string& type,
 			  const std::string& name,
 			  const std::string& source,
@@ -283,7 +286,6 @@ private:
     std::map<std::string, int> failStageMap;
     std::vector<Failure> failedTests;
 };
-
 
 enum TestFlags
 {

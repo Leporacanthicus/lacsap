@@ -19,9 +19,7 @@ std::string replace_ext(const std::string &origName, const std::string& expected
 {
     if (origName.substr(origName.size() - expectedExt.size()) != expectedExt)
     {
-	std::cerr << "Could not find extension..." << std::endl;
-	exit(1);
-	return "";
+	assert(0 && "Could not find extension...");
     }
     return origName.substr(0, origName.size() - expectedExt.size()) + newExt;
 }
@@ -171,8 +169,10 @@ class CompileTimeError : public TestCase
 {
 public:
     CompileTimeError(const std::string& nm, const std::string& src, const std::string& arg);
+    bool Compile(const std::string& options);
     bool Result();
     bool Run();
+    virtual std::string Dir() { return "CompErr"; }
 };
 
 CompileTimeError::CompileTimeError(const std::string& nm, const std::string& src, const std::string& arg)
@@ -180,15 +180,22 @@ CompileTimeError::CompileTimeError(const std::string& nm, const std::string& src
 {
 }
 
+bool CompileTimeError::Compile(const std::string& options)
+{
+    std::string errname = Dir() + "/" + replace_ext(source, ".pas", ".err");
+    bool res = TestCase::Compile(options + " 2> " + errname);
+    return !res;
+}
+
+
 bool CompileTimeError::Run()
 {
-    std::cerr << "Huh? Error is supposed to be detected before we get here" << std::endl;
-    return false;
+    return true;
 }
 
 bool CompileTimeError::Result()
 {
-    return false;
+    return true;
 }
 				// 
 TestCase* TestCaseFactory(const std::string& type,
@@ -283,14 +290,16 @@ enum TestFlags
     LACSAP_ONLY = 1 << 0,
 };
 
-struct
+struct TestEntry
 {
     int flags;
     const char *type;
     const char *name;
     const char *source;
     const char *args;
-} testCaseList[] =
+};
+
+TestEntry testCaseList[] =
 {
     { 0,           "Basic", "Math",          "mathtest.pas",    "" },
     // Results differ due to different random number generator
@@ -388,7 +397,15 @@ struct
     { LACSAP_ONLY, "File",  "CopyFile2",     "copyfile2.pas",   "File/infile.dat File/outfile.dat" },
     { 0,           "File",  "File",          "file.pas",        "File/test1.txt expected/test1.txt" },
 
+    // Check that compiler doesn't get too slow.
     { 0,           "Time",  "LongCompile",   "longcompile.pas", "1000" },
+};
+
+// Keep "negative" tests in a separate category
+TestEntry negativeCaseList[] =
+{
+    { 0,           "CompErr", "Goto err",   "goto.pas", "" },
+    { 0,           "CompErr", "Goto err2",  "goto2.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)
@@ -435,6 +452,7 @@ int main(int argc, char **argv)
     };
     std::vector<std::string> others = { "", "-Cr", "-g" };
     int flags = 0;
+    int negative = false;
 
     for(int i = 1; i < argc; i++)
     {
@@ -444,17 +462,33 @@ int main(int argc, char **argv)
 	    mode = "-O1";
 	    flags |= LACSAP_ONLY;
 	}
+	else if (std::string(argv[i]) == "-N")
+	{
+	    negative = true;
+	}
 	else
 	{
 	    mode = argv[i];
 	}
     }
 
+    if (mode == "full" || !negative)
     for(auto t : testCaseList)
     {
 	if ((t.flags & flags) == 0)
 	{
 	    tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
+	}
+    }
+
+    if (mode == "full" || negative)
+    {
+	for(auto t : negativeCaseList)
+	{
+	    if ((t.flags & flags) == 0)
+	    {
+		tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
+	    }
 	}
     }
 

@@ -1,6 +1,10 @@
 *
 !*.*
 !test
+!test/Basic
+!test/File
+!test/Time
+!test/CompErr
 !runtime
 *.o
 *.o32

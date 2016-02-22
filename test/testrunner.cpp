@@ -441,6 +441,7 @@ TestEntry negativeCaseList[] =
     { 0,           "CompErr", "Case Else",   "caseelse.pas", "" },
     { 0,           "CompErr", "Const",       "const.pas",    "" },
     { 0,           "CompErr", "Const 2",     "const2.pas",   "" },
+    { 0,           "CompErr", "Const 3",     "const3.pas",   "" },
     { 0,           "CompErr", "Crazy",       "crazy.pas",    "" },
     { 0,           "CompErr", "Crazy 2",     "crazy2.pas",   "" },
     { 0,           "CompErr", "Packed",      "packed.pas",   "" },

@@ -118,6 +118,10 @@ public:
 	FileName,
 	SizeOf,
 
+	// Errors
+	Overflow,
+	UntermString,
+
 	EndOfFile  = -1, 
 	Unknown    = -1000,
     };

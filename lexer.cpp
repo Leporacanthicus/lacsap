@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cctype>
 #include <iostream>
+#include <cstdlib>
 
 Lexer::Lexer(Source& source) : source(source), curValid(0)
 {
@@ -12,8 +13,7 @@ Lexer::Lexer(Source& source) : source(source), curValid(0)
 
 int Lexer::GetChar()
 {
-    int ch = source.Get();
-    return ch;
+    return source.Get();
 }
 
 int Lexer::CurChar()
@@ -45,6 +45,29 @@ int Lexer::PeekChar()
     }
     curValid++;
     return nextChar = GetChar();
+}
+
+static Token ConvertFloat(std::string &num, Location w)
+{
+    double v = 0;
+    char *endPtr = 0;
+    v = strtod(num.c_str(), &endPtr);
+    if (*endPtr != 0)
+    {
+	return Token(Token::Overflow, w);
+    }
+    return Token(Token::Real, w, v);
+}
+
+static Token ConvertInt(std::string &num, Location w, int base)
+{
+    char *endPtr = 0;
+    uint64_t v = strtoull(num.c_str(), &endPtr, base);
+    if (*endPtr != 0 || (v == std::numeric_limits<unsigned long long>::max() && errno == ERANGE))
+    {
+	return Token(Token::Overflow, w);
+    }
+    return Token(Token::Integer, w, v);
 }
 
 Token Lexer::NumberToken()
@@ -120,6 +143,7 @@ Token Lexer::NumberToken()
 	    break;
 	}
 
+	// If the next char is a dot or an 'e'/'E', we have a floating point number.
 	if (ch == '.' && state != Fraction && base != 16)
 	{
 	    state = Fraction;
@@ -133,12 +157,11 @@ Token Lexer::NumberToken()
 	    state = Done;
 	}
     }
-    // If the next char is a dot or an 'e'/'E', we have a floating point number.
     if (isFloat)
     {
-	return Token(Token::Real, w, std::stod(num));
+	return ConvertFloat(num, w);
     }
-    return Token(Token::Integer, w, (uint64_t)std::stoull(num, 0, base));
+    return ConvertInt(num, w, base);
 }
 
 // String or character.
@@ -161,7 +184,7 @@ Token Lexer::StringToken()
 	}
 	if (ch == '\n' || ch == EOF)
 	{
-	    return Token(Token::Unknown, w);
+	    return Token(Token::UntermString, w);
 	}
 	str += ch;
 	ch = NextChar();

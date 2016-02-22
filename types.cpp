@@ -11,32 +11,6 @@ namespace Types
 {
     static std::vector<std::pair <TypeDecl*, llvm::TrackingMDRef>> fwdMap;
 
-    llvm::Type* ErrorT(const std::string& msg)
-    {
-	std::cerr << msg << std::endl;
-	return 0;
-    }
-
-    static const char* TypeToStr(TypeDecl::TypeKind t)
-    {
-	switch(t)
-	{
-	case TypeDecl::TK_Integer:
-	    return "Integer";
-	case TypeDecl::TK_Int64:
-	    return "Int64";
-	case TypeDecl::TK_Real:
-	    return "Real";
-	case TypeDecl::TK_Char:
-	    return "Char";
-	case TypeDecl::TK_Boolean:
-	    return "Boolean";
-	default:
-	    break;
-	}
-	return "Unknown";
-    }
-
     size_t TypeDecl::Size() const
     {
 	const llvm::DataLayout dl(theModule);
@@ -79,11 +53,6 @@ namespace Types
 	std::cerr << std::endl;
     }
 
-    void BasicTypeDecl::DoDump(std::ostream& out) const
-    {
-	out << "Type: " << TypeToStr(kind);
-    }
-
     llvm::Type* TypeDecl::LlvmType() const
     {
 	if (!lType)
@@ -100,6 +69,11 @@ namespace Types
 	    diType = GetDIType(builder);
 	}
 	return diType;
+    }
+
+    void CharDecl::DoDump(std::ostream& out) const
+    {
+	out << "Type: Char";
     }
 
     llvm::Type* CharDecl::GetLlvmType() const
@@ -134,6 +108,11 @@ namespace Types
 	return 0;
     }
 
+    void IntegerDecl::DoDump(std::ostream& out) const
+    {
+	out << "Type: Integer";
+    }
+
     llvm::Type* IntegerDecl::GetLlvmType() const
     {
 	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
@@ -164,6 +143,11 @@ namespace Types
 	    return ty;
 	}
 	return 0;
+    }
+
+    void Int64Decl::DoDump(std::ostream& out) const
+    {
+	out << "Type: Int64";
     }
 
     llvm::Type* Int64Decl::GetLlvmType() const
@@ -198,6 +182,11 @@ namespace Types
 	return 0;
     }
 
+    void RealDecl::DoDump(std::ostream& out) const
+    {
+	out << "Type: Real";
+    }
+
     llvm::Type* RealDecl::GetLlvmType() const
     {
 	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
@@ -219,16 +208,22 @@ namespace Types
 
     const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == TK_Integer || ty->Type() == TK_Int64)
-	{
-	    return this;
-	}
-	return 0;
+	return CompatibleType(ty);
+    }
+
+    void VoidDecl::DoDump(std::ostream& out) const
+    {
+	out << "Void";
     }
 
     llvm::Type* VoidDecl::GetLlvmType() const
     {
 	return llvm::Type::getVoidTy(llvm::getGlobalContext());
+    }
+
+    void BoolDecl::DoDump(std::ostream& out) const
+    {
+	out << "Type: Bool";
     }
 
     llvm::Type* BoolDecl::GetLlvmType() const
@@ -339,26 +334,24 @@ namespace Types
 
     bool ArrayDecl::SameAs(const TypeDecl* ty) const
     {
-	if (!CompoundDecl::SameAs(ty))
+	if (CompoundDecl::SameAs(ty))
 	{
-	    return false;
-	}
-
-	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
-	{
-	    if (ranges.size() != aty->Ranges().size())
+	    if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
 	    {
-		return false;
-	    }
-	    for(size_t i = 0; i < ranges.size(); i++)
-	    {
-		if (*ranges[i] != *aty->Ranges()[i])
+		if (ranges.size() != aty->Ranges().size())
 		{
 		    return false;
 		}
+		for(size_t i = 0; i < ranges.size(); i++)
+		{
+		    if (*ranges[i] != *aty->Ranges()[i])
+		    {
+			return false;
+		    }
+		}
+		
+		return true;
 	    }
-
-	    return true;
 	}
 	return false;
     }
@@ -450,8 +443,7 @@ namespace Types
 	unsigned int v = 0;
 	for(auto n : nmv)
 	{
-	    EnumValue e(n, v);
-	    values.push_back(e);
+	    values.push_back(EnumValue(n, v));
 	    v++;
 	}
     }
@@ -518,6 +510,7 @@ namespace Types
 	: CompoundDecl(TK_Function, p->Type()), proto(p)
     {
     }
+
     void FunctionDecl::DoDump(std::ostream& out) const
     {
 	out << "Function " << baseType;
@@ -918,8 +911,9 @@ namespace Types
 		int elem = (baseobj) ? baseobj->MembFunc(m->Proto()->Name()) : -1;
 		if (elem < 0)
 		{
-		    return ErrorT("Overriding function " + m->Proto()->Name() +
-				  " that is not a virtual function in the baseclass!");
+		    std::cerr << "Overriding function " + m->Proto()->Name() +
+			" that is not a virtual function in the baseclass!";
+		    return 0;
 		}
 		/* We need to continue digging here for multi-level functions */
 		MemberFuncDecl* mf = baseobj->GetMembFunc(elem);
@@ -1248,14 +1242,12 @@ namespace Types
 
     bool SetDecl::SameAs(const TypeDecl* ty) const
     {
-	if (!CompoundDecl::SameAs(ty))
+	if (CompoundDecl::SameAs(ty))
 	{
-	    return false;
-	}
-
-	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
-	{
-	    return sty->range && *range == *sty->range;
+	    if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
+	    {
+		return sty->range && *range == *sty->range;
+	    }
 	}
 	return false;
     }
@@ -1278,11 +1270,10 @@ namespace Types
 	{
 	    if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
 	    {
-		if (aty->Ranges().size() != 1)
+		if (aty->Ranges().size() == 1)
 		{
-		    return 0;
+		    return this;
 		}
-		return this;
 	    }
 	}
 	return 0;

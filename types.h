@@ -118,7 +118,6 @@ namespace Types
     {
     public:
 	using TypeDecl::TypeDecl;
-	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override { return kind == ty->Type(); }
     };
 
@@ -134,6 +133,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 8; }
+	void DoDump(std::ostream& out) const override;
 	bool HasLlvmType() const override { return true; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Char; }
     protected:
@@ -151,6 +151,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return true; }
+	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Integer; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -167,6 +168,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return true; }
+	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Int64; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -182,6 +184,7 @@ namespace Types
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned Bits() const override { return 64; }
 	bool HasLlvmType() const override { return true; }
+	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Real; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -196,6 +199,7 @@ namespace Types
 	}
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return 0; }
 	bool HasLlvmType() const override { return true; }
+	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Void; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -327,6 +331,7 @@ namespace Types
     public:
 	BoolDecl() :
 	    EnumDecl(TK_Boolean, std::vector<std::string>{"false", "true"}, this) { }
+	void DoDump(std::ostream& out) const override;
         bool SameAs(const TypeDecl* ty) const override { return ty == this; }
     protected:
 	llvm::Type* GetLlvmType() const override;

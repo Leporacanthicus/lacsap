@@ -138,16 +138,14 @@ public:
     TokenType GetToken() const { return type; }
     std::string GetIdentName() const 
     { 
-	assert(type == Token::Identifier && 
-	       "Incorrect type for identname");
+	assert(type == Token::Identifier && "Incorrect type for identname");
 	assert(strVal.size() != 0 && "String should not be empty!");
 	return strVal; 
     }
 
     uint64_t GetIntVal() const 
     { 
-	assert((type == Token::Integer ||
-		type == Token::Char) &&
+	assert((type == Token::Integer || type == Token::Char) &&
 	       "Request for integer value from wrong type???");
 	return intVal; 
     }

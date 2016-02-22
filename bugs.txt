@@ -134,10 +134,16 @@ Parser is completely b0rked. Accepts all kinds of nonsense.
 
 Fix in: a51e4d04d9bd89ffe889858047b387ad6d02aacb
 ----------------------------------------------------------------
-Bug15:
+Bug16:
 Date: 12-Feb-2016
 
 Lexer bails with exception on overflow.
 
 Fix in: 56777ec730158d293583a2d1fc97261f58472299
+----------------------------------------------------------------
+Bug17:
+Date: 22-Feb-2016
+
+Recursive unit causes crash.
+
 ----------------------------------------------------------------

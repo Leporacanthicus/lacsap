@@ -1970,6 +1970,10 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	}
 	if (!expr)
 	{
+	    if (Types::FunctionDecl *fd = llvm::dyn_cast<Types::FunctionDecl>(type))
+	    {
+		type = fd->Proto()->Type();
+	    }
 	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
 	    // Only add defined variables.
 	    // Ignore result - we may be adding the same variable
@@ -2496,8 +2500,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
-	    return ErrorF(CurrentToken(),
-			  "Duplicate name '" + v.Name() + "'.");
+	    return ErrorF(CurrentToken(), "Duplicate name '" + v.Name() + "'.");
 	}
     }
 
@@ -3213,6 +3216,16 @@ ExprAST* Parser::ParseUses()
 	    ExprAST* e = p.Parse(Unit);
 	    if (Expect(Token::Semicolon, true))
 	    {
+		if (UnitAST *ua = llvm::dyn_cast_or_null<UnitAST>(e))
+		{
+		    for(auto i : ua->Interface().List())
+		    {
+			if (!nameStack.Add(i.first, i.second))
+			{
+			    return 0;
+			}
+		    }
+		}
 		return e;
 	    }
 	}
@@ -3230,6 +3243,19 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	{
 	case Token::Type:
 	    ParseTypeDef();
+	    break;
+
+	case Token::Uses:
+	{
+	    if (ExprAST* e = ParseUses())
+	    {
+		ast.push_back(e);
+	    }
+	    else
+	    {
+		return false;
+	    }
+	}
 	    break;
 
 	case Token::Procedure:
@@ -3256,6 +3282,9 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    {
 		ast.push_back(v);
 	    }
+	    break;
+
+	case Token::Implementation:
 	    break;
 
 	default:
@@ -3300,16 +3329,6 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	case Token::Uses:
 	    curAst = ParseUses();
-	    if (UnitAST *ua = llvm::dyn_cast_or_null<UnitAST>(curAst))
-	    {
-		for(auto i : ua->Interface().List())
-		{
-		    if (!nameStack.Add(i.first, i.second))
-		    {
-			return 0;
-		    }
-		}
-	    }
 	    break;
 
 	case Token::Label:

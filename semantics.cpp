@@ -168,7 +168,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if (!lty->IsIntegral())
 	{
-	    Error(b, "Left hand of 'in' expression should be integral.");
+	    Error(b, "Left hand of 'in' expression should be integral type.");
 	}
 
 	if(Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
@@ -224,6 +224,21 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
 		    llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
 	    }
+	}
+	if (!lty->GetRange() && !rty->GetRange())
+	{
+	    Types::RangeDecl* r = GetRangeDecl(Types::GetIntegerType());
+	    Types::SetDecl* rs = llvm::dyn_cast<Types::SetDecl>(rty);
+	    Types::SetDecl* ls = llvm::dyn_cast<Types::SetDecl>(lty);
+	    
+	    if (!rs->SubType() && !ls->SubType())
+	    {
+		rs->UpdateSubtype(r->SubType());
+		ls->UpdateSubtype(r->SubType());
+	    }
+
+	    ls->UpdateRange(r);
+	    rs->UpdateRange(r);
 	}
 	
 	if (!lty->GetRange() && rty->GetRange())

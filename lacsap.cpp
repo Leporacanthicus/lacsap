@@ -156,11 +156,11 @@ static int Compile(const std::string& fileName)
 	BackPatch();
     }
 
-    mpm->run(*theModule);
     if (verbosity)
     {
 	DumpModule(theModule);
     }
+    mpm->run(*theModule);
     if (!CreateBinary(theModule, fileName, EmitSelection))
     {
 	return 1;

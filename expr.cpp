@@ -2052,7 +2052,8 @@ llvm::Value* IfExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    if (cond->Type() !=  Types::GetBooleanType())
+    assert(cond->Type() && "Expect type here");
+    if (*cond->Type() !=  *Types::GetBooleanType())
     {
 	assert(0 && "Only boolean expressions allowed in if-statement");
 	return 0;

@@ -2114,6 +2114,13 @@ ExprAST* Parser::ParseSetExpr()
 	if (!ccs.Values().empty())
 	{
 	    type = ccs.Values()[0]->Type();
+	    for(auto i = ccs.Values().begin()+1, e = ccs.Values().end(); i != e; i++)
+	    {
+		if ((*i)->Type() != type)
+		{
+		    return Error(CurrentToken(), "Not all elements of set are same type");
+		}
+	    }
 	}
 	return new SetExprAST(loc, ccs.Values(), new Types::SetDecl(NULL, type));
     }

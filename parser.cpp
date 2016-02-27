@@ -765,6 +765,11 @@ void Parser::ParseTypeDef()
     {
 	if (Types::TypeDecl* ty = GetTypeDecl(p->Name()))
 	{
+	    if (ty->IsIncomplete())
+	    {
+		Error(CurrentToken(), "Forward declared type '" + p->Name() + "' is incomplete.");
+		return;
+	    }
 	    p->SetSubType(ty);
 	}
 	else

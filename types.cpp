@@ -262,6 +262,10 @@ namespace Types
 
     bool CompoundDecl::SameAs(const TypeDecl* ty) const
     {
+	if (this == ty)
+	{
+	    return true;
+	}
         // Both need to be pointers!
 	if (Type() != ty->Type())
 	{

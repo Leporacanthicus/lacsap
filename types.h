@@ -82,6 +82,7 @@ namespace Types
 
 	virtual TypeKind Type() const { return kind; }
 	virtual ~TypeDecl() { }
+	virtual bool IsIncomplete() const { return false; }
 	virtual bool IsIntegral() const { return false; }
 	virtual bool IsCompound() const { return false; }
 	virtual bool IsStringLike() const { return false; }
@@ -356,7 +357,7 @@ namespace Types
 	    baseType = t; 
 	    incomplete = false;
 	}
-	bool IsIncomplete() const { return incomplete; }
+	bool IsIncomplete() const override { return incomplete; }
 	bool IsForward() const { return forward; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }

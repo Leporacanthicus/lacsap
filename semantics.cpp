@@ -11,6 +11,7 @@ public:
     TypeCheckVisitor(Semantics* s) : sema(s) {};
     void visit(ExprAST* expr) override;
 private:
+    void BinarySetUpdate(ExprAST* lhs, ExprAST* rhs);
     void CheckBinExpr(BinaryExprAST* b);
     void CheckAssignExpr(AssignExprAST* a);
     void CheckRangeExpr(RangeExprAST* r);
@@ -153,6 +154,58 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     }
 }
 
+
+void TypeCheckVisitor::BinarySetUpdate(ExprAST* lhs, ExprAST* rhs)
+{
+    Types::TypeDecl* lty = lhs->Type();
+    Types::TypeDecl* rty = rhs->Type();
+    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(lhs))
+    {
+	if (s->values.empty() && rty->SubType())
+	{
+	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
+		    llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
+	}
+    }
+    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(rhs))
+    {
+	if (s->values.empty() && lty->SubType())
+	{
+	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
+		llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
+	}
+    }
+    if (!lty->GetRange() && !rty->GetRange())
+    {
+	Types::RangeDecl* r = GetRangeDecl(Types::GetIntegerType());
+	Types::SetDecl* rs = llvm::dyn_cast<Types::SetDecl>(rty);
+	Types::SetDecl* ls = llvm::dyn_cast<Types::SetDecl>(lty);
+	
+	if (!rs->SubType() && !ls->SubType())
+	{
+	    rs->UpdateSubtype(r->SubType());
+	    ls->UpdateSubtype(r->SubType());
+	}
+	else
+	{
+	    r = GetRangeDecl(rs->SubType());
+	}
+	
+	ls->UpdateRange(r);
+	rs->UpdateRange(r);
+    }
+    
+    if (!lty->GetRange() && rty->GetRange())
+    {
+	llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
+    }
+    if (!rty->GetRange() && lty->GetRange())
+    {
+	llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
+    }
+}
+
+
 void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 {
     TRACE();
@@ -217,54 +270,12 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
-	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
-	{
-	    if (s->values.empty() && rty->SubType())
-	    {
-		llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
-		    llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
-	    }
-	}
-	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
-	{
-	    if (s->values.empty() && lty->SubType())
-	    {
-		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
-		    llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
-	    }
-	}
-	if (!lty->GetRange() && !rty->GetRange())
-	{
-	    Types::RangeDecl* r = GetRangeDecl(Types::GetIntegerType());
-	    Types::SetDecl* rs = llvm::dyn_cast<Types::SetDecl>(rty);
-	    Types::SetDecl* ls = llvm::dyn_cast<Types::SetDecl>(lty);
-	    
-	    if (!rs->SubType() && !ls->SubType())
-	    {
-		rs->UpdateSubtype(r->SubType());
-		ls->UpdateSubtype(r->SubType());
-	    }
-	    else
-	    {
-		r = GetRangeDecl(rs->SubType());
-	    }
-
-	    ls->UpdateRange(r);
-	    rs->UpdateRange(r);
-	}
-	
-	if (!lty->GetRange() && rty->GetRange())
-	{
-	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
-	}
-	if (!rty->GetRange() && lty->GetRange())
-	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
-	}
+	BinarySetUpdate(b->lhs, b->rhs);
 	if (*lty->SubType() != *rty->SubType())
 	{
 	    Error(b, "Set type content isn't the same!");
 	}
+	
 	ty = rty;
     }
 

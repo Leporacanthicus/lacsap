@@ -3249,7 +3249,7 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
     llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
     llvm::Value* src = MakeAddressable(expr);
     size_t p = 0;
-    for(auto i = lrange->Start(); i < lrange->End(); i++)
+    for(auto i = lrange->Start(); i < lrange->End(); i += Types::SetDecl::SetBits)
     {
 	if (i >= (rrange->Start() & ~Types::SetDecl::SetMask) && i < rrange->End())
 	{

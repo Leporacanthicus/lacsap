@@ -11,7 +11,7 @@ public:
     TypeCheckVisitor(Semantics* s) : sema(s) {};
     void visit(ExprAST* expr) override;
 private:
-    void BinarySetUpdate(ExprAST* lhs, ExprAST* rhs);
+    Types::TypeDecl* BinarySetUpdate(BinaryExprAST* b);
     void CheckBinExpr(BinaryExprAST* b);
     void CheckAssignExpr(AssignExprAST* a);
     void CheckRangeExpr(RangeExprAST* r);
@@ -154,12 +154,11 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     }
 }
 
-
-void TypeCheckVisitor::BinarySetUpdate(ExprAST* lhs, ExprAST* rhs)
+Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
-    Types::TypeDecl* lty = lhs->Type();
-    Types::TypeDecl* rty = rhs->Type();
-    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(lhs))
+    Types::TypeDecl* lty = b->lhs->Type();
+    Types::TypeDecl* rty = b->rhs->Type();
+    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
     {
 	if (s->values.empty() && rty->SubType())
 	{
@@ -167,7 +166,7 @@ void TypeCheckVisitor::BinarySetUpdate(ExprAST* lhs, ExprAST* rhs)
 		    llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
 	}
     }
-    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(rhs))
+    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
     {
 	if (s->values.empty() && lty->SubType())
 	{
@@ -203,8 +202,35 @@ void TypeCheckVisitor::BinarySetUpdate(ExprAST* lhs, ExprAST* rhs)
     {
 	llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
     }
-}
 
+    Types::Range* lr = lty->GetRange();
+    Types::Range* rr = rty->GetRange();
+
+    if (*lty->SubType() != *rty->SubType())
+    {
+	Error(b, "Set type content isn't the same!");
+    }
+    else if (rr && lr && *rr != *lr)
+    {
+	Types::Range* range = new Types::Range(std::min(lr->Start(), rr->Start()),
+					       std::max(lr->End(), rr->End()));
+
+	Types::RangeDecl* r = new Types::RangeDecl(range, rty->SubType());
+	Types::SetDecl* set = new Types::SetDecl(r, rty->SubType());
+
+	if (*set != *lty)
+	{
+	    ExprAST* e = b->lhs;
+	    b->lhs = new TypeCastAST(e->Loc(), e, set);
+	}
+	if (*set != *rty)
+	{
+	    ExprAST* e = b->rhs;
+	    b->rhs = new TypeCastAST(e->Loc(), e, set);
+	}
+    }
+    return rty;
+}
 
 void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 {
@@ -270,13 +296,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
     {
-	BinarySetUpdate(b->lhs, b->rhs);
-	if (*lty->SubType() != *rty->SubType())
-	{
-	    Error(b, "Set type content isn't the same!");
-	}
-	
-	ty = rty;
+	ty = BinarySetUpdate(b);
     }
 
     if (!ty && (op == Token::Plus))

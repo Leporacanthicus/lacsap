@@ -153,3 +153,16 @@ Date: 28-Feb-2016
 Read of char array is not supported.
 
 ----------------------------------------------------------------
+Bug19:
+Date: 28-Feb-2016
+
+Assigning out of range values to set may lead to compiler crash.
+
+Eg. 
+   var s : set of 20..100;
+
+   begin
+      s := [2,3,5];
+   end.
+
+----------------------------------------------------------------

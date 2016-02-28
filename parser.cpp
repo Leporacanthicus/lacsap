@@ -2272,6 +2272,10 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		CurrentToken().GetToken() == Token::Procedure)
 	    {
 		PrototypeAST* proto = ParsePrototype(false);
+		if (!proto)
+		{
+		    return 0;
+		}
 		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
 		VarDef v(proto->Name(), type, false);
 		args.push_back(v);

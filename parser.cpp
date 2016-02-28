@@ -3236,6 +3236,7 @@ ExprAST* Parser::ParseUses()
 	    }
 	    Parser p(source);
 	    ExprAST* e = p.Parse(Unit);
+	    errCnt += p.GetErrors();
 	    if (Expect(Token::Semicolon, true))
 	    {
 		if (UnitAST *ua = llvm::dyn_cast_or_null<UnitAST>(e))

@@ -2650,7 +2650,11 @@ llvm::Value* ReadAST::CodeGen()
 	{
 	    fn = CreateReadBinFunc(ty, fTy);
 	}
-	
+
+	if (!fn)
+	{
+	    return 0;
+	}
 	v = builder.CreateCall(fn, argsV, "");
     }
     if (isReadln)

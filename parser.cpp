@@ -3307,8 +3307,8 @@ bool Parser::ParseInterface(InterfaceList &iList)
 	    break;
 
 	default:
-	    assert(0);
 	    Error(CurrentToken(), "Unexpected token");
+	    return false;
 	    break;
 	}
     } while(CurrentToken().GetToken() != Token::Implementation);

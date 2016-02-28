@@ -905,7 +905,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	return 0;
     }
     std::vector<Types::RangeDecl*> rv;
-    Types::TypeDecl* type = NULL;
+    Types::TypeDecl* type = 0;
     while(!AcceptToken(Token::RightSquare))
     {
 	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
@@ -1214,6 +1214,10 @@ Types::SetDecl* Parser::ParseSetDecl()
     Types::TypeDecl* type;
     if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
     {
+	if (r->GetRange()->Size() > Types::SetDecl::MaxSetSize)
+	{
+	    return reinterpret_cast<Types::SetDecl*>(ErrorT(CurrentToken(), "Set too large"));
+	}
 	assert(type && "Uh? Type is supposed to be set");
 	return new Types::SetDecl(r, type);
     }
@@ -1360,7 +1364,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     case Token::Char:
     case Token::Minus:
     {
-	Types::TypeDecl*  type = NULL;
+	Types::TypeDecl*  type = 0;
 	if (Types::RangeDecl* r = ParseRange(type))
 	{
 	    return r;
@@ -2064,7 +2068,7 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
 	return 0;
     }
 
-    if (ExprAST* expr = MakeCallExpr(NULL, def, idName, args))
+    if (ExprAST* expr = MakeCallExpr(0, def, idName, args))
     {
 	return expr;
     }
@@ -2121,7 +2125,7 @@ ExprAST* Parser::ParseSetExpr()
     CCSetList ccs;
     if (ParseCommaList(ccs, Token::RightSquare, true))
     {
-	Types::TypeDecl* type = NULL;
+	Types::TypeDecl* type = 0;
 	if (!ccs.Values().empty())
 	{
 	    type = ccs.Values()[0]->Type();
@@ -2133,7 +2137,7 @@ ExprAST* Parser::ParseSetExpr()
 		}
 	    }
 	}
-	return new SetExprAST(loc, ccs.Values(), new Types::SetDecl(NULL, type));
+	return new SetExprAST(loc, ccs.Values(), new Types::SetDecl(0, type));
     }
     return 0;
 }

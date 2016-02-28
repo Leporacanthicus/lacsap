@@ -270,16 +270,20 @@ void ExprAST::dump(void) const
     dump(std::cerr);
 }
 
-llvm::Value* ErrorV(const std::string& msg)
+static llvm::Value* ErrorV(const ExprAST* e, const std::string& msg)
 {
+    if (e && e->Loc())
+    {
+	std::cerr << e->Loc() << ": ";
+    }
     std::cerr << msg << std::endl;
     errCnt++;
     return 0;
 }
 
-static llvm::Function* ErrorF(const std::string& msg)
+static llvm::Function* ErrorF(const ExprAST* e, const std::string& msg)
 {
-    return reinterpret_cast<llvm::Function*>(ErrorV(msg));
+    return reinterpret_cast<llvm::Function*>(ErrorV(e, msg));
 }
 
 llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty)
@@ -443,7 +447,7 @@ llvm::Value* VariableExprAST::Address()
 	EnsureSized();
 	return v;
     }
-    return ErrorV("Unknown variable name '" + name + "'");
+    return ErrorV(this, "Unknown variable name '" + name + "'");
 }
 
 ArrayExprAST::ArrayExprAST(const Location& loc,
@@ -533,7 +537,7 @@ llvm::Value* FieldExprAST::Address()
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(element) };
 	return builder.CreateGEP(v, ind, "valueindex");
     }
-    return ErrorV("Expression did not form an address");
+    return ErrorV(this, "Expression did not form an address");
 }
 
 void FieldExprAST::accept(ASTVisitor& v)
@@ -613,7 +617,7 @@ llvm::Value* FunctionExprAST::CodeGen()
 	BasicDebugInfo(this);
 	return theModule->getFunction(mm->Name());
     }
-    return ErrorV("Name " + name + " could not be found...");
+    return ErrorV(this, "Name " + name + " could not be found...");
 }
 
 llvm::Value* FunctionExprAST::Address()
@@ -915,10 +919,10 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	}
 
 	default:
-	    return ErrorV("Unknown operator on set");
+	    return ErrorV(this, "Unknown operator on set");
 	}
     }
-    return ErrorV("Invalid arguments in set operation");
+    return ErrorV(this, "Invalid arguments in set operation");
 }
 
 llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
@@ -944,7 +948,7 @@ llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
 	return builder.CreateICmpSLT(v, MakeIntegerConstant(0), "lt");
 
     default:
-	return ErrorV("Invalid operand for char arrays");
+	return ErrorV(0, "Invalid operand for char arrays");
     }
 }
 
@@ -1077,7 +1081,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateICmpSGE(l, r, "ge");
 
 	default:
-	    return ErrorV("Unknown token: " + oper.ToString());
+	    return ErrorV(this, "Unknown token: " + oper.ToString());
 	}
     }
     if (rty->isDoubleTy())
@@ -1107,7 +1111,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateFCmpOGE(l, r, "ge");
 
 	default:
-	    return ErrorV("Unknown token: " + oper.ToString());
+	    return ErrorV(this, "Unknown token: " + oper.ToString());
 	}
     }
 
@@ -1156,7 +1160,7 @@ llvm::Value* UnaryExprAST::CodeGen()
 	    return builder.CreateFNeg(r, "minus");
 	}
     }
-    return ErrorV("Unknown operation: " + oper.ToString());
+    return ErrorV(this, "Unknown operation: " + oper.ToString());
 }
 
 void CallExprAST::DoDump(std::ostream& out) const
@@ -1179,14 +1183,14 @@ llvm::Value* CallExprAST::CodeGen()
     llvm::Value* calleF = callee->CodeGen();
     if (!calleF)
     {
-	return ErrorV("Unknown function '" + proto->Name() + "' referenced");
+	return ErrorV(this, "Unknown function '" + proto->Name() + "' referenced");
     }	
 
     const std::vector<VarDef>& vdef = proto->Args();
     if (vdef.size() != args.size())
     {
 	proto->dump();
-	return ErrorV("Incorrect number of arguments for " + proto->Name() + ".");
+	return ErrorV(this, "Incorrect number of arguments for " + proto->Name() + ".");
     }
 
     std::vector<llvm::Value*> argsV;
@@ -1217,7 +1221,7 @@ llvm::Value* CallExprAST::CodeGen()
 
 		    if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
 		    {
-			return ErrorV("Argument declared with 'var' must be a variable!");
+			return ErrorV(this, "Argument declared with 'var' must be a variable!");
 		    }
 
 		    if (!(v = tc->Address()))
@@ -1349,7 +1353,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	Types::TypeDecl* ty = i.Type();
 	if (!ty)
 	{
-	    return ErrorF("Invalid type for argument" + i.Name() + "...");
+	    return ErrorF(this, "Invalid type for argument" + i.Name() + "...");
 	}
 	llvm::Type* argTy = ty->LlvmType();
 	
@@ -1386,7 +1390,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	assert(Function() && "Expect there to ba function here");
 	if (!mangles.Add(name, new MangleMap(actualName, Function())))
 	{
-	    return ErrorF("Name " + name + " already in use?");
+	    return ErrorF(this, "Name " + name + " already in use?");
 	}
     }
 
@@ -1394,7 +1398,7 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     assert(f && "Should have found a function here!");
     if (!f->empty())
     {
-	return ErrorF("redefinition of function: " + name);
+	return ErrorF(this, "redefinition of function: " + name);
     }
 
     assert(f->arg_size() == args.size() && "Expect number of arguments to match");
@@ -1447,7 +1451,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    a = builder.CreateLoad(a);
 	    if (!variables.Add(f->Name(), a))
 	    {
-		ErrorF("Duplicate variable name " + f->Name());
+		ErrorF(this, "Duplicate variable name " + f->Name());
 	    }
 	}
 	// Now "done" with this argument, so skip to next.
@@ -1467,7 +1471,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	}
 	if (!variables.Add(args[idx].Name(), a))
 	{
-	    ErrorF("Duplicate variable name " + args[idx].Name());
+	    ErrorF(this, "Duplicate variable name " + args[idx].Name());
 	}
 
 	if (debugInfo)
@@ -1504,7 +1508,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
 	if (!variables.Add(shortname, a))
 	{
-	    ErrorF("Duplicate function result name '" + shortname + "'.");
+	    ErrorF(this, "Duplicate function result name '" + shortname + "'.");
 	}
     }
 }
@@ -1906,7 +1910,7 @@ llvm::Value* AssignExprAST::CodeGen()
     VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
     if (!lhsv)
     {
-	return ErrorV("Left hand side of assignment must be a variable");
+	return ErrorV(this, "Left hand side of assignment must be a variable");
     }
 
     if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
@@ -1938,7 +1942,7 @@ llvm::Value* AssignExprAST::CodeGen()
     llvm::Value* dest = lhsv->Address();
     if (!dest)
     {
-	return ErrorV("Unknown variable name '" + lhsv->Name() + "'");
+	return ErrorV(this, "Unknown variable name '" + lhsv->Name() + "'");
     }
 
     // If rhs is a simple variable, and "large", then use memcpy on it!
@@ -1960,7 +1964,7 @@ llvm::Value* AssignExprAST::CodeGen()
 	builder.CreateStore(v, dest);
 	return v;
     }
-    return ErrorV("Could not produce expression for assignment");
+    return ErrorV(this, "Could not produce expression for assignment");
 }
 
 void IfExprAST::DoDump(std::ostream& out) const
@@ -2371,7 +2375,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
     default:
 	ty->dump(std::cerr);
 	assert(0);
-	return ErrorF("Invalid type argument for write");
+	return ErrorF(0, "Invalid type argument for write");
     }
     return GetFunction(Types::GetVoidType(), argTypes, "__write_" + suffix);
 }
@@ -2393,7 +2397,7 @@ llvm::Value* WriteAST::CodeGen()
     BasicDebugInfo(this);
 
     llvm::Value* f = file->Address();
-    llvm::Value* v = NULL;
+    llvm::Value* v = 0;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
     for(auto arg: args)
     {
@@ -2446,7 +2450,7 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    if (!v)
 	    {
-		return ErrorV("Argument codegen failed");
+		return ErrorV(this, "Argument codegen failed");
 	    }
 	    argsV.push_back(v);
 	    llvm::Value* w = MakeIntegerConstant(0);
@@ -2458,7 +2462,7 @@ llvm::Value* WriteAST::CodeGen()
 
 	    if (!w->getType()->isIntegerTy())
 	    {
-		return ErrorV("Expected width to be integer value");
+		return ErrorV(this, "Expected width to be integer value");
 	    }
 	    argsV.push_back(w);
 	    if (type->Type() == Types::TypeDecl::TK_Real)
@@ -2469,7 +2473,7 @@ llvm::Value* WriteAST::CodeGen()
 		    p = arg.precision->CodeGen();
 		    if (!p->getType()->isIntegerTy())
 		    {
-			return ErrorV("Expected precision to be integer value");
+			return ErrorV(this, "Expected precision to be integer value");
 		    }
 		}
 		else
@@ -2552,7 +2556,7 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	break;
 
     default:
-	return ErrorF("Invalid type argument for read");
+	return ErrorF(0, "Invalid type argument for read");
     }
     return GetFunction(Types::GetVoidType(), argTypes, "__read_" + suffix);
 }
@@ -2735,7 +2739,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	}
 	if (!variables.Add(var.Name(), v))
 	{
-	    return ErrorV("Duplicate name " + var.Name() + "!");
+	    return ErrorV(this, "Duplicate name " + var.Name() + "!");
 	}
     }
     return v;
@@ -2841,7 +2845,7 @@ llvm::Value* CaseExprAST::CodeGen()
     llvm::Type*  ty = v->getType();
     if (!v->getType()->isIntegerTy())
     {
-	return ErrorV("Case selection must be integral type");
+	return ErrorV(this, "Case selection must be integral type");
     }
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();

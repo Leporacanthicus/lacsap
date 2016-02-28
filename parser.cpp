@@ -890,7 +890,11 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 	return new Types::PointerDecl(name);
     }
 
-    return new Types::PointerDecl(ParseType("", false));
+    if (Types::TypeDecl* ty = ParseType("", false))
+    {
+	return new Types::PointerDecl(ty);
+    }
+    return 0;
 }
 
 Types::ArrayDecl* Parser::ParseArrayDecl()
@@ -1880,19 +1884,22 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 	    if (isFuncArg)
 	    {
 		Token token = CurrentToken();
-		std::string idName = token.GetIdentName();
-		AssertToken(Token::Identifier);
-		if (const NamedObject* argDef = nameStack.Find(idName))
+		if (token.GetToken() == Token::Identifier)
 		{
-		    if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
+		    std::string idName = token.GetIdentName();
+		    NextToken();
+		    if (const NamedObject* argDef = nameStack.Find(idName))
 		    {
-			arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());
-		    }
-		    else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
-		    {
-			if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
+			if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
-			    arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
+			    arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());
+			}
+			else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
+			{
+			    if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
+			    {
+				arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
+			    }
 			}
 		    }
 		}

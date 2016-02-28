@@ -1893,60 +1893,6 @@ llvm::Value* AssignExprAST::AssignSet()
 	    builder.CreateStore(v, dest);
 	    return v;
 	}
-	else
-	{
-	    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
-	    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(lhs->Type());
-	    Types::Range* rrange = rty->GetRange();
-	    Types::Range* lrange = lty->GetRange();
-
-	    llvm::Value* w;
-	    llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
-	    llvm::Value* src = MakeAddressable(rhs);
-	    size_t p = 0;
-	    for(auto i = lrange->Start(); i < lrange->End(); i++)
-	    {
-		if (i >= (rrange->Start() & ~Types::SetDecl::SetMask) && i < rrange->End())
-		{
-		    if (i > rrange->Start())
-		    {
-			size_t index = i - rrange->Start();
-			size_t sp = index >> Types::SetDecl::SetPow2Bits;
-			ind[1] = MakeIntegerConstant(sp);
-			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
-			w = builder.CreateLoad(srci, "w");
-			if (size_t shift = (index & Types::SetDecl::SetMask))
-			{
-			    w = builder.CreateLShr(w, shift, "wsh");
-			    if (sp + 1 < rty->SetWords())
-			    {
-				ind[1] = MakeIntegerConstant(sp + 1);
-				llvm::Value* xp = builder.CreateGEP(src, ind, "srcip1");
-				llvm::Value* x = builder.CreateLoad(xp, "x");
-				x = builder.CreateShl(x, 32-shift);
-				w = builder.CreateOr(w, x);
-			    }
-			}
-		    }
-		    else
-		    {
-			ind[1] = MakeIntegerConstant(0);
-			llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
-			w = builder.CreateLoad(srci, "w");
-			w = builder.CreateShl(w, rrange->Start() - i, "wsh");
-		    }
-		}
-		else
-		{
-		    w = MakeIntegerConstant(0);
-		}
-		ind[1] = MakeIntegerConstant(p);
-		llvm::Value* desti = builder.CreateGEP(dest, ind);
-		builder.CreateStore(w, desti);
-		p++;
-	    }
-	    return dest;
-	}
     }
     return 0;
 }
@@ -3284,6 +3230,69 @@ void TypeCastAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
+
+static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
+{
+    TRACE();
+
+    Types::TypeDecl* current = expr->Type();
+    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(current);
+    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(type);
+
+    llvm::Value* dest = CreateTempAlloca(type);
+
+    assert(lty && rty && "Expect types on both sides");
+    Types::Range* rrange = rty->GetRange();
+    Types::Range* lrange = lty->GetRange();
+
+    llvm::Value* w;
+    llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
+    llvm::Value* src = MakeAddressable(expr);
+    size_t p = 0;
+    for(auto i = lrange->Start(); i < lrange->End(); i++)
+    {
+	if (i >= (rrange->Start() & ~Types::SetDecl::SetMask) && i < rrange->End())
+	{
+	    if (i > rrange->Start())
+	    {
+		size_t index = i - rrange->Start();
+		size_t sp = index >> Types::SetDecl::SetPow2Bits;
+		ind[1] = MakeIntegerConstant(sp);
+		llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
+		w = builder.CreateLoad(srci, "w");
+		if (size_t shift = (index & Types::SetDecl::SetMask))
+		{
+		    w = builder.CreateLShr(w, shift, "wsh");
+		    if (sp + 1 < rty->SetWords())
+		    {
+			ind[1] = MakeIntegerConstant(sp + 1);
+			llvm::Value* xp = builder.CreateGEP(src, ind, "srcip1");
+			llvm::Value* x = builder.CreateLoad(xp, "x");
+			x = builder.CreateShl(x, 32-shift);
+			w = builder.CreateOr(w, x);
+		    }
+		}
+	    }
+	    else
+	    {
+		ind[1] = MakeIntegerConstant(0);
+		llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
+		w = builder.CreateLoad(srci, "w");
+		w = builder.CreateShl(w, rrange->Start() - i, "wsh");
+	    }
+	}
+	else
+	{
+	    w = MakeIntegerConstant(0);
+	}
+	ind[1] = MakeIntegerConstant(p);
+	llvm::Value* desti = builder.CreateGEP(dest, ind);
+	builder.CreateStore(w, desti);
+	p++;
+    }
+    return builder.CreateLoad(dest, "set");
+}
+
 llvm::Value* TypeCastAST::CodeGen()
 {
     if (type->Type() == Types::TypeDecl::TK_Real)
@@ -3305,10 +3314,15 @@ llvm::Value* TypeCastAST::CodeGen()
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
     if (((current->Type() == Types::TypeDecl::TK_Array && current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
-	 current->Type() == Types::TypeDecl::TK_Char ) &&
+	 current->Type() == Types::TypeDecl::TK_Char) &&
 	type->Type() == Types::TypeDecl::TK_String)
     {
 	return MakeStringFromExpr(expr, type);
+    }
+    // Sets are compatible anyway...
+    if (current->Type() == Types::TypeDecl::TK_Set)
+    {
+	return ConvertSet(expr, type);
     }
     dump();
     assert(0 && "Expected to get something out of this function");

@@ -2112,7 +2112,6 @@ private:
     std::vector<ExprAST*> values;
 };
 
-
 ExprAST* Parser::ParseSetExpr()
 {
     TRACE();

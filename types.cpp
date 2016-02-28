@@ -1236,12 +1236,12 @@ namespace Types
     {
 	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
 	{
-	    if (*baseType != *sty->baseType)
+	    if (*baseType == *sty->baseType)
 	    {
-		return 0;
+		return this;
 	    }
 	}
-	return ty;
+	return 0;
     }
 
     bool SetDecl::SameAs(const TypeDecl* ty) const

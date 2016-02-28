@@ -244,6 +244,10 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 		rs->UpdateSubtype(r->SubType());
 		ls->UpdateSubtype(r->SubType());
 	    }
+	    else
+	    {
+		r = GetRangeDecl(rs->SubType());
+	    }
 
 	    ls->UpdateRange(r);
 	    rs->UpdateRange(r);

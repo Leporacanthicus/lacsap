@@ -1,0 +1,27 @@
+A list of features needed to fulfil ISO 10206 standard. This is by no
+means a FULL list of features, but rather a list of things that I
+think can be added with relative ease.
+
+The existance of this document is by no means a promise of ISO 10206
+functionality appearing anytime soon (or ever).
+
+Constants:
+   maxreal, minreal, epsreal
+   maxchar
+
+   Array constant declarations
+
+Types:
+   complex
+
+Variables
+   Value initializers.
+
+
+Operators:
+   **, pow
+   and_then, or_else    { We already do this, I think... }
+
+Functions
+   DateStamp, TimeStamp
+   trim, index { string functions }

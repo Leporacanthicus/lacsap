@@ -3290,7 +3290,7 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 	builder.CreateStore(w, desti);
 	p++;
     }
-    return builder.CreateLoad(dest, "set");
+    return dest;
 }
 
 llvm::Value* TypeCastAST::CodeGen()
@@ -3322,7 +3322,7 @@ llvm::Value* TypeCastAST::CodeGen()
     // Sets are compatible anyway...
     if (current->Type() == Types::TypeDecl::TK_Set)
     {
-	return ConvertSet(expr, type);
+	return builder.CreateLoad(ConvertSet(expr, type), "set");
     }
     dump();
     assert(0 && "Expected to get something out of this function");
@@ -3344,6 +3344,10 @@ llvm::Value* TypeCastAST::Address()
     else if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
     {
 	v = ae->Address();
+    }
+    else if (current->Type() == Types::TypeDecl::TK_Set)
+    {
+	v = ConvertSet(expr, type);
     }
     assert(v && "Expected to get a value here...");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));

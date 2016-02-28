@@ -644,7 +644,7 @@ static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
     int lScore = StringishScore(lhs);
     int rScore = StringishScore(rhs);
 
-    return lScore && rScore && (lScore + rScore) > 2;
+    return lScore && rScore && (lScore + rScore) >= 2;
 }
 
 void BinaryExprAST::DoDump(std::ostream& out) const

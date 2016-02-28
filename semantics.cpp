@@ -171,6 +171,14 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    Error(b, "Left hand of 'in' expression should be integral type.");
 	}
 
+	// Empty set always has the "right" type
+	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
+	{
+	    if (s->values.empty())
+	    {
+		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(lty);
+	    }
+	}
 	if(Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
 	{
 	    assert(sd->SubType() && "Should have a subtype");

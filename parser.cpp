@@ -1647,6 +1647,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
     {
 	if (def->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 	{
+	    usedVariables.Add(def->Name(), def);
 	    if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	    {
 		proto = fp->Proto();
@@ -1682,6 +1683,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
     }
     if (expr)
     {
+	assert(proto && "Prototype should have been found here...");
 	if (proto->HasSelf())
 	{
 	    assert(self && "Should have a 'self' expression here");
@@ -1894,6 +1896,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		    NextToken();
 		    if (const NamedObject* argDef = nameStack.Find(idName))
 		    {
+			usedVariables.Add(argDef->Name(), argDef);
 			if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
 			    arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());

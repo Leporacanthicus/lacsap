@@ -542,9 +542,10 @@ namespace Types
 	FuncPtrDecl(PrototypeAST* func);
 	void DoDump(std::ostream& out) const override;
 	PrototypeAST* Proto() const { return proto; }
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }
 	bool IsCompound() const override { return false; }
 	bool SameAs(const TypeDecl* ty) const override;
+	bool HasLlvmType() const override { return true; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;

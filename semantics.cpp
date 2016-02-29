@@ -154,6 +154,16 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     }
 }
 
+ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty)
+{
+    if (*ty != *a->Type())
+    {
+	ExprAST* e = a;
+	a = new TypeCastAST(e->Loc(), e, ty);
+    }
+    return a;
+}
+
 Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
     Types::TypeDecl* lty = b->lhs->Type();
@@ -218,16 +228,8 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 	Types::RangeDecl* r = new Types::RangeDecl(range, rty->SubType());
 	Types::SetDecl* set = new Types::SetDecl(r, rty->SubType());
 
-	if (*set != *lty)
-	{
-	    ExprAST* e = b->lhs;
-	    b->lhs = new TypeCastAST(e->Loc(), e, set);
-	}
-	if (*set != *rty)
-	{
-	    ExprAST* e = b->rhs;
-	    b->rhs = new TypeCastAST(e->Loc(), e, set);
-	}
+	b->lhs = Recast(b->lhs, set);
+	b->rhs = Recast(b->rhs, set);
     }
     return rty;
 }
@@ -281,16 +283,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	(lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
     {
 	ty = Types::GetStringType();
-	if (*rty != *ty)
-	{
-	    ExprAST* e = b->rhs;
-	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
-	}
-	if (*lty != *ty)
-	{
-	    ExprAST* e = b->lhs;
-	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
-	}
+	b->rhs = Recast(b->rhs, ty);
+	b->lhs = Recast(b->lhs, ty);
 	ty = Types::GetBooleanType();
     }
 
@@ -313,21 +307,16 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    Error(b, "Invalid (non-numeric) type for divide");
 	}
+	
+	ty = Types::GetRealType();
 	if (lty->IsIntegral())
 	{
-	    ExprAST* e = b->lhs;
-	    ty = Types::GetRealType();
-	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
+	    b->lhs = Recast(b->lhs, ty);
 	    lty = ty;
 	}
 	if (rty->IsIntegral())
 	{
-	    ExprAST* e = b->rhs;
-	    if (!ty)
-	    {
-		ty = Types::GetRealType();
-	    }
-	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
+	    b->rhs = Recast(b->rhs, ty);
 	    rty = ty;
 	}
 	if (!lty->CompatibleType(rty))
@@ -344,14 +333,12 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	if (llvm::isa<NilExprAST>(b->rhs))
 	{
 	    ty = lty;
-	    ExprAST* e = b->rhs;
-	    b->rhs = new TypeCastAST(e->Loc(), e, ty);
+	    b->rhs = Recast(b->rhs, ty);
 	}
 	else
 	{
 	    ty = rty;
-	    ExprAST* e = b->lhs;
-	    b->lhs = new TypeCastAST(e->Loc(), e, ty);
+	    b->lhs = Recast(b->lhs, ty);
 	}
     }
 
@@ -371,16 +358,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    if (!ty->IsCompound())
 	    {
-		if (lty != ty)
-		{
-		    ExprAST* e = b->lhs;
-		    b->lhs = new TypeCastAST(e->Loc(), e, ty);
-		}
-		if (rty != ty)
-		{
-		    ExprAST* e = b->rhs;
-		    b->rhs = new TypeCastAST(e->Loc(), e, ty);
-		}
+		b->lhs = Recast(b->lhs, ty);
+		b->rhs = Recast(b->rhs, ty);
 	    }
 	}
 	else
@@ -415,8 +394,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     // Note difference to binary expression: only allowed on rhs!
     if (llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(a->rhs))
     {
-	ExprAST* e = a->rhs;
-	a->rhs = new TypeCastAST(e->Loc(), e, lty);
+	a->rhs = Recast(a->rhs, lty);
 	return;
     }
 
@@ -454,11 +432,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	Error(a, "Incompatible type in assignment");
 	return;
     }
-    if (*ty != *rty)
-    {
-	ExprAST* e = a->rhs;
-	a->rhs = new TypeCastAST(e->Loc(), e, ty);
-    }
+    a->rhs = Recast(a->rhs, ty);
 }
 
 void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
@@ -540,11 +514,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	bool bad = true;
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
-	    if (*ty != *a->Type())
-	    {
-		ExprAST* e = a;
-		a = new TypeCastAST(e->Loc(), e, ty);
-	    }
+	    a = Recast(a, ty);
 	    bad = false;
 	}
 	else if (Types::FunctionDecl* fnTy = llvm::dyn_cast<Types::FunctionDecl>(a->Type()))
@@ -590,11 +560,7 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
 
     if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(vty))
     {
-	if (*ty != *f->start->Type())
-	{
-	    ExprAST* e = f->start;
-	    f->start = new TypeCastAST(e->Loc(), e, ty);
-	}
+	f->start = Recast(f->start, ty);
     }
     else
     {
@@ -602,11 +568,7 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
     }
     if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(vty))
     {
-	if (*ty != *f->end->Type())
-	{
-	    ExprAST* e = f->end;
-	    f->end = new TypeCastAST(e->Loc(), e, ty);
-	}
+	f->end = Recast(f->end, ty);
     }
     else
     {

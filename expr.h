@@ -811,5 +811,6 @@ llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& a
 llvm::Constant* GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
 			    const std::string& name);
 std::string ShortName(const std::string& name);
+ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty);
 
 #endif

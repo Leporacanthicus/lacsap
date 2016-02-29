@@ -5,6 +5,20 @@
 
 extern llvm::Module* theModule;
 
+static bool CastIntegerToReal(ExprAST*& arg)
+{
+    if (arg->Type()->Type() != Types::TypeDecl::TK_Real)
+    {
+	// Implicit typecast.
+	if (!arg->Type()->IsIntegral())
+	{
+	    return false;
+	}
+	arg = Recast(arg, Types::GetRealType());
+    }
+    return true;
+}
+
 namespace Builtin
 {
     typedef const std::vector<ExprAST*> ArgList;
@@ -456,22 +470,7 @@ namespace Builtin
 
     bool BuiltinFunctionFloat::Semantics()
     {
-	if (args.size() != 1)
-	{
-	    return false;
-	}
-	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    // Implicit typecast.
-	    if (args[0]->Type()->IsIntegral())
-	    {
-		ExprAST* e = args[0];
-		args[0] = new TypeCastAST(Location("",0,0), e, Types::GetRealType());
-		return true;
-	    }
-	    return false;
-	}
-	return true;
+	return args.size() == 1 && CastIntegerToReal(args[0]);
     }
 
     llvm::Value* BuiltinFunctionRound::CodeGen(llvm::IRBuilder<>& builder)
@@ -916,33 +915,7 @@ namespace Builtin
 
     bool BuiltinFunctionFloat2Arg::Semantics()
     {
-	if (args.size() != 2)
-	{
-	    return false;
-	}
-	if (args[0]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    if (args[0]->Type()->IsIntegral())
-	    {
-		ExprAST* e = args[0];
-		args[0] = new TypeCastAST(Location("", 0, 0), e, Types::GetRealType());
-	    }
-	    else
-	    {
-		return false;
-	    }
-	}
-	if (args[1]->Type()->Type() != Types::TypeDecl::TK_Real)
-	{
-	    if (args[1]->Type()->IsIntegral())
-	    {
-		ExprAST* e = args[1];
-		args[1] = new TypeCastAST(Location("", 0, 0), e, Types::GetRealType());
-		return true;
-	    }
-	    return false;
-	}
-	return true;
+	return args.size() == 2 && CastIntegerToReal(args[0]) && CastIntegerToReal(args[1]);
     }
 
     llvm::Value* BuiltinFunctionParamstr::CodeGen(llvm::IRBuilder<>& builder)

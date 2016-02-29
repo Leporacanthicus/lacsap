@@ -295,7 +295,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::Plus))
     {
-	if (lty->Type() == Types::TypeDecl::TK_Char && rty->Type() == Types::TypeDecl::TK_Char)
+	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
 	{
 	    ty = Types::GetStringType();
 	}

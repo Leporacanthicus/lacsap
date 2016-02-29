@@ -1235,7 +1235,7 @@ llvm::Value* CallExprAST::CodeGen()
 		    TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
 		    assert(tc && "Uhm - this should be a typecast expression!");
 
-		    if (!(vi = llvm::dyn_cast<VariableExprAST>(tc->Expr())))
+		    if (!llvm::isa<VariableExprAST>(tc->Expr()))
 		    {
 			return ErrorV(this, "Argument declared with 'var' must be a variable!");
 		    }
@@ -3243,13 +3243,12 @@ llvm::Value* RangeCheckAST::CodeGen()
 
 void TypeCastAST::DoDump(std::ostream& out) const
 {
-    out << "Convert to ";
+    out << "TypeCast to ";
     type->dump(out);
     out << "(";
     expr->dump(out);
     out << ")";
 }
-
 
 static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 {
@@ -3333,16 +3332,22 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
-    if (((current->Type() == Types::TypeDecl::TK_Array && current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
+    if (((current->Type() == Types::TypeDecl::TK_Array &&
+	  current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
 	 current->Type() == Types::TypeDecl::TK_Char) &&
 	type->Type() == Types::TypeDecl::TK_String)
     {
 	return MakeStringFromExpr(expr, type);
     }
+    if (type->Type() == Types::TypeDecl::TK_Char &&
+	current->Type() == Types::TypeDecl::TK_String)
+    {
+	return builder.CreateLoad(Address(), "char");
+    }
     // Sets are compatible anyway...
     if (current->Type() == Types::TypeDecl::TK_Set)
     {
-	return builder.CreateLoad(ConvertSet(expr, type), "set");
+	return builder.CreateLoad(Address(), "set");
     }
     dump();
     assert(0 && "Expected to get something out of this function");
@@ -3353,23 +3358,32 @@ llvm::Value* TypeCastAST::Address()
 {
     llvm::Value* v = 0;
     Types::TypeDecl* current = expr->Type();
-    if (current->Type() == Types::TypeDecl::TK_String)
+    switch(current->Type())
     {
+    case Types::TypeDecl::TK_String:
 	v = MakeAddressable(expr);
-    }
-    else if (type->Type() == Types::TypeDecl::TK_String)
-    {
-	v = MakeStringFromExpr(expr, type);
-    }
-    else if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
-    {
-	v = ae->Address();
-    }
-    else if (current->Type() == Types::TypeDecl::TK_Set)
-    {
+	break;
+    case Types::TypeDecl::TK_Set:
 	v = ConvertSet(expr, type);
+	break;
+    default:
+	if (type->Type() == Types::TypeDecl::TK_String)
+	{
+	    v = MakeStringFromExpr(expr, type);
+	}
+	else if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
+	{
+	    v = ae->Address();
+	}
     }
+
     assert(v && "Expected to get a value here...");
+    if (type->Type() == Types::TypeDecl::TK_Char)
+    {
+	llvm::Value* ind[2] = { MakeIntegerConstant(0), MakeIntegerConstant(1) };
+        return builder.CreateGEP(v, ind);
+    }
+
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));
 }
 

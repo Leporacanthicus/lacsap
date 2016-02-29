@@ -88,13 +88,9 @@ namespace Types
 
     const TypeDecl* CharDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (*this == *ty)
+	if (*this == *ty || ty->Type() == TK_String)
 	{
 	    return this;
-	}
-	if (ty->Type() == TK_String)
-	{
-	    return ty;
 	}
 	return 0;
     }

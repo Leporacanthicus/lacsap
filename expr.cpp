@@ -918,6 +918,22 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    return v;
 	}
 
+	case Token::GreaterThan:
+	    return builder.CreateNot(CallSetFunc("Contains", false));
+
+	case Token::LessThan:
+	{
+	    // Swap left<->right sides
+	    ExprAST* tmp = rhs;
+	    rhs = lhs;
+	    lhs = tmp;
+	    llvm::Value* v = builder.CreateNot(CallSetFunc("Contains", false));
+	    // Set it back
+	    lhs = rhs;
+	    rhs = tmp;
+	    return v;
+	}
+
 	default:
 	    return ErrorV(this, "Unknown operator on set");
 	}

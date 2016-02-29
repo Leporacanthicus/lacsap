@@ -14,6 +14,7 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DIBuilder.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 #include <iostream>
 #include <sstream>
@@ -1753,7 +1754,11 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	di.lexicalBlocks.pop_back();
     }
 
-    verifyFunction(*theFunction);
+    if (emitType != LlvmIr)
+    {
+	llvm::raw_os_ostream err(std::cerr);
+	assert(!verifyFunction(*theFunction, &err) && "Something went wrong in code generation");
+    }
     return theFunction;
 }
 

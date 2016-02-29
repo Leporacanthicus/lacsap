@@ -30,5 +30,6 @@ extern bool        debugInfo;
 extern OptLevel    optimization;
 extern Model       model;
 extern bool        caseInsensitive;
+extern EmitType    emitType;
 extern std::string libpath;
 #endif

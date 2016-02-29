@@ -27,6 +27,7 @@ bool     rangeCheck;
 bool     debugInfo;
 Model    model = m64;
 bool     caseInsensitive = true;
+EmitType emitType;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string>    InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -43,11 +44,12 @@ static llvm::cl::opt<OptLevel, true> OptimizationLevel(llvm::cl::desc("Choose op
 							clEnumValEnd),
 						    llvm::cl::location(optimization));
 
-static llvm::cl::opt<EmitType>       EmitSelection("emit", llvm::cl::desc("Choose output:"),
+static llvm::cl::opt<EmitType,true>       EmitSelection("emit", llvm::cl::desc("Choose output:"),
 						   llvm::cl::values(
 						       clEnumValN(Exe, "exe", "Executable file"),
 						       clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
-						       clEnumValEnd));
+						       clEnumValEnd),
+						   llvm::cl::location(emitType));
 
 static llvm::cl::opt<bool, true>     TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
 						     llvm::cl::location(timetrace));

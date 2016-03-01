@@ -1754,17 +1754,18 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	di.lexicalBlocks.pop_back();
     }
 
-    if (emitType != LlvmIr)
-    {
-	llvm::raw_os_ostream err(std::cerr);
-	assert(!verifyFunction(*theFunction, &err) && "Something went wrong in code generation");
-    }
     return theFunction;
 }
 
 llvm::Function* FunctionAST::CodeGen()
 {
-    return CodeGen("P");
+    llvm::Function* fn = CodeGen("P");
+    if (emitType != LlvmIr)
+    {
+	llvm::raw_os_ostream err(std::cerr);
+	assert(!verifyFunction(*fn, &err) && "Something went wrong in code generation");
+    }
+    return fn;
 }
 
 void FunctionAST::SetUsedVars(const std::vector<const NamedObject*>& varsUsed,

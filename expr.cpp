@@ -999,7 +999,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return CallStrCat(lhs, rhs);
 	}
 
-	return MakeStrCompare(oper, CallStrFunc("Compare"));
+	/* We don't need to do this of both sides are char - then it's just a simple comparison */
+	if (lhs->Type()->Type() != Types::TypeDecl::TK_Char ||
+	    rhs->Type()->Type() != Types::TypeDecl::TK_Char)
+	{
+	    return MakeStrCompare(oper, CallStrFunc("Compare"));
+	}
     }
 
     if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
@@ -1760,7 +1765,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 llvm::Function* FunctionAST::CodeGen()
 {
     llvm::Function* fn = CodeGen("P");
-    if (emitType != LlvmIr)
+    if (!debugInfo && body && emitType != LlvmIr)
     {
 	llvm::raw_os_ostream err(std::cerr);
 	assert(!verifyFunction(*fn, &err) && "Something went wrong in code generation");

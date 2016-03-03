@@ -446,7 +446,7 @@ llvm::Value* VariableExprAST::Address()
     size_t level;
     if (llvm::Value* v = variables.Find(name, level))
     {
-	assert(level == 0 || level == variables.MaxLevel() &&
+	assert((level == 0 || level == variables.MaxLevel()) &&
 	       "Expected variable to either be local or global");
 	EnsureSized();
 	return v;

@@ -66,8 +66,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 
 ExprAST* Parser::Error(Token t, const std::string& msg)
 {
-    Location loc = t.Loc();
-    if (loc)
+    if (Location loc = t.Loc())
     {
 	std::cerr << loc << " ";
     }
@@ -905,37 +904,35 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 Types::ArrayDecl* Parser::ParseArrayDecl()
 {
     AssertToken(Token::Array);
-    if (!Expect(Token::LeftSquare, true))
+    if (Expect(Token::LeftSquare, true))
     {
-	return 0;
-    }
-    std::vector<Types::RangeDecl*> rv;
-    Types::TypeDecl* type = 0;
-    while(!AcceptToken(Token::RightSquare))
-    {
-	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
+	std::vector<Types::RangeDecl*> rv;
+	Types::TypeDecl* type = 0;
+	while(!AcceptToken(Token::RightSquare))
 	{
-	    assert(type && "Uh? Type is supposed to be set now");
-	    rv.push_back(r);
+	    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
+	    {
+		assert(type && "Uh? Type is supposed to be set now");
+		rv.push_back(r);
+	    }
+	    else
+	    {
+		return 0;
+	    }
+	    AcceptToken(Token::Comma);
 	}
-	else
+	if (rv.empty())
 	{
+	    Error(CurrentToken(), "Expected array size to be declared");
 	    return 0;
 	}
-	AcceptToken(Token::Comma);
-    }
-    if (rv.empty())
-    {
-	Error(CurrentToken(), "Expected array size to be declared");
-	return 0;
-    }
-    if (!Expect(Token::Of, true))
-    {
-	return 0;
-    }
-    if (Types::TypeDecl* ty = ParseType("", false))
-    {
-	return new Types::ArrayDecl(ty, rv);
+	if (Expect(Token::Of, true))
+	{
+	    if (Types::TypeDecl* ty = ParseType("", false))
+	    {
+		return new Types::ArrayDecl(ty, rv);
+	    }
+	}
     }
     return 0;
 }
@@ -1180,29 +1177,27 @@ Types::RecordDecl* Parser::ParseRecordDecl()
     AssertToken(Token::Record);
     std::vector<Types::FieldDecl*> fields;
     Types::VariantDecl* variant;
-    if (!ParseFields(fields, variant, Token::Record))
+    if (ParseFields(fields, variant, Token::Record))
     {
-	return 0;
+	if (fields.size() == 0 && !variant)
+	{
+	    return reinterpret_cast<Types::RecordDecl*>
+		(Error(CurrentToken(), "No elements in record declaration"));
+	}
+	return new Types::RecordDecl(fields, variant);
     }
-    if (fields.size() == 0 && !variant)
-    {
-	return reinterpret_cast<Types::RecordDecl*>
-	    (Error(CurrentToken(), "No elements in record declaration"));
-    }
-    return new Types::RecordDecl(fields, variant);
+    return 0;
 }
 
 Types::FileDecl* Parser::ParseFileDecl()
 {
     AssertToken(Token::File);
-    if (!Expect(Token::Of, true))
+    if (Expect(Token::Of, true))
     {
-	return 0;
-    }
-
-    if (Types::TypeDecl* type = ParseType("", false))
-    {
-	return new Types::FileDecl(type);
+	if (Types::TypeDecl* type = ParseType("", false))
+	{
+	    return new Types::FileDecl(type);
+	}
     }
     return 0;
 }
@@ -1211,20 +1206,18 @@ Types::SetDecl* Parser::ParseSetDecl()
 {
     TRACE();
     AssertToken(Token::Set);
-    if (!Expect(Token::Of, true))
+    if (Expect(Token::Of, true))
     {
-	return 0;
-    }
-
-    Types::TypeDecl* type;
-    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
-    {
-	if (r->GetRange()->Size() > Types::SetDecl::MaxSetSize)
+	Types::TypeDecl* type;
+	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
 	{
-	    return reinterpret_cast<Types::SetDecl*>(ErrorT(CurrentToken(), "Set too large"));
+	    if (r->GetRange()->Size() > Types::SetDecl::MaxSetSize)
+	    {
+		return reinterpret_cast<Types::SetDecl*>(ErrorT(CurrentToken(), "Set too large"));
+	    }
+	    assert(type && "Uh? Type is supposed to be set");
+	    return new Types::SetDecl(r, type);
 	}
-	assert(type && "Uh? Type is supposed to be set");
-	return new Types::SetDecl(r, type);
     }
     return 0;
 }
@@ -1706,115 +1699,114 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
 ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
     AssertToken(Token::Period);
-    if (!Expect(Token::Identifier, false))
+    if (Expect(Token::Identifier, false))
     {
-	return 0;
-    }
-
-    std::string typedesc;
-    std::string name = CurrentToken().GetIdentName();
-    VariableExprAST* e = 0;
-    Types::VariantDecl* v = 0;
-    unsigned fc = 0;
-    if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(type))
-    {
-	int elem = cd->Element(name);
-	typedesc = "object";
-	if (elem >= 0)
+	std::string typedesc;
+	std::string name = CurrentToken().GetIdentName();
+	VariableExprAST* e = 0;
+	Types::VariantDecl* v = 0;
+	unsigned fc = 0;
+	if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(type))
 	{
-	    std::string objname;
-	    const Types::FieldDecl* fd = cd->GetElement(elem, objname);
-
-	    type = fd->FieldType();
-	    if (fd->IsStatic())
+	    int elem = cd->Element(name);
+	    typedesc = "object";
+	    if (elem >= 0)
 	    {
-		std::string vname = objname + "$" + fd->Name();
-		e = new VariableExprAST(CurrentToken().Loc(), vname, type);
-	    }
-	    else
-	    {
-		e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
-	    }
-	}
-	else
-	{
- 	    if ((elem = cd->MembFunc(name)) >= 0)
-	    {
-		Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
-		const NamedObject* def = nameStack.Find(membfunc->LongName());
+		std::string objname;
+		const Types::FieldDecl* fd = cd->GetElement(elem, objname);
 
-		std::vector<ExprAST*> args;
-		NextToken();
-
-		if (!ParseArgs(def, args))
+		type = fd->FieldType();
+		if (fd->IsStatic())
 		{
-		    return 0;
-		}
-
-		if (ExprAST* call = MakeCallExpr(expr, def, membfunc->LongName(), args))
-		{
-		    return call;
-		}
-		return 0;
-	    }
-	    else
-	    {
-		fc = cd->FieldCount();
-		v = cd->Variant();
-	    }
-	}
-    }
-    else if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type))
-    {
-	typedesc = "record";
-	int elem = rd->Element(name);
-	if (elem >= 0)
-	{
-	    type = rd->GetElement(elem)->FieldType();
-	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
-	}
-	else
-	{
-	    fc = rd->FieldCount();
-	    v = rd->Variant();
-	}
-    }
-    else
-    {
-	return ErrorV(CurrentToken(), "Attempt to use field of variable that hasn't got fields");
-    }
-    if (!e && v)
-    {
-	int elem = v->Element(name);
-	if (elem >= 0)
-	{
-	    const Types::FieldDecl* fd = v->GetElement(elem);
-	    type = fd->FieldType();
-	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
-	    // If name is empty, we have a made up struct. Dig another level down.
-	    if (fd->Name() == "")
-	    {
-		Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
-		assert(r && "Expect record declarataion");
-		elem = r->Element(name);
-		if (elem >= 0)
-		{
-		    type = r->GetElement(elem)->FieldType();
-		    e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
+		    std::string vname = objname + "$" + fd->Name();
+		    e = new VariableExprAST(CurrentToken().Loc(), vname, type);
 		}
 		else
 		{
-		    e = 0;
+		    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+		}
+	    }
+	    else
+	    {
+		if ((elem = cd->MembFunc(name)) >= 0)
+		{
+		    Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
+		    const NamedObject* def = nameStack.Find(membfunc->LongName());
+
+		    std::vector<ExprAST*> args;
+		    NextToken();
+
+		    if (!ParseArgs(def, args))
+		    {
+			return 0;
+		    }
+
+		    if (ExprAST* call = MakeCallExpr(expr, def, membfunc->LongName(), args))
+		    {
+			return call;
+		    }
+		    return 0;
+		}
+		else
+		{
+		    fc = cd->FieldCount();
+		    v = cd->Variant();
 		}
 	    }
 	}
+	else if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type))
+	{
+	    typedesc = "record";
+	    int elem = rd->Element(name);
+	    if (elem >= 0)
+	    {
+		type = rd->GetElement(elem)->FieldType();
+		e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	    }
+	    else
+	    {
+		fc = rd->FieldCount();
+		v = rd->Variant();
+	    }
+	}
+	else
+	{
+	    return ErrorV(CurrentToken(), "Attempt to use field of variable that hasn't got fields");
+	}
+	if (!e && v)
+	{
+	    int elem = v->Element(name);
+	    if (elem >= 0)
+	    {
+		const Types::FieldDecl* fd = v->GetElement(elem);
+		type = fd->FieldType();
+		e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
+		// If name is empty, we have a made up struct. Dig another level down.
+		if (fd->Name() == "")
+		{
+		    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
+		    assert(r && "Expect record declarataion");
+		    elem = r->Element(name);
+		    if (elem >= 0)
+		    {
+			type = r->GetElement(elem)->FieldType();
+			e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
+		    }
+		    else
+		    {
+			e = 0;
+		    }
+		}
+	    }
+	}
+	if (!e)
+	{
+	    return ErrorV(CurrentToken(), "Can't find element " + name + " in " + typedesc);
+	}
+	NextToken();
+	return e;
     }
-    if (!e)
-    {
-	return ErrorV(CurrentToken(), "Can't find element " + name + " in " + typedesc);
-    }
-    NextToken();
-    return e;
+    return 0;
 }
 
 VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
@@ -1941,28 +1933,28 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 
 VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type)
 {
-    if (!Expect(Token::Period, true) && !Expect(Token::Identifier, false))
+    if (Expect(Token::Period, true) || Expect(Token::Identifier, false))
     {
-	return 0;
-    }
-    std::string field = CurrentToken().GetIdentName();
-    AssertToken(Token::Identifier);
+	std::string field = CurrentToken().GetIdentName();
+	AssertToken(Token::Identifier);
 
-    const Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
-    int elem;
-    if ((elem = od->Element(field)) >= 0)
-    {
-	std::string objname;
-	const Types::FieldDecl* fd = od->GetElement(elem, objname);
-	if (fd->IsStatic())
+	const Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
+	int elem;
+	if ((elem = od->Element(field)) >= 0)
 	{
-	    type = fd->FieldType();
-	    std::string name = objname + "$" + field;
-	    return new VariableExprAST(CurrentToken().Loc(), name, type);
+	    std::string objname;
+	    const Types::FieldDecl* fd = od->GetElement(elem, objname);
+	    if (fd->IsStatic())
+	    {
+		type = fd->FieldType();
+		std::string name = objname + "$" + field;
+		return new VariableExprAST(CurrentToken().Loc(), name, type);
+	    }
+	    return ErrorV(CurrentToken(), "Expected static variable '" + field + "'");
 	}
-	return ErrorV(CurrentToken(), "Expected static variable '" + field + "'");
+	return ErrorV(CurrentToken(), "Expected member variabe name '" + field + "'");
     }
-    return ErrorV(CurrentToken(), "Expected member variabe name '" + field + "'");
+    return 0;
 }
 
 ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
@@ -2155,6 +2147,7 @@ VarDeclAST* Parser::ParseVarDecls()
     std::vector<VarDef> varList;
     do
     {
+	bool good = false;
 	CCNames ccv;
 	if (ParseCommaList(ccv, Token::Colon, false))
 	{
@@ -2170,17 +2163,10 @@ VarDeclAST* Parser::ParseVarDecls()
 			    (Error(CurrentToken(), "Name '"+ n +"' is already defined"));
 		    }
 		}
-		if (!Expect(Token::Semicolon, true))
-		{
-		    return 0;
-		}
-	    }
-	    else
-	    {
-		return 0;
+		good = Expect(Token::Semicolon, true);
 	    }
 	}
-	else
+	if (!good)
 	{
 	    return 0;
 	}
@@ -2662,35 +2648,32 @@ ExprAST* Parser::ParseForExpr()
 	return Error(CurrentToken(), "Loop variable not found");
     }
     VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
-    if (!Expect(Token::Assign, true))
+    if (Expect(Token::Assign, true))
     {
-	return 0;
-    }
-    ExprAST* start = ParseExpression();
-    if (!start)
-    {
-	return 0;
-    }
-    bool down = false;
-    Token::TokenType tt = CurrentToken().GetToken();
-    if (tt == Token::Downto || tt == Token::To)
-    {
-	down = (tt == Token::Downto);
-	NextToken();
-    }
-    else
-    {
-	return Error(CurrentToken(), "Expected 'to' or 'downto', got " + CurrentToken().ToString());
-    }
+	if (ExprAST* start = ParseExpression())
+	{
+	    bool down = false;
+	    Token::TokenType tt = CurrentToken().GetToken();
+	    if (tt == Token::Downto || tt == Token::To)
+	    {
+		down = (tt == Token::Downto);
+		NextToken();
+	    }
+	    else
+	    {
+		return Error(CurrentToken(), "Expected 'to' or 'downto', got " +
+			     CurrentToken().ToString());
+	    }
 
-    ExprAST* end = ParseExpression();
-    if (!end || !Expect(Token::Do, true))
-    {
-	return 0;
-    }
-    if (ExprAST* body = ParseStatement())
-    {
-	return new ForExprAST(loc, varExpr, start, end, down, body);
+	    ExprAST* end = ParseExpression();
+	    if (end && Expect(Token::Do, true))
+	    {
+		if (ExprAST* body = ParseStatement())
+		{
+		    return new ForExprAST(loc, varExpr, start, end, down, body);
+		}
+	    }
+	}
     }
     return 0;
 }
@@ -3117,18 +3100,17 @@ ExprAST* Parser::ParseRead()
     }
     else
     {
-	if (!Expect(Token::LeftParen, true))
-	{
-	    return 0;
-	}
 	CCRead ccr;
-	if (!ParseCommaList(ccr, Token::RightParen, false))
+	if (Expect(Token::LeftParen, true) && ParseCommaList(ccr, Token::RightParen, false))
+	{
+	    file = ccr.File();
+	    args = ccr.Args();
+	    assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
+	}
+	else
 	{
 	    return 0;
 	}
-	file = ccr.File();
-	args = ccr.Args();
-	assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
     }
     return new ReadAST(loc, file, args, isReadln);
 }
@@ -3183,11 +3165,7 @@ class CCProgram: public Parser::CommaConsumer
 public:
     bool Consume(Parser& parser) override
     {
-	if (!parser.Expect(Token::Identifier, true))
-	{
-	    return false;
-	}
-	return true;
+	return parser.Expect(Token::Identifier, true);
     }
 };
 
@@ -3198,22 +3176,18 @@ bool Parser::ParseProgram(ParserType type)
     {
 	t = Token::Unit;
     }
-    if (!Expect(t, true))
+    if (Expect(t, true) && Expect(Token::Identifier, false))
     {
-	return false;
+	moduleName = CurrentToken().GetIdentName();
+	AssertToken(Token::Identifier);
+	if (type == Program && AcceptToken(Token::LeftParen))
+	{
+	    CCProgram ccp;
+	    return ParseCommaList(ccp, Token::RightParen, false);
+	}
+	return true;
     }
-    if (!Expect(Token::Identifier, false))
-    {
-	return false;
-    }
-    moduleName = CurrentToken().GetIdentName();
-    AssertToken(Token::Identifier);
-    if (type == Program && AcceptToken(Token::LeftParen))
-    {
-	CCProgram ccp;
-	return ParseCommaList(ccp, Token::RightParen, false);
-    }
-    return true;
+    return false;
 }
 
 ExprAST* Parser::ParseUses()
@@ -3240,8 +3214,7 @@ ExprAST* Parser::ParseUses()
 	    FileSource source(fileName);
 	    if (!source)
 	    {
-		std::cerr << "Could not open " << fileName << std::endl;
-		return 0;
+		return Error(CurrentToken(), "Could not open " + fileName); 
 	    }
 	    Parser p(source);
 	    ExprAST* e = p.Parse(Unit);

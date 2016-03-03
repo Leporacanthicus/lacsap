@@ -19,11 +19,5 @@ public:
 
 class ExprAST;
 using ASTVisitor = Visitor<ExprAST>;
-namespace Types
-{
-    class TypeDecl;
-}
-
-using TypeVisitor = Visitor<Types::TypeDecl>;
 
 #endif

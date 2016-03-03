@@ -815,6 +815,7 @@ namespace Types
 	{
 	    if (!i->IsStatic())
 	    {
+		i->Proto()->SetBaseObj(this);
 		i->Proto()->AddExtraArgsFirst(self);
 		i->Proto()->SetHasSelf(true);
 	    }
@@ -844,7 +845,7 @@ namespace Types
 
     void ClassDecl::DoDump(std::ostream& out) const
     {
-	out << "Object: " << Name();
+	out << "Object: " << Name() << " ";
 	for(auto f : fields)
 	{
 	    f->DoDump(out);

@@ -1639,7 +1639,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
     if (const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def))
     {
 	proto = funcDef->Proto();
-	expr = new FunctionExprAST(CurrentToken().Loc(), funcName, funcDef->Type());
+	expr = new FunctionExprAST(CurrentToken().Loc(), proto, funcDef->Type());
     }
     else if (llvm::dyn_cast_or_null<const VarDef>(def))
     {
@@ -1676,7 +1676,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
 	else
 	{
 	    std::string fname = mf->LongName();
-	    expr = new FunctionExprAST(CurrentToken().Loc(), fname, mf->Proto()->Type());
+	    expr = new FunctionExprAST(CurrentToken().Loc(), mf->Proto(), mf->Proto()->Type());
 	}
     }
     if (expr)
@@ -1895,7 +1895,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		    {
 			if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
-			    arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());
+			    arg = new FunctionExprAST(CurrentToken().Loc(), fd->Proto(), fd->Type());
 			}
 			else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
 			{
@@ -2196,7 +2196,6 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     std::string funcName = "noname";
     if (!unnamed)
     {
-
 	if (!Expect(Token::Identifier, false))
 	{
 	    return 0;
@@ -2219,8 +2218,8 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		    }
 		    std::string m = CurrentToken().GetIdentName();
 		    AssertToken(Token::Identifier);
-		    int elem;
 
+		    int elem;
 		    if ((elem = od->MembFunc(m)) >= 0)
 		    {
 			membfunc = od->GetMembFunc(elem);
@@ -2231,6 +2230,8 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 				      "Member function '" + m + "' not found in '"  + funcName + "'.");
 		    }
 		    funcName = membfunc->LongName();
+
+		    fwdProto = membfunc->Proto();
 		}
 	    }
 	    if (!od)
@@ -2266,16 +2267,18 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	    if (CurrentToken().GetToken() == Token::Function ||
 		CurrentToken().GetToken() == Token::Procedure)
 	    {
-		PrototypeAST* proto = ParsePrototype(false);
-		if (!proto)
+		if (PrototypeAST* proto = ParsePrototype(false))
 		{
-		    return 0;
+		    Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
+		    VarDef v(proto->Name(), type, false);
+		    args.push_back(v);
+		    if (CurrentToken().GetToken() != Token::RightParen &&
+			!Expect(Token::Semicolon, true))
+		    {
+			return 0;
+		    }
 		}
-		Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
-		VarDef v(proto->Name(), type, false);
-		args.push_back(v);
-		if (CurrentToken().GetToken() != Token::RightParen &&
-		    !Expect(Token::Semicolon, true))
+		else
 		{
 		    return 0;
 		}
@@ -2348,18 +2351,12 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	    return ErrorP(CurrentToken(),
 			  "Forward declared function should have same return type as definition.");
 	}
-	// Todo: Check argument types...
+	// TODO: Check argument types...
 	return fwdProto;
     }
 
-    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, od);
-    if (od && !membfunc->IsStatic())
-    {
-	std::vector<VarDef> v{VarDef("self", od, true)};
-	proto->AddExtraArgsFirst(v);
-	proto->SetHasSelf(true);
-	
-    }
+    assert(!od && "Expect no object here");
+    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, 0);
     return proto;
 }
 
@@ -2503,6 +2500,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     NameWrapper usedWrapper(usedVariables);
     if (proto->HasSelf())
     {
+	assert(proto->BaseObj() && "Expect base object!");
 	VariableExprAST* v = new VariableExprAST(Location("", 0, 0), "self", proto->BaseObj());
 	ExpandWithNames(proto->BaseObj(), v, 0);
     }

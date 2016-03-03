@@ -27,6 +27,7 @@ extern bool        timetrace;
 extern bool        disableMemcpyOpt;
 extern bool        rangeCheck;
 extern bool        debugInfo;
+extern bool        callGraph;
 extern OptLevel    optimization;
 extern Model       model;
 extern bool        caseInsensitive;

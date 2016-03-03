@@ -269,17 +269,6 @@ private:
     int element;
 };
 
-class FunctionExprAST : public VariableExprAST
-{
-public:
-    FunctionExprAST(const Location& w, const std::string& nm, Types::TypeDecl* ty)
-	: VariableExprAST(w, EK_FunctionExpr, nm, ty) { }
-
-    void DoDump(std::ostream& out) const override;
-    llvm::Value* Address() override;
-    llvm::Value* CodeGen() override;
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_FunctionExpr; }
-};
 
 class SetExprAST : public AddressableAST
 {
@@ -393,6 +382,7 @@ public:
 	: ExprAST(w, EK_VarDecl), vars(v), func(0) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
+    // Todo: Change to FunctionAST.
     void SetFunction(llvm::Function* f) { func = f; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
     const std::vector<VarDef>& Vars() { return vars; }
@@ -431,6 +421,7 @@ public:
     FunctionAST* Function() const { return function; }
     void AddExtraArgsFirst(const std::vector<VarDef>& extra);
     Types::ClassDecl* BaseObj() const { return baseobj; }
+    void SetBaseObj(Types::ClassDecl* obj) { baseobj = obj; }
     bool operator==(const PrototypeAST& rhs) const;
     bool IsMatchWithoutClosure(const PrototypeAST* rhs) const;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Prototype; }
@@ -453,6 +444,7 @@ public:
     const PrototypeAST* Proto() const { return proto; }
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
+    const FunctionAST* Parent() const { return parent; }
     void SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
 		     const Stack<const NamedObject*>& nameStack);
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
@@ -472,6 +464,21 @@ private:
     Location                   endLoc;
 };
 
+class FunctionExprAST : public VariableExprAST
+{
+public:
+    FunctionExprAST(const Location& w, const PrototypeAST* p, Types::TypeDecl* ty)
+	: VariableExprAST(w, EK_FunctionExpr, p->Name(), ty), proto(p) { }
+
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* Address() override;
+    llvm::Value* CodeGen() override;
+    const PrototypeAST* Proto() const { return proto; }
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_FunctionExpr; }
+private:
+    const PrototypeAST* proto;
+};
+
 class CallExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
@@ -485,6 +492,7 @@ public:
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST* Proto() { return proto; }
+    ExprAST* Callee() const { return callee; }
     std::vector<ExprAST*>& Args() { return args; }
     void accept(ASTVisitor& v) override;
 private:
@@ -789,7 +797,7 @@ class TrampolineAST : public FunctionExprAST
 {
 public:
     TrampolineAST(const Location& w, FunctionExprAST* fn, ClosureAST* c, Types::FuncPtrDecl* fnPtrTy)
-	: FunctionExprAST(w, fn->Name(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) { }
+	: FunctionExprAST(w, fn->Proto(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) { }
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Trampoline; }

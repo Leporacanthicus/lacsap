@@ -7,6 +7,7 @@
 #include "options.h"
 #include "trace.h"
 #include "builtin.h"
+#include "callgraph.h"
 #include <iostream>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Analysis/Passes.h>
@@ -25,6 +26,7 @@ bool     disableMemcpyOpt;
 OptLevel optimization;
 bool     rangeCheck;
 bool     debugInfo;
+bool     callGraph;
 Model    model = m64;
 bool     caseInsensitive = true;
 EmitType emitType;
@@ -74,10 +76,35 @@ static llvm::cl::opt<bool, true>     DebugInfo("g",
 					       llvm::cl::desc("Enable debug info"),
 					       llvm::cl::location(debugInfo));
 
+static llvm::cl::opt<bool, true>     CallGraphOpt("callgraph",
+						  llvm::cl::desc("Produce callgraph"),
+						  llvm::cl::location(callGraph));
 
-void DumpModule(llvm::Module* module)
+
+class CallGraphPrinter : public CallGraphVisitor
 {
-    module->dump(); 
+public:
+    virtual void Process(FunctionAST* f);
+};
+
+
+static void PrintFunctionName(const FunctionAST* f, int level)
+{
+    if (f->Parent())
+    {
+	PrintFunctionName(f->Parent(), level+1);
+	std::cout << ":";
+    }
+    std::cout << f->Proto()->Name();
+    if (level == 0)
+    {
+	std::cout << std::endl;
+    }
+}
+
+void CallGraphPrinter::Process(FunctionAST* f)
+{
+    PrintFunctionName(f, 0);
 }
 
 void OptimizerInit()
@@ -147,6 +174,12 @@ static int Compile(const std::string& fileName)
 	return 1;
     }
 
+    if (callGraph)
+    {
+	CallGraphPrinter p;
+	CallGraph(ast, p);
+    }
+
     {
 	TIME_TRACE();
 	if (!ast->CodeGen())
@@ -160,7 +193,7 @@ static int Compile(const std::string& fileName)
 
     if (verbosity)
     {
-	DumpModule(theModule);
+	theModule->dump();
     }
     mpm->run(*theModule);
     if (!CreateBinary(theModule, fileName, EmitSelection))

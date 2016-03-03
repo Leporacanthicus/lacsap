@@ -348,7 +348,7 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 	return dest;
     }
 
-    llvm::Value* v = builder.CreateLoad(src);
+    llvm::Value* v = builder.CreateLoad(src, "src");
     builder.CreateStore(v, dest);
     return dest;
 }
@@ -431,7 +431,7 @@ llvm::Value* AddressableAST::CodeGen()
 
     llvm::Value* v = Address();
     assert(v && "Expected to get an address");
-    return builder.CreateLoad(v);
+    return builder.CreateLoad(v, Name());
 }
 
 void VariableExprAST::DoDump(std::ostream& out) const
@@ -443,8 +443,11 @@ void VariableExprAST::DoDump(std::ostream& out) const
 llvm::Value* VariableExprAST::Address()
 {
     TRACE();
-    if ( llvm::Value* v = variables.Find(name))
+    size_t level;
+    if (llvm::Value* v = variables.Find(name, level))
     {
+	assert(level == 0 || level == variables.MaxLevel() &&
+	       "Expected variable to either be local or global");
 	EnsureSized();
 	return v;
     }
@@ -699,12 +702,12 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsS
 	    llvm::Value* lAddr = builder.CreateGEP(lV, ind, "leftSet");
 	    llvm::Value* rAddr = builder.CreateGEP(rV, ind, "rightSet");
 	    llvm::Value* vAddr = builder.CreateGEP(v, ind, "resSet");
-	    llvm::Value* res = builder.CreateLoad(lAddr);
-	    llvm::Value* tmp = builder.CreateLoad(rAddr);
+	    llvm::Value* res = builder.CreateLoad(lAddr, "laddr");
+	    llvm::Value* tmp = builder.CreateLoad(rAddr, "raddr");
 	    res = SetOperation(name, res, tmp);
 	    builder.CreateStore(res, vAddr);
 	}
-	return builder.CreateLoad(v);
+	return builder.CreateLoad(v, "set");
     }
     return 0;
 }
@@ -737,7 +740,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	llvm::Value* v = CreateTempAlloca(type);
 	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
 	builder.CreateCall(f, args);
-	return builder.CreateLoad(v);
+	return builder.CreateLoad(v, "set");
     }
 
     llvm::Constant* f = GetFunction(Types::GetBooleanType(), { pty, pty, intTy }, "__Set" + name);
@@ -796,8 +799,7 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
 llvm::Value* BinaryExprAST::CallStrFunc(const std::string& name)
 {
     TRACE();
-    Types::TypeDecl* resTy = Types::GetIntegerType();
-    return ::CallStrFunc(name, lhs, rhs, resTy, "calltmp");
+    return ::CallStrFunc(name, lhs, rhs, Types::GetIntegerType(), "calltmp");
 }
 
 llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
@@ -807,13 +809,11 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     llvm::Value* rV = MakeAddressable(rhs);
     llvm::Value* lV = MakeAddressable(lhs);
 
-    if (!rV || !lV)
-    {
-	return 0;
-    }
+    assert(rV && lV && "Expect to get values here...");
+
     // Result is integer.
-    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetCharType()->LlvmType());
     llvm::Type* resTy = Types::GetIntegerType()->LlvmType();
+    llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetCharType()->LlvmType());
 
     lV = builder.CreateBitCast(lV, pty);
     rV = builder.CreateBitCast(rV, pty);
@@ -879,7 +879,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
 
-	llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
+	llvm::Value* bitset = builder.CreateLoad(bitsetAddr, "bitsetaddr");
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::GetBooleanType()->LlvmType());
     }
@@ -1470,7 +1470,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	    const Types::FieldDecl* f = rd->GetElement(i);
 	    ind[1] = MakeIntegerConstant(i);
 	    llvm::Value* a = builder.CreateGEP(&*ai, ind, f->Name());
-	    a = builder.CreateLoad(a);
+	    a = builder.CreateLoad(a, f->Name());
 	    if (!variables.Add(f->Name(), a))
 	    {
 		ErrorF(this, "Duplicate variable name " + f->Name());
@@ -1749,7 +1749,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	std::string shortname = ShortName(proto->Name());
 	llvm::Value* v = variables.Find(shortname);
 	assert(v && "Expect function result 'variable' to exist");
-	llvm::Value* retVal = builder.CreateLoad(v);
+	llvm::Value* retVal = builder.CreateLoad(v, shortname);
 	builder.CreateRet(retVal);
     }
 
@@ -1759,18 +1759,18 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	di.lexicalBlocks.pop_back();
     }
 
+    if (!debugInfo && body && emitType != LlvmIr)
+    {
+	llvm::raw_os_ostream err(std::cerr);
+	assert(!verifyFunction(*theFunction, &err) && "Something went wrong in code generation");
+    }
+
     return theFunction;
 }
 
 llvm::Function* FunctionAST::CodeGen()
 {
-    llvm::Function* fn = CodeGen("P");
-    if (!debugInfo && body && emitType != LlvmIr)
-    {
-	llvm::raw_os_ostream err(std::cerr);
-	assert(!verifyFunction(*fn, &err) && "Something went wrong in code generation");
-    }
-    return fn;
+    return CodeGen("P");
 }
 
 void FunctionAST::SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
@@ -3083,7 +3083,7 @@ llvm::Value* SetExprAST::Address()
 	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr, "bitset");
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 
@@ -3121,7 +3121,7 @@ llvm::Value* SetExprAST::Address()
 	    }
 	    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), index};
 	    llvm::Value* bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
+	    llvm::Value* bitset = builder.CreateLoad(bitsetAddr, "bitset");
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	}
@@ -3508,9 +3508,9 @@ llvm::Value* VirtFunctionAST::Address()
 {
     llvm::Value* v = self->Address();
     std::vector<llvm::Value*> ind = {MakeIntegerConstant(0), MakeIntegerConstant(0)};
-    v = builder.CreateGEP(v, ind, "vtable");
+    v = builder.CreateGEP(v, ind, "vptr");
     ind[1] = MakeIntegerConstant(index);
-    v = builder.CreateLoad(v);
+    v = builder.CreateLoad(v, "vtable");
     v = builder.CreateGEP(v, ind, "mfunc");
     return v;
 }
@@ -3612,8 +3612,7 @@ llvm::Value* ClosureAST::CodeGen()
     int index = 0;
     for(auto u : content)
     {
-	llvm::Value* v;
-	v = u->Address();
+	llvm::Value* v = u->Address();
 	ind[1] = MakeIntegerConstant(index);
 	llvm::Value* ptr = builder.CreateGEP(closure, ind, u->Name());
 	builder.CreateStore(v, ptr);

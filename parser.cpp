@@ -228,6 +228,11 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     return 0;
 }
 
+void Parser::AddUsedVariable(const NamedObject* def)
+{
+    usedVariables.Add(def->Name(), def);
+}
+
 ExprAST* Parser::ParseSizeOfExpr()
 {
     AssertToken(Token::SizeOf);
@@ -1647,7 +1652,7 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
     {
 	if (def->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 	{
-	    usedVariables.Add(def->Name(), def);
+	    AddUsedVariable(def);
 	    if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	    {
 		proto = fp->Proto();
@@ -1896,7 +1901,6 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		    NextToken();
 		    if (const NamedObject* argDef = nameStack.Find(idName))
 		    {
-			usedVariables.Add(argDef->Name(), argDef);
 			if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
 			    arg = new FunctionExprAST(CurrentToken().Loc(), idName, fd->Type());
@@ -1905,6 +1909,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 			{
 			    if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 			    {
+				AddUsedVariable(argDef);
 				arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
 			    }
 			}
@@ -1994,10 +1999,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 		type = fd->Proto()->Type();
 	    }
 	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
-	    // Only add defined variables.
-	    // Ignore result - we may be adding the same variable
-	    // several times, but we don't really care.
-	    usedVariables.Add(def->Name(), def);
+	    AddUsedVariable(def);
 	}
     }
 

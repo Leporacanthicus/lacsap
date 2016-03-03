@@ -121,6 +121,7 @@ public:
 
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
+    void AddUsedVariable(const NamedObject* def);
 
     /* Error functions - all the same except for the return type */
     ExprAST* Error(Token t, const std::string& msg);
@@ -138,13 +139,14 @@ public:
 			  const NamedObject* def,
 			  const std::string& funcName,
 			  std::vector<ExprAST*>& args);
+
     // Helper functions for identifier access/checking.
     const EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);
     bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
-    
+
 private:
     typedef StackWrapper<const NamedObject*> NameWrapper;
 

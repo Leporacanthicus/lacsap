@@ -234,7 +234,16 @@ namespace Types
 
     void PointerDecl::DoDump(std::ostream& out) const
     {
-	out << "Pointer to: " << name << " (" << baseType << ")";
+	out << "Pointer to: " << name;
+	if (baseType)
+	{
+	    out << " type ";
+	    baseType->dump(out);
+	}
+	else
+	{
+	    out << " (forward declared)";
+	}
     }
 
     bool CompoundDecl::classof(const TypeDecl* e)

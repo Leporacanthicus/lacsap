@@ -135,9 +135,11 @@ public:
 
     // Helper functions for expression evaluation.
     bool     IsCall(const NamedObject* def);
-    ExprAST* MakeCallExpr(VariableExprAST* expr,
-			  const NamedObject* def,
+    ExprAST* MakeCallExpr(const NamedObject* def,
 			  const std::string& funcName,
+			  std::vector<ExprAST*>& args);
+    ExprAST* MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args);
+    ExprAST* MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
 			  std::vector<ExprAST*>& args);
 
     // Helper functions for identifier access/checking.
@@ -146,6 +148,10 @@ public:
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type);
     bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
+
+    std::vector<VarDef> CalculateUsedVars(FunctionAST* fn,
+					  const std::vector<const NamedObject*>& varsUsed,
+					  const Stack<const NamedObject*>& nameStack);
 
 private:
     typedef StackWrapper<const NamedObject*> NameWrapper;

@@ -32,8 +32,8 @@ public:
     virtual void dump(std::ostream& out) const;
     NamedKind getKind() const { return kind; }
 private:
-    const NamedKind  kind;
-    std::string      name;
+    NamedKind  kind;
+    std::string name;
     Types::TypeDecl* type;
 };
 

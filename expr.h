@@ -69,8 +69,6 @@ public:
 	EK_Unit,
 	EK_Closure,
 	EK_Trampoline, 		/* 45 */
-	EK_Initializer,
-	EK_InitValue,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) { }
@@ -445,8 +443,7 @@ public:
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
     const FunctionAST* Parent() const { return parent; }
-    void SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
-		     const Stack<const NamedObject*>& nameStack);
+    void SetUsedVars(const std::vector<VarDef>& usedvars) { usedVariables = usedvars; }
     const std::vector<VarDef>& UsedVars() { return usedVariables; }
     Types::TypeDecl* ClosureType();
     const std::string ClosureName() { return "$$CLOSURE"; };

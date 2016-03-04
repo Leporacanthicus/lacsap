@@ -8,6 +8,7 @@
 #include "options.h"
 #include "trace.h"
 #include "utils.h"
+#include "callgraph.h"
 #include <iostream>
 #include <cassert>
 #include <limits>
@@ -1629,64 +1630,11 @@ VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*&
     return expr;
 }
 
-ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, const std::string& funcName,
-			      std::vector<ExprAST*>& args)
+ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args)
 {
-    TRACE();
-
-    const PrototypeAST* proto = 0;
-    ExprAST* expr = 0;
-    if (const FuncDef *funcDef = llvm::dyn_cast_or_null<const FuncDef>(def))
-    {
-	proto = funcDef->Proto();
-	expr = new FunctionExprAST(CurrentToken().Loc(), proto, funcDef->Type());
-    }
-    else if (llvm::dyn_cast_or_null<const VarDef>(def))
-    {
-	if (def->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
-	{
-	    AddUsedVariable(def);
-	    if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
-	    {
-		proto = fp->Proto();
-		expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
-	    }
-	    else
-	    {
-		return Error(CurrentToken(), "Expected function pointer");;
-	    }
-	}
-    }
-    else if (const MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
-    {
-	Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
-	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index());
-	proto = mf->Proto();
-	// Make sure we enumerate the index of virtual functions
-	if (!self && proto->HasSelf())
-	{
-	    self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
-	}
-	(void) cd->VTableType(true);
-	if (mf->IsVirtual() || mf->IsOverride())
-	{
-	    int index = mf->VirtIndex();
-	    expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, mf->Proto()->Type());
-	}
-	else
-	{
-	    std::string fname = mf->LongName();
-	    expr = new FunctionExprAST(CurrentToken().Loc(), mf->Proto(), mf->Proto()->Type());
-	}
-    }
     if (expr)
     {
 	assert(proto && "Prototype should have been found here...");
-	if (proto->HasSelf())
-	{
-	    assert(self && "Should have a 'self' expression here");
-	    args.insert(args.begin(), self);
-	}
 	if (FunctionAST* fn = proto->Function())
 	{
 	    AddClosureArg(fn, args);
@@ -1694,6 +1642,70 @@ ExprAST* Parser::MakeCallExpr(VariableExprAST* self, const NamedObject* def, con
 	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
     }
     return 0;
+}
+
+ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcName,
+			      std::vector<ExprAST*>& args)
+{
+    TRACE();
+
+    const PrototypeAST* proto = 0;
+    ExprAST* expr = 0;
+    if (const FuncDef *funcDef = llvm::dyn_cast<const FuncDef>(def))
+    {
+	proto = funcDef->Proto();
+	expr = new FunctionExprAST(CurrentToken().Loc(), proto, funcDef->Type());
+    }
+    else if (llvm::isa<const VarDef>(def))
+    {
+	if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
+	{
+	    AddUsedVariable(def);
+	    proto = fp->Proto();
+	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
+	}
+	else
+	{
+	    return Error(CurrentToken(), "Expected function pointer");;
+	}
+    }
+    else if (const MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
+    {
+	Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
+	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index());
+	VariableExprAST* self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
+	return MakeSelfCall(self, mf, cd, args);
+    }
+    else
+    {
+	assert(0 && "Huh? Strange call");
+    }
+    return MakeSimpleCall(expr, proto, args);
+}
+
+ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
+			      std::vector<ExprAST*>& args)
+{
+    ExprAST* expr = 0;
+    const PrototypeAST* proto = mf->Proto();
+    // Make sure we enumerate the index of virtual functions
+    (void) cd->VTableType(true);
+    if (mf->IsVirtual() || mf->IsOverride())
+    {
+	int index = mf->VirtIndex();
+	expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, proto->Type());
+    }
+    else
+    {
+	std::string fname = mf->LongName();
+	expr = new FunctionExprAST(CurrentToken().Loc(), proto, proto->Type());
+    }
+    if (proto->HasSelf())
+    {
+	assert(self && "Should have a 'self' expression here");
+	args.insert(args.begin(), self);
+    }
+    return MakeSimpleCall(expr, proto, args);
 }
 
 ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
@@ -1730,22 +1742,18 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	    {
 		if ((elem = cd->MembFunc(name)) >= 0)
 		{
+		    NextToken();
+
 		    Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
 		    const NamedObject* def = nameStack.Find(membfunc->LongName());
 
 		    std::vector<ExprAST*> args;
-		    NextToken();
-
 		    if (!ParseArgs(def, args))
 		    {
 			return 0;
 		    }
 
-		    if (ExprAST* call = MakeCallExpr(expr, def, membfunc->LongName(), args))
-		    {
-			return call;
-		    }
-		    return 0;
+		    return MakeSelfCall(expr, membfunc, cd, args);
 		}
 		else
 		{
@@ -2025,6 +2033,10 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 		    return tmp;
 		}
 	    }
+	    else
+	    {
+		return Error(CurrentToken(), "Failed to parse token");
+	    }
 	    break;
 
 	default:
@@ -2046,8 +2058,8 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
     {
 	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
-    bool isBuiltin = false;
-    if (!def && !(isBuiltin = Builtin::IsBuiltin(idName)))
+    bool isBuiltin = Builtin::IsBuiltin(idName);
+    if (!def && !isBuiltin)
     {
 	return Error(CurrentToken(), "Undefined name '" + idName + "'");
     }
@@ -2059,23 +2071,28 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
 	}
     }
 
+    // Have to check twice for `def` as we need args for both
+    // builtin and regular functions.
     std::vector<ExprAST* > args;
     if (!ParseArgs(def, args))
     {
 	return 0;
     }
 
-    if (ExprAST* expr = MakeCallExpr(0, def, idName, args))
+    if (def)
     {
-	return expr;
+	if (ExprAST* expr = MakeCallExpr(def, idName, args))
+	{
+	    return expr;
+	}
     }
 
-    assert(isBuiltin && "Should be a builtin function if we get here");
-
+    assert(isBuiltin && "Should be a builtin function by now...");
     if (Builtin::BuiltinFunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
     {
 	return new BuiltinExprAST(CurrentToken().Loc(), bif);
     }
+
     assert(0 && "Should not get here");
     return 0;
 }
@@ -2443,15 +2460,105 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
     return new BlockAST(loc, v);
 }
 
+class CallGraphUsedVarsCollector : public CallGraphVisitor
+{
+public:
+    CallGraphUsedVarsCollector(FunctionAST* fn) : func(fn) { }
+    void Process(FunctionAST* f)
+    {
+	const std::vector<VarDef>& v = f->UsedVars();
+	used.insert( used.end(), v.begin(), v.end() );
+    }
+    void Caller(FunctionAST* /* f */) {}
+    std::vector<VarDef> used;
+    FunctionAST* func;
+};
+
+std::vector<VarDef> Parser::CalculateUsedVars(FunctionAST* fn,
+					      const std::vector<const NamedObject*>& varsUsed,
+					      const Stack<const NamedObject*>& nameStack)
+{
+    TRACE();
+    std::map<std::string, const NamedObject*> nonLocal;
+    size_t maxLevel = nameStack.MaxLevel();
+    std::vector<VarDef> usedVariables;
+
+    if (verbosity > 1)
+    {
+	nameStack.dump(std::cerr);
+    }
+
+    for(auto v : varsUsed)
+    {
+	size_t level;
+	if (!nameStack.Find(v->Name(), level))
+	{
+	    assert(0 && "Hhhm. Variable has gone missing!");
+	}
+	if (!(level == 0 || level == maxLevel))
+	{
+	    if (verbosity)
+	    {
+		std::cerr << "Adding: " << v->Name() << " level=" << level << std::endl;
+	    }
+	    nonLocal[v->Name()] = v;
+	}
+    }
+
+    CallGraphUsedVarsCollector cguv(fn);
+    CallGraph(fn, cguv);
+
+    for(auto v : cguv.used)
+    {
+	size_t level;
+	if (!nameStack.Find(v.Name(), level))
+	{
+	    assert(0 && "Hhhm. Variable has gone missing!");
+	}
+	if (!(level == 0 || level == maxLevel))
+	{
+	    if (verbosity != 0)
+	    {
+		std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
+	    }
+	    nonLocal[v.Name()] = new VarDef(v);
+	}
+    }
+
+
+    for(auto n : nonLocal)
+    {
+	const VarDef* v = llvm::dyn_cast<VarDef>(n.second);
+	if (!v)
+	{
+	    if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
+	    {
+		v = new VarDef(fd->Name(), fd->Proto()->Type());
+	    }
+	}
+	if (v)
+	{
+	    if (verbosity)
+	    {
+		v->dump(std::cerr);
+	    }
+	    usedVariables.push_back(*v);
+	}
+    }
+    return usedVariables;
+}
+
+
+
 FunctionAST* Parser::ParseDefinition(int level)
 {
-    Location loc = CurrentToken().Loc();
     PrototypeAST* proto = ParsePrototype(false);
     if (!proto || !Expect(Token::Semicolon, true))
     {
 	return 0;
     }
 
+    Location loc = CurrentToken().Loc();
     std::string name = proto->Name();
     NamedObject* nmObj = 0;
 
@@ -2479,11 +2586,10 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    {
 		shortname = "";
 	    }
-	}
-	if (!nameStack.Add(name, nmObj))
-	{
-	    return ErrorF(CurrentToken(),
-			  "Name '" + name + "' already exists...");
+	    if (!nameStack.Add(name, nmObj))
+	    {
+		return ErrorF(CurrentToken(), "Name '" + name + "' already exists...");
+	    }
 	}
 	if (AcceptToken(Token::Forward))
 	{
@@ -2580,7 +2686,8 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
-	    fn->SetUsedVars(usedVariables.GetLevel(), nameStack);
+	    std::vector<VarDef> used = CalculateUsedVars(fn, usedVariables.GetLevel(), nameStack);
+	    fn->SetUsedVars(used);
 	    if (Types::TypeDecl *closure = fn->ClosureType())
 	    {
 		proto->AddExtraArgsFirst({ VarDef(fn->ClosureName(), closure) });
@@ -2997,7 +3104,6 @@ private:
 
 ExprAST* Parser::ParseWrite()
 {
-    Location loc = CurrentToken().Loc();
     bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
 
     assert((CurrentToken().GetToken() == Token::Write ||
@@ -3005,6 +3111,7 @@ ExprAST* Parser::ParseWrite()
 	   "Expected write or writeln keyword here");
     NextToken();
 
+    Location loc = CurrentToken().Loc();
     VariableExprAST* file;
     std::vector<WriteAST::WriteArg> args;
     if (IsSemicolonOrEnd())
@@ -3035,7 +3142,6 @@ ExprAST* Parser::ParseWrite()
     }
     return new WriteAST(loc, file, args, isWriteln);
 }
-
 
 class CCRead: public Parser::CommaConsumer
 {

@@ -80,33 +80,6 @@ static llvm::cl::opt<bool, true>     CallGraphOpt("callgraph",
 						  llvm::cl::desc("Produce callgraph"),
 						  llvm::cl::location(callGraph));
 
-
-class CallGraphPrinter : public CallGraphVisitor
-{
-public:
-    virtual void Process(FunctionAST* f);
-};
-
-
-static void PrintFunctionName(const FunctionAST* f, int level)
-{
-    if (f->Parent())
-    {
-	PrintFunctionName(f->Parent(), level+1);
-	std::cout << ":";
-    }
-    std::cout << f->Proto()->Name();
-    if (level == 0)
-    {
-	std::cout << std::endl;
-    }
-}
-
-void CallGraphPrinter::Process(FunctionAST* f)
-{
-    PrintFunctionName(f, 0);
-}
-
 void OptimizerInit()
 {
     mpm = new llvm::legacy::PassManager();

@@ -1372,21 +1372,17 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     for(auto i : args)
     {
 	llvm::AttrBuilder attrs;
-	Types::TypeDecl* ty = i.Type();
-	if (!ty)
-	{
-	    return ErrorF(this, "Invalid type for argument" + i.Name() + "...");
-	}
-	llvm::Type* argTy = ty->LlvmType();
+	assert(i.Type() && "Invalid type for argument");
+	llvm::Type* argTy = i.Type()->LlvmType();
 	
 	index++;
 	if (index == 1 && Function()->ClosureType())
 	{
 	    argAttr.push_back(std::make_pair(index, llvm::Attribute::Nest));
 	}
-	if (i.IsRef() || ty->IsCompound() )
+	if (i.IsRef() || i.Type()->IsCompound() )
 	{
-	    argTy = llvm::PointerType::getUnqual(ty->LlvmType());
+	    argTy = llvm::PointerType::getUnqual(argTy);
 	    if (!i.IsRef())
 	    {
 		argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
@@ -1404,7 +1400,12 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
     }
     else
     {
-	actualName = namePrefix + "." + name;
+	actualName = namePrefix + ".";
+	if (baseobj)
+	{
+	    actualName += baseobj->Name() + "$";
+	}
+	actualName += name;
     }
 
     if (!mangles.FindTopLevel(name))
@@ -1635,10 +1636,7 @@ void FunctionAST::DoDump(std::ostream& out) const
 
 void FunctionAST::accept(ASTVisitor& v)
 {
-    for(auto i : subFunctions)
-    {
-	i->accept(v);
-    }
+    v.visit(this);
     for(auto d : varDecls)
     {
 	d->accept(v);
@@ -1646,6 +1644,10 @@ void FunctionAST::accept(ASTVisitor& v)
     if (body)
     {
 	body->accept(v);
+    }
+    for(auto i : subFunctions)
+    {
+	i->accept(v);
     }
 }
 
@@ -1771,76 +1773,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 llvm::Function* FunctionAST::CodeGen()
 {
     return CodeGen("P");
-}
-
-void FunctionAST::SetUsedVars(const std::vector<const NamedObject*>& varsUsed,
-			      const Stack<const NamedObject*>& nameStack)
-{
-    TRACE();
-    std::map<std::string, const NamedObject*> nonLocal;
-    size_t maxLevel = nameStack.MaxLevel();
-
-    if (verbosity > 1)
-    {
-	nameStack.dump(std::cerr);
-    }
-    for(auto v : varsUsed)
-    {
-	size_t level;
-	if (!nameStack.Find(v->Name(), level))
-	{
-	    assert(0 && "Hhhm. Variable has gone missing!");
-	}
-	if (!(level == 0 || level == maxLevel))
-	{
-	    if (verbosity)
-	    {
-		std::cerr << "Adding: " << v->Name() << " level=" << level << std::endl;
-	    }
-	    nonLocal[v->Name()] = v;
-	}
-    }
-
-    // Now add those of the subfunctions.
-    for(auto fn : subFunctions)
-    {
-	for(auto v : fn->UsedVars())
-	{
-	    size_t level;
-	    if (!nameStack.Find(v.Name(), level))
-	    {
-		assert(0 && "Hhhm. Variable has gone missing!");
-	    }
-	    if (!(level == 0 || level == maxLevel))
-	    {
-		if (verbosity != 0)
-		{
-		    std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
-		}
-		nonLocal[v.Name()] = new VarDef(v);
-	    }
-	}
-    }
-
-    for(auto n : nonLocal)
-    {
-	const VarDef* v = llvm::dyn_cast<VarDef>(n.second);
-	if (!v)
-	{
-	    if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
-	    {
-		v = new VarDef(fd->Name(), fd->Proto()->Type());
-	    }
-	}
-	if (v)
-	{
-	    if (verbosity)
-	    {
-		v->dump(std::cerr);
-	    }
-	    usedVariables.push_back(*v);
-	}
-    }
 }
 
 Types::TypeDecl* FunctionAST::ClosureType()

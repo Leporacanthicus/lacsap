@@ -1200,11 +1200,7 @@ llvm::Value* CallExprAST::CodeGen()
     }	
 
     const std::vector<VarDef>& vdef = proto->Args();
-    if (vdef.size() != args.size())
-    {
-	proto->dump();
-	return ErrorV(this, "Incorrect number of arguments for " + proto->Name() + ".");
-    }
+    assert(vdef.size() == args.size() && "Incorrect number of arguments for function");
 
     std::vector<llvm::Value*> argsV;
     std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;

@@ -1285,15 +1285,12 @@ llvm::Value* CallExprAST::CodeGen()
 	argsV.push_back(v);
 	index++;
     }
-    llvm::CallInst* inst = 0;
-    if (proto->Type()->Type() == Types::TypeDecl::TK_Void)
+    const char* res = "";
+    if (proto->Type()->Type() != Types::TypeDecl::TK_Void)
     {
-	inst = builder.CreateCall(calleF, argsV, "");
+	res = "calltmp";
     }
-    else
-    {
-	inst = builder.CreateCall(calleF, argsV, "calltmp");
-    }
+    llvm::CallInst* inst = builder.CreateCall(calleF, argsV, res);
     for(auto v : argAttr)
     {
 	inst->addAttribute(v.first, v.second);

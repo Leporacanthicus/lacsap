@@ -71,7 +71,7 @@ public:
 	EK_Trampoline, 		/* 45 */
     };
     ExprAST(const Location &w, ExprKind k)
-	: loc(w), kind(k), type(0) { }
+	: loc(w), kind(k), type(0) {}
     ExprAST(const Location &w, ExprKind k, Types::TypeDecl* ty)
 	: loc(w), kind(k), type(ty) {}
     virtual ~ExprAST() {}
@@ -82,7 +82,7 @@ public:
 	out << "Empty node";
     }
     void accept(ASTVisitor& v) override { v.visit(this); }
-    virtual llvm::Value* CodeGen() = 0;
+    virtual llvm::Value* CodeGen() { assert(0 && "Need to implement"); return 0; }
     ExprKind getKind() const { return kind; }
     void SetType(Types::TypeDecl* ty) { type = ty; }
     virtual Types::TypeDecl* Type() const { return type; }
@@ -150,7 +150,7 @@ class AddressableAST : public ExprAST
 public:
     AddressableAST(const Location& w, ExprKind k, Types::TypeDecl* ty) :
 	ExprAST(w, k, ty) {}
-    virtual llvm::Value* Address() = 0;
+    virtual llvm::Value* Address() { assert(0 && "Needs implementing"); return 0; }
     llvm::Value* CodeGen() override;
     virtual const std::string Name() const { return ""; }
     static bool classof(const ExprAST* e)
@@ -197,11 +197,8 @@ class ArrayExprAST : public VariableExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    ArrayExprAST(const Location& w,
-		 VariableExprAST* v,
-		 const std::vector<ExprAST*>& inds,
-		 const std::vector<Types::RangeDecl*>& r,
-		 Types::TypeDecl* ty);
+    ArrayExprAST(const Location& w, VariableExprAST* v, const std::vector<ExprAST*>& inds,
+		 const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
     /* Don't need CodeGen, just calculate address and use parent CodeGen */
     llvm::Value* Address() override;
@@ -290,15 +287,16 @@ public:
 	: ExprAST(op.Loc(), EK_BinaryExpr), oper(op), lhs(l), rhs(r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    llvm::Value* SetCodeGen();
     static bool classof(const ExprAST* e) { return e->getKind() == EK_BinaryExpr; }
+    Types::TypeDecl* Type() const override;
+    void UpdateType(Types::TypeDecl* ty);
+    void accept(ASTVisitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
+private:
+    llvm::Value* SetCodeGen();
     llvm::Value* InlineSetFunc(const std::string& name, bool resTyIsSet);
     llvm::Value* CallSetFunc(const std::string& name, bool resTyIsSet);
     llvm::Value* CallStrFunc(const std::string& name);
     llvm::Value* CallArrFunc(const std::string& name, size_t size);
-    Types::TypeDecl* Type() const override;
-    void UpdateType(Types::TypeDecl* ty);
-    void accept(ASTVisitor& v) override { rhs->accept(v); lhs->accept(v); v.visit(this); }
 private:
     Token            oper;
     ExprAST*         lhs;
@@ -328,7 +326,6 @@ public:
     RangeExprAST(const Location& w, ExprAST* l, ExprAST* h)
 	: ExprAST(w, EK_RangeExpr), low(l), high(h) {}
     void DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
     llvm::Value* Low() { return low->CodeGen(); }
     llvm::Value* High() { return high->CodeGen(); }
     ExprAST* LowExpr() { return low; }
@@ -373,6 +370,8 @@ private:
     ExprAST* rhs;
 };
 
+class FunctionAST;
+
 class VarDeclAST : public ExprAST
 {
 public:
@@ -380,35 +379,29 @@ public:
 	: ExprAST(w, EK_VarDecl), vars(v), func(0) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    // Todo: Change to FunctionAST.
-    void SetFunction(llvm::Function* f) { func = f; }
+    void SetFunction(FunctionAST* f) { func = f; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
     const std::vector<VarDef>& Vars() { return vars; }
 private:
     std::vector<VarDef> vars;
-    llvm::Function* func;
+    FunctionAST* func;
 };
-
-class FunctionAST;
 
 class PrototypeAST : public ExprAST
 {
     friend class TypeCheckVisitor;
 public:
-    PrototypeAST(const Location& w,
-		 const std::string& nm,
-		 const std::vector<VarDef>& ar,
-		 Types::TypeDecl* resTy,
-		 Types::ClassDecl* obj)
+    PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar,
+		 Types::TypeDecl* resTy, Types::ClassDecl* obj)
 	: ExprAST(w, EK_Prototype, resTy), name(nm), args(ar), function(0), baseobj(obj),
-	  isForward(false), hasSelf(false)
+	isForward(false), hasSelf(false), llvmFunc(0)
     {
 	assert(resTy && "Type must not be null!");
     }
     void DoDump(std::ostream& out) const override;
-    llvm::Function* CodeGen() override;
-    llvm::Function* CodeGen(const std::string& namePrefix);
-    void CreateArgumentAlloca(llvm::Function* fn);
+    llvm::Function* Create(const std::string& namePrefix);
+    llvm::Function* LlvmFunction() const { return llvmFunc; }
+    void CreateArgumentAlloca();
     std::string Name() const { return name; }
     const std::vector<VarDef>& Args() const { return args; }
     bool IsForward() const { return isForward; }
@@ -430,6 +423,7 @@ private:
     Types::ClassDecl*   baseobj;
     bool                isForward;
     bool                hasSelf;
+    llvm::Function*     llvmFunc;
 };
 
 class FunctionAST : public ExprAST
@@ -465,10 +459,9 @@ class FunctionExprAST : public VariableExprAST
 {
 public:
     FunctionExprAST(const Location& w, const PrototypeAST* p, Types::TypeDecl* ty)
-	: VariableExprAST(w, EK_FunctionExpr, p->Name(), ty), proto(p) { }
+	: VariableExprAST(w, EK_FunctionExpr, p->Name(), ty), proto(p) {}
 
     void DoDump(std::ostream& out) const override;
-    llvm::Value* Address() override;
     llvm::Value* CodeGen() override;
     const PrototypeAST* Proto() const { return proto; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_FunctionExpr; }
@@ -668,11 +661,9 @@ class RangeReduceAST : public ExprAST
 {
 public:
     RangeReduceAST(ExprAST* e, Types::RangeDecl* r)
-	: ExprAST(e->Loc(), EK_RangeReduceExpr, e->Type()), expr(e), range(r)
-    { }
+	: ExprAST(e->Loc(), EK_RangeReduceExpr, e->Type()), expr(e), range(r) {}
     RangeReduceAST(ExprKind k, ExprAST* e, Types::RangeDecl* r)
-	: ExprAST(e->Loc(), k, e->Type()), expr(e), range(r)
-    { }
+	: ExprAST(e->Loc(), k, e->Type()), expr(e), range(r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e)
@@ -688,8 +679,7 @@ class RangeCheckAST : public RangeReduceAST
 {
 public:
     RangeCheckAST(ExprAST* e, Types::RangeDecl* r)
-	: RangeReduceAST(EK_RangeCheckExpr, e, r)
-    { }
+	: RangeReduceAST(EK_RangeCheckExpr, e, r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeCheckExpr; }
@@ -766,7 +756,7 @@ class UnitAST : public ExprAST
 public:
     UnitAST(const Location& w, const std::vector<ExprAST*>& c, FunctionAST* init,
 	    InterfaceList iList)
-	: ExprAST(w, EK_Unit), initFunc(init), code(c), interfaceList(iList) { };
+	: ExprAST(w, EK_Unit), initFunc(init), code(c), interfaceList(iList) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Unit; }
@@ -782,7 +772,7 @@ class ClosureAST : public ExprAST
 {
 public:
     ClosureAST(const Location& w, Types::TypeDecl* ty, const std::vector<VariableExprAST*>& vf)
-	: ExprAST(w, EK_Closure, ty), content(vf) { }
+	: ExprAST(w, EK_Closure, ty), content(vf) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Closure; }
@@ -794,7 +784,7 @@ class TrampolineAST : public FunctionExprAST
 {
 public:
     TrampolineAST(const Location& w, FunctionExprAST* fn, ClosureAST* c, Types::FuncPtrDecl* fnPtrTy)
-	: FunctionExprAST(w, fn->Proto(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) { }
+	: FunctionExprAST(w, fn->Proto(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Trampoline; }

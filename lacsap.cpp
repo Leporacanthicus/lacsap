@@ -155,6 +155,7 @@ static int Compile(const std::string& fileName)
 
     {
 	TIME_TRACE();
+	BuildClosures(ast);
 	if (!ast->CodeGen())
 	{
 	    std::cerr << "Sorry, something went wrong here..." << std::endl;

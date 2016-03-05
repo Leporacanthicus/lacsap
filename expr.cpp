@@ -624,12 +624,6 @@ llvm::Value* FunctionExprAST::CodeGen()
     return ErrorV(this, "Name " + name + " could not be found...");
 }
 
-llvm::Value* FunctionExprAST::Address()
-{
-    assert(0 && "Don't expect this to be called...");
-    return 0;
-}
-
 static int StringishScore(ExprAST* e)
 {
     if (llvm::isa<CharExprAST>(e) || e->Type()->Type() == Types::TypeDecl::TK_Char)
@@ -987,10 +981,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return SetCodeGen();
     }
 
-    if (!lhs->Type() || !rhs->Type())
-    {
-	assert(0 && "Huh? Both sides of expression should have type");
-    }
+    assert(lhs->Type() && rhs->Type() && "Huh? Both sides of expression should have type");
 
     if (BothStringish(lhs, rhs))
     {
@@ -1361,10 +1352,14 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
+llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 {
     TRACE();
     assert(namePrefix != "" && "Prefix should never be empty");
+    if(llvmFunc)
+    {
+	return llvmFunc;
+    }
 
     std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
     std::vector<llvm::Type*> argTypes;
@@ -1417,17 +1412,17 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 	}
     }
 
-    llvm::Function* f = llvm::dyn_cast<llvm::Function>(GetFunction(resTy, argTypes, actualName));
-    assert(f && "Should have found a function here!");
-    if (!f->empty())
+    llvmFunc = llvm::dyn_cast<llvm::Function>(GetFunction(resTy, argTypes, actualName));
+    assert(llvmFunc && "Should have found a function here!");
+    if (!llvmFunc->empty())
     {
 	return ErrorF(this, "redefinition of function: " + name);
     }
 
-    assert(f->arg_size() == args.size() && "Expect number of arguments to match");
+    assert(llvmFunc->arg_size() == args.size() && "Expect number of arguments to match");
 
     auto a = args.begin();
-    for(auto& arg : f->args())
+    for(auto& arg : llvmFunc->args())
     {
 	arg.setName(a->Name());
 	a++;
@@ -1435,28 +1430,23 @@ llvm::Function* PrototypeAST::CodeGen(const std::string& namePrefix)
 
     for(auto v : argAttr)
     {
-	f->addAttribute(v.first, v.second);
+	llvmFunc->addAttribute(v.first, v.second);
     }
     // TODO: Allow this to be disabled.
     llvm::AttributeSet attrs;
-    attrs = attrs.addAttribute(f->getContext(), llvm::AttributeSet::FunctionIndex,
+    attrs = attrs.addAttribute(llvmFunc->getContext(), llvm::AttributeSet::FunctionIndex,
 			       "no-frame-pointer-elim", "true");
-    f->addAttributes(llvm::AttributeSet::FunctionIndex, attrs);
+    llvmFunc->addAttributes(llvm::AttributeSet::FunctionIndex, attrs);
 
-    return f;
+    return llvmFunc;
 }
 
-llvm::Function* PrototypeAST::CodeGen()
-{
-    return CodeGen("P");
-}
-
-void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
+void PrototypeAST::CreateArgumentAlloca()
 {
     TRACE();
 
     unsigned offset = 0;
-    llvm::Function::arg_iterator ai = fn->arg_begin();
+    llvm::Function::arg_iterator ai = llvmFunc->arg_begin();
     if (Types::TypeDecl* closureType = Function()->ClosureType())
     {
 	assert(closureType == args[0].Type() && "Expect type to match here");
@@ -1489,7 +1479,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
 	}
 	else
 	{
-	    a = CreateAlloca(fn, args[idx]);
+	    a = CreateAlloca(llvmFunc, args[idx]);
 	    builder.CreateStore(&*ai, a);
 	}
 	if (!variables.Add(args[idx].Name(), a))
@@ -1528,7 +1518,7 @@ void PrototypeAST::CreateArgumentAlloca(llvm::Function* fn)
     if (type->Type() != Types::TypeDecl::TK_Void)
     {
 	std::string shortname = ShortName(name);
-	llvm::AllocaInst* a = CreateAlloca(fn, VarDef(shortname, type));
+	llvm::AllocaInst* a = CreateAlloca(llvmFunc, VarDef(shortname, type));
 	if (!variables.Add(shortname, a))
 	{
 	    ErrorF(this, "Duplicate function result name '" + shortname + "'.");
@@ -1624,6 +1614,10 @@ FunctionAST::FunctionAST(const Location& w, PrototypeAST* prot, const std::vecto
     {
 	proto->SetFunction(this);
     }
+    for(auto vv : varDecls)
+    {
+	vv->SetFunction(this);
+    }
 }
 
 void FunctionAST::DoDump(std::ostream& out) const
@@ -1670,7 +1664,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     VarStackWrapper w(variables);
     LabelWrapper l(labels);
     assert(namePrefix != "" && "Prefix should not be empty");
-    llvm::Function* theFunction = proto->CodeGen(namePrefix);
+    llvm::Function* theFunction = proto->Create(namePrefix);
 
     if (!theFunction)
     {
@@ -1702,10 +1696,9 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
     builder.SetInsertPoint(bb);
 
-    proto->CreateArgumentAlloca(theFunction);
+    proto->CreateArgumentAlloca();
     for(auto d : varDecls)
     {
-	d->SetFunction(theFunction);
 	d->CodeGen();
     }
 
@@ -1962,11 +1955,8 @@ llvm::Value* IfExprAST::CodeGen()
     BasicDebugInfo(this);
 
     assert(cond->Type() && "Expect type here");
-    if (*cond->Type() !=  *Types::GetBooleanType())
-    {
-	assert(0 && "Only boolean expressions allowed in if-statement");
-	return 0;
-    }
+    assert(*cond->Type() ==  *Types::GetBooleanType() && 
+	   "Only boolean expressions allowed in if-statement");
 
     llvm::Value* condV = cond->CodeGen();
     if (!condV)
@@ -2660,7 +2650,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	}
 	else
 	{	
-	    v = CreateAlloca(func, var);
+	    v = CreateAlloca(func->Proto()->LlvmFunction(), var);
 	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
 	    if (cd && cd->VTableType(true))
 	    {
@@ -2845,12 +2835,6 @@ Types::TypeDecl* RangeExprAST::Type() const
 {
     // We have to pick one here. Semantic Analysis will check that both are same type
     return low->Type();
-}
-
-llvm::Value* RangeExprAST::CodeGen()
-{
-    TRACE();
-    return 0;
 }
 
 void SetExprAST::DoDump(std::ostream& out) const

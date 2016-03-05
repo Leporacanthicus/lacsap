@@ -2524,7 +2524,6 @@ std::vector<VarDef> Parser::CalculateUsedVars(FunctionAST* fn,
 	}
     }
 
-
     for(auto n : nonLocal)
     {
 	const VarDef* v = llvm::dyn_cast<VarDef>(n.second);
@@ -2683,8 +2682,8 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    {
 		s->SetParent(fn);
 	    }
-	    // Need to add subFunctions before setting used vars!
 	    fn->AddSubFunctions(subFunctions);
+	    // TODO: Remove this when new system works.
 	    std::vector<VarDef> used = CalculateUsedVars(fn, usedVariables.GetLevel(), nameStack);
 	    fn->SetUsedVars(used);
 	    if (Types::TypeDecl *closure = fn->ClosureType())

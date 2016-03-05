@@ -62,3 +62,6 @@ void CallGraphPrinter::Caller(FunctionAST* f)
     std::cout << "Called from: " << f->Proto()->Name() << std::endl;
 }
 
+void BuildClosures(ExprAST* ast)
+{
+}

@@ -17,5 +17,6 @@ public:
 };
 
 void CallGraph(ExprAST *ast, CallGraphVisitor& visitor);
+void BuildClosures(ExprAST* ast);
 
 #endif

@@ -2511,17 +2511,16 @@ std::vector<VarDef> Parser::CalculateUsedVars(FunctionAST* fn,
     for(auto v : cguv.used)
     {
 	size_t level;
-	if (!nameStack.Find(v.Name(), level))
+	if (nameStack.Find(v.Name(), level))
 	{
-	    assert(0 && "Hhhm. Variable has gone missing!");
-	}
-	if (!(level == 0 || level == maxLevel))
-	{
-	    if (verbosity != 0)
+	    if (!(level == 0 || level == maxLevel))
 	    {
-		std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
+		if (verbosity != 0)
+		{
+		    std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
+		}
+		nonLocal[v.Name()] = new VarDef(v);
 	    }
-	    nonLocal[v.Name()] = new VarDef(v);
 	}
     }
 

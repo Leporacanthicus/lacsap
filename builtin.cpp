@@ -1,5 +1,6 @@
 #include "expr.h"
 #include "builtin.h"
+#include "options.h"
 #include <llvm/IR/DataLayout.h>
 #include <functional>
 
@@ -830,9 +831,20 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionClock::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::GetLongIntType(), {}, "__Clock");
+	Types::TypeDecl* ty = Types::GetLongIntType();
 
-	return builder.CreateCall(f, {}, "clock");
+	if (model == m32)
+	{
+	    ty = Types::GetIntegerType();
+	}
+	llvm::Constant* f = GetFunction(ty, {}, "__Clock");
+
+	llvm::Value* v = builder.CreateCall(f, {}, "clock");
+	if (model == m32)
+	{
+	    v = builder.CreateZExt(v, Types::GetLongIntType()->LlvmType(), "extend");
+	}
+	return v;
     }
 
     bool BuiltinFunctionClock::Semantics()

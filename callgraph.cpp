@@ -249,7 +249,6 @@ void BuildClosures(ExprAST* ast)
 	std::set<VarDef> used;
 	for(auto use : uses)
 	{
-	    bool found = false;
 	    for(const FunctionAST* f = func->Parent(); f; f = f->Parent())
 	    {
 		const VarMap& dm = v.declMap[f];
@@ -257,7 +256,6 @@ void BuildClosures(ExprAST* ast)
 		if (v !=  dm.end())
 		{
 		    used.insert(v->second);
-		    found = true;
 		    break;
 		}
 	    }

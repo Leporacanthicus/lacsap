@@ -118,9 +118,8 @@ using CallSet = std::set<const FunctionAST*>;
 class CallGraphClosureCollector : public CallGraphVisitor
 {
 public:
-    void Process(FunctionAST* f);
-    void Caller(FunctionAST* f);
-    void VarDecl(VarDeclAST* v) { AddVarDecls(v->Vars(), v->Function()); }
+    void Caller(FunctionAST* f) override { CollectUseData(f); }
+    void VarDecl(VarDeclAST* v) override { AddVarDecls(v->Vars(), v->Function()); }
 
     void AddVarDecls(const std::vector<VarDef>& vars, FunctionAST* f);
     void CollectUseData(FunctionAST* f);
@@ -189,17 +188,6 @@ void CallGraphClosureCollector::CollectUseData(FunctionAST* f)
     callMap[f] = collector.calls;
 }
 
-
-void CallGraphClosureCollector::Process(FunctionAST* f)
-{
-    CollectUseData(f);
-}
-
-void CallGraphClosureCollector::Caller(FunctionAST* f)
-{
-    CollectUseData(f);
-}
-
 void RemoveFromUses(VarSet& uses, const VarMap& decls)
 {
     for(auto d : decls)
@@ -265,8 +253,8 @@ void BuildClosures(ExprAST* ast)
 	if (Types::TypeDecl *closure = func->ClosureType())
 	{
 	    func->Proto()->AddExtraArgsFirst({ VarDef(func->ClosureName(), closure) });
+	    UpdateCallVisitor updater(func->Proto());
+	    ast->accept(updater);
 	}
-	UpdateCallVisitor updater(func->Proto());
-	ast->accept(updater);
     }
 }

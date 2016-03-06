@@ -1294,6 +1294,7 @@ llvm::Value* CallExprAST::CodeGen()
 
 void CallExprAST::accept(ASTVisitor& v)
 {
+    callee->accept(v);
     for(auto i : args)
     {
 	i->accept(v);

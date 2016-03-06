@@ -5,8 +5,8 @@ class CallGraphVisitor
 {
 public:
     virtual ~CallGraphVisitor() {}
-    virtual void Caller(FunctionAST* f) = 0;
-    virtual void Process(FunctionAST* f) = 0;
+    virtual void Caller(FunctionAST* f) {}
+    virtual void Process(FunctionAST* f) {}
     virtual void VarDecl(VarDeclAST* v) {}
 };
 

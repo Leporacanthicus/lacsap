@@ -14,6 +14,7 @@
 #include <llvm/Support/Casting.h>
 #include <string>
 #include <vector>
+#include <set>
 
 class ExprAST : public Visitable<ExprAST>
 {
@@ -21,54 +22,54 @@ class ExprAST : public Visitable<ExprAST>
 public:
     enum ExprKind
     {
-	EK_Expr,		/* 0 */
-	EK_RealExpr,		/* 1 */
+	EK_Expr,
+	EK_RealExpr,
 	EK_IntegerExpr,
 	EK_CharExpr,
 	EK_NilExpr,
 
 	// Addressable types
-	EK_AddressableExpr,	/* 5 */
+	EK_AddressableExpr,
 	EK_StringExpr,
+	EK_SetExpr,
 	EK_VariableExpr,
 	EK_ArrayExpr,
-	EK_PointerExpr,
-	EK_FilePointerExpr,	/* 10 */
+	EK_PointerExpr,	
+	EK_FilePointerExpr,
 	EK_FieldExpr,
 	EK_VariantFieldExpr,
 	EK_FunctionExpr,
-	EK_SetExpr,
-	EK_TypeCastExpr,	/* 15 */
+	EK_TypeCastExpr,
 	EK_LastAddressable,
 
 	EK_BinaryExpr,
 	EK_UnaryExpr,
 	EK_RangeExpr,
-	EK_Block,		/* 20 */
+	EK_Block,
 	EK_AssignExpr,
 	EK_VarDecl,
 	EK_Function,
 	EK_Prototype,
-	EK_CallExpr,		/* 25 */
+	EK_CallExpr,
 	EK_BuiltinExpr,
 	EK_IfExpr,
 	EK_ForExpr,
 	EK_WhileExpr,
-	EK_RepeatExpr,		/* 30 */
+	EK_RepeatExpr,
 	EK_Write,
 	EK_Read,
 	EK_LabelExpr,
 	EK_CaseExpr,
-	EK_WithExpr,		/* 35 */
+	EK_WithExpr,
 	EK_RangeReduceExpr,
 	EK_RangeCheckExpr,
 	EK_SizeOfExpr,
-	EK_VTableExpr, 		/* 40 */
+	EK_VTableExpr,
 	EK_VirtFunction,
 	EK_Goto,
 	EK_Unit,
 	EK_Closure,
-	EK_Trampoline, 		/* 45 */
+	EK_Trampoline,
     };
     ExprAST(const Location &w, ExprKind k)
 	: loc(w), kind(k), type(0) {}
@@ -173,6 +174,20 @@ private:
     std::string val;
 };
 
+class SetExprAST : public AddressableAST
+{
+    friend class TypeCheckVisitor;
+public:
+    SetExprAST(const Location& w, std::vector<ExprAST*> v, Types::TypeDecl* ty)
+	: AddressableAST(w, EK_SetExpr, ty), values(v) {}
+    void DoDump(std::ostream& out) const override;
+    llvm::Value* Address() override;
+    llvm::Value* MakeConstantSet(Types::TypeDecl* type);
+    static bool classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }
+private:
+    std::vector<ExprAST*> values;
+};
+
 class VariableExprAST : public AddressableAST
 {
 public:
@@ -262,21 +277,6 @@ public:
 private:
     VariableExprAST* expr;
     int element;
-};
-
-
-class SetExprAST : public AddressableAST
-{
-    friend class TypeCheckVisitor;
-public:
-    SetExprAST(const Location& w, std::vector<ExprAST*> v, Types::TypeDecl* ty)
-	: AddressableAST(w, EK_SetExpr, ty), values(v) {}
-    void DoDump(std::ostream& out) const override;
-    llvm::Value* Address() override;
-    llvm::Value* MakeConstantSet(Types::TypeDecl* type);
-    static bool classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }
-private:
-    std::vector<ExprAST*> values;
 };
 
 class BinaryExprAST : public ExprAST
@@ -380,6 +380,7 @@ public:
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     void SetFunction(FunctionAST* f) { func = f; }
+    FunctionAST* Function() { return func; }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_VarDecl; }
     const std::vector<VarDef>& Vars() { return vars; }
 private:
@@ -434,25 +435,27 @@ public:
     llvm::Function* CodeGen() override;
     llvm::Function* CodeGen(const std::string& namePrefix);
     const PrototypeAST* Proto() const { return proto; }
+    PrototypeAST* Proto() { return proto; }
     void AddSubFunctions(const std::vector<FunctionAST *>& subs) { subFunctions = subs; }
     void SetParent(FunctionAST* p) { parent = p; }
     const FunctionAST* Parent() const { return parent; }
-    void SetUsedVars(const std::vector<VarDef>& usedvars) { usedVariables = usedvars; }
-    const std::vector<VarDef>& UsedVars() { return usedVariables; }
+    const std::vector<FunctionAST*> SubFunctions() const { return subFunctions; }
+    void SetUsedVars(const std::set<VarDef>& usedvars) { usedVariables = usedvars; }
+    const std::set<VarDef>& UsedVars() { return usedVariables; }
     Types::TypeDecl* ClosureType();
     const std::string ClosureName() { return "$$CLOSURE"; };
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void accept(ASTVisitor& v) override;
     void EndLoc(Location loc) { endLoc = loc; }
 private:
-    PrototypeAST*              proto;
-    std::vector<VarDeclAST*>   varDecls;
-    BlockAST*                  body;
-    std::vector<FunctionAST*>  subFunctions;
-    std::vector<VarDef>        usedVariables;
-    FunctionAST*               parent;
-    Types::TypeDecl*           closureType;
-    Location                   endLoc;
+    PrototypeAST* proto;
+    std::vector<VarDeclAST*> varDecls;
+    BlockAST* body;
+    std::vector<FunctionAST*> subFunctions;
+    std::set<VarDef> usedVariables;
+    FunctionAST* parent;
+    Types::TypeDecl* closureType;
+    Location endLoc;
 };
 
 class FunctionExprAST : public VariableExprAST
@@ -666,6 +669,7 @@ public:
 	: ExprAST(e->Loc(), k, e->Type()), expr(e), range(r) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
+    void accept(ASTVisitor& v) override { expr->accept(v); v.visit(this); }
     static bool classof(const ExprAST* e)
     {
 	return (e->getKind() == EK_RangeReduceExpr) || (e->getKind() == EK_RangeCheckExpr);

@@ -738,7 +738,6 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     }
 
     llvm::Constant* f = GetFunction(Types::GetBooleanType(), { pty, pty, intTy }, "__Set" + name);
-
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
@@ -769,7 +768,6 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
     llvm::Constant* f = GetFunction(resTy, { lV->getType(), rV->getType() }, "__Str" + name);
-
     return builder.CreateCall(f, { lV, rV }, twine);
 }
 

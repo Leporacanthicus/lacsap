@@ -8,62 +8,12 @@
 #include "options.h"
 #include "trace.h"
 #include "utils.h"
-#include "callgraph.h"
 #include <iostream>
 #include <cassert>
 #include <limits>
 #include <vector>
 #include <algorithm>
 #include <cmath>
-
-class UpdateCallVisitor : public ASTVisitor
-{
-public:
-    UpdateCallVisitor(const PrototypeAST *p) : proto(p) {}
-    virtual void visit(ExprAST* expr);
-private:
-    const PrototypeAST* proto;
-};
-
-static void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
-{
-    if (Types::TypeDecl* closureTy = fn->ClosureType())
-    {
-	std::vector<VariableExprAST*> vf;
-	for(auto u : fn->UsedVars())
-	{
-	    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
-	}
-	ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
-	args.insert(args.begin(), closure);
-    }
-}
-
-/* This is used to update internal calls within the nest of functions, where we need
- * to pass variables from the outer scope to the inner scope
- */
-void UpdateCallVisitor::visit(ExprAST* expr)
-{
-    TRACE();
-
-    if (verbosity > 1)
-    {
-	expr->dump();
-    }
-
-    if (CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
-    {
-	if (call->Proto()->Name() == proto->Name()
-	    && call->Args().size() != proto->Args().size())
-	{
-	    if (verbosity)
-	    {
-		std::cerr << "Adding arguments for function" << std::endl;
-	    }
-	    AddClosureArg(proto->Function(), call->Args());
-	}
-    }
-}
 
 ExprAST* Parser::Error(Token t, const std::string& msg)
 {
@@ -228,11 +178,6 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     return 0;
 }
 
-void Parser::AddUsedVariable(const NamedObject* def)
-{
-    usedVariables.Add(def->Name(), def);
-}
-
 ExprAST* Parser::ParseSizeOfExpr()
 {
     AssertToken(Token::SizeOf);
@@ -265,12 +210,9 @@ ExprAST* Parser::ParseSizeOfExpr()
 
 bool Parser::ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty)
 {
-    bool done = false;
     // We completely ignore "file" specifications on the program.
-    if (allowEmpty && CurrentToken().GetToken() == end)
-    {
-	done = true;
-    }
+    bool done = allowEmpty && CurrentToken().GetToken() == end;
+
     while(!done)
     {
 	if (!cc.Consume(*this))
@@ -1660,7 +1602,6 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
     {
 	if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	{
-	    AddUsedVariable(def);
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
 	}
@@ -1909,7 +1850,6 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 			{
 			    if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
 			    {
-				AddUsedVariable(argDef);
 				arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
 			    }
 			}
@@ -1999,7 +1939,6 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 		type = fd->Proto()->Type();
 	    }
 	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
-	    AddUsedVariable(def);
 	}
     }
 
@@ -2460,94 +2399,6 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
     return new BlockAST(loc, v);
 }
 
-class CallGraphUsedVarsCollector : public CallGraphVisitor
-{
-public:
-    CallGraphUsedVarsCollector(FunctionAST* fn) : func(fn) { }
-    void Process(FunctionAST* f)
-    {
-	const std::vector<VarDef>& v = f->UsedVars();
-	used.insert( used.end(), v.begin(), v.end() );
-    }
-    void Caller(FunctionAST* /* f */) {}
-    std::vector<VarDef> used;
-    FunctionAST* func;
-};
-
-std::vector<VarDef> Parser::CalculateUsedVars(FunctionAST* fn,
-					      const std::vector<const NamedObject*>& varsUsed,
-					      const Stack<const NamedObject*>& nameStack)
-{
-    TRACE();
-    std::map<std::string, const NamedObject*> nonLocal;
-    size_t maxLevel = nameStack.MaxLevel();
-    std::vector<VarDef> usedVariables;
-
-    if (verbosity > 1)
-    {
-	nameStack.dump(std::cerr);
-    }
-
-    for(auto v : varsUsed)
-    {
-	size_t level;
-	if (!nameStack.Find(v->Name(), level))
-	{
-	    assert(0 && "Hhhm. Variable has gone missing!");
-	}
-	if (!(level == 0 || level == maxLevel))
-	{
-	    if (verbosity)
-	    {
-		std::cerr << "Adding: " << v->Name() << " level=" << level << std::endl;
-	    }
-	    nonLocal[v->Name()] = v;
-	}
-    }
-
-    CallGraphUsedVarsCollector cguv(fn);
-    CallGraph(fn, cguv);
-
-    for(auto v : cguv.used)
-    {
-	size_t level;
-	if (nameStack.Find(v.Name(), level))
-	{
-	    if (!(level == 0 || level == maxLevel))
-	    {
-		if (verbosity != 0)
-		{
-		    std::cout << "Adding " << v.Name() << " level=" << level << std::endl;
-		}
-		nonLocal[v.Name()] = new VarDef(v);
-	    }
-	}
-    }
-
-    for(auto n : nonLocal)
-    {
-	const VarDef* v = llvm::dyn_cast<VarDef>(n.second);
-	if (!v)
-	{
-	    if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(n.second))
-	    {
-		v = new VarDef(fd->Name(), fd->Proto()->Type());
-	    }
-	}
-	if (v)
-	{
-	    if (verbosity)
-	    {
-		v->dump(std::cerr);
-	    }
-	    usedVariables.push_back(*v);
-	}
-    }
-    return usedVariables;
-}
-
-
-
 FunctionAST* Parser::ParseDefinition(int level)
 {
     PrototypeAST* proto = ParsePrototype(false);
@@ -2601,7 +2452,6 @@ FunctionAST* Parser::ParseDefinition(int level)
     }
 
     NameWrapper wrapper(nameStack);
-    NameWrapper usedWrapper(usedVariables);
     if (proto->HasSelf())
     {
 	assert(proto->BaseObj() && "Expect base object!");
@@ -2683,15 +2533,6 @@ FunctionAST* Parser::ParseDefinition(int level)
 		s->SetParent(fn);
 	    }
 	    fn->AddSubFunctions(subFunctions);
-	    // TODO: Remove this when new system works.
-	    std::vector<VarDef> used = CalculateUsedVars(fn, usedVariables.GetLevel(), nameStack);
-	    fn->SetUsedVars(used);
-	    if (Types::TypeDecl *closure = fn->ClosureType())
-	    {
-		proto->AddExtraArgsFirst({ VarDef(fn->ClosureName(), closure) });
-	    }
-	    UpdateCallVisitor updater(proto);
-	    fn->accept(updater);
 	    fn->EndLoc(endLoc);
 	    return fn;
 	}

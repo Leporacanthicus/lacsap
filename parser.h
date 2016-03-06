@@ -121,7 +121,6 @@ public:
 
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
-    void AddUsedVariable(const NamedObject* def);
 
     /* Error functions - all the same except for the return type */
     ExprAST* Error(Token t, const std::string& msg);
@@ -163,8 +162,9 @@ private:
     std::string           moduleName;
     int                   errCnt;
     Stack<const NamedObject*> nameStack;
-    Stack<const NamedObject*> usedVariables;
     std::vector<ExprAST*> ast;
 };
+
+void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args);
 
 #endif

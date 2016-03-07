@@ -2974,10 +2974,6 @@ ExprAST* Parser::ParseWrite()
 	}
 	file = ccw.File();
 	args = ccw.Args();
-	if (!isWriteln && args.empty())
-	{
-	    return Error(CurrentToken(), "At least one argument expected");
-	}
     }
     return new WriteAST(loc, file, args, isWriteln);
 }
@@ -3048,7 +3044,6 @@ ExprAST* Parser::ParseRead()
 	{
 	    file = ccr.File();
 	    args = ccr.Args();
-	    assert((args.size() >= 1 || isReadln) && "Expected at least one variable in read statement");
 	}
 	else
 	{

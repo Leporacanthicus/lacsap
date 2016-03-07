@@ -287,6 +287,11 @@ static llvm::Function* ErrorF(const ExprAST* e, const std::string& msg)
     return reinterpret_cast<llvm::Function*>(ErrorV(e, msg));
 }
 
+static llvm::Constant* NoOpValue()
+{
+    return MakeIntegerConstant(0);
+}
+
 llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty)
 {
     return llvm::ConstantInt::get(ty->LlvmType(), val);
@@ -1330,7 +1335,7 @@ llvm::Value* BlockAST::CodeGen()
 	(void)v;
 	assert(v && "Expect codegen to work!");
     }
-    return MakeIntegerConstant(0);
+    return NoOpValue();
 }
 
 void PrototypeAST::DoDump(std::ostream& out) const
@@ -2340,6 +2345,10 @@ llvm::Value* WriteAST::CodeGen()
     llvm::Value* f = file->Address();
     llvm::Value* v = 0;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
+    if (isText && args.empty() && !isWriteln)
+    {
+	return NoOpValue();
+    }
     for(auto arg: args)
     {
 	std::vector<llvm::Value*> argsV;
@@ -2517,6 +2526,10 @@ llvm::Value* ReadAST::CodeGen()
     llvm::Value* v;
     bool isText = llvm::isa<Types::TextDecl>(file->Type());
     llvm::Type* fTy =  f->getType();
+    if (isText && args.empty() && !isReadln)
+    {
+	return NoOpValue();
+    }
     for(auto arg : args)
     {
 	std::vector<llvm::Value*> argsV = { f };
@@ -3497,7 +3510,7 @@ llvm::Value* UnitAST::CodeGen()
     {
 	debugStack.pop_back();
     }
-    return MakeIntegerConstant(0);
+    return NoOpValue();
 }
 
 void ClosureAST::DoDump(std::ostream& out) const

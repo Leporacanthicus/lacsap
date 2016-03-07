@@ -15,7 +15,7 @@ public:
 	    createImpl(func);
 	}
     }
-	~TimeTrace() { if(impl) destroyImpl(); }
+    ~TimeTrace() { if(impl) destroyImpl(); }
 
 private:
     void createImpl(const char *func);

@@ -1,7 +1,8 @@
 #include <time.h>
+#include <stdint.h>
 #include "runtime.h"
 
-long __Clock(void)
+uint64_t  __Clock(void)
 {
     return clock();
 }

@@ -831,20 +831,9 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionClock::CodeGen(llvm::IRBuilder<>& builder)
     {
-	Types::TypeDecl* ty = Types::GetLongIntType();
+	llvm::Constant* f = GetFunction(Types::GetLongIntType(), {}, "__Clock");
 
-	if (model == m32)
-	{
-	    ty = Types::GetIntegerType();
-	}
-	llvm::Constant* f = GetFunction(ty, {}, "__Clock");
-
-	llvm::Value* v = builder.CreateCall(f, {}, "clock");
-	if (model == m32)
-	{
-	    v = builder.CreateZExt(v, Types::GetLongIntType()->LlvmType(), "extend");
-	}
-	return v;
+	return  builder.CreateCall(f, {}, "clock");
     }
 
     bool BuiltinFunctionClock::Semantics()

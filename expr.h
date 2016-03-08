@@ -461,8 +461,8 @@ private:
 class FunctionExprAST : public VariableExprAST
 {
 public:
-    FunctionExprAST(const Location& w, const PrototypeAST* p, Types::TypeDecl* ty)
-	: VariableExprAST(w, EK_FunctionExpr, p->Name(), ty), proto(p) {}
+    FunctionExprAST(const Location& w, const PrototypeAST* p)
+	: VariableExprAST(w, EK_FunctionExpr, p->Name(), p->Type()), proto(p) {}
 
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
@@ -788,7 +788,7 @@ class TrampolineAST : public FunctionExprAST
 {
 public:
     TrampolineAST(const Location& w, FunctionExprAST* fn, ClosureAST* c, Types::FuncPtrDecl* fnPtrTy)
-	: FunctionExprAST(w, fn->Proto(), fn->Type()), func(fn), closure(c), funcPtrTy(fnPtrTy) {}
+	: FunctionExprAST(w, fn->Proto()), func(fn), closure(c), funcPtrTy(fnPtrTy) {}
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_Trampoline; }

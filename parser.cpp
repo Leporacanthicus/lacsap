@@ -970,6 +970,8 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
 			 Token::TokenType type)
 {
+    TRACE();
+
     bool isClass = type == Token::Class;
     // Different from C++, public is the default access qualifier.
     Types::FieldDecl::Access access = Types::FieldDecl::Public;
@@ -1596,7 +1598,7 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
     if (const FuncDef *funcDef = llvm::dyn_cast<const FuncDef>(def))
     {
 	proto = funcDef->Proto();
-	expr = new FunctionExprAST(CurrentToken().Loc(), proto, funcDef->Type());
+	expr = new FunctionExprAST(CurrentToken().Loc(), proto);
     }
     else if (llvm::isa<const VarDef>(def))
     {
@@ -1639,7 +1641,7 @@ ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, 
     else
     {
 	std::string fname = mf->LongName();
-	expr = new FunctionExprAST(CurrentToken().Loc(), proto, proto->Type());
+	expr = new FunctionExprAST(CurrentToken().Loc(), proto);
     }
     if (proto->HasSelf())
     {
@@ -1826,11 +1828,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		{
 		    return (bool)Error(CurrentToken(), "Too many arguments");
 		}
-		Types::TypeDecl* td = funcArgs[argNo].Type();
-		if (td->Type() == Types::TypeDecl::TK_FuncPtr)
-		{
-		    isFuncArg = true;
-		}
+		isFuncArg = llvm::isa<Types::FuncPtrDecl>(funcArgs[argNo].Type());
 	    }
 	    ExprAST* arg = 0;
 	    if (isFuncArg)
@@ -1844,7 +1842,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		    {
 			if (const FuncDef *fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
-			    arg = new FunctionExprAST(CurrentToken().Loc(), fd->Proto(), fd->Type());
+			    arg = new FunctionExprAST(CurrentToken().Loc(), fd->Proto());
 			}
 			else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
 			{
@@ -2401,6 +2399,8 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 
 FunctionAST* Parser::ParseDefinition(int level)
 {
+    TRACE();
+
     PrototypeAST* proto = ParsePrototype(false);
     if (!proto || !Expect(Token::Semicolon, true))
     {

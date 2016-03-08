@@ -512,31 +512,34 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
     for(auto& a : c->args)
     {
 	bool bad = true;
+
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
 	    a = Recast(a, ty);
 	    bad = false;
 	}
-	else if (Types::FunctionDecl* fnTy = llvm::dyn_cast<Types::FunctionDecl>(a->Type()))
+	else if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
 	{
-	    if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
+	    FunctionExprAST* fnArg = llvm::dyn_cast<FunctionExprAST>(a);
+
+	    if (fnArg->Proto()->IsMatchWithoutClosure(argTy->Proto()))
 	    {
-		if (fnTy->Proto()->IsMatchWithoutClosure(argTy->Proto()))
+		/* Todo: Make this a function */
+		std::vector<VariableExprAST*> vf;
+		FunctionAST* fn = fnArg->Proto()->Function();
+		Types::TypeDecl* closureTy = fn->ClosureType();
+		for(auto u : fn->UsedVars())
 		{
-		    /* Todo: Make this a function */
-		    std::vector<VariableExprAST*> vf;
-		    FunctionAST* fn = fnTy->Proto()->Function();
-		    Types::TypeDecl* closureTy = fn->ClosureType();
-		    for(auto u : fn->UsedVars())
-		    {
-			vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
-		    }
-		    ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
-		    FunctionExprAST* e = llvm::dyn_cast<FunctionExprAST>(a);
-		    assert(e && "Expected argument to be FunctionExprAST");
-		    a = new TrampolineAST(e->loc, e, closure, argTy);
-		    bad = false;
+		    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
 		}
+		ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
+		assert(fnArg && "Expected argument to be FunctionExprAST");
+		a = new TrampolineAST(fnArg->loc, fnArg, closure, argTy);
+		bad = false;
+	    }
+	    else
+	    {
+		bad = !(*fnArg->Proto() == *argTy->Proto());
 	    }
 	}
 	if (bad)

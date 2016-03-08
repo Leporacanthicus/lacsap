@@ -621,12 +621,10 @@ void FunctionExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* FunctionExprAST::CodeGen()
 {
-    if (MangleMap* mm = mangles.Find(name))
-    {
-	BasicDebugInfo(this);
-	return theModule->getFunction(mm->Name());
-    }
-    return ErrorV(this, "Name " + name + " could not be found...");
+    assert(proto->Function());
+
+    BasicDebugInfo(this);
+    return proto->LlvmFunction();
 }
 
 static int StringishScore(ExprAST* e)
@@ -1400,9 +1398,9 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	actualName += name;
     }
 
-    if (!mangles.FindTopLevel(name))
+    if (!mangles.FindTopLevel(name) && !baseobj)
     {
-	assert(Function() && "Expect there to ba function here");
+	assert(Function() && "Expect there to be a function here");
 	if (!mangles.Add(name, new MangleMap(actualName, Function())))
 	{
 	    return ErrorF(this, "Name " + name + " already in use?");
@@ -1772,17 +1770,16 @@ Types::TypeDecl* FunctionAST::ClosureType()
 	return 0;
     }
     // Have we cached it? Return now!
-    if (closureType)
+    if (!closureType)
     {
-	return closureType;
+	std::vector<Types::FieldDecl*> vf;
+	for(auto u : usedVariables)
+	{
+	    Types::TypeDecl* ty = new Types::PointerDecl(u.Type());
+	    vf.push_back(new Types::FieldDecl(u.Name(), ty, false));
+	}
+	closureType = new Types::RecordDecl(vf, 0);
     }
-    std::vector<Types::FieldDecl*> vf;
-    for(auto u : usedVariables)
-    {
-	Types::TypeDecl* ty = new Types::PointerDecl(u.Type());
-	vf.push_back(new Types::FieldDecl(u.Name(), ty, false));
-    }
-    closureType = new Types::RecordDecl(vf, 0);
     return closureType;
 }
 

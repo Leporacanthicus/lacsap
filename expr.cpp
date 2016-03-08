@@ -50,22 +50,6 @@ public:
     ~DebugInfo();
 };
 
-class MangleMap
-{
-public:
-    MangleMap(const std::string& name, FunctionAST* fn)
-	: actualName(name), func(fn) {}
-    void dump(std::ostream& out)
-    {
-	out << "Name: " << actualName << std::endl;
-    }
-    const std::string& Name() { return actualName; }
-    const FunctionAST* Function() { return func; }
-private:
-    std::string actualName;
-    FunctionAST* func;
-};
-
 class Label
 {
 public:
@@ -84,8 +68,6 @@ typedef Stack<Label*> LabelStack;
 typedef StackWrapper<Label*> LabelWrapper;
 typedef Stack<llvm::Value*> VarStack;
 typedef StackWrapper<llvm::Value*> VarStackWrapper;
-typedef Stack<MangleMap*> MangleStack;
-typedef StackWrapper<MangleMap*> MangleWrapper;
 
 const size_t MEMCPY_THRESHOLD = 16;
 const size_t MIN_ALIGN = 4;
@@ -93,7 +75,6 @@ const size_t MIN_ALIGN = 4;
 extern llvm::Module* theModule;
 
 static VarStack variables;
-static MangleStack mangles;
 static LabelStack labels;
 static llvm::IRBuilder<> builder(llvm::getGlobalContext());
 static int errCnt;
@@ -1398,15 +1379,6 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	actualName += name;
     }
 
-    if (!mangles.FindTopLevel(name) && !baseobj)
-    {
-	assert(Function() && "Expect there to be a function here");
-	if (!mangles.Add(name, new MangleMap(actualName, Function())))
-	{
-	    return ErrorF(this, "Name " + name + " already in use?");
-	}
-    }
-
     llvmFunc = llvm::dyn_cast<llvm::Function>(GetFunction(resTy, argTypes, actualName));
     assert(llvmFunc && "Should have found a function here!");
     if (!llvmFunc->empty())
@@ -1698,7 +1670,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
 
     llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
-    MangleWrapper m(mangles);
 
     std::string newPrefix = namePrefix + "." + proto->Name();
     for(auto fn : subFunctions)
@@ -1709,7 +1680,6 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     if (verbosity > 1)
     {
 	variables.dump(std::cerr);
-	mangles.dump(std::cerr);
     }
 
     if (debugInfo)
@@ -3549,28 +3519,24 @@ llvm::Value* TrampolineAST::CodeGen()
 {
     TRACE();
 
-    if (MangleMap* mm = mangles.Find(func->Name()))
-    {
-	llvm::Function* destFn = theModule->getFunction(mm->Name());
-	// Temporary memory to store the trampoline itself.
-	llvm::Type* trampTy = llvm::ArrayType::get(Types::GetCharType()->LlvmType(), 32);
-	llvm::Value* tramp = builder.CreateAlloca(trampTy, 0, "tramp");
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	llvm::Value* tptr = builder.CreateGEP(tramp, ind, "tramp.first");
-	llvm::Value* nest = closure->CodeGen();
-	llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-	nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
-	llvm::Value* castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
-	llvm::Constant* llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(),
-						{ voidPtrTy, voidPtrTy, voidPtrTy },
-						"llvm.init.trampoline");
-	builder.CreateCall(llvmTramp, { tptr, castFn, nest });
-	llvm::Constant* llvmAdjust = GetFunction(voidPtrTy, { voidPtrTy }, "llvm.adjust.trampoline");
-	llvm::Value* ptr = builder.CreateCall(llvmAdjust, { tptr }, "tramp.ptr");
+    llvm::Function* destFn = func->Proto()->LlvmFunction();
+    // Temporary memory to store the trampoline itself.
+    llvm::Type* trampTy = llvm::ArrayType::get(Types::GetCharType()->LlvmType(), 32);
+    llvm::Value* tramp = builder.CreateAlloca(trampTy, 0, "tramp");
+    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
+    llvm::Value* tptr = builder.CreateGEP(tramp, ind, "tramp.first");
+    llvm::Value* nest = closure->CodeGen();
+    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
+    nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
+    llvm::Value* castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
+    llvm::Constant* llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(),
+					    { voidPtrTy, voidPtrTy, voidPtrTy },
+					    "llvm.init.trampoline");
+    builder.CreateCall(llvmTramp, { tptr, castFn, nest });
+    llvm::Constant* llvmAdjust = GetFunction(voidPtrTy, { voidPtrTy }, "llvm.adjust.trampoline");
+    llvm::Value* ptr = builder.CreateCall(llvmAdjust, { tptr }, "tramp.ptr");
 
-	return builder.CreateBitCast(ptr, funcPtrTy->LlvmType(), "tramp.func");
-    }
-    return 0;
+    return builder.CreateBitCast(ptr, funcPtrTy->LlvmType(), "tramp.func");
 }
 
 void TrampolineAST::accept(ASTVisitor& v)

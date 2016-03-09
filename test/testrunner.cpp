@@ -416,6 +416,7 @@ TestEntry testCaseList[] =
     { 0,           "Basic", "GPC Transpose", "transpose.pas",   "" },
     { 0,           "Basic", "Double Begin",  "doublebegin.pas", "" },
     { 0,           "Basic", "Simple unit",   "unit_main.pas",   "" },
+    { 0,           "Basic", "Simple unit2",  "unit_main2.pas",  "" },
     { LACSAP_ONLY, "Basic", "Pack & Unpack", "packunpack.pas",  "" },
     { 0,           "Basic", "With statement","with.pas",        "" },
     { LACSAP_ONLY, "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },

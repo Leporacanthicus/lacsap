@@ -374,6 +374,7 @@ TestEntry testCaseList[] =
     { 0,           "Basic", "Set Values",    "set.pas",         "" },
     { 0,           "Basic", "Set Values 2",  "set2.pas",        "" },
     { 0,           "Basic", "Set Values 3",  "set3.pas",        "" },
+    { 0,           "Basic", "Set Values 4",  "set4.pas",        "" },
     // Free Pascal doesn't support popcount!
     { LACSAP_ONLY, "Basic", "Pop Count",     "popcnt.pas",      "" },
     { 0,           "Basic", "Sudoku",        "sudoku.pas",      "" },
@@ -401,6 +402,7 @@ TestEntry testCaseList[] =
     { LACSAP_ONLY, "Basic", "Function arg3", "func3.pas",       "" },
     { LACSAP_ONLY, "Basic", "Function arg4", "func4.pas",       "" },
     { LACSAP_ONLY, "Basic", "Function arg5", "func5.pas",       "" },
+    { LACSAP_ONLY, "Basic", "Function arg6", "func6.pas",       "" },
     { 0,           "Basic", "Multiple decl", "multidecl.pas",   "" },
     { 0,           "Basic", "Numeric",       "numeric.pas",     "" },
     { 0,           "Basic", "Goto",          "goto.pas",        "" },

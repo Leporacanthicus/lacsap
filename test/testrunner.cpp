@@ -403,6 +403,7 @@ TestEntry testCaseList[] =
     { LACSAP_ONLY, "Basic", "Function arg4", "func4.pas",       "" },
     { LACSAP_ONLY, "Basic", "Function arg5", "func5.pas",       "" },
     { LACSAP_ONLY, "Basic", "Function arg6", "func6.pas",       "" },
+    { LACSAP_ONLY, "Basic", "Function arg7", "func7.pas",       "" },
     { 0,           "Basic", "Multiple decl", "multidecl.pas",   "" },
     { 0,           "Basic", "Numeric",       "numeric.pas",     "" },
     { 0,           "Basic", "Goto",          "goto.pas",        "" },

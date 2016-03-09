@@ -2820,7 +2820,7 @@ void SetExprAST::DoDump(std::ostream& out) const
 
 llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 {
-    static int index=1;
+    static int index = 1;
     llvm::Type* ty = type->LlvmType();
     assert(ty && "Expect type for set to work");
 
@@ -2834,7 +2834,8 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	    int start = type->GetRange()->Start();
 	    int low = le->Int() - start;
 	    int high = he->Int() - start;
-	    assert(low >= 0 && "Range should end up positive ok");
+	    low = std::max(0, low);
+	    high = std::min((int)type->GetRange()->Size(), low);
 	    for(int i = low; i <= high; i++)
 	    {
 		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
@@ -2845,7 +2846,10 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	    IntegerExprAST* e = llvm::dyn_cast<IntegerExprAST>(v);
 	    int start = type->GetRange()->Start();
 	    unsigned i = e->Int() - start;
-	    elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
+	    if (i < (unsigned)type->GetRange()->Size())
+	    {
+		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
+	    }
 	}
     }
 

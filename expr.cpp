@@ -1223,6 +1223,10 @@ llvm::Value* CallExprAST::CodeGen()
 	    }
 	    else
 	    {
+		if (llvm::isa<Types::FuncPtrDecl>(vdef[index].Type()))
+		{
+		    v = i->CodeGen();
+		}
 		if (!v)
 		{
 		    if (i->Type()->IsCompound())

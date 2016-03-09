@@ -3231,6 +3231,12 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return MakeStringFromExpr(expr, type);
     }
+    if (type->Type() == Types::TypeDecl::TK_Class &&
+	current->Type() == Types::TypeDecl::TK_Class)
+    {
+	llvm::Type* ty = llvm::PointerType::getUnqual(type->LlvmType());
+	return builder.CreateLoad(builder.CreateBitCast(Address(), ty));
+    }
     if (type->Type() == Types::TypeDecl::TK_Char &&
 	current->Type() == Types::TypeDecl::TK_String)
     {

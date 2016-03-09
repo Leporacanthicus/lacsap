@@ -1223,17 +1223,6 @@ llvm::Value* CallExprAST::CodeGen()
 	    }
 	    else
 	    {
-		StringExprAST* sv = llvm::dyn_cast<StringExprAST>(i);
-		if (llvm::isa<Types::StringDecl>(vdef[index].Type()) &&
-		    sv && llvm::isa<Types::ArrayDecl>(sv->Type()))
-		{
-		    if (sv && sv->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
-		    {
-			v = CreateTempAlloca(vdef[index].Type());
-			TempStringFromStringExpr(v, sv);
-		    }
-		}
-
 		if (!v)
 		{
 		    if (i->Type()->IsCompound())

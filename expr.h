@@ -311,7 +311,7 @@ public:
 	: ExprAST(w, EK_UnaryExpr), oper(op), rhs(r) {};
     void DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    Types::TypeDecl* Type() const override;
+    Types::TypeDecl* Type() const override { return rhs->Type(); }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
     void accept(ASTVisitor& v) override { rhs->accept(v); v.visit(this); }
 private:
@@ -330,7 +330,7 @@ public:
     llvm::Value* High() { return high->CodeGen(); }
     ExprAST* LowExpr() { return low; }
     ExprAST* HighExpr() { return high; }
-    Types::TypeDecl* Type() const override;
+    Types::TypeDecl* Type() const override { return low->Type(); }
     static bool classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
     void accept(ASTVisitor& v) override { low->accept(v); high->accept(v); v.visit(this); }
 private:

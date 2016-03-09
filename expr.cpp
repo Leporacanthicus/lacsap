@@ -802,14 +802,13 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 
 void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 {
-    if (type == ty)
+    if (type != ty)
     {
-	return;
-    }
-    assert(!type && "Type shouldn't be updated more than once");
-    assert(ty && "Must supply valid type");
+	assert(!type && "Type shouldn't be updated more than once");
+	assert(ty && "Must supply valid type");
 
-    type = ty;
+	type = ty;
+    }
 }
 
 Types::TypeDecl* BinaryExprAST::Type() const
@@ -1121,11 +1120,6 @@ void UnaryExprAST::DoDump(std::ostream& out) const
 {
     out << "Unary: " << oper.ToString();
     rhs->dump(out);
-}
-
-Types::TypeDecl* UnaryExprAST::Type() const
-{
-    return rhs->Type();
 }
 
 llvm::Value* UnaryExprAST::CodeGen()
@@ -2796,12 +2790,6 @@ void RangeExprAST::DoDump(std::ostream& out) const
     high->dump(out);
 }
 
-Types::TypeDecl* RangeExprAST::Type() const
-{
-    // We have to pick one here. Semantic Analysis will check that both are same type
-    return low->Type();
-}
-
 void SetExprAST::DoDump(std::ostream& out) const
 {
     out << "Set :[";
@@ -2835,7 +2823,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 	    int low = le->Int() - start;
 	    int high = he->Int() - start;
 	    low = std::max(0, low);
-	    high = std::min((int)type->GetRange()->Size(), low);
+	    high = std::min((int)type->GetRange()->Size(), high);
 	    for(int i = low; i <= high; i++)
 	    {
 		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));

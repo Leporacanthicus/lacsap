@@ -285,3 +285,23 @@ void __read_str(File* file, String* val)
     val->len = count;
     memcpy(val->str, buffer, count);
 }
+
+void __read_chars(File* file, char* v)
+{
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+    if (!files[file->handle].readAhead)
+    {
+	__get_text(file);
+    }
+    while(*file->buffer != '\n')
+    {
+	*v++ = *file->buffer;
+	if (!__get_text(file))
+	{
+	    break;
+	}
+    }
+}

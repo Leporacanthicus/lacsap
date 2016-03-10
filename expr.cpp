@@ -823,11 +823,10 @@ Types::TypeDecl* BinaryExprAST::Type() const
 	return type;
     }
 
-    Types::TypeDecl* lType = lhs->Type();
-    assert(lType && "Should have types here...");
+    assert(lhs->Type() && "Should have types here...");
 
     // Last resort, return left type.
-    return lType;
+    return lhs->Type();
 }
 
 llvm::Value* BinaryExprAST::SetCodeGen()
@@ -2457,6 +2456,10 @@ static llvm::Constant* CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 
     case Types::TypeDecl::TK_String:
 	suffix = "str";
+	break;
+
+    case Types::TypeDecl::TK_Array:
+	suffix = "chars";
 	break;
 
     default:

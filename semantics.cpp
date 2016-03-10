@@ -598,14 +598,11 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 	    if (arg->Type()->IsCompound())
 	    {
 		bool bad = true;
-#if 0
-		// TODO: Fix this when Bug18 is fixed.
 		if (Types::ArrayDecl* a = llvm::dyn_cast<Types::ArrayDecl>(arg->Type()))
 		{
 		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
 		}
 		else
-#endif
 		{
 		    bad = !llvm::isa<Types::StringDecl>(arg->Type());
 		}

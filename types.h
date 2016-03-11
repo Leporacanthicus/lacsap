@@ -405,7 +405,7 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
 	operator Access() { return access; }
     protected:
-	llvm::Type* GetLlvmType() const override;
+	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
     private:
 	std::string name;
 	bool isStatic;
@@ -458,7 +458,7 @@ namespace Types
 	void DoDump(std::ostream& out) const override;
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }
-	bool SameAs(const TypeDecl* ty) const override;
+	bool SameAs(const TypeDecl* ty) const override { return this == ty; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -481,7 +481,7 @@ namespace Types
 	    : TypeDecl(TK_MemberFunc), proto(p), flags(f), index(-1) {}
 
 	void DoDump(std::ostream& out) const override;
-	bool SameAs(const TypeDecl* ty) const override;
+	bool SameAs(const TypeDecl* ty) const override { return this == ty; }
 	PrototypeAST* Proto() { return proto; }
 	std::string LongName() const { return longname; }
 	void LongName(const std::string& name) { longname = name; }
@@ -516,7 +516,7 @@ namespace Types
         int FieldCount() const override;
 	size_t Size() const override;
 	VariantDecl* Variant() { return variant; }
-	bool SameAs(const TypeDecl* ty) const override;
+	bool SameAs(const TypeDecl* ty) const override { return this == ty; }
 	size_t MembFuncCount() const;
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(size_t index) const;

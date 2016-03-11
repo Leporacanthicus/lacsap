@@ -152,6 +152,7 @@ Date: 28-Feb-2016
 
 Read of char array is not supported.
 
+Fixed in: 061860300c827e281bd706bccd684ea7afdf6409
 ----------------------------------------------------------------
 Bug19:
 Date: 28-Feb-2016

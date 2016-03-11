@@ -531,11 +531,6 @@ namespace Types
 	baseType->DoDump(out);
     }
 
-    llvm::Type* FieldDecl::GetLlvmType() const
-    {
-	return baseType->LlvmType();
-    }
-
     void VariantDecl::DoDump(std::ostream& out) const
     {
 	out << "Variant ";
@@ -794,11 +789,6 @@ namespace Types
 	unsigned flags = 0;
 	llvm::DIType* derivedFrom = 0;
 	return builder->createStructType(scope, name, unit, lineNo, size, align, flags, derivedFrom, elements);
-    }
-
-    bool RecordDecl::SameAs(const TypeDecl* ty) const
-    {
-	return this == ty;
     }
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,
@@ -1064,19 +1054,9 @@ namespace Types
 	return 0;
     }
 
-    bool ClassDecl::SameAs(const TypeDecl* ty) const
-    {
-	return this == ty;
-    }
-
     void MemberFuncDecl::DoDump(std::ostream& out) const
     {
 	out << "Member function "; proto->dump(out);
-    }
-
-    bool MemberFuncDecl::SameAs(const TypeDecl* ty) const
-    {
-	return this == ty;
     }
 
     void FuncPtrDecl::DoDump(std::ostream& out) const

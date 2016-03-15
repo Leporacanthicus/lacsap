@@ -52,6 +52,8 @@ public:
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
+    VariableExprAST* FindInVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc,
+				   Types::VariantDecl* v, const std::string& name);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type);
 
@@ -107,9 +109,9 @@ public:
     Types::FileDecl*    ParseFileDecl();
     Types::SetDecl*     ParseSetDecl();
     Types::StringDecl*  ParseStringDecl();
-    Types::VariantDecl* ParseVariantDecl(Types::TypeDecl*& type);
+    Types::VariantDecl* ParseVariantDecl(Types::FieldDecl*& markerField);
     int ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
-    bool                ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
+    bool ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
 
     // Helper for syntax checking
     bool Expect(Token::TokenType type, bool eatIt, const char* file, int line);

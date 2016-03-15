@@ -457,7 +457,7 @@ namespace Types
 	    : FieldCollection(TK_Record, flds), variant(v) { };
 	void DoDump(std::ostream& out) const override;
 	size_t Size() const override;
-	VariantDecl* Variant() { return variant; }
+	VariantDecl* Variant() const { return variant; }
 	bool SameAs(const TypeDecl* ty) const override { return this == ty; }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
     protected:

@@ -777,15 +777,16 @@ private:
 class CCConstants : public CCIntegers
 {
 public:
-    CCConstants(Types::TypeDecl*& ty) : tt(Token::Unknown), type(ty) {}
+    CCConstants() : tt(Token::Unknown), type(0) {}
     bool GetValue(Parser& parser, int& val) override
     {
 	val = parser.ParseConstantValue(tt, type);
 	return tt != Token::Unknown;
     }
+    Types::TypeDecl* Type() const { return type; }
 private:
     Token::TokenType tt;
-    Types::TypeDecl*& type;
+    Types::TypeDecl* type;
 };
 
 Types::EnumDecl* Parser::ParseEnumDef()
@@ -880,15 +881,52 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
     return 0;
 }
 
-Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
+// Parse Variant declaration:
+// CASE [name:] typename OF
+//   constant: ({identifier {, identifier}: typename;});
+// | constant: (case [name:] typename OF ...);
+
+Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
 {
     std::vector<Types::FieldDecl*> variants;
+    std::string marker = "";
+    if (CurrentToken().GetToken() == Token::Identifier &&
+	PeekToken().GetToken() == Token::Colon)
+    {
+	marker = CurrentToken().GetIdentName();
+	AssertToken(Token::Identifier);
+	AssertToken(Token::Colon);
+    }
+    Types::TypeDecl* markerTy = ParseType("", false);
+    if (!markerTy)
+    {
+	return 0;
+    }
+    if (!markerTy->IsIntegral())
+    {
+	return reinterpret_cast<Types::VariantDecl*>
+	    (Error(CurrentToken(), "Expect variant selector to be integral type"));
+    }
+    if (marker != "")
+    {
+	markerField = new Types::FieldDecl(marker, markerTy, false);
+	}
+    if (!Expect(Token::Of, true))
+    {
+	return 0;
+    }
     do
     {
-	CCConstants labels(type);
+	CCConstants labels;
 	if (!ParseCommaList(labels, Token::Colon, false))
 	{
 	    return 0;
+	}
+	if (*markerTy != *labels.Type())
+	{
+	    // TODO: This needs a better location.
+	    return reinterpret_cast<Types::VariantDecl*>
+		(ErrorT(CurrentToken(), "Marker type does not match member variant type"));
 	}
 	std::vector<int>& vals = labels.Values();
 	auto e = vals.end();
@@ -914,34 +952,55 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	    std::vector<std::string> names;
 	    if (CurrentToken().GetToken() != Token::RightParen)
 	    {
-		do
+		if (AcceptToken(Token::Case))
 		{
-		    if (!Expect(Token::Identifier, false))
+		    Types::FieldDecl* innerMarker = 0;
+		    Types::VariantDecl* v = ParseVariantDecl(innerMarker);
+		    if (!v) 
 		    {
 			return 0;
 		    }
-		    names.push_back(CurrentToken().GetIdentName());
-		    AssertToken(Token::Identifier);
-		    if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
+		    std::vector<Types::FieldDecl*> innerFields;
+		    if (innerMarker)
 		    {
-			return 0;
+			innerFields.push_back(innerMarker);
 		    }
-		} while(!AcceptToken(Token::Colon));
-		if (Types::TypeDecl* ty = ParseType("", false))
+		    Types::RecordDecl* rec = new Types::RecordDecl(innerFields, v);
+		    fields.push_back(new Types::FieldDecl("", rec, false));
+		}
+		else
 		{
-		    for(auto n : names)
+		    do
 		    {
-			for(auto f : fields)
+			if (!Expect(Token::Identifier, false))
 			{
-			    if (n == f->Name())
-			    {
-				// TODO: Track location.
-				return reinterpret_cast<Types::VariantDecl*>
-				    (Error(CurrentToken(), "Duplicate field name '" + n + "' in record"));
-			    }
+			    return 0;
 			}
-			// Variants can't be static, can they?
-			fields.push_back(new Types::FieldDecl(n, ty, false));
+			names.push_back(CurrentToken().GetIdentName());
+			AssertToken(Token::Identifier);
+			if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, true))
+			{
+			    return 0;
+			}
+		    } while(!AcceptToken(Token::Colon));
+
+		    if (Types::TypeDecl* ty = ParseType("", false))
+		    {
+			for(auto n : names)
+			{
+			    for(auto f : fields)
+			    {
+				if (n == f->Name())
+				{
+				    // TODO: Track location.
+				    return reinterpret_cast<Types::VariantDecl*>(
+					Error(CurrentToken(), 
+					      "Duplicate field name '" + n + "' in record"));
+				}
+			    }
+			    // Variants can't be static, can they?
+			    fields.push_back(new Types::FieldDecl(n, ty, false));
+			}
 		    }
 		}
 		if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Semicolon, true))
@@ -951,7 +1010,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 		}
 	    }
 	} while(!AcceptToken(Token::RightParen));
-	if (!ExpectSemicolonOrEnd())
+	if (CurrentToken().GetToken() != Token::RightParen && !ExpectSemicolonOrEnd())
 	{
 	    return 0;
 	}
@@ -963,7 +1022,8 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::TypeDecl*& type)
 	{
 	    variants.push_back(new Types::FieldDecl("", new Types::RecordDecl(fields, 0), false));
 	}
-    } while (CurrentToken().GetToken() != Token::End);
+    } while (CurrentToken().GetToken() != Token::End && 
+	     CurrentToken().GetToken() != Token::RightParen);
     return new Types::VariantDecl(variants);
 }
 
@@ -993,42 +1053,17 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 
 	std::vector<std::string> names;
 	// Parse Variant part if we have a "case".
+	
 	if (AcceptToken(Token::Case))
 	{
-	    std::string marker = "";
-	    if (CurrentToken().GetToken() == Token::Identifier &&
-		PeekToken().GetToken() == Token::Colon)
-	    {
-		marker = CurrentToken().GetIdentName();
-		AssertToken(Token::Identifier);
-		AssertToken(Token::Colon);
-	    }
-	    Types::TypeDecl* markerTy = ParseType("", false);
-	    if (!markerTy)
+	    Types::FieldDecl* markerField = 0;
+	    if (!(variant = ParseVariantDecl(markerField)))
 	    {
 		return false;
 	    }
-	    if (!markerTy->IsIntegral())
+	    if (markerField)
 	    {
-		return Error(CurrentToken(), "Expect variant selector to be integral type");
-	    }
-	    if (marker != "")
-	    {
-		fields.push_back(new Types::FieldDecl(marker, markerTy, false));
-	    }
-	    if (!Expect(Token::Of, true))
-	    {
-		return false;
-	    }
-	    Types::TypeDecl* type;
-	    if (!(variant =  ParseVariantDecl(type)))
-	    {
-		return false;
-	    }
-	    if (*markerTy != *type)
-	    {
-		// TODO: This needs a better location.
-		return Error(CurrentToken(), "Marker type does not match member variant type");
+		fields.push_back(markerField);
 	    }
 	}
 	else if (isClass &&
@@ -1651,6 +1686,55 @@ ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, 
     return MakeSimpleCall(expr, proto, args);
 }
 
+VariableExprAST* Parser::FindInVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc, 
+			       Types::VariantDecl* v, const std::string& name)
+{
+    VariableExprAST* e = 0;
+    int elem = v->Element(name);
+    if (elem >= 0)
+    {
+	const Types::FieldDecl* fd = v->GetElement(elem);
+	type = fd->FieldType();
+	e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
+	// If name is empty, we have a made up struct. Dig another level down.
+	if (fd->Name() == "")
+	{
+	    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
+	    assert(r && "Expect record declarataion");
+	    elem = r->Element(name);
+	    if (elem >= 0)
+	    {
+		type = r->GetElement(elem)->FieldType();
+		e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
+	    }
+	}
+	return e;
+    }
+
+    for(int i = 0; i < v->FieldCount(); i++)
+    {
+	const Types::FieldDecl* fd = v->GetElement(i);
+	if (fd->Name() == "")
+	{
+	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
+	    const Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
+	    assert(r && "Expect record declarataion");
+	    if ((elem = r->Element(name)) >= 0)
+	    {
+		e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
+	    }
+	    if (r->Variant())
+	    {
+		if ((e = FindInVariant(e, type, r->FieldCount(), r->Variant(), name)))
+		{
+		    return e;
+		}
+	    }
+	}
+    }
+    return 0;
+}
+
 ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 {
     AssertToken(Token::Period);
@@ -1726,29 +1810,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	}
 	if (!e && v)
 	{
-	    int elem = v->Element(name);
-	    if (elem >= 0)
-	    {
-		const Types::FieldDecl* fd = v->GetElement(elem);
-		type = fd->FieldType();
-		e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
-		// If name is empty, we have a made up struct. Dig another level down.
-		if (fd->Name() == "")
-		{
-		    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
-		    assert(r && "Expect record declarataion");
-		    elem = r->Element(name);
-		    if (elem >= 0)
-		    {
-			type = r->GetElement(elem)->FieldType();
-			e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
-		    }
-		    else
-		    {
-			e = 0;
-		    }
-		}
-	    }
+	    e = FindInVariant(expr, type, fc, v, name);
 	}
 	if (!e)
 	{

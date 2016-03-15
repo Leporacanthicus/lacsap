@@ -1085,7 +1085,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		}
 	    }
 	    if (AcceptToken(Token::Virtual))
-	    {
+	    {			// 
 		f |= Types::MemberFuncDecl::Virtual;
 		if (!Expect(Token::Semicolon, true))
 		{
@@ -1686,7 +1686,7 @@ ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, 
     return MakeSimpleCall(expr, proto, args);
 }
 
-VariableExprAST* Parser::FindInVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc, 
+VariableExprAST* Parser::FindVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc, 
 			       Types::VariantDecl* v, const std::string& name)
 {
     VariableExprAST* e = 0;
@@ -1725,7 +1725,7 @@ VariableExprAST* Parser::FindInVariant(VariableExprAST* expr, Types::TypeDecl*& 
 	    }
 	    if (r->Variant())
 	    {
-		if ((e = FindInVariant(e, type, r->FieldCount(), r->Variant(), name)))
+		if ((e = FindVariant(e, type, r->FieldCount(), r->Variant(), name)))
 		{
 		    return e;
 		}
@@ -1810,7 +1810,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
 	}
 	if (!e && v)
 	{
-	    e = FindInVariant(expr, type, fc, v, name);
+	    e = FindVariant(expr, type, fc, v, name);
 	}
 	if (!e)
 	{
@@ -2844,7 +2844,12 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	{
 	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
 	    assert(rd && "Expected record declarataion here!");
-	    ExpandWithNames(rd, new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty), 0);
+	    VariableExprAST* vv = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
+	    ExpandWithNames(rd, vv, 0);
+	    if (rd->Variant())
+	    {
+		ExpandWithNames(rd->Variant(), vv, rd->FieldCount());
+	    }
 	}
 	else
 	{

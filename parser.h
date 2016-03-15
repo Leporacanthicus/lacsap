@@ -52,8 +52,8 @@ public:
 
     VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
-    VariableExprAST* FindInVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc,
-				   Types::VariantDecl* v, const std::string& name);
+    VariableExprAST* FindVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc,
+				 Types::VariantDecl* v, const std::string& name);
     ExprAST* ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type);
 

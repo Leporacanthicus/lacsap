@@ -46,26 +46,32 @@ var
    
 begin
    count := 0;
-   if (y < size) and g[x][y+1] then
-      inc(count);
-   if (y > 1) and g[x][y-1] then
-      inc(count);
+   if (y < size) then
+      if g[x][y+1] then
+	 inc(count);
+   if (y > 1) then
+      if g[x][y-1] then
+	 inc(count);
    if x > 1 then
    begin
       if g[x-1][y] then
 	 inc(count);
-      if (y > 1) and g[x-1][y-1] then
-	 inc(count);
-      if (y < size) and g[x-1][y+1] then
-	 inc(count);
+      if (y > 1) then
+	 if g[x-1][y-1] then
+	    inc(count);
+      if (y < size) then
+	 if g[x-1][y+1] then
+	    inc(count);
    end;
    if x < size then begin
       if g[x+1][y] then
 	 inc(count);
-      if (y > 1) and g[x+1][y-1] then
-	 inc(count);
-      if (y < size) and g[x+1][y+1] then
-	 inc(count);
+      if (y > 1) then
+	 if g[x+1][y-1] then
+	    inc(count);
+      if (y < size) then
+	 if g[x+1][y+1] then
+	    inc(count);
    end;
    neighbours := count;
 end;

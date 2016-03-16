@@ -423,6 +423,7 @@ TestEntry testCaseList[] =
     { LACSAP_ONLY, "Basic", "ISO 7185 PAT",  "iso7185pat.pas",  "" },
     { 0,           "Basic", "Const Expr",    "consts.pas",      "" },
     { 0,           "Basic", "Read char array","readchars.pas",  "< readchars.txt" },
+    { 0,           "Basic", "Game of life",  "gol.pas",         "< gol.txt" },
 
     { 0,           "File",  "CopyFile",      "copyfile.pas",    "File/infile.dat File/outfile.dat" },
     // get from files not supported.

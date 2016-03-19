@@ -710,11 +710,12 @@ void Parser::ParseTypeDef()
     // Now fix up any incomplete types...
     for(auto p : incomplete)
     {
-	if (Types::TypeDecl* ty = GetTypeDecl(p->Name()))
+	std::string name = p->SubType()->Name();
+	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
 	    if (ty->IsIncomplete())
 	    {
-		Error(CurrentToken(), "Forward declared type '" + p->Name() + "' is incomplete.");
+		Error(CurrentToken(), "Forward declared type '" + name + "' is incomplete.");
 		return;
 	    }
 	    p->SetSubType(ty);
@@ -722,7 +723,7 @@ void Parser::ParseTypeDef()
 	else
 	{
 	    // TODO: Store token?
-	    Error(CurrentToken(), "Forward declared pointer type not declared: " + p->Name());
+	    Error(CurrentToken(), "Forward declared pointer type not declared: " + name);
 	    return;
 	}
     }
@@ -815,7 +816,7 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
     assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At)
 	   && "Expected @ or ^ token...");
     NextToken();
-    // If the name is an "identifier" then it's a name of a not yet declared type.
+    // If the name is an identifier then it may be name of a not yet declared type.
     // We need to forward declare it, and backpatch later.
     if (CurrentToken().GetToken() == Token::Identifier)
     {
@@ -835,7 +836,8 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
 	    }
 	}
 	// Otherwise, forward declare...
-	return new Types::PointerDecl(name);
+	Types::ForwardDecl* fwd = new Types::ForwardDecl(name);
+	return new Types::PointerDecl(fwd);
     }
 
     if (Types::TypeDecl* ty = ParseType("", false))
@@ -1832,6 +1834,10 @@ VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl
 	type = type->SubType();
 	return new FilePointerExprAST(CurrentToken().Loc(), expr, type);
     }
+    if (!llvm::isa<Types::PointerDecl>(type))
+    {
+	return ErrorV(CurrentToken(), "Expected pointer expression");
+    }
     type = type->SubType();
     return new PointerExprAST(CurrentToken().Loc(), expr, type);
 }
@@ -2012,12 +2018,18 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	switch(tt)
 	{
 	case Token::LeftSquare:
-	    expr = ParseArrayExpr(expr, type);
+	    if (!(expr = ParseArrayExpr(expr, type)))
+	    {
+		return 0;
+	    }
 	    break;
 
 	case Token::Uparrow:
 	case Token::At:
-	    expr = ParsePointerExpr(expr, type);
+	    if (!(expr = ParsePointerExpr(expr, type)))
+	    {
+		return 0;
+	    }
 	    break;
 
 	case Token::Period:

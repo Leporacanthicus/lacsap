@@ -237,8 +237,7 @@ namespace Types
 	out << "Pointer to: " << name;
 	if (baseType)
 	{
-	    out << " type ";
-	    baseType->dump(out);
+	    out << " type " << baseType;
 	}
 	else
 	{
@@ -559,7 +558,7 @@ namespace Types
 		{
 		    if (!opaqueType)
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), name);
 		    }
 		    return opaqueType;
 		}
@@ -588,7 +587,7 @@ namespace Types
 	    llvm::Type* ty = llvm::ArrayType::get(GetCharType()->LlvmType(), nelems);
 	    fv.push_back(ty);
 	}
-	return llvm::StructType::create(fv);
+	return llvm::StructType::create(fv, name);
     }
 
     llvm::DIType* VariantDecl::GetDIType(llvm::DIBuilder* builder) const
@@ -690,7 +689,7 @@ namespace Types
 		{
 		    if (!opaqueType)
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext());
+			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), name);
 		    }
 		    return opaqueType;
 		}
@@ -710,7 +709,7 @@ namespace Types
 	{
 	    fv.push_back(llvm::Type::getInt8Ty(llvm::getGlobalContext()));
 	}
-	return llvm::StructType::create(fv);
+	return llvm::StructType::create(fv, name);
     }
 
     llvm::DIType* RecordDecl::GetDIType(llvm::DIBuilder* builder) const
@@ -793,8 +792,9 @@ namespace Types
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,
 			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
-	: FieldCollection(TK_Class, flds), baseobj(base), name(nm), variant(v), vtableType(0)
+	: FieldCollection(TK_Class, flds), baseobj(base), variant(v), vtableType(0)
     {
+	Name(nm);
 	if (baseobj)
 	{
 	    membfuncs = baseobj->membfuncs;

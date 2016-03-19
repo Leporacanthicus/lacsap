@@ -73,15 +73,16 @@ namespace Types
 	    TK_Variant,
 	    TK_Class,
 	    TK_MemberFunc,
+	    TK_Forward,
 	};
 
 	TypeDecl(TypeKind k)
-	    : kind(k), lType(0), diType(0)
+	    : kind(k), lType(0), diType(0), name("")
 	{
 	}
 
 	virtual TypeKind Type() const { return kind; }
-	virtual ~TypeDecl() { }
+	virtual ~TypeDecl() {}
 	virtual bool IsIncomplete() const { return false; }
 	virtual bool IsIntegral() const { return false; }
 	virtual bool IsCompound() const { return false; }
@@ -106,6 +107,8 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Type; }
 	virtual size_t Size() const;
 	size_t AlignSize() const;
+	std::string Name() const { return name; }
+	void Name(const std::string& nm) { name = nm; }
     protected:
 	virtual llvm::Type* GetLlvmType() const = 0;
 	virtual llvm::DIType* GetDIType(llvm::DIBuilder* builder) const = 0;
@@ -113,6 +116,21 @@ namespace Types
 	const TypeKind kind;
 	mutable llvm::Type* lType;
 	mutable llvm::DIType* diType;
+	std::string name;
+    };
+
+    class ForwardDecl : public TypeDecl
+    {
+    public:
+	ForwardDecl(const std::string& nm) : TypeDecl(TK_Forward) { Name(nm); }
+        bool IsIncomplete() const override { return true; }
+	bool HasLlvmType() const override { return false; }
+	bool SameAs(const TypeDecl* ty) const override { return false; }
+	void DoDump(std::ostream& out) const override { out << "Forward " << Name(); }
+	llvm::Type* GetLlvmType() const override
+	    { assert(0 && "No llvm type for forward decls"); return 0; }
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
+	    { assert(0 && "No debug type for forward decls"); return 0; }
     };
 
     class BasicTypeDecl : public TypeDecl
@@ -345,12 +363,11 @@ namespace Types
     class PointerDecl : public CompoundDecl
     {
     public:
-	PointerDecl(const std::string& nm)
-	    : CompoundDecl(TK_Pointer, 0), name(nm), incomplete(true), forward(true) {}
+	PointerDecl(ForwardDecl* fwd)
+	    : CompoundDecl(TK_Pointer, fwd), incomplete(true), forward(true) {}
 	PointerDecl(TypeDecl* ty)
-	    : CompoundDecl(TK_Pointer, ty), name(""), incomplete(false), forward(false) {}
+	    : CompoundDecl(TK_Pointer, ty), incomplete(false), forward(false) {}
     public:
-	const std::string& Name() { return name; }
 	void SetSubType(TypeDecl* t)
 	{
 	    assert(t && "Type should be non-NULL");
@@ -366,7 +383,6 @@ namespace Types
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
-	std::string name;
 	bool incomplete;
 	bool forward;
     };
@@ -393,9 +409,11 @@ namespace Types
     public:
 	enum Access { Private, Protected, Public };
 	FieldDecl(const std::string& nm, TypeDecl* ty, bool stat, Access ac = Public)
-	    : CompoundDecl(TK_Field, ty), name(nm), isStatic(stat) {}
+	    : CompoundDecl(TK_Field, ty), isStatic(stat)
+	{
+	    Name(nm);
+	}
     public:
-	const std::string& Name() const { return name; }
 	TypeDecl* FieldType() const { return baseType; }
 	void DoDump(std::ostream& out) const override;
 	bool IsIntegral() const override { return baseType->IsIntegral(); }
@@ -407,7 +425,6 @@ namespace Types
     protected:
 	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
     private:
-	std::string name;
 	bool isStatic;
 	Access access;
     };
@@ -521,7 +538,6 @@ namespace Types
 	int MembFunc(const std::string& nm) const;
 	MemberFuncDecl* GetMembFunc(size_t index) const;
 	size_t NumVirtFuncs() const;
-	std::string Name() const { return name; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	llvm::Type* VTableType(bool opaque) const;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
@@ -530,7 +546,6 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     private:
 	ClassDecl* baseobj;
-	std::string name;
 	VariantDecl* variant;
 	std::vector<MemberFuncDecl*> membfuncs;
 	mutable llvm::StructType* vtableType;

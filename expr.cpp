@@ -725,7 +725,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
-static llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
+llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 {
     TRACE();
     if (e->Type()->Type() == Types::TypeDecl::TK_Char)

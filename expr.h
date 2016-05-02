@@ -805,6 +805,7 @@ llvm::Constant* MakeIntegerConstant(int val);
 llvm::Constant* MakeBooleanConstant(int val);
 llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty);
 llvm::Value* MakeAddressable(ExprAST* e);
+llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty);
 void BackPatch();
 llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
 			    const std::string&name);

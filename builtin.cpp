@@ -269,13 +269,22 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class BuiltinFunctionVal : public BuiltinFunctionVoid
+    {
+    public:
+	BuiltinFunctionVal(const std::vector<ExprAST*>& a)
+	    : BuiltinFunctionVoid(a) {}
+	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class BuiltinFunctionFile : public BuiltinFunctionVoid
     {
     public:
 	BuiltinFunctionFile(const std::string& fn, const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
+	bool Semantics() override;
     protected:
 	std::string funcname;
     };
@@ -302,8 +311,8 @@ namespace Builtin
     public:
 	BuiltinFunctionAssign(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a) {}
+	bool Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	virtual bool Semantics() override;
     };
 
     class BuiltinFunctionPanic : public BuiltinFunctionVoid
@@ -311,8 +320,8 @@ namespace Builtin
     public:
 	BuiltinFunctionPanic(const std::vector<ExprAST*>& a)
 	    : BuiltinFunctionVoid(a) {}
-	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	bool Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
     class BuiltinFunctionLongInt : public BuiltinFunctionBase
@@ -706,6 +715,40 @@ namespace Builtin
 	return builder.CreateMemCpy(dest, pA, args[0]->Type()->Size(), 1);
     }
 
+    bool BuiltinFunctionVal::Semantics()
+    {
+	return args.size() == 2 && args[0]->Type()->IsStringLike() &&
+	    llvm::isa<VariableExprAST>(args[1]) && 
+	    (args[1]->Type()->Type() == Types::TypeDecl::TK_Integer ||
+	     args[1]->Type()->Type() == Types::TypeDecl::TK_Int64);
+    }
+
+    llvm::Value* BuiltinFunctionVal::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
+	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
+	std::string name = "__Val_";
+	switch(var1->Type()->Type())
+	{
+	case Types::TypeDecl::TK_Integer:
+	    name += "int";
+	    break;
+	case Types::TypeDecl::TK_Int64:
+	    name += "long";
+	    break;
+	default:
+	    assert(0 && "What happened here?");
+	    return 0;
+	}
+	llvm::Value* res = var1->Address();
+	llvm::Type* ty0 = str->getType();
+	llvm::Type* ty1 = res->getType();
+	llvm::Constant* f = GetFunction(Types::GetVoidType(), { ty0, ty1 }, name);
+
+	return builder.CreateCall(f,  { str, res });
+    }
+
+
     llvm::Value* BuiltinFunctionFile::CodeGen(llvm::IRBuilder<>& builder)
     {
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
@@ -1080,6 +1123,7 @@ namespace Builtin
 	AddBIFCreator("dec",        NEW(Dec));
 	AddBIFCreator("pack",       NEW(Pack));
 	AddBIFCreator("unpack",     NEW(Unpack));
+	AddBIFCreator("val",        NEW(Val));
 	AddBIFCreator("sqrt",       NEW2(FloatIntrinsic, "sqrt"));
 	AddBIFCreator("sin",        NEW2(FloatIntrinsic, "sin"));
 	AddBIFCreator("cos",        NEW2(FloatIntrinsic, "cos"));

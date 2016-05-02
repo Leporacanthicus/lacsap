@@ -2491,6 +2491,14 @@ FunctionAST* Parser::ParseDefinition(int level)
     if (!(fnDef && fnDef->Proto() && fnDef->Proto() == proto))
     {
 	shortname = ShortName(name);
+	// Allow "inline" keyword. Currently ignored...
+	if (AcceptToken(Token::Inline))
+	{
+	    if (!Expect(Token::Semicolon, true))
+	    {
+		return 0;
+	    }
+	}
 	if (Types::ClassDecl* cd = proto->BaseObj())
 	{
 	    int elem = cd->MembFunc(shortname);

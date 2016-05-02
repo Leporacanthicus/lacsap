@@ -92,6 +92,7 @@ public:
 	Readln,
 	Builtin,
 	Forward,
+	Inline,
 	Interface,
 	Implementation,
 	And,

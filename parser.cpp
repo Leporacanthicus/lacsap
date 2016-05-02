@@ -1102,6 +1102,14 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		    return false;
 		}
 	    }
+	    // Ignore "inline" token
+	    if (AcceptToken(Token::Inline))
+	    {
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return false;
+		}
+	    }
 	    Types::MemberFuncDecl* m = new Types::MemberFuncDecl(p, f);
 	    fields.push_back(new Types::FieldDecl(p->Name(), m, false));
 	}

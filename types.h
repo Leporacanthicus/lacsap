@@ -27,20 +27,20 @@ namespace Types
     class Range
     {
     public:
-	Range(int s, int e)
+	Range(int64_t s, int64_t e)
 	    : start(s), end(e)
 	{
-	    assert( ((int64_t)e - (int64_t)s) > 0 && "Range should have start before end.");
+	    assert( (e - s) > 0 && "Range should have start before end.");
 	}
     public:
-	int Start() const { return start; }
-	int End() const { return end; }
-	size_t Size() const { return (size_t) ((int64_t)end - (int64_t)start) + 1; }
+	int64_t Start() const { return start; }
+	int64_t End() const { return end; }
+	size_t Size() const { return (size_t) (end - start) + 1; }
 	void dump() const;
 	void DoDump(std::ostream& out) const;
     private:
-	int start;
-	int end;
+	int64_t start;
+	int64_t end;
     };
 
     using InitializerList = std::vector<std::pair<int, InitializerAST*>>;

@@ -110,7 +110,7 @@ public:
     Types::SetDecl*     ParseSetDecl();
     Types::StringDecl*  ParseStringDecl();
     Types::VariantDecl* ParseVariantDecl(Types::FieldDecl*& markerField);
-    int ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
+    int64_t ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
     bool ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
 
     // Helper for syntax checking

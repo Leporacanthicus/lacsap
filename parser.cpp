@@ -310,7 +310,7 @@ Token Parser::TranslateToken(const Token& token)
     return token;
 }
 
-int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
+int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 {
     bool negative = false;
     if (CurrentToken().GetToken() == Token::Minus)
@@ -324,7 +324,7 @@ int Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     Token::TokenType oldtt = tt;
 
     tt = token.GetToken();
-    int result = 0;
+    int64_t result = 0;
 
     switch(tt)
     {
@@ -382,13 +382,13 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
 {
     Token::TokenType tt = Token::Unknown;
 
-    int start = ParseConstantValue(tt, type);
+    int64_t start = ParseConstantValue(tt, type);
     if (tt == Token::Unknown || !Expect(Token::DotDot, true))
     {
 	return 0;
     }
 
-    int end = ParseConstantValue(tt, type);
+    int64_t end = ParseConstantValue(tt, type);
 
     if (tt == Token::Unknown)
     {

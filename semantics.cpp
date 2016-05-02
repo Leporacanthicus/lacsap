@@ -518,6 +518,11 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	    a = Recast(a, ty);
 	    bad = false;
 	}
+	else if (llvm::isa<Types::PointerDecl>(parg[idx].Type()) && llvm::isa<NilExprAST>(a))
+	{
+	    a = Recast(a, parg[idx].Type());
+	    bad = false;
+	}
 	else if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
 	{
 	    FunctionExprAST* fnArg = llvm::dyn_cast<FunctionExprAST>(a);
@@ -544,7 +549,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	}
 	if (bad)
 	{
-	    Error(a, "Incompatible argument type");
+	    Error(a, "Incompatible argument type " + std::to_string(idx));
 	}
 	idx++;
     }

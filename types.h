@@ -376,6 +376,7 @@ namespace Types
 	}
 	bool IsIncomplete() const override { return incomplete; }
 	bool IsForward() const { return forward; }
+	bool IsCompound() const override { return false; }
 	void DoDump(std::ostream& out) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
 	bool HasLlvmType() const override { return baseType->HasLlvmType(); }

@@ -720,7 +720,7 @@ namespace Builtin
 	return args.size() == 2 && args[0]->Type()->IsStringLike() &&
 	    llvm::isa<VariableExprAST>(args[1]) && 
 	    (args[1]->Type()->Type() == Types::TypeDecl::TK_Integer ||
-	     args[1]->Type()->Type() == Types::TypeDecl::TK_Int64);
+	     args[1]->Type()->Type() == Types::TypeDecl::TK_LongInt);
     }
 
     llvm::Value* BuiltinFunctionVal::CodeGen(llvm::IRBuilder<>& builder)
@@ -733,7 +733,7 @@ namespace Builtin
 	case Types::TypeDecl::TK_Integer:
 	    name += "int";
 	    break;
-	case Types::TypeDecl::TK_Int64:
+	case Types::TypeDecl::TK_LongInt:
 	    name += "long";
 	    break;
 	default:

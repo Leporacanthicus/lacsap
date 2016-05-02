@@ -59,7 +59,7 @@ static bool isNumeric(Types::TypeDecl* t)
     switch(t->Type())
     {
     case Types::TypeDecl::TK_Integer:
-    case Types::TypeDecl::TK_Int64:
+    case Types::TypeDecl::TK_LongInt:
     case Types::TypeDecl::TK_Real:
 	return true;
     default:

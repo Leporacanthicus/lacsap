@@ -2237,7 +2237,7 @@ static llvm::Constant* CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	suffix = "int";
 	break;
 
-    case Types::TypeDecl::TK_Int64:
+    case Types::TypeDecl::TK_LongInt:
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
 	suffix = "int64";

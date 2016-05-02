@@ -53,7 +53,7 @@ namespace Types
 	    TK_Type,
 	    TK_Char,
 	    TK_Integer,
-	    TK_Int64,
+	    TK_LongInt,
 	    TK_Real,
 	    TK_Void,
 	    TK_Array,
@@ -181,14 +181,14 @@ namespace Types
     {
     public:
 	Int64Decl()
-	    : BasicTypeDecl(TK_Int64) { }
+	    : BasicTypeDecl(TK_LongInt) { }
 	bool IsIntegral() const override { return true; }
 	unsigned Bits() const override { return 64; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool HasLlvmType() const override { return true; }
 	void DoDump(std::ostream& out) const override;
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Int64; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_LongInt; }
     protected:
 	llvm::Type* GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;

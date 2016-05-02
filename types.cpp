@@ -125,7 +125,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == TK_Int64 || ty->Type() == TK_Real)
+	if (ty->Type() == TK_LongInt || ty->Type() == TK_Real)
 	{
 	    return ty;
 	}
@@ -158,7 +158,7 @@ namespace Types
 
     const TypeDecl* Int64Decl::CompatibleType(const TypeDecl* ty) const
     {
-	if (ty->Type() == TK_Int64 || ty->Type() == TK_Integer)
+	if (ty->Type() == TK_LongInt || ty->Type() == TK_Integer)
 	{
 	    return this;
 	}
@@ -195,7 +195,7 @@ namespace Types
 
     const TypeDecl* RealDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (SameAs(ty) || ty->Type() == TK_Int64 || ty->Type() == TK_Integer)
+	if (SameAs(ty) || ty->Type() == TK_LongInt || ty->Type() == TK_Integer)
 	{
 	    return this;
 	}

@@ -15,6 +15,7 @@
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/IPO.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Transforms/Scalar/GVN.h>
 
 llvm::legacy::PassManager* mpm;
 llvm::Module* theModule;
@@ -42,15 +43,13 @@ static llvm::cl::opt<OptLevel, true> OptimizationLevel(llvm::cl::desc("Choose op
 						    llvm::cl::values(
 							clEnumVal(O0, "No optimizations"),
 							clEnumVal(O1, "Enable trivial optimizations"),
-							clEnumVal(O2, "Enable more optimizations"),
-							clEnumValEnd),
+							clEnumVal(O2, "Enable more optimizations")),
 						    llvm::cl::location(optimization));
 
 static llvm::cl::opt<EmitType,true>       EmitSelection("emit", llvm::cl::desc("Choose output:"),
 						   llvm::cl::values(
 						       clEnumValN(Exe, "exe", "Executable file"),
-						       clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
-						       clEnumValEnd),
+						       clEnumValN(LlvmIr, "llvm", "LLVM IR file")),
 						   llvm::cl::location(emitType));
 
 static llvm::cl::opt<bool, true>     TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
@@ -68,8 +67,7 @@ static llvm::cl::opt<bool, true>     RangeCheck("Cr",
 static llvm::cl::opt<Model, true> ModelSetting(llvm::cl::desc("Model:"),
 					       llvm::cl::values(
 								clEnumVal(m32, "32-bit model"),
-								clEnumVal(m64, "64-bit model"),
-								clEnumValEnd),
+								clEnumVal(m64, "64-bit model")),
 					       llvm::cl::location(model));
 #endif
 static llvm::cl::opt<bool, true>     DebugInfo("g",

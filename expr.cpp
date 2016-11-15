@@ -76,7 +76,8 @@ extern llvm::Module* theModule;
 
 static VarStack variables;
 static LabelStack labels;
-static llvm::IRBuilder<> builder(llvm::getGlobalContext());
+llvm::LLVMContext theContext;
+static llvm::IRBuilder<> builder(theContext);
 static int errCnt;
 static std::vector<VTableAST*> vtableBackPatchList;
 static std::vector<FunctionAST*> unitInit;
@@ -135,7 +136,7 @@ static llvm::BasicBlock* CreateGotoTarget(int label)
 	return lab->GetBB();
     }
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), name, theFunction);
+    llvm::BasicBlock* bb = llvm::BasicBlock::Create(theContext, name, theFunction);
     labels.Add(name, new Label(bb, label));
     return bb;
 }
@@ -359,7 +360,7 @@ llvm::Value* RealExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(val));
+    return llvm::ConstantFP::get(theContext, llvm::APFloat(val));
 }
 
 void IntegerExprAST::DoDump(std::ostream& out) const
@@ -1646,7 +1647,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	di.lexicalBlocks.push_back(sp);
 	di.EmitLocation(Location());
     }
-    llvm::BasicBlock* bb = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", theFunction);
+    llvm::BasicBlock* bb = llvm::BasicBlock::Create(theContext, "entry", theFunction);
     builder.SetInsertPoint(bb);
 
     proto->CreateArgumentAlloca();
@@ -1915,13 +1916,13 @@ llvm::Value* IfExprAST::CodeGen()
     }
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "then", theFunction);
-    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "ifcont");
+    llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(theContext, "then", theFunction);
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "ifcont");
 
     llvm::BasicBlock* elseBB = mergeBB;
     if (other)
     {
-	elseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "else");
+	elseBB = llvm::BasicBlock::Create(theContext, "else");
     }
 
     builder.CreateCondBr(condV, thenBB, elseBB);
@@ -2000,8 +2001,8 @@ llvm::Value* ForExprAST::CodeGen()
 
     builder.CreateStore(startV, var);
 
-    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", theFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", theFunction);
+    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
 
     llvm::Value* curVar = builder.CreateLoad(var, variable->Name());
     llvm::Value* endCond;
@@ -2084,11 +2085,11 @@ llvm::Value* WhileExprAST::CodeGen()
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "prebody" before the loop, a "body" and an "after" basic block  */
-    llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "prebody",
+    llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(theContext, "prebody",
 							   theFunction);
-    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body",
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(theContext, "body",
 							 theFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "after",
 							 theFunction);
 
     BasicDebugInfo(this);
@@ -2133,9 +2134,9 @@ llvm::Value* RepeatExprAST::CodeGen()
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
     /* We will need a "body" and an "after" basic block  */
-    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "body",
+    llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(theContext, "body",
 							 theFunction);
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after",
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "after",
 							 theFunction);
 
     BasicDebugInfo(this);
@@ -2605,7 +2606,7 @@ llvm::Value* VarDeclAST::CodeGen()
 		llvm::DIFile* unit = scope->getFile();
 
 		di.builder->createGlobalVariable(scope, var.Name(), var.Name(), unit, lineNum,
-						 debugType, gv->hasInternalLinkage(), gv);
+						 debugType, gv->hasInternalLinkage());
 		}
 	    skip1:;
 	    }
@@ -2695,7 +2696,7 @@ llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* after
 
     assert(stmt && "Expected a statement for 'case' label expression");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "case", theFunction);
+    llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(theContext, "case", theFunction);
 
     builder.SetInsertPoint(caseBB);
     stmt->CodeGen();
@@ -2760,11 +2761,11 @@ llvm::Value* CaseExprAST::CodeGen()
     }
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "after", theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "after", theFunction);
     llvm::BasicBlock* defaultBB = afterBB;
     if (otherwise)
     {
-	defaultBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "default", theFunction);
+	defaultBB = llvm::BasicBlock::Create(theContext, "default", theFunction);
 	
     }	
     llvm::SwitchInst* sw = builder.CreateSwitch(v, defaultBB, labels.size());
@@ -2938,7 +2939,7 @@ llvm::Value* SetExprAST::Address()
 
 	    builder.CreateStore(low, loopVar);
 
-	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "loop", fn);
+	    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", fn);
 	    builder.CreateBr(loopBB);
 	    builder.SetInsertPoint(loopBB);
 
@@ -2969,7 +2970,7 @@ llvm::Value* SetExprAST::Address()
 
 	    llvm::Value* endCond = builder.CreateICmpSLE(loop, high, "loopcond");
 
-	    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(llvm::getGlobalContext(), "afterloop", fn);
+	    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", fn);
 	    builder.CreateCondBr(endCond, loopBB, afterBB);
 
 	    builder.SetInsertPoint(afterBB);
@@ -3101,8 +3102,8 @@ llvm::Value* RangeCheckAST::CodeGen()
     int end = range->GetRange()->Size();
     llvm::Value* cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "out_of_range");
-    llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(llvm::getGlobalContext(), "continue",
+    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(theContext, "out_of_range");
+    llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(theContext, "continue",
 							   theFunction);
     builder.CreateCondBr(cmp, oorBlock, contBlock);
 
@@ -3413,7 +3414,7 @@ llvm::Value* GotoAST::CodeGen()
     llvm::Value* v = builder.CreateBr(labelBB);
     // FIXME: This should not be needed, semantics should remove code after goto!
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* dead = llvm::BasicBlock::Create(llvm::getGlobalContext(), "dead", fn);
+    llvm::BasicBlock* dead = llvm::BasicBlock::Create(theContext, "dead", fn);
     builder.SetInsertPoint(dead);
     return v;
 }

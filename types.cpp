@@ -78,12 +78,12 @@ namespace Types
 
     llvm::Type* CharDecl::GetLlvmType() const
     {
-	return llvm::Type::getInt8Ty(llvm::getGlobalContext());
+	return llvm::Type::getInt8Ty(theContext);
     }
 
     llvm::DIType* CharDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return builder->createBasicType("CHAR", 8, 8, llvm::dwarf::DW_ATE_unsigned_char);
+	return builder->createBasicType("CHAR", 8, llvm::dwarf::DW_ATE_unsigned_char);
     }
 
     const TypeDecl* CharDecl::CompatibleType(const TypeDecl* ty) const
@@ -111,12 +111,12 @@ namespace Types
 
     llvm::Type* IntegerDecl::GetLlvmType() const
     {
-	return llvm::Type::getInt32Ty(llvm::getGlobalContext());
+	return llvm::Type::getInt32Ty(theContext);
     }
 
     llvm::DIType* IntegerDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_signed);
+	return builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_signed);
     }
 
     const TypeDecl* IntegerDecl::CompatibleType(const TypeDecl* ty) const
@@ -148,12 +148,12 @@ namespace Types
 
     llvm::Type* Int64Decl::GetLlvmType() const
     {
-	return llvm::Type::getInt64Ty(llvm::getGlobalContext());
+	return llvm::Type::getInt64Ty(theContext);
     }
 
     llvm::DIType* Int64Decl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return builder->createBasicType("LONGINT", 64, 64, llvm::dwarf::DW_ATE_signed);
+	return builder->createBasicType("LONGINT", 64, llvm::dwarf::DW_ATE_signed);
     }
 
     const TypeDecl* Int64Decl::CompatibleType(const TypeDecl* ty) const
@@ -185,12 +185,12 @@ namespace Types
 
     llvm::Type* RealDecl::GetLlvmType() const
     {
-	return llvm::Type::getDoubleTy(llvm::getGlobalContext());
+	return llvm::Type::getDoubleTy(theContext);
     }
 
     llvm::DIType* RealDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return builder->createBasicType("REAL", 64, 64, llvm::dwarf::DW_ATE_float);
+	return builder->createBasicType("REAL", 64, llvm::dwarf::DW_ATE_float);
     }
 
     const TypeDecl* RealDecl::CompatibleType(const TypeDecl* ty) const
@@ -214,7 +214,7 @@ namespace Types
 
     llvm::Type* VoidDecl::GetLlvmType() const
     {
-	return llvm::Type::getVoidTy(llvm::getGlobalContext());
+	return llvm::Type::getVoidTy(theContext);
     }
 
     void BoolDecl::DoDump(std::ostream& out) const
@@ -224,12 +224,12 @@ namespace Types
 
     llvm::Type* BoolDecl::GetLlvmType() const
     {
-	return llvm::Type::getInt1Ty(llvm::getGlobalContext());
+	return llvm::Type::getInt1Ty(theContext);
     }
 
     llvm::DIType* BoolDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	return builder->createBasicType("BOOLEAN", 1, 1, llvm::dwarf::DW_ATE_boolean);
+	return builder->createBasicType("BOOLEAN", 1, llvm::dwarf::DW_ATE_boolean);
     }
 
     void PointerDecl::DoDump(std::ostream& out) const
@@ -558,7 +558,7 @@ namespace Types
 		{
 		    if (!opaqueType)
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), name);
+			opaqueType = llvm::StructType::create(theContext, name);
 		    }
 		    return opaqueType;
 		}
@@ -689,7 +689,7 @@ namespace Types
 		{
 		    if (!opaqueType)
 		    {
-			opaqueType = llvm::StructType::create(llvm::getGlobalContext(), name);
+			opaqueType = llvm::StructType::create(theContext, name);
 		    }
 		    return opaqueType;
 		}
@@ -707,7 +707,7 @@ namespace Types
 	}
 	if (fv.empty())
 	{
-	    fv.push_back(llvm::Type::getInt8Ty(llvm::getGlobalContext()));
+	    fv.push_back(llvm::Type::getInt8Ty(theContext));
 	}
 	return llvm::StructType::create(fv, name);
     }
@@ -771,7 +771,7 @@ namespace Types
 		offsetInBits = sl->getElementOffsetInBits(index);
 	    }
 	    d = builder->createMemberType(scope, f->Name(), unit, lineNo, size,
-					  align, offsetInBits, 0, d);
+					  align, offsetInBits, llvm::DINode::FlagZero, d);
 	    index++;
 	    eltTys.push_back(d);
 	}
@@ -785,9 +785,9 @@ namespace Types
 	std::string name = "";
 	uint64_t size = Size() * CHAR_BIT;
 	uint64_t align = AlignSize() * CHAR_BIT;
-	unsigned flags = 0;
 	llvm::DIType* derivedFrom = 0;
-	return builder->createStructType(scope, name, unit, lineNo, size, align, flags, derivedFrom, elements);
+	return builder->createStructType(scope, name, unit, lineNo, size, align, llvm::DINode::FlagZero, 
+					 derivedFrom, elements);
     }
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,
@@ -935,7 +935,7 @@ namespace Types
 
 	if (!vtableType)
 	{
-	    vtableType = llvm::StructType::create(llvm::getGlobalContext(), "vtable_" + Name());
+	    vtableType = llvm::StructType::create(theContext, "vtable_" + Name());
 	}
 	if (!opaque)
 	{
@@ -1022,7 +1022,7 @@ namespace Types
 		    {
 			if (!opaqueType)
 			{
-			    opaqueType = llvm::StructType::create(llvm::getGlobalContext(), Name());
+			    opaqueType = llvm::StructType::create(theContext, Name());
 			}
 			return opaqueType;
 		    }
@@ -1041,7 +1041,7 @@ namespace Types
 	}
 	if (!fv.size())
 	{
-	    llvm::StructType* ty = llvm::StructType::create(llvm::getGlobalContext(), Name());
+	    llvm::StructType* ty = llvm::StructType::create(theContext, Name());
 	    ty->setBody(llvm::None);
 	    return ty;
 	}
@@ -1177,7 +1177,7 @@ namespace Types
 	std::vector<llvm::Metadata*> subscripts;
 	Range* rr = range->GetRange();
 	subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
-	llvm::DIType* bd = builder->createBasicType("INTEGER", 32, 32, llvm::dwarf::DW_ATE_unsigned);
+	llvm::DIType* bd = builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_unsigned);
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
 	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(),
 					bd, subsArray);
@@ -1272,7 +1272,7 @@ namespace Types
 // Void pointer is not a "pointer to void", but a "pointer to Int8".
     llvm::Type* GetVoidPtrType()
     {
-	llvm::Type* base = llvm::IntegerType::getInt8Ty(llvm::getGlobalContext());
+	llvm::Type* base = llvm::IntegerType::getInt8Ty(theContext);
 	return llvm::PointerType::getUnqual(base);
     }
 

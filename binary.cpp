@@ -1,6 +1,7 @@
 #include "binary.h"
 #include "options.h"
 #include "trace.h"
+#include "expr.h"
 #include <llvm/CodeGen/CommandFlags.h>
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/ADT/Triple.h>
@@ -9,6 +10,7 @@
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Support/FormattedStream.h>
+#include <llvm/Support/CodeGen.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Support/TargetSelect.h>
@@ -74,7 +76,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     llvm::TargetOptions options;
     std::unique_ptr<llvm::TargetMachine> tm
 	(target->createTargetMachine(triple.getTriple(), MCPU,
-				     FeaturesStr, options));
+				     FeaturesStr, options, llvm::Reloc::Static));
 
     if (!tm)
     {
@@ -180,7 +182,7 @@ llvm::Module* CreateModule()
 {
     llvm::InitializeNativeTarget();
 
-    llvm::Module* module = new llvm::Module("TheModule", llvm::getGlobalContext());
+    llvm::Module* module = new llvm::Module("TheModule", theContext);
 
     llvm::Triple triple(llvm::sys::getDefaultTargetTriple());
     if (model == m32)
@@ -213,7 +215,7 @@ llvm::Module* CreateModule()
 
     llvm::TargetOptions options;
     std::unique_ptr<llvm::TargetMachine> tm(target->createTargetMachine(triple.getTriple(), MCPU,
-									FeaturesStr, options));
+									FeaturesStr, options, llvm::Reloc::Static));
     assert(tm && "Could not create TargetMachine");
     const llvm::DataLayout dl = tm->createDataLayout();
     module->setDataLayout(dl);

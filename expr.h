@@ -16,6 +16,8 @@
 #include <vector>
 #include <set>
 
+extern llvm::LLVMContext theContext;
+
 class ExprAST : public Visitable<ExprAST>
 {
     friend class TypeCheckVisitor;

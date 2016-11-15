@@ -1049,7 +1049,7 @@ namespace Builtin
 	llvm::Value* mone = MakeIntegerConstant(-1);
 	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real)
 	{
-	    llvm::Value* fzero = llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(0.0));
+	    llvm::Value* fzero = llvm::ConstantFP::get(theContext, llvm::APFloat(0.0));
 	    llvm::Value* sel1 = builder.CreateFCmpOGT(v, fzero, "gt");
 	    llvm::Value* sel2 = builder.CreateFCmpOLT(v, fzero, "lt");
 	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");

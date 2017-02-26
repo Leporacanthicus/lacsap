@@ -9,19 +9,50 @@ Constants:
    maxreal, minreal, epsreal
    maxchar
 
-   Array constant declarations
+   Array and struct constant declarations
+
+   Extended integers, e.g 16#ff or  8#377 same as 255.
 
 Types:
    complex
+   Restricted types (Opaque types for modules)
 
-Variables
+Variables:
    Value initializers.
-
 
 Operators:
    **, pow
    and_then, or_else    { We already do this, I think... }
 
+Control structure:
+   for m in setvar do ...
+
 Functions
    DateStamp, TimeStamp
-   trim, index { string functions }
+
+   { string functions }
+   trim, index
+   substr(s, i, j), substr(s, i)
+   EQ(s1, s2)
+   LT(s1, s2)
+   GT(s1, s2)
+   NE(s1, s2)
+   LE(s1, s2)
+   GE(s1, s2)
+
+   succ(x, k), pred(x, k)
+
+
+   writestr(s, p1, ..., pn)   { kinda like sprintf }
+   readstr(e, v1, ..., vn)  { kinda like sscanf }
+
+   empty(f)   { true if file f is empty }
+   position(f)
+   lastposition(f)
+
+   card { the equivalent of popcnt }
+
+Modules
+
+   New keywords:
+     "module", "export", "import", "interface", "implementation", "qualified", "restricted"

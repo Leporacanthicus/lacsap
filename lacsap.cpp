@@ -31,6 +31,7 @@ bool     callGraph;
 Model    model = m64;
 bool     caseInsensitive = true;
 EmitType emitType;
+Standard standard = none;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string>    InputFilename(llvm::cl::Positional, llvm::cl::Required, 
@@ -77,6 +78,15 @@ static llvm::cl::opt<bool, true>     DebugInfo("g",
 static llvm::cl::opt<bool, true>     CallGraphOpt("callgraph",
 						  llvm::cl::desc("Produce callgraph"),
 						  llvm::cl::location(callGraph));
+
+static llvm::cl::opt<Standard, true>     StandardOpt("std",
+						     llvm::cl::desc("ISO standard"),
+						     llvm::cl::values(
+							 clEnumVal(none, "Allow all language forms"),
+							 clEnumVal(iso7185, "ISO-7185 mode"),
+							 clEnumVal(iso10206, "ISO-10206 mode")),
+						     llvm::cl::location(standard));
+
 
 void OptimizerInit()
 {

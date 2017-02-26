@@ -22,6 +22,13 @@ enum Model
     m64,
 };
 
+enum Standard
+{
+    none,
+    iso7185,
+    iso10206,
+};
+
 extern int         verbosity;
 extern bool        timetrace;
 extern bool        disableMemcpyOpt;
@@ -32,5 +39,6 @@ extern OptLevel    optimization;
 extern Model       model;
 extern bool        caseInsensitive;
 extern EmitType    emitType;
+extern Standard    standard;
 extern std::string libpath;
 #endif

@@ -2,7 +2,10 @@
 #include "options.h"
 #include "trace.h"
 #include "expr.h"
-#include <llvm/CodeGen/CommandFlags.h>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-function"
+#include <llvm/CodeGen/CommandFlags.def>
+#pragma clang diagnostic pop
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/ADT/Triple.h>
 #include <llvm/Support/Host.h>
@@ -21,13 +24,12 @@
 #include <iostream>
 #include <system_error>
 
-static llvm::tool_output_file *GetOutputStream(const std::string& filename) 
+static llvm::ToolOutputFile *GetOutputStream(const std::string& filename)
 {
     // Open the file.
     std::error_code error;
     llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
-    llvm::tool_output_file *FDOut = new llvm::tool_output_file(filename, error,
-							       OpenFlags);
+    llvm::ToolOutputFile *FDOut = new llvm::ToolOutputFile(filename, error, OpenFlags);
     if (error)
     {
 	std::cerr << error << '\n';
@@ -47,9 +49,8 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     llvm::InitializeAllAsmParsers();
 
     std::string error;
-    llvm::Triple triple = Triple(module->getTargetTriple());
-    const llvm::Target *target =
-	llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
+    llvm::Triple triple = llvm::Triple(module->getTargetTriple());
+    const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple.getTriple(), error);
 
     if (!target)
     {
@@ -65,7 +66,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     std::string FeaturesStr;
     if (MAttrs.size())
     {
-	SubtargetFeatures Features;
+	llvm::SubtargetFeatures Features;
 	for (unsigned i = 0; i != MAttrs.size(); ++i)
 	{
 	    Features.AddFeature(MAttrs[i]);
@@ -89,7 +90,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	new llvm::TargetLibraryInfoWrapperPass(triple);
     PM.add(TLI);
 
-    std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(objname));
+    std::unique_ptr<llvm::ToolOutputFile> Out(GetOutputStream(objname));
     if (!Out)
     {
 	std::cerr << "Could not open file ... " << std::endl;
@@ -98,10 +99,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 
     llvm::raw_pwrite_stream *OS = &Out->os();
 
-    llvm::AnalysisID StartAfterID = 0;
-    llvm::AnalysisID StopAfterID = 0;
-    if (tm->addPassesToEmitFile(PM, *OS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false,
-				StartAfterID, StopAfterID))
+    if (tm->addPassesToEmitFile(PM, *OS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false))
     {
 	std::cerr << objname << ": target does not support generation of this"
 	    " file type!\n";
@@ -111,8 +109,8 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
     Out->keep();
 }
 
-std::string replace_ext(const std::string &origName, 
-			const std::string& expectedExt, 
+std::string replace_ext(const std::string &origName,
+			const std::string& expectedExt,
 			const std::string& newExt)
 {
     if (origName.substr(origName.size() - expectedExt.size()) != expectedExt)
@@ -171,7 +169,7 @@ bool CreateBinary(llvm::Module *module, const std::string& filename, EmitType em
     assert(emit == LlvmIr && "Expect LLVM IR here..");
 
     std::string irName = replace_ext(filename, ".pas", ".ll");
-    std::unique_ptr<llvm::tool_output_file> Out(GetOutputStream(irName));
+    std::unique_ptr<llvm::ToolOutputFile> Out(GetOutputStream(irName));
     llvm::formatted_raw_ostream FOS(Out->os());
     module->print(FOS, 0);
     Out->keep();
@@ -205,7 +203,7 @@ llvm::Module* CreateModule()
     std::string FeaturesStr;
     if (MAttrs.size())
     {
-	SubtargetFeatures Features;
+	llvm::SubtargetFeatures Features;
 	for (unsigned i = 0; i != MAttrs.size(); ++i)
 	{
 	    Features.AddFeature(MAttrs[i]);

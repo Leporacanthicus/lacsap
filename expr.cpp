@@ -548,8 +548,8 @@ llvm::Value* VariantFieldExprAST::Address()
     TRACE();
     EnsureSized();
     llvm::Value* v = expr->Address();
-    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
-    v = builder.CreateGEP(v, ind, "valueindex");
+//    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
+//    v = builder.CreateGEP(v, ind, "valueindex");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
 
@@ -1387,10 +1387,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	llvmFunc->addAttribute(v.first, v.second);
     }
     // TODO: Allow this to be disabled.
-    llvm::AttributeSet attrs;
-    attrs = attrs.addAttribute(llvmFunc->getContext(), llvm::AttributeSet::FunctionIndex,
-			       "no-frame-pointer-elim", "true");
-    llvmFunc->addAttributes(llvm::AttributeSet::FunctionIndex, attrs);
+    llvmFunc->addFnAttr("no-frame-pointer-elim", "true");
 
     return llvmFunc;
 }
@@ -2605,8 +2602,8 @@ llvm::Value* VarDeclAST::CodeGen()
 		llvm::DIScope* scope = di.cu;
 		llvm::DIFile* unit = scope->getFile();
 
-		di.builder->createGlobalVariable(scope, var.Name(), var.Name(), unit, lineNum,
-						 debugType, gv->hasInternalLinkage());
+		di.builder->createGlobalVariableExpression(scope, var.Name(), var.Name(), unit, lineNum,
+							   debugType, gv->hasInternalLinkage());
 		}
 	    skip1:;
 	    }
@@ -3447,7 +3444,8 @@ llvm::Value* UnitAST::CodeGen()
 
 	// TODO: Fix path and add flags.
 	di.builder = new llvm::DIBuilder(*theModule, true);
-	di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, loc.FileName(), ".",
+	llvm::DIFile* file = di.builder->createFile(loc.FileName(), ".");
+	di.cu = di.builder->createCompileUnit(llvm::dwarf::DW_LANG_Pascal83, file,
 					      "Lacsap", optimization >= O1, "", 0);
 
 	debugStack.push_back(&di);

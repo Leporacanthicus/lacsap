@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <algorithm>
+#include <string>
 
 inline void strlower(std::string& str)
 {

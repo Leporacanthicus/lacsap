@@ -548,8 +548,8 @@ llvm::Value* VariantFieldExprAST::Address()
     TRACE();
     EnsureSized();
     llvm::Value* v = expr->Address();
-//    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
-//    v = builder.CreateGEP(v, ind, "valueindex");
+    std::vector<llvm::Value*> ind{MakeIntegerConstant(0), MakeIntegerConstant(element)};
+    v = builder.CreateGEP(v, ind, "valueindex");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
 

@@ -504,7 +504,7 @@ namespace Types
 	const int size = 32;
 	const int align = 32;
 	std::vector<llvm::Metadata*> enumerators;
-	for (const auto i : values )
+	for (const auto& i : values )
 	{
 	    enumerators.push_back(builder->createEnumerator(i.name, i.value));
 	}

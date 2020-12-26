@@ -21,7 +21,7 @@ Token::Token(TokenType t, const Location& w): type(t), where(w)
 
 Token::Token(TokenType t, const Location& w, const std::string& str): type(t), where(w), strVal(str)
 {
-    assert((t ==  Token::Identifier || Token::StringLiteral) &&
+    assert((t ==  Token::Identifier || t ==Token::StringLiteral) &&
 	   "Invalid token for string argument");
     assert((t == Token::StringLiteral || str != "") && "String should not be empty for identifier");
 }

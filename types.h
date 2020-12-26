@@ -126,7 +126,7 @@ namespace Types
         bool IsIncomplete() const override { return true; }
 	bool HasLlvmType() const override { return false; }
 	bool SameAs(const TypeDecl* ty) const override { return false; }
-	void DoDump(std::ostream& out) const override { out << "Forward " << Name(); }
+	void DoDump(std::ostream& out) const override { out << std::string("Forward ") << Name(); }
 	llvm::Type* GetLlvmType() const override
 	    { assert(0 && "No llvm type for forward decls"); return 0; }
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override

@@ -2,6 +2,7 @@ OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.
 	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o utils.o callgraph.o
 
 LLVM_DIR ?= /usr/local/llvm-debug
+#LLVM_DIR = ../llvm-github/LLVM_Binaries
 
 # If not specified, use clang and enable 32-bit build.
 USECLANG ?= 1
@@ -16,7 +17,7 @@ LD = ${CXX}
 
 DEBUG ?= -g
 
-CXXFLAGS  = ${DEBUG} -Wall -Werror -Wextra -std=c++11 -O0
+CXXFLAGS  = ${DEBUG} -Wall -Werror -Wextra -Wno-unused-parameter -std=c++11 -O0
 CXXFLAGS += -fno-exceptions -fno-rtti
 ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug
@@ -73,8 +74,7 @@ debugtests: lacsap tests
 
 .phony: llvmversion
 llvmversion:
-	${LLVM_DIR}/bin/clang --version | head -1 | \
-	awk -e '{ print "git clone " substr($$6, 2) " llvm && cd llvm && git checkout " substr($$7, 0, length($$7)-1); }' > $@
+	./llvm_version_info.sh `${LLVM_DIR}/bin/llvm-config --src-root` > $@
 
 clean:
 	rm -f ${OBJECTS} libruntime.a llvmversion

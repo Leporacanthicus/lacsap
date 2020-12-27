@@ -1,1 +1,3 @@
-git clone https://git.llvm.org/git/llvm.git/ llvm && cd llvm && git checkout e4de84b6004a50110562316f58c5bb1649505b78
+git clone https://github.com/llvm/llvm-project.git llvm
+cd llvm
+git checkout 62beac7ed7c620c93e46c690ecc404143a124ea7

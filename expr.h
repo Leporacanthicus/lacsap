@@ -18,6 +18,8 @@
 
 extern llvm::LLVMContext theContext;
 
+const size_t MIN_ALIGN = 4;
+
 class ExprAST : public Visitable<ExprAST>
 {
     friend class TypeCheckVisitor;
@@ -809,11 +811,13 @@ llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty);
 llvm::Value* MakeAddressable(ExprAST* e);
 llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty);
 void BackPatch();
-llvm::Constant* GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
-			    const std::string&name);
-llvm::Constant* GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
-			    const std::string& name);
+llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
+				 const std::string&name);
+llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
+				 const std::string& name);
 std::string ShortName(const std::string& name);
 ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty);
+size_t AlignOfType(llvm::Type* ty);
+
 
 #endif

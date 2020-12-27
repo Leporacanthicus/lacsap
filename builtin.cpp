@@ -33,7 +33,7 @@ namespace Builtin
     {
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Type* ty = Types::GetRealType()->LlvmType();
-	llvm::Constant* f = GetFunction(ty, { ty }, func);
+	llvm::FunctionCallee f = GetFunction(ty, { ty }, func);
 	return builder.CreateCall(f, a, "calltmp");
     }
 
@@ -502,7 +502,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::GetRealType(), {}, "__random");
+	llvm::FunctionCallee f = GetFunction(Types::GetRealType(), {}, "__random");
 	return builder.CreateCall(f, {}, "calltmp");
     }
 
@@ -558,7 +558,7 @@ namespace Builtin
 
 	// Result is "void *"
 	llvm::Type* resTy = Types::GetVoidPtrType();
-	llvm::Constant* f = GetFunction(resTy, {ty}, "__new");
+	llvm::FunctionCallee f = GetFunction(resTy, {ty}, "__new");
 
 	llvm::Value* retVal = builder.CreateCall(f, {MakeIntegerConstant(size)}, "new");
 
@@ -578,7 +578,7 @@ namespace Builtin
     llvm::Value* BuiltinFunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Type* ty = args[0]->Type()->LlvmType();
-	llvm::Constant* f = GetFunction(Types::GetVoidType(),
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(),
 					{ ty }, "__dispose");
 
 	return builder.CreateCall(f, { args[0]->CodeGen() });
@@ -597,7 +597,7 @@ namespace Builtin
 	    v = args[0]->CodeGen();
 	}
 
-	llvm::Constant* f = GetFunction(Types::GetVoidType(),
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(),
 					{ Types::GetIntegerType()->LlvmType() }, "exit");
 
 	return builder.CreateCall(f, { v });
@@ -668,7 +668,9 @@ namespace Builtin
 
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
 	llvm::Value *src = builder.CreateGEP(pA, ind, "dest");
-	return builder.CreateMemCpy(pB, src, args[2]->Type()->Size(), 1);
+	llvm::Align dest_align{std::max(AlignOfType(pB->getType()), MIN_ALIGN)};
+	llvm::Align src_align{std::max(AlignOfType(src->getType()), MIN_ALIGN)};
+	return builder.CreateMemCpy(pB, dest_align, src, src_align, args[2]->Type()->Size());
     }
 
     // Unpack(apacked, a, start);
@@ -712,7 +714,9 @@ namespace Builtin
 
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
 	llvm::Value *dest = builder.CreateGEP(pB, ind, "dest");
-	return builder.CreateMemCpy(dest, pA, args[0]->Type()->Size(), 1);
+	llvm::Align dest_align{std::max(AlignOfType(dest->getType()), MIN_ALIGN)};
+	llvm::Align src_align{std::max(AlignOfType(pA->getType()), MIN_ALIGN)};
+	return builder.CreateMemCpy(dest, dest_align, pA, src_align, args[0]->Type()->Size());
     }
 
     bool BuiltinFunctionVal::Semantics()
@@ -743,7 +747,7 @@ namespace Builtin
 	llvm::Value* res = var1->Address();
 	llvm::Type* ty0 = str->getType();
 	llvm::Type* ty1 = res->getType();
-	llvm::Constant* f = GetFunction(Types::GetVoidType(), { ty0, ty1 }, name);
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(), { ty0, ty1 }, name);
 
 	return builder.CreateCall(f,  { str, res });
     }
@@ -754,7 +758,7 @@ namespace Builtin
 	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
-	llvm::Constant* f = GetFunction(Type(), { faddr->getType() }, "__" + funcname);
+	llvm::FunctionCallee f = GetFunction(Type(), { faddr->getType() }, "__" + funcname);
 
 	return builder.CreateCall(f, { faddr });
     }
@@ -780,7 +784,7 @@ namespace Builtin
 	std::vector<llvm::Type*> argTypes =  { faddr->getType(),
 					       Types::GetIntegerType()->LlvmType(),
 					       Types::GetBooleanType()->LlvmType() };
-	llvm::Constant* f = GetFunction(Type(), argTypes, "__" + funcname);
+	llvm::FunctionCallee f = GetFunction(Type(), argTypes, "__" + funcname);
 
 	Types::FileDecl* fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
 	llvm::Value* sz = MakeIntegerConstant(fd->SubType()->Size());
@@ -830,7 +834,7 @@ namespace Builtin
 	llvm::Type* ty = filename->getType();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), ty };
 
-	llvm::Constant* f = GetFunction(Types::GetVoidType(), argTypes, "__assign");
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(), argTypes, "__assign");
 
 	std::vector<llvm::Value*> argsV = { faddr, filename };
 	return builder.CreateCall(f, argsV);
@@ -857,7 +861,7 @@ namespace Builtin
 
 	std::vector<llvm::Type*> argTypes = { str->getType(), start->getType(), len->getType() };
 	llvm::Type* strTy = Types::GetStringType()->LlvmType();
-	llvm::Constant* f = GetFunction(strTy, argTypes, "__StrCopy");
+	llvm::FunctionCallee f = GetFunction(strTy, argTypes, "__StrCopy");
 
 	std::vector<llvm::Value*> argsV = { str, start, len };
 
@@ -874,7 +878,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionClock::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::GetLongIntType(), {}, "__Clock");
+	llvm::FunctionCallee f = GetFunction(Types::GetLongIntType(), {}, "__Clock");
 
 	return  builder.CreateCall(f, {}, "clock");
     }
@@ -888,7 +892,7 @@ namespace Builtin
     {
 	llvm::Value* message = args[0]->CodeGen();
 	llvm::Type* ty = message->getType();
-	llvm::Constant* f = GetFunction(Types::GetVoidType(), { ty }, "__Panic");
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(), { ty }, "__Panic");
 
 	return builder.CreateCall(f,  { message });
     }
@@ -906,7 +910,7 @@ namespace Builtin
 	{
 	    name += std::to_string(type->Size() * 8);
 	    llvm::Type* ty = type->LlvmType();
-	    llvm::Constant* f = GetFunction(ty, { ty }, name);
+	    llvm::FunctionCallee f = GetFunction(ty, { ty }, name);
 	    llvm::Value* a = args[0]->CodeGen();
 	    return builder.CreateCall(f, a, "popcnt");
 	}
@@ -917,7 +921,7 @@ namespace Builtin
 	llvm::Value *addr = builder.CreateGEP(v, ind, "leftSet");
 	llvm::Value *val = builder.CreateLoad(addr);
 	llvm::Type* ty = val->getType();
-	llvm::Constant* f = GetFunction(ty, { ty }, name);
+	llvm::FunctionCallee f = GetFunction(ty, { ty }, name);
 	llvm::Value *count = builder.CreateCall(f, val, "count");
 	Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(type);
 	for(size_t i = 1; i < sd->SetWords(); i++)
@@ -940,7 +944,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionCycles::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::GetLongIntType(), { }, "llvm.readcyclecounter");
+	llvm::FunctionCallee f = GetFunction(Types::GetLongIntType(), { }, "llvm.readcyclecounter");
 
 	return builder.CreateCall(f, { }, "cycles");
     }
@@ -951,7 +955,7 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 
-	llvm::Constant* f = GetFunction(realTy, { realTy, realTy },
+	llvm::FunctionCallee f = GetFunction(realTy, { realTy, realTy },
 					funcname);
 	
 	return builder.CreateCall(f, { a, b } );
@@ -969,7 +973,7 @@ namespace Builtin
 	std::vector<llvm::Type*> argTypes = {n->getType()};
 
 	llvm::FunctionType* ft = llvm::FunctionType::get(Types::GetStringType()->LlvmType(), argTypes, false);
-	llvm::Constant* f = theModule->getOrInsertFunction("__ParamStr", ft);
+	llvm::FunctionCallee f = theModule->getOrInsertFunction("__ParamStr", ft);
 
 	return builder.CreateCall(f, n, "paramstr");
     }
@@ -981,7 +985,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionParamcount::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Constant* f = GetFunction(Types::GetIntegerType(),
+	llvm::FunctionCallee f = GetFunction(Types::GetIntegerType(),
 					{ }, "__ParamCount");
 	return builder.CreateCall(f, {},  "paramcount");
     }

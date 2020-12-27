@@ -4,7 +4,7 @@
 #include "expr.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
-#include <llvm/CodeGen/CommandFlags.def>
+#include <llvm/CodeGen/CommandFlags.h>
 #pragma clang diagnostic pop
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/ADT/Triple.h>
@@ -23,6 +23,8 @@
 #include <llvm/IR/DataLayout.h>
 #include <iostream>
 #include <system_error>
+
+static llvm::codegen::RegisterCodeGenFlags CGF;
 
 static llvm::ToolOutputFile *GetOutputStream(const std::string& filename)
 {
@@ -58,25 +60,27 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 	return;
     }
 
-    if (MCPU == "native")
+    std::string mcpu = llvm::codegen::getMCPU();
+    if (mcpu == "native")
     {
-	MCPU = sys::getHostCPUName();
+	mcpu = llvm::sys::getHostCPUName().str();
     }
 
     std::string FeaturesStr;
-    if (MAttrs.size())
+    std::vector<std::string> mattrs = llvm::codegen::getMAttrs();
+    if (mattrs.size())
     {
 	llvm::SubtargetFeatures Features;
-	for (unsigned i = 0; i != MAttrs.size(); ++i)
+	for (unsigned i = 0; i != mattrs.size(); ++i)
 	{
-	    Features.AddFeature(MAttrs[i]);
+	    Features.AddFeature(mattrs[i]);
 	}
 	FeaturesStr = Features.getString();
     }
 
     llvm::TargetOptions options;
     std::unique_ptr<llvm::TargetMachine> tm
-	(target->createTargetMachine(triple.getTriple(), MCPU,
+	(target->createTargetMachine(triple.getTriple(), mcpu,
 				     FeaturesStr, options, llvm::Reloc::Static));
 
     if (!tm)
@@ -99,7 +103,7 @@ static void CreateObject(llvm::Module *module, const std::string& objname)
 
     llvm::raw_pwrite_stream *OS = &Out->os();
 
-    if (tm->addPassesToEmitFile(PM, *OS, llvm::LLVMTargetMachine::CGFT_ObjectFile, false))
+    if (tm->addPassesToEmitFile(PM, *OS, nullptr, llvm::CodeGenFileType::CGFT_ObjectFile, false))
     {
 	std::cerr << objname << ": target does not support generation of this"
 	    " file type!\n";
@@ -201,18 +205,20 @@ llvm::Module* CreateModule()
     }
 
     std::string FeaturesStr;
-    if (MAttrs.size())
+    std::vector<std::string> mattrs = llvm::codegen::getMAttrs();
+    if (mattrs.size())
     {
 	llvm::SubtargetFeatures Features;
-	for (unsigned i = 0; i != MAttrs.size(); ++i)
+	for (unsigned i = 0; i != mattrs.size(); ++i)
 	{
-	    Features.AddFeature(MAttrs[i]);
+	    Features.AddFeature(mattrs[i]);
 	}
 	FeaturesStr = Features.getString();
     }
 
     llvm::TargetOptions options;
-    std::unique_ptr<llvm::TargetMachine> tm(target->createTargetMachine(triple.getTriple(), MCPU,
+    std::string mcpu = llvm::codegen::getMCPU();
+    std::unique_ptr<llvm::TargetMachine> tm(target->createTargetMachine(triple.getTriple(), mcpu,
 									FeaturesStr, options, llvm::Reloc::Static));
     assert(tm && "Could not create TargetMachine");
     const llvm::DataLayout dl = tm->createDataLayout();

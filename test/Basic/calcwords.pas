@@ -1,7 +1,10 @@
 program calcwords;
 
+const
+   NWORDS =  10;
+
 var
-   longest : array [1..10] of string;
+   longest : array [1..NWORDS] of string;
    word	   : string;
    i, j	   : integer;
    
@@ -37,7 +40,7 @@ begin
    len := length(w);
    ok := true;
    toupper(w);
-   while (i < len) and ok do
+   while (i <= len) and ok do
    begin
       if not (w[i] in ['B', 'E', 'G', 'H', 'I', 'L', 'O', 'S', 'Z']) then
       begin
@@ -49,24 +52,24 @@ begin
 end; { check }
 
 begin
-   for i := 1 to 10 do 
+   for i := 1 to NWORDS do
       longest[i] := '';
    while not eof do
    begin
       readword(word);
       if check(word) then
       begin
-	 if length(word) > length(longest[10]) then
+	 if length(word) > length(longest[NWORDS]) then
 	 begin
-	    i := 10;
+	    i := NWORDS;
 	    while (i > 1) and (length(word) > length(longest[i])) do i := i - 1;
-	    for j := 9 downto i do
+	    for j := NWORDS-1 downto i do
 	       longest[j+1] := longest[j];
 	    longest[i] := word;
 	 end;
       end;
    end;
-   for i := 1 to 10 do
+   for i := 1 to NWORDS do
       writeln('Longest word:', longest[i]);
 end.
 	 

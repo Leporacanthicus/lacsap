@@ -368,7 +368,7 @@ TestEntry testCaseList[] =
     // Variant variable not supported.
     { LACSAP_ONLY, "Basic", "Variant Rec2",  "variant2.pas",    "" },
     { 0,           "Basic", "Quicksort",     "qsort.pas",       "< numbers.txt" },
-    { 0,           "Basic", "Calc Words",    "calcwords.pas",   "< /usr/share/dict/words" },
+    { 0,           "Basic", "Calc Words",    "calcwords.pas",   "< word-list.txt" },
     // Free pascal doesn't support __FILE__ and __LINE__
     { LACSAP_ONLY, "Basic", "Line & File",   "linefile.pas",    "" },
     { 0,           "Basic", "Set Values",    "set.pas",         "" },

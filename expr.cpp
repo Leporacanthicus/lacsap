@@ -1191,8 +1191,9 @@ llvm::Value* CallExprAST::CodeGen()
 
     std::vector<llvm::Value*> argsV;
     std::vector<llvm::Type*> argTypes;
-    std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
+    llvm::AttributeList attrList;
     unsigned index = 0;
+
     for(auto i : args)
     {
 	llvm::Value* v = 0;
@@ -1200,7 +1201,9 @@ llvm::Value* CallExprAST::CodeGen()
 	if (ClosureAST* ca = llvm::dyn_cast<ClosureAST>(i))
 	{
 	    v = ca->CodeGen();
-	    argAttr.push_back(std::make_pair(index+1, llvm::Attribute::Nest));
+	    llvm::AttrBuilder ab;
+	    ab.addAttribute(llvm::Attribute::Nest);
+	    attrList = attrList.addAttributes(theModule->getContext(), index+llvm::AttributeList::FirstArgIndex, ab);
 	}
 	else
 	{
@@ -1246,7 +1249,12 @@ llvm::Value* CallExprAST::CodeGen()
 			    v = CreateTempAlloca(i->Type());
 			    builder.CreateStore(i->CodeGen(), v);
 			}
-			argAttr.push_back(std::make_pair(index+1, llvm::Attribute::ByVal));
+			const llvm::PointerType* pt = llvm::dyn_cast<llvm::PointerType>(v->getType());
+			llvm::AttrBuilder ab;
+			ab.addByValAttr(pt->getElementType());
+			attrList = attrList.addAttributes(theModule->getContext(),
+							  index+llvm::AttributeList::FirstArgIndex,
+							  ab);
 		    }
 		    else
 		    {
@@ -1271,10 +1279,8 @@ llvm::Value* CallExprAST::CodeGen()
     }
     llvm::FunctionCallee f = GetFunction(resType, argTypes, calleF);
     llvm::CallInst* inst = builder.CreateCall(f, argsV, res);
-    for(auto v : argAttr)
-    {
-	inst->addAttribute(v.first, v.second);
-    }
+    inst->setAttributes(attrList);
+
     return inst;
 }
 
@@ -1334,35 +1340,42 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 {
     TRACE();
     assert(namePrefix != "" && "Prefix should never be empty");
-    if(llvmFunc)
+    if (llvmFunc)
     {
 	return llvmFunc;
     }
 
-    std::vector<std::pair<int, llvm::Attribute::AttrKind>> argAttr;
+    llvm::AttributeList attrList;
     std::vector<llvm::Type*> argTypes;
     unsigned index = 0;
     for(auto i : args)
     {
-	llvm::AttrBuilder attrs;
 	assert(i.Type() && "Invalid type for argument");
 	llvm::Type* argTy = i.Type()->LlvmType();
 	
-	index++;
-	if (index == 1 && Function()->ClosureType())
+	if (index == 0 && Function()->ClosureType())
 	{
-	    argAttr.push_back(std::make_pair(index, llvm::Attribute::Nest));
+	    llvm::AttrBuilder ab;
+	    ab.addAttribute(llvm::Attribute::Nest);
+	    attrList = attrList.addAttributes(theModule->getContext(),
+					      index+llvm::AttributeList::FirstArgIndex,
+					      ab);
 	}
-	if (i.IsRef() || i.Type()->IsCompound() )
+	if (i.IsRef() || i.Type()->IsCompound())
 	{
-	    argTy = llvm::PointerType::getUnqual(argTy);
 	    if (!i.IsRef())
 	    {
-		argAttr.push_back(std::make_pair(index, llvm::Attribute::ByVal));
+		llvm::AttrBuilder ab;
+		ab.addByValAttr(argTy);
+		attrList = attrList.addAttributes(theModule->getContext(),
+						  index+llvm::AttributeList::FirstArgIndex,
+						  ab);
 	    }
+	    argTy = llvm::PointerType::getUnqual(argTy);
 	}
 
 	argTypes.push_back(argTy);
+	index++;
     }
     llvm::Type* resTy = type->LlvmType();
     std::string actualName;
@@ -1398,10 +1411,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	a++;
     }
 
-    for(auto v : argAttr)
-    {
-	llvmFunc->addAttribute(v.first, v.second);
-    }
+    llvmFunc->setAttributes(attrList);
     // TODO: Allow this to be disabled.
     llvmFunc->addFnAttr("no-frame-pointer-elim", "true");
 

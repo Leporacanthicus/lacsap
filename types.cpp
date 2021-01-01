@@ -915,7 +915,7 @@ namespace Types
 			" that is not a virtual function in the baseclass!";
 		    return 0;
 		}
-		/* We need to continue digging here for multi-level functions */
+		// We need to continue digging here for multi-level functions
 		MemberFuncDecl* mf = baseobj->GetMembFunc(elem);
 		m->VirtIndex(mf->VirtIndex());
 		needed = true;
@@ -948,7 +948,7 @@ namespace Types
     int ClassDecl::Element(const std::string& name) const
     {
 	int b = baseobj ? baseobj->FieldCount() : 0;
-	/* Shadowing overrides outer elemnts */
+	// Shadowing overrides outer elemnts
 	int elem = FieldCollection::Element(name);
 	if (elem >= 0)
 	{
@@ -1276,7 +1276,7 @@ namespace Types
 	return llvm::PointerType::getUnqual(base);
     }
 
-/* Static variables in Types. */
+    // Static variables in Types.
     static TypeDecl* voidType = 0;
     static TypeDecl* textType = 0;
     static TypeDecl* strType = 0;

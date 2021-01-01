@@ -47,8 +47,8 @@ public:
     bool IsExternal() const { return isExt; }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 private:
-    bool isRef;   /* "var" arguments are "references" */
-    bool isExt;   /* global variable defined outside this module */
+    bool isRef;   // "var" arguments are "references"
+    bool isExt;   // global variable defined outside this module
 };
 
 inline bool operator<(const VarDef& lhs, const VarDef& rhs) { return lhs.Name() < rhs.Name(); }

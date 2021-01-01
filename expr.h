@@ -219,7 +219,7 @@ public:
     ArrayExprAST(const Location& w, VariableExprAST* v, const std::vector<ExprAST*>& inds,
 		 const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
-    /* Don't need CodeGen, just calculate address and use parent CodeGen */
+    // Don't need CodeGen, just calculate address and use parent CodeGen
     llvm::Value* Address() override;
     static bool classof(const ExprAST* e) { return e->getKind() == EK_ArrayExpr; }
     void accept(ASTVisitor& v) override;
@@ -804,7 +804,7 @@ private:
     Types::FuncPtrDecl* funcPtrTy;
 };
 
-/* Useful global functions */
+// Useful global functions
 llvm::Constant* MakeIntegerConstant(int val);
 llvm::Constant* MakeBooleanConstant(int val);
 llvm::Constant* MakeConstant(uint64_t val, Types::TypeDecl* ty);

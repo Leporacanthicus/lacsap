@@ -189,7 +189,7 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* 
 					   const std::string& name)
 {
     TRACE();
-   /* Save where we were... */
+    // Save where we were...
     llvm::BasicBlock* bb = builder.GetInsertBlock();
     llvm::BasicBlock::iterator ip = builder.GetInsertPoint();
 
@@ -222,7 +222,7 @@ static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 
 static llvm::AllocaInst* CreateTempAlloca(Types::TypeDecl* ty)
 {
-    /* Get the "entry" block */
+    // Get the "entry" block
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
     return CreateNamedAlloca(fn, ty, "tmp");
@@ -982,7 +982,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return CallStrCat(lhs, rhs);
 	}
 
-	/* We don't need to do this of both sides are char - then it's just a simple comparison */
+	// We don't need to do this of both sides are char - then it's just a simple comparison
 	if (lhs->Type()->Type() != Types::TypeDecl::TK_Char ||
 	    rhs->Type()->Type() != Types::TypeDecl::TK_Char)
 	{
@@ -1379,7 +1379,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
     }
     llvm::Type* resTy = type->LlvmType();
     std::string actualName;
-    /* Don't mangle our 'main' functions name, as we call that from C */
+    // Don't mangle our 'main' functions name, as we call that from C
     if (name == "__PascalMain")
     {
 	actualName = name;
@@ -1555,7 +1555,7 @@ bool PrototypeAST::operator==(const PrototypeAST& rhs) const
  */
 bool PrototypeAST::IsMatchWithoutClosure(const PrototypeAST* rhs) const
 {
-    /* Don't allow comparison with ourselves */
+    // Don't allow comparison with ourselves
     if (rhs == this)
     {
 	return false;
@@ -2109,7 +2109,7 @@ llvm::Value* WhileExprAST::CodeGen()
     TRACE();
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
-    /* We will need a "prebody" before the loop, a "body" and an "after" basic block  */
+    // We will need a "prebody" before the loop, a "body" and an "after" basic block
     llvm::BasicBlock* preBodyBB = llvm::BasicBlock::Create(theContext, "prebody",
 							   theFunction);
     llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(theContext, "body",
@@ -2158,7 +2158,7 @@ llvm::Value* RepeatExprAST::CodeGen()
 {
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
-    /* We will need a "body" and an "after" basic block  */
+    // We will need a "body" and an "after" basic block
     llvm::BasicBlock* bodyBB = llvm::BasicBlock::Create(theContext, "body",
 							 theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "after",

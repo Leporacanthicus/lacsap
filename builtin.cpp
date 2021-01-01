@@ -652,7 +652,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionPack::CodeGen(llvm::IRBuilder<>& builder)
     {
-	/* Pack(X, n, Y) -> copy X to Y, starting at offset n */
+	// Pack(X, n, Y) -> copy X to Y, starting at offset n
 	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
 	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[2]);
 
@@ -698,7 +698,7 @@ namespace Builtin
 
     llvm::Value* BuiltinFunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
     {
-	/* Unpack(X, Y, n) -> copy X to Y, starting at offset n */
+	// Unpack(X, Y, n) -> copy X to Y, starting at offset n
 	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
 	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 

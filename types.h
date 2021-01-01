@@ -23,7 +23,7 @@ namespace Types
     TypeDecl* GetTextType();
     TypeDecl* GetStringType();
 
-    /* Range is either created by the user, or calculated on basetype */
+    // Range is either created by the user, or calculated on basetype
     class Range
     {
     public:
@@ -485,7 +485,7 @@ namespace Types
 	VariantDecl* variant;
     };
 
-    /* Objects can have member functions/procedures */
+    // Objects can have member functions/procedures
     class MemberFuncDecl : public TypeDecl
     {
     public:

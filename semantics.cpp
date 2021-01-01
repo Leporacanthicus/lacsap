@@ -529,7 +529,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 
 	    if (fnArg->Proto()->IsMatchWithoutClosure(argTy->Proto()))
 	    {
-		/* Todo: Make this a function */
+		// Todo: Make this a function
 		std::vector<VariableExprAST*> vf;
 		FunctionAST* fn = fnArg->Proto()->Function();
 		Types::TypeDecl* closureTy = fn->ClosureType();

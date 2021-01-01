@@ -30,7 +30,6 @@ public:
     protected:
 	const ConstKind kind;
 	Location loc;
-
     };
 
     class IntConstDecl : public ConstDecl

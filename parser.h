@@ -124,7 +124,7 @@ public:
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
 
-    /* Error functions - all the same except for the return type */
+    // Error functions - all the same except for the return type
     ExprAST* Error(Token t, const std::string& msg);
     PrototypeAST* ErrorP(Token t, const std::string& msg);
     FunctionAST* ErrorF(Token t, const std::string& msg);
@@ -134,7 +134,7 @@ public:
     Constants::ConstDecl* ErrorC(Token t, const std::string& msg);
     int ErrorI(Token t, const std::string& msg);
 
-    // Helper functions for expression evaluation.
+    // Helper functions for expression evaluation
     bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(const NamedObject* def,
 			  const std::string& funcName,
@@ -143,7 +143,7 @@ public:
     ExprAST* MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
 			  std::vector<ExprAST*>& args);
 
-    // Helper functions for identifier access/checking.
+    // Helper functions for identifier access/checking
     const EnumDef* GetEnumValue(const std::string& name);
     Types::TypeDecl* GetTypeDecl(const std::string& name);
     const Constants::ConstDecl* GetConstDecl(const std::string& name);

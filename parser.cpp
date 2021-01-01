@@ -1115,7 +1115,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	}
 	else
 	{
-	    /* Cope with empty classes - but not empty Record! */
+	    // Cope with empty classes - but not empty Record!
 	    if (!isClass || CurrentToken().GetToken() != Token::End)
 	    {
 		CCNames ccv;
@@ -2445,7 +2445,7 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
     Location loc = CurrentToken().Loc();
     while(!AcceptToken(Token::End))
     {
-	/* Superfluous semicolons are discarded here */
+	// Superfluous semicolons are discarded here
 	AcceptToken(Token::Semicolon);
 	if (CurrentToken().GetToken() == Token::Integer &&
 	    PeekToken().GetToken() == Token::Colon)
@@ -3234,13 +3234,13 @@ ExprAST* Parser::ParseUses()
 	{
 	    if (Expect(Token::Semicolon, true))
 	    {
-		/* Math unit is "fake", so nothing inside it for now */
+		// Math unit is "fake", so nothing inside it for now
 		return new UnitAST(CurrentToken().Loc(), { }, 0, { });
 	    }
 	}
 	else
 	{
-	    /* TODO: Loop over comma separated list */
+	    // TODO: Loop over comma separated list
 	    strlower(unitname);
 	    std::string path = GetPath(CurrentToken().Loc().FileName());
 	    std::string fileName = path + "/" + unitname + ".pas";
@@ -3405,7 +3405,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    break;
 
 	case Token::Implementation:
-	    /* Start a new level of names */
+	    // Start a new level of names
 	    AssertToken(Token::Implementation);
 	    break;
 

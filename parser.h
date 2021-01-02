@@ -87,15 +87,16 @@ public:
     void ParseConstDef();
     Token TranslateToken(const Token& token);
 
-    const Constants::ConstDecl* ParseConstExpr();
+    const Constants::ConstDecl* ParseConstExpr(Token::TokenType token, Token::TokenType altToken = Token::Unknown);
     const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
     Constants::ConstDecl* ParseConstEval(const Constants::ConstDecl* lhs,
 					 const Token& binOp,
 					 const Constants::ConstDecl* rhs);
     const Constants::ConstDecl* ParseConstTerm(Location loc);
 
-    Types::RangeDecl*   ParseRange(Types::TypeDecl*& type);
-    Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type);
+    Types::RangeDecl*   ParseRange(Types::TypeDecl*& type, Token::TokenType endToken, Token::TokenType altToken);
+    Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
+					      Token::TokenType altToken);
     Types::TypeDecl*    ParseSimpleType();
     Types::ClassDecl*   ParseClassDecl(const std::string& name);
     Types::TypeDecl*    ParseType(const std::string& name, bool maybeForwarded);

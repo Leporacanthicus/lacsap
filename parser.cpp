@@ -378,23 +378,67 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
-Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
+Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken, Token::TokenType altToken)
 {
-    Token::TokenType tt = Token::Unknown;
-
-    int64_t start = ParseConstantValue(tt, type);
-    if (tt == Token::Unknown || !Expect(Token::DotDot, true))
+    const Constants::ConstDecl* startC = ParseConstExpr(Token::DotDot);
+    if (!(startC && Expect(Token::DotDot, true)))
     {
 	return 0;
     }
 
-    int64_t end = ParseConstantValue(tt, type);
-
-    if (tt == Token::Unknown)
+    const Constants::ConstDecl* endC = ParseConstExpr(endToken, altToken);
+    if (!endC)
     {
 	return 0;
     }
 
+    int64_t start;
+    int64_t end;
+    const Constants::IntConstDecl* startI = llvm::dyn_cast<Constants::IntConstDecl>(startC);
+    const Constants::IntConstDecl* endI = llvm::dyn_cast<Constants::IntConstDecl>(endC);
+    if (startI && endI)
+    {
+	start = startI->Value();
+	end = endI->Value();
+    }
+    else
+    {
+	const Constants::CharConstDecl* startCh = llvm::dyn_cast<Constants::CharConstDecl>(startC);
+	const Constants::CharConstDecl* endCh = llvm::dyn_cast<Constants::CharConstDecl>(endC);
+	if (startCh && endCh)
+	{
+	    start = startCh->Value();
+	    end = endCh->Value();
+	}
+	else
+	{
+	    const Constants::EnumConstDecl* startE = llvm::dyn_cast<Constants::EnumConstDecl>(startC);
+	    const Constants::EnumConstDecl* endE = llvm::dyn_cast<Constants::EnumConstDecl>(endC);
+
+	    if (startE && endE)
+	    {
+		start = startE->Value();
+		end = endE->Value();
+	    }
+	    else
+	    {
+		const Constants::BoolConstDecl* startB = llvm::dyn_cast<Constants::BoolConstDecl>(startC);
+		const Constants::BoolConstDecl* endB = llvm::dyn_cast<Constants::BoolConstDecl>(endC);
+
+		if (startB && endB)
+		{
+		    start = startB->Value();
+		    end = endB->Value();
+		}
+		else
+		{
+		    return ErrorR(CurrentToken(), "Unkown constant type");
+		}
+	    }
+	}
+    }
+    type = startC->Type();
+    assert(type == endC->Type() && "Expect same type on both sides");
     if (end <= start)
     {
 	return ErrorR(CurrentToken(), "Invalid range specification");
@@ -402,7 +446,8 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type)
     return new Types::RangeDecl(new Types::Range(start, end), type);
 }
 
-Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
+Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
+						Token::TokenType altToken)
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
@@ -417,7 +462,7 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type)
 	}
     }
 
-    return ParseRange(type);
+    return ParseRange(type, endToken, altToken);
 }
 
 Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
@@ -436,6 +481,9 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs,
 
     case Token::Multiply:
 	return *lhs * *rhs;
+
+    case Token::Divide:
+	return *lhs / *rhs;
 
     default:
 	break;
@@ -466,7 +514,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     {
     case Token::LeftParen:
 	AssertToken(Token::LeftParen);
-	cd = ParseConstExpr();
+	cd = ParseConstExpr(Token::RightParen);
 	// We don't eat the right paren here, it gets eaten later.
 	if (!Expect(Token::RightParen, false))
 	{
@@ -531,7 +579,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 		{
 		    return ErrorC(CurrentToken(), "Unary + or - not allowed for enum constants");
 		}
-		cd = new Constants::IntConstDecl(loc, ed->Value());
+		cd = new Constants::EnumConstDecl(ed->Type(), loc, ed->Value());
 	    }
 	}
 	else
@@ -609,7 +657,7 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
     }
 }
 
-const Constants::ConstDecl* Parser::ParseConstExpr()
+const Constants::ConstDecl* Parser::ParseConstExpr(Token::TokenType token, Token::TokenType altToken)
 {
     Location loc = CurrentToken().Loc();
     const Constants::ConstDecl* cd;
@@ -621,16 +669,14 @@ const Constants::ConstDecl* Parser::ParseConstExpr()
 	    return 0;
 	}
 
-	if (CurrentToken().GetToken() != Token::Semicolon &&
-	    CurrentToken().GetToken() != Token::RightParen)
+	if (CurrentToken().GetToken() != token && CurrentToken().GetToken() != altToken)
 	{
 	    if(!(cd = ParseConstRHS(0, cd)))
 	    {
 		return 0;
 	    }
 	}
-    } while(CurrentToken().GetToken() != Token::Semicolon &&
-	    CurrentToken().GetToken() != Token::RightParen);
+    } while(CurrentToken().GetToken() != token && CurrentToken().GetToken() != altToken);
     return cd;
 }
 
@@ -649,7 +695,7 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-	const Constants::ConstDecl *cd = ParseConstExpr();
+	const Constants::ConstDecl *cd = ParseConstExpr(Token::Semicolon);
 	if (!cd)
 	{
 	    Error(CurrentToken(), "Invalid constant value");
@@ -856,7 +902,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	Types::TypeDecl* type = 0;
 	while(!AcceptToken(Token::RightSquare))
 	{
-	    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
+	    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
 	    {
 		assert(type && "Uh? Type is supposed to be set now");
 		rv.push_back(r);
@@ -912,7 +958,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
     if (marker != "")
     {
 	markerField = new Types::FieldDecl(marker, markerTy, false);
-	}
+    }
     if (!Expect(Token::Of, true))
     {
 	return 0;
@@ -1199,7 +1245,7 @@ Types::SetDecl* Parser::ParseSetDecl()
     if (Expect(Token::Of, true))
     {
 	Types::TypeDecl* type;
-	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type))
+	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown))
 	{
 	    if (r->GetRange()->Size() > Types::SetDecl::MaxSetSize)
 	    {
@@ -1353,7 +1399,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     case Token::Minus:
     {
 	Types::TypeDecl*  type = 0;
-	if (Types::RangeDecl* r = ParseRange(type))
+	if (Types::RangeDecl* r = ParseRange(type, Token::Semicolon, Token::Of))
 	{
 	    return r;
 	}

@@ -11,6 +11,17 @@ Token Constants::IntConstDecl::Translate() const
 void Constants::IntConstDecl::dump() const
 {
     std::cerr << "IntConstDecl: " << Value() << std::endl;
+
+}
+
+Token Constants::EnumConstDecl::Translate() const
+{
+    return Token(Token::Integer, loc, value);
+}
+
+void Constants::EnumConstDecl::dump() const
+{
+    std::cerr << "EnumConstDecl: " << Value() << std::endl;
 }
 
 Token Constants::RealConstDecl::Translate() const
@@ -186,7 +197,7 @@ Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants
 
 Constants::ConstDecl* operator*(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs)
 {
-    const std::string errMsg = "Invalid operand for -";
+    const std::string errMsg = "Invalid operand for *";
     const Constants::RealConstDecl* lhsR = llvm::dyn_cast<Constants::RealConstDecl>(&lhs);
     const Constants::RealConstDecl* rhsR = llvm::dyn_cast<Constants::RealConstDecl>(&rhs);
     const Constants::IntConstDecl* lhsI = llvm::dyn_cast<Constants::IntConstDecl>(&lhs);
@@ -205,6 +216,32 @@ Constants::ConstDecl* operator*(const Constants::ConstDecl& lhs, const Constants
     if (lhsI && rhsI)
     {
 	return new Constants::IntConstDecl(Location("", 0,0), lhsI->Value() * rhsI->Value());
+    }
+
+    return ErrorConst(errMsg);
+}
+
+Constants::ConstDecl* operator/(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs)
+{
+    const std::string errMsg = "Invalid operand for /";
+    const Constants::RealConstDecl* lhsR = llvm::dyn_cast<Constants::RealConstDecl>(&lhs);
+    const Constants::RealConstDecl* rhsR = llvm::dyn_cast<Constants::RealConstDecl>(&rhs);
+    const Constants::IntConstDecl* lhsI = llvm::dyn_cast<Constants::IntConstDecl>(&lhs);
+    const Constants::IntConstDecl* rhsI = llvm::dyn_cast<Constants::IntConstDecl>(&rhs);
+    if (lhsR || rhsR)
+    {
+	double rValue;
+	double lValue;
+	if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
+	{
+	    return ErrorConst(errMsg);
+	}
+	return new Constants::RealConstDecl(Location("", 0,0), lValue / rValue);
+    }
+
+    if (lhsI && rhsI)
+    {
+	return new Constants::IntConstDecl(Location("", 0,0), lhsI->Value() / rhsI->Value());
     }
 
     return ErrorConst(errMsg);

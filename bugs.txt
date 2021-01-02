@@ -126,6 +126,7 @@ Date: 10-Feb-2016
 
 Constants are not allowed as case-labels.
 
+Fix in: Unknown, but fixed now (2-Jan-2020)
 ----------------------------------------------------------------
 Bug15:
 Date: 07-Feb-2016
@@ -168,3 +169,17 @@ Eg.
 
 Fixed in: 0d5c7b671461b692d400f0522cce94a77516eb3d
 ----------------------------------------------------------------
+Bug20:
+Date: 2-Jan-2020
+
+Declaring array with expressions doesn't work.
+
+Fixed in: c4fa5b5b4d19532519a3c758bfc80eb8111a9851
+----------------------------------------------------------------
+Bug21:
+Date: 2-Jan-2020
+
+When compiling for Arm64, the iso7185pat.pas doesn't compile
+due to lack of trampoline support.
+----------------------------------------------------------------
+

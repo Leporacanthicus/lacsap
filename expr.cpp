@@ -106,7 +106,8 @@ void DebugInfo::EmitLocation(Location loc)
     {
 	scope = lexicalBlocks.back();
     }
-    llvm::DILocation* diloc = llvm::DILocation::get(scope->getContext(), loc.LineNumber(), loc.Column(), scope);
+    llvm::DILocation* diloc = llvm::DILocation::get(scope->getContext(), loc.LineNumber(), loc.Column(),
+						    scope);
     ::builder.SetCurrentDebugLocation(llvm::DebugLoc(diloc));
 }
 
@@ -1203,7 +1204,8 @@ llvm::Value* CallExprAST::CodeGen()
 	    v = ca->CodeGen();
 	    llvm::AttrBuilder ab;
 	    ab.addAttribute(llvm::Attribute::Nest);
-	    attrList = attrList.addAttributes(theModule->getContext(), index+llvm::AttributeList::FirstArgIndex, ab);
+	    attrList = attrList.addAttributes(theModule->getContext(),
+					      index+llvm::AttributeList::FirstArgIndex, ab);
 	}
 	else
 	{
@@ -2989,7 +2991,8 @@ llvm::Value* SetExprAST::Address()
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 
-	    loop = builder.CreateAdd(loop, MakeConstant(1, llvm::dyn_cast<Types::SetDecl>(type)->SubType()),
+	    loop = builder.CreateAdd(loop,
+				     MakeConstant(1, llvm::dyn_cast<Types::SetDecl>(type)->SubType()),
 				     "update");
 	    builder.CreateStore(loop, loopVar);
 

@@ -154,14 +154,14 @@ std::string ShortName(const std::string& name)
 }
 
 llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
-			    const std::string& name)
+				 const std::string& name)
 {
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, args, false);
     return theModule->getOrInsertFunction(name, ft);
 }
 
 llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
-			    const std::string& name)
+				 const std::string& name)
 {
     llvm::Type* resTy = res->LlvmType();
     return GetFunction(resTy, args, name);

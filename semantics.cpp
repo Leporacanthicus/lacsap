@@ -526,6 +526,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	else if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
 	{
 	    FunctionExprAST* fnArg = llvm::dyn_cast<FunctionExprAST>(a);
+	    assert(fnArg && "Expected argument to be FunctionExprAST");
 
 	    if (fnArg->Proto()->IsMatchWithoutClosure(argTy->Proto()))
 	    {
@@ -538,7 +539,6 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 		    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
 		}
 		ClosureAST* closure = new ClosureAST(fn->Loc(), closureTy, vf);
-		assert(fnArg && "Expected argument to be FunctionExprAST");
 		a = new TrampolineAST(fnArg->loc, fnArg, closure, argTy);
 		bad = false;
 	    }

@@ -378,7 +378,8 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
-Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken, Token::TokenType altToken)
+Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
+				     Token::TokenType altToken)
 {
     const Constants::ConstDecl* startC = ParseConstExpr(Token::DotDot);
     if (!(startC && Expect(Token::DotDot, true)))
@@ -1743,7 +1744,7 @@ ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, 
 }
 
 VariableExprAST* Parser::FindVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc, 
-			       Types::VariantDecl* v, const std::string& name)
+				     Types::VariantDecl* v, const std::string& name)
 {
     VariableExprAST* e = 0;
     int elem = v->Element(name);

@@ -1174,25 +1174,10 @@ void CallExprAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
-llvm::Value* CallExprAST::CodeGen()
+static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args,
+					       const std::vector<VarDef>& vdef)
 {
-    TRACE();
-    assert(proto && "Function prototype should be set");
-
-    BasicDebugInfo(this);
-
-    llvm::Value* calleF = callee->CodeGen();
-    if (!calleF)
-    {
-	return ErrorV(this, "Unknown function '" + proto->Name() + "' referenced");
-    }	
-
-    const std::vector<VarDef>& vdef = proto->Args();
-    assert(vdef.size() == args.size() && "Incorrect number of arguments for function");
-
     std::vector<llvm::Value*> argsV;
-    std::vector<llvm::Type*> argTypes;
-    llvm::AttributeList attrList;
     unsigned index = 0;
 
     for(auto i : args)
@@ -1202,10 +1187,6 @@ llvm::Value* CallExprAST::CodeGen()
 	if (ClosureAST* ca = llvm::dyn_cast<ClosureAST>(i))
 	{
 	    v = ca->CodeGen();
-	    llvm::AttrBuilder ab;
-	    ab.addAttribute(llvm::Attribute::Nest);
-	    attrList = attrList.addAttributes(theModule->getContext(),
-					      index+llvm::AttributeList::FirstArgIndex, ab);
 	}
 	else
 	{
@@ -1220,16 +1201,8 @@ llvm::Value* CallExprAST::CodeGen()
 		{
 		    TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
 		    assert(tc && "Uhm - this should be a typecast expression!");
-
-		    if (!llvm::isa<VariableExprAST>(tc->Expr()))
-		    {
-			return ErrorV(this, "Argument declared with 'var' must be a variable!");
-		    }
-
-		    if (!(v = tc->Address()))
-		    {
-			return 0;
-		    }
+		    v = tc->Address();
+		    assert(v && "Expected an address to be generated");
 		}
 	    }
 	    else
@@ -1251,28 +1224,89 @@ llvm::Value* CallExprAST::CodeGen()
 			    v = CreateTempAlloca(i->Type());
 			    builder.CreateStore(i->CodeGen(), v);
 			}
-			const llvm::PointerType* pt = llvm::dyn_cast<llvm::PointerType>(v->getType());
-			llvm::AttrBuilder ab;
-			ab.addByValAttr(pt->getElementType());
-			attrList = attrList.addAttributes(theModule->getContext(),
-							  index+llvm::AttributeList::FirstArgIndex,
-							  ab);
 		    }
 		    else
 		    {
-			if (!(v = i->CodeGen()))
-			{
-			    return 0;
-			}
+			v = i->CodeGen();
 		    }
 		}
 	    }
 	}
 	assert(v && "Expect argument here");
 	argsV.push_back(v);
-	argTypes.push_back(v->getType());
 	index++;
     }
+    return argsV;
+}
+
+static llvm::AttributeList CreateAttrList(const std::vector<VarDef>& args)
+{
+    llvm::AttributeList attrList;
+    unsigned index = 0;
+    for(auto i : args)
+    {
+	if (i.IsClosure())
+	{
+	    assert(index == 0 && "Expect argument index to be zero");
+	    llvm::AttrBuilder ab;
+	    ab.addAttribute(llvm::Attribute::Nest);
+	    attrList = attrList.addAttributes(theModule->getContext(),
+					      index+llvm::AttributeList::FirstArgIndex, ab);
+	}
+	else
+	{
+	    if (!i.IsRef() && i.Type()->IsCompound())
+	    {
+		llvm::AttrBuilder ab;
+		ab.addByValAttr(i.Type()->LlvmType());
+		attrList = attrList.addAttributes(theModule->getContext(),
+						  index+llvm::AttributeList::FirstArgIndex,
+						  ab);
+	    }
+	}
+	index++;
+    }
+    return attrList;
+}
+
+static std::vector<llvm::Type*> CreateArgTypes(const std::vector<VarDef>& args)
+{
+    std::vector<llvm::Type*> argTypes;
+    for(auto i : args)
+    {
+	assert(i.Type() && "Invalid type for argument");
+	llvm::Type* argTy = i.Type()->LlvmType();
+
+	if (i.IsRef() || i.Type()->IsCompound())
+	{
+	    argTy = llvm::PointerType::getUnqual(argTy);
+	}
+
+	argTypes.push_back(argTy);
+    }
+    return argTypes;
+}
+
+llvm::Value* CallExprAST::CodeGen()
+{
+    TRACE();
+    assert(proto && "Function prototype should be set");
+
+    BasicDebugInfo(this);
+
+    llvm::Value* calleF = callee->CodeGen();
+    if (!calleF)
+    {
+	return ErrorV(this, "Unknown function '" + proto->Name() + "' referenced");
+    }
+
+    const std::vector<VarDef>& vdef = proto->Args();
+    assert(vdef.size() == args.size() && "Incorrect number of arguments for function");
+
+    std::vector<llvm::Type*> argTypes = CreateArgTypes(vdef);
+    std::vector<llvm::Value*> argsV = CreateArgList(args, vdef);
+    llvm::AttributeList attrList = CreateAttrList(vdef);
+
     const char* res = "";
     Types::TypeDecl* resType = proto->Type();
     if (resType->Type() != Types::TypeDecl::TK_Void)
@@ -1338,48 +1372,46 @@ void PrototypeAST::DoDump(std::ostream& out) const
     out << ")";
 }
 
+static llvm::Function* CreateFunction(const std::string& name, const std::vector<VarDef>& args,
+				      Types::TypeDecl* resultType)
+{
+    std::vector<llvm::Type*> argTypes = CreateArgTypes(args);
+    llvm::AttributeList attrList = CreateAttrList(args);
+
+    llvm::Type* resTy = resultType->LlvmType();
+    llvm::FunctionCallee fc = GetFunction(resTy, argTypes, name);
+    llvm::Function *llvmFunc = llvm::dyn_cast<llvm::Function>(fc.getCallee());
+    assert(llvmFunc && "Should have found a function here!");
+    if (!llvmFunc->empty())
+    {
+	return ErrorF(nullptr, "redefinition of function: " + name);
+    }
+
+    assert(llvmFunc->arg_size() == args.size() && "Expect number of arguments to match");
+
+    auto a = args.begin();
+    for(auto& arg : llvmFunc->args())
+    {
+	arg.setName(a->Name());
+	a++;
+    }
+
+    llvmFunc->setAttributes(attrList);
+    // TODO: Allow this to be disabled.
+    llvmFunc->addFnAttr("no-frame-pointer-elim", "true");
+    return llvmFunc;
+}
+
 llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 {
     TRACE();
+
     assert(namePrefix != "" && "Prefix should never be empty");
     if (llvmFunc)
     {
 	return llvmFunc;
     }
 
-    llvm::AttributeList attrList;
-    std::vector<llvm::Type*> argTypes;
-    unsigned index = 0;
-    for(auto i : args)
-    {
-	assert(i.Type() && "Invalid type for argument");
-	llvm::Type* argTy = i.Type()->LlvmType();
-	
-	if (index == 0 && Function()->ClosureType())
-	{
-	    llvm::AttrBuilder ab;
-	    ab.addAttribute(llvm::Attribute::Nest);
-	    attrList = attrList.addAttributes(theModule->getContext(),
-					      index+llvm::AttributeList::FirstArgIndex,
-					      ab);
-	}
-	if (i.IsRef() || i.Type()->IsCompound())
-	{
-	    if (!i.IsRef())
-	    {
-		llvm::AttrBuilder ab;
-		ab.addByValAttr(argTy);
-		attrList = attrList.addAttributes(theModule->getContext(),
-						  index+llvm::AttributeList::FirstArgIndex,
-						  ab);
-	    }
-	    argTy = llvm::PointerType::getUnqual(argTy);
-	}
-
-	argTypes.push_back(argTy);
-	index++;
-    }
-    llvm::Type* resTy = type->LlvmType();
     std::string actualName;
     // Don't mangle our 'main' functions name, as we call that from C
     if (name == "__PascalMain")
@@ -1396,27 +1428,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	actualName += name;
     }
 
-    llvm::FunctionCallee fc = GetFunction(resTy, argTypes, actualName);
-    llvmFunc = llvm::dyn_cast<llvm::Function>(fc.getCallee());
-    assert(llvmFunc && "Should have found a function here!");
-    if (!llvmFunc->empty())
-    {
-	return ErrorF(this, "redefinition of function: " + name);
-    }
-
-    assert(llvmFunc->arg_size() == args.size() && "Expect number of arguments to match");
-
-    auto a = args.begin();
-    for(auto& arg : llvmFunc->args())
-    {
-	arg.setName(a->Name());
-	a++;
-    }
-
-    llvmFunc->setAttributes(attrList);
-    // TODO: Allow this to be disabled.
-    llvmFunc->addFnAttr("no-frame-pointer-elim", "true");
-
+    llvmFunc = CreateFunction(actualName, args, type);
     return llvmFunc;
 }
 
@@ -1477,21 +1489,20 @@ void PrototypeAST::CreateArgumentAlloca()
 		// Ugly hack until we have all debug types.
 		std::cerr << "Skipping unknown debug type element." << std::endl;
 		args[idx].Type()->dump();
-		goto skip;
 	    }
+	    else
 	    {
-	    // Create a debug descriptor for the variable.
-	    int lineNum = function->Loc().LineNumber();
-	    llvm::DIFile* unit = sp->getFile();
-	    llvm::DILocalVariable* dv =
-		di.builder->createParameterVariable(sp, args[idx].Name(), idx+1, unit, lineNum,
-						    debugType, true);
-	    llvm::DILocation* diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
-	    di.builder->insertDeclare(a, dv, di.builder->createExpression(),
-				      llvm::DebugLoc(diloc),
-				      ::builder.GetInsertBlock());
+		// Create a debug descriptor for the variable.
+		int lineNum = function->Loc().LineNumber();
+		llvm::DIFile* unit = sp->getFile();
+		llvm::DILocalVariable* dv =
+		    di.builder->createParameterVariable(sp, args[idx].Name(), idx+1, unit, lineNum,
+							debugType, true);
+		llvm::DILocation* diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
+		di.builder->insertDeclare(a, dv, di.builder->createExpression(),
+					  llvm::DebugLoc(diloc),
+					  ::builder.GetInsertBlock());
 	    }
-	skip: ;
 	}
 
     }
@@ -1517,7 +1528,7 @@ void PrototypeAST::AddExtraArgsFirst(const std::vector<VarDef>& extra)
     std::vector<VarDef> newArgs;
     for(auto v : extra)
     {
-	newArgs.push_back(VarDef(v.Name(), v.Type(), true));
+	newArgs.push_back(v);
     }
     for(auto v : args)
     {
@@ -2624,17 +2635,16 @@ llvm::Value* VarDeclAST::CodeGen()
 		    // Ugly hack until we have all debug types.
 		    std::cerr << "Skipping unknown debug type element." << std::endl;
 		    var.Type()->dump();
-		    goto skip1;
 		}
+		else
 		{
-		int lineNum = this->Loc().LineNumber();
-		llvm::DIScope* scope = di.cu;
-		llvm::DIFile* unit = scope->getFile();
-
-		di.builder->createGlobalVariableExpression(scope, var.Name(), var.Name(), unit, lineNum,
-							   debugType, gv->hasInternalLinkage());
+		    int lineNum = this->Loc().LineNumber();
+		    llvm::DIScope* scope = di.cu;
+		    llvm::DIFile* unit = scope->getFile();
+		    
+		    di.builder->createGlobalVariableExpression(scope, var.Name(), var.Name(), unit, lineNum,
+							       debugType, gv->hasInternalLinkage());
 		}
-	    skip1:;
 	    }
 	}
 	else
@@ -2659,21 +2669,20 @@ llvm::Value* VarDeclAST::CodeGen()
 		    // Ugly hack until we have all debug types.
 		    std::cerr << "Skipping unknown debug type element." << std::endl;
 		    var.Type()->dump();
-		    goto skip;
 		}
+		else
 		{
-	        // Create a debug descriptor for the variable.
-		int lineNum = this->Loc().LineNumber();
-		llvm::DIFile* unit = sp->getFile();
-		llvm::DILocalVariable* dv =
-		    di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
-						   debugType, true);
-		llvm::DILocation* diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
-		di.builder->insertDeclare(v, dv, di.builder->createExpression(),
-					  llvm::DebugLoc(diloc),
-					  ::builder.GetInsertBlock());
+		    // Create a debug descriptor for the variable.
+		    int lineNum = this->Loc().LineNumber();
+		    llvm::DIFile* unit = sp->getFile();
+		    llvm::DILocalVariable* dv =
+			di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
+						       debugType, true);
+		    llvm::DILocation* diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
+		    di.builder->insertDeclare(v, dv, di.builder->createExpression(),
+					      llvm::DebugLoc(diloc),
+					      ::builder.GetInsertBlock());
 		}
-	    skip: ;
 	    }
 	}
 	if (!variables.Add(var.Name(), v))
@@ -3544,6 +3553,7 @@ llvm::Value* TrampolineAST::CodeGen()
     TRACE();
 
     llvm::Function* destFn = func->Proto()->LlvmFunction();
+
     // Temporary memory to store the trampoline itself.
     llvm::Type* trampTy = llvm::ArrayType::get(Types::GetCharType()->LlvmType(), 32);
     llvm::Value* tramp = builder.CreateAlloca(trampTy, 0, "tramp");

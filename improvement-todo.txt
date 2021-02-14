@@ -18,3 +18,5 @@ This is a list of "things to improve in general".
    * Range check for set assignment.
 
 - Print source with errors.
+
+- VarDef, change the "isXyz" to a bitmap?

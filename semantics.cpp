@@ -515,8 +515,15 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
-	    a = Recast(a, ty);
-	    bad = false;
+	    if (parg[idx].IsRef() && !(llvm::isa<VariableExprAST>(a) || llvm::isa<ClosureAST>(a)))
+	    {
+		Error(a, "Expect variable for 'var' parameter");
+	    }
+	    else
+	    {
+		a = Recast(a, ty);
+		bad = false;
+	    }
 	}
 	else if (llvm::isa<Types::PointerDecl>(parg[idx].Type()) && llvm::isa<NilExprAST>(a))
 	{

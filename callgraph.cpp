@@ -252,7 +252,7 @@ void BuildClosures(ExprAST* ast)
 	func->SetUsedVars(used);
 	if (Types::TypeDecl *closure = func->ClosureType())
 	{
-	    func->Proto()->AddExtraArgsFirst({ VarDef(func->ClosureName(), closure) });
+	    func->Proto()->AddExtraArgsFirst({ VarDef(func->ClosureName(), closure, true, false, true) });
 	    UpdateCallVisitor updater(func->Proto());
 	    ast->accept(updater);
 	}

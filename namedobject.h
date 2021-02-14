@@ -41,14 +41,17 @@ private:
 class VarDef : public NamedObject
 {
 public:
-    VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false, bool external = false) 
-	: NamedObject(NK_Var, nm, ty), isRef(ref), isExt(external) {}
+    VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false, bool external = false,
+	   bool closure = false)
+	: NamedObject(NK_Var, nm, ty), isRef(ref), isExt(external), isClosure(closure) {}
     bool IsRef() const { return isRef; }
     bool IsExternal() const { return isExt; }
+    bool IsClosure() const { return isClosure; }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 private:
-    bool isRef;   // "var" arguments are "references"
-    bool isExt;   // global variable defined outside this module
+    bool isRef;     // "var" arguments are "references"
+    bool isExt;     // global variable defined outside this module
+    bool isClosure; // special closure variable
 };
 
 inline bool operator<(const VarDef& lhs, const VarDef& rhs) { return lhs.Name() < rhs.Name(); }

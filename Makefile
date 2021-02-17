@@ -1,12 +1,13 @@
 OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.o builtin.o \
 	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o utils.o callgraph.o
 
-LLVM_DIR ?= /usr/local/llvm-debug
+LLVM_DIR ?= /usr/local
 #LLVM_DIR = ../llvm-github/LLVM_Binaries
 
-# If not specified, use clang and enable 32-bit build.
+# If not specified, use clang and enable 32-bit build - debug enabled
 USECLANG ?= 1
 M32 ?= 1
+NDEBUG ?= 0
 
 ifeq (${USECLANG}, 1)
   CC = clang
@@ -15,14 +16,18 @@ endif
 
 LD = ${CXX}
 
-DEBUG ?= -g
+ifeq (${NDEBUG}, 0)
+  DEBUG ?= -g -O0
+else
+  DEBUG ?= -DNDEBUG=1 -O2
+endif
 
-CXXFLAGS  = ${DEBUG} -Wall -Werror -Wextra -Wno-unused-parameter -std=c++11 -O0
+CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
+CXXFLAGS  = ${DEBUG} -Wall -Werror -Wextra -Wno-unused-parameter -std=c++17
 CXXFLAGS += -fno-exceptions -fno-rtti
 ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug
 endif
-CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
 ifeq (${M32}, 0)
   CXXFLAGS += -DM32_DISABLE=1
 endif
@@ -32,7 +37,7 @@ endif
 LDFLAGS  = -g -rdynamic
 
 ifeq (${CC},clang)
-  LDFLAGS += -fstandalone-debug
+  LDFLAGS += -fstandalone-debug -fuse-ld=lld
 endif
 LDFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --ldflags)
 LLVMLIBS  = $(shell ${LLVM_DIR}/bin/llvm-config --libs)

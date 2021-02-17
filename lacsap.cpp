@@ -176,10 +176,12 @@ static int Compile(const std::string& fileName)
 	BackPatch();
     }
 
+#if !NDEBUG
     if (verbosity)
     {
 	theModule->dump();
     }
+#endif
     mpm->run(*theModule);
     if (!CreateBinary(theModule, fileName, EmitSelection))
     {

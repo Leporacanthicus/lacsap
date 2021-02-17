@@ -104,8 +104,10 @@ public:
 	}
 	if (verbosity > 1)
 	{
-	    std::cerr << "Not found" << std::endl;
+	    std::cerr << "Not found" << name << std::endl;
+#if !NDEBUG
 	    dump();
+#endif
 	}
 	return 0;
     }
@@ -166,6 +168,7 @@ private:
     Stack<T>& stack;
 };
 
+#if !NDEBUG
 template <typename T>
 void Stack<T>::dump(std::ostream& out) const
 {
@@ -182,6 +185,7 @@ void Stack<T>::dump(std::ostream& out) const
 	}
     }
 }
+#endif
 
 class InterfaceList
 {

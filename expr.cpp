@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cctype>
 
+#if !NDEBUG
 template<>
 void Stack<llvm::Value*>::dump(std::ostream& out) const
 {
@@ -38,6 +39,7 @@ void Stack<llvm::Value*>::dump(std::ostream& out) const
 	}
     }
 }
+#endif
 
 class DebugInfo
 {
@@ -1121,10 +1123,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 	}
     }
 
+#if !NDEBUG
     l->dump();
     oper.dump(std::cout);
     r->dump();
     assert(0 && "Should not get here!");
+#endif
     return 0;
 }
 
@@ -1699,10 +1703,12 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	fn->CodeGen(newPrefix);
     }
 
+#if !NDEBUG
     if (verbosity > 1)
     {
 	variables.dump(std::cerr);
     }
+#endif
 
     if (debugInfo)
     {
@@ -2300,9 +2306,11 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     }
     case Types::TypeDecl::TK_Array:
     {
+#if !NDEBUG
 	Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
 	assert(ad && "Expect array declaration to expand!");
 	assert(ad->SubType()->Type() == Types::TypeDecl::TK_Char && "Expected char type");
+#endif
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::GetCharType()->LlvmType());
 	argTypes.push_back(pty);
 	argTypes.push_back(intTy);

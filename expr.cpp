@@ -163,13 +163,6 @@ llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type
 }
 
 llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
-				 const std::string& name)
-{
-    llvm::Type* resTy = res->LlvmType();
-    return GetFunction(resTy, args, name);
-}
-
-llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
 				 llvm::Value* callee)
 {
     llvm::Type* resTy = res->LlvmType();
@@ -303,6 +296,11 @@ llvm::Constant* MakeBooleanConstant(int val)
 static llvm::Constant* MakeCharConstant(int val)
 {
     return MakeConstant(val, Types::GetCharType());
+}
+
+static llvm::Type* MakeVoidType()
+{
+    return llvm::Type::getVoidTy(theContext);
 }
 
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
@@ -727,7 +725,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     llvm::Type* intTy = setWords->getType();
     if (resTyIsSet)
     {
-	llvm::FunctionCallee f = GetFunction(Types::GetVoidType(), { pty, pty, pty, intTy },
+	llvm::FunctionCallee f = GetFunction(MakeVoidType(), { pty, pty, pty, intTy },
 					"__Set" + name);
 	
 	llvm::Value* v = CreateTempAlloca(type);
@@ -736,7 +734,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return builder.CreateLoad(v, "set");
     }
 
-    llvm::FunctionCallee f = GetFunction(Types::GetBooleanType(), { pty, pty, intTy }, "__Set" + name);
+    llvm::FunctionCallee f = GetFunction(Types::GetBooleanType()->LlvmType(), { pty, pty, intTy }, "__Set" + name);
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
@@ -766,7 +764,7 @@ static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* 
     llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
     llvm::Value* lV = MakeStringFromExpr(lhs, lhs->Type());
 
-    llvm::FunctionCallee f = GetFunction(resTy, { lV->getType(), rV->getType() }, "__Str" + name);
+    llvm::FunctionCallee f = GetFunction(resTy->LlvmType(), { lV->getType(), rV->getType() }, "__Str" + name);
     return builder.CreateCall(f, { lV, rV }, twine);
 }
 
@@ -779,7 +777,7 @@ static llvm::Value* CallStrCat(ExprAST* lhs, ExprAST* rhs)
     llvm::Type* strTy = Types::GetStringType()->LlvmType();
     llvm::Type* pty = llvm::PointerType::getUnqual(strTy);
 
-    llvm::FunctionCallee f = GetFunction(Types::GetVoidType(), {pty, lV->getType(), rV->getType()},
+    llvm::FunctionCallee f = GetFunction(MakeVoidType(), {pty, lV->getType(), rV->getType()},
 				    "__StrConcat");
 
     llvm::Value* dest = CreateTempAlloca(Types::GetStringType());
@@ -2323,7 +2321,7 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	assert(0);
 	return ErrorF(0, "Invalid type argument for write");
     }
-    return GetFunction(Types::GetVoidType(), argTypes, "__write_" + suffix);;
+    return GetFunction(MakeVoidType(), argTypes, "__write_" + suffix);;
 }
 
 static llvm::FunctionCallee CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
@@ -2332,7 +2330,7 @@ static llvm::FunctionCallee CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
     assert(ty->isPointerTy() && "Expected pointer argument");
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
 
-    return GetFunction(Types::GetVoidType(), { fty, voidPtrTy }, "__write_bin");
+    return GetFunction(MakeVoidType(), { fty, voidPtrTy }, "__write_bin");
 }
 
 llvm::Value* WriteAST::CodeGen()
@@ -2442,7 +2440,7 @@ llvm::Value* WriteAST::CodeGen()
     }
     if (isWriteln)
     {
-	llvm::FunctionCallee fc = GetFunction(Types::GetVoidType(), { f->getType() }, "__write_nl");
+	llvm::FunctionCallee fc = GetFunction(MakeVoidType(), { f->getType() }, "__write_nl");
 	v = builder.CreateCall(fc, f, "");
     }
     return v;
@@ -2511,12 +2509,12 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     default:
 	return ErrorF(0, "Invalid type argument for read");
     }
-    return GetFunction(Types::GetVoidType(), argTypes, "__read_" + suffix);
+    return GetFunction(MakeVoidType(), argTypes, "__read_" + suffix);
 }
 
 static llvm::FunctionCallee CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
 {
-    return GetFunction(Types::GetVoidType(), { fty, Types::GetVoidPtrType() }, "__read_bin");
+    return GetFunction(MakeVoidType(), { fty, Types::GetVoidPtrType() }, "__read_bin");
 }
 
 llvm::Value* ReadAST::CodeGen()
@@ -2567,7 +2565,7 @@ llvm::Value* ReadAST::CodeGen()
     if (isReadln)
     {
 	assert(isText && "File is not text for readln");
-	llvm::FunctionCallee fn = GetFunction(Types::GetVoidType(), { fTy }, "__read_nl");
+	llvm::FunctionCallee fn = GetFunction(MakeVoidType(), { fTy }, "__read_nl");
 	v = builder.CreateCall(fn, f, "");
     }
     return v;
@@ -3165,7 +3163,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 					  intTy,
 					  intTy };
 
-    llvm::FunctionCallee fn = GetFunction(Types::GetVoidPtrType(), argTypes, "range_error");
+    llvm::FunctionCallee fn = GetFunction(MakeVoidType(), argTypes, "range_error");
 
     builder.CreateCall(fn, args, "");
     builder.CreateUnreachable();
@@ -3571,8 +3569,7 @@ llvm::Value* TrampolineAST::CodeGen()
     llvm::Type* voidPtrTy = Types::GetVoidPtrType();
     nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
     llvm::Value* castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
-    llvm::FunctionCallee llvmTramp = GetFunction(Types::GetVoidType()->LlvmType(),
-						 { voidPtrTy, voidPtrTy, voidPtrTy },
+    llvm::FunctionCallee llvmTramp = GetFunction(MakeVoidType(), { voidPtrTy, voidPtrTy, voidPtrTy },
 						 "llvm.init.trampoline");
     builder.CreateCall(llvmTramp, { tptr, castFn, nest });
     llvm::FunctionCallee llvmAdjust = GetFunction(voidPtrTy, { voidPtrTy }, "llvm.adjust.trampoline");

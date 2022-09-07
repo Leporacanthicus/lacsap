@@ -17,7 +17,7 @@ public:
     virtual void Caller(FunctionAST* f);
 };
 
-void CallGraph(ExprAST *ast, CallGraphVisitor& visitor);
+void CallGraph(ExprAST* ast, CallGraphVisitor& visitor);
 void BuildClosures(ExprAST* ast);
 
 #endif

@@ -1,28 +1,30 @@
 #include "semantics.h"
 #include "expr.h"
-#include "visitor.h"
-#include "trace.h"
-#include "token.h"
 #include "options.h"
+#include "token.h"
+#include "trace.h"
+#include "visitor.h"
 
 class TypeCheckVisitor : public ASTVisitor
 {
 public:
-    TypeCheckVisitor(Semantics* s) : sema(s) {};
+    TypeCheckVisitor(Semantics* s) : sema(s){};
     void visit(ExprAST* expr) override;
+
 private:
     Types::TypeDecl* BinarySetUpdate(BinaryExprAST* b);
-    void CheckBinExpr(BinaryExprAST* b);
-    void CheckAssignExpr(AssignExprAST* a);
-    void CheckRangeExpr(RangeExprAST* r);
-    void CheckSetExpr(SetExprAST* s);
-    void CheckArrayExpr(ArrayExprAST* a);
-    void CheckBuiltinExpr(BuiltinExprAST* b);
-    void CheckCallExpr(CallExprAST* c);
-    void CheckForExpr(ForExprAST* f);
-    void CheckReadExpr(ReadAST* f);
-    void CheckWriteExpr(WriteAST* f);
-    void Error(const ExprAST* e, const std::string& msg) const;
+    void             CheckBinExpr(BinaryExprAST* b);
+    void             CheckAssignExpr(AssignExprAST* a);
+    void             CheckRangeExpr(RangeExprAST* r);
+    void             CheckSetExpr(SetExprAST* s);
+    void             CheckArrayExpr(ArrayExprAST* a);
+    void             CheckBuiltinExpr(BuiltinExprAST* b);
+    void             CheckCallExpr(CallExprAST* c);
+    void             CheckForExpr(ForExprAST* f);
+    void             CheckReadExpr(ReadAST* f);
+    void             CheckWriteExpr(WriteAST* f);
+    void             Error(const ExprAST* e, const std::string& msg) const;
+
 private:
     Semantics* sema;
 };
@@ -40,6 +42,7 @@ class SetRangeFixup : public SemaFixup
 public:
     SetRangeFixup(SetExprAST* s, Types::RangeDecl* r) : expr(s), guessRange(r) {}
     void DoIt() override;
+
 private:
     SetExprAST*       expr;
     Types::RangeDecl* guessRange;
@@ -56,7 +59,7 @@ void SetRangeFixup::DoIt()
 
 static bool isNumeric(Types::TypeDecl* t)
 {
-    switch(t->Type())
+    switch (t->Type())
     {
     case Types::TypeDecl::TK_Integer:
     case Types::TypeDecl::TK_LongInt:
@@ -69,7 +72,7 @@ static bool isNumeric(Types::TypeDecl* t)
 
 static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 {
-    Types::Range* r = ty->GetRange();
+    Types::Range*    r = ty->GetRange();
     Types::TypeDecl* base;
     if (!r)
     {
@@ -91,7 +94,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 
     if (r->Size() > Types::SetDecl::MaxSetSize)
     {
-	r = new Types::Range(0, Types::SetDecl::MaxSetSize-1);
+	r = new Types::Range(0, Types::SetDecl::MaxSetSize - 1);
     }
 
     return new Types::RangeDecl(r, base);
@@ -173,7 +176,7 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 	if (s->values.empty() && rty->SubType())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
-		    llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
+	        llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
 	}
     }
     if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
@@ -181,15 +184,15 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 	if (s->values.empty() && lty->SubType())
 	{
 	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
-		llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
+	        llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
 	}
     }
     if (!lty->GetRange() && !rty->GetRange())
     {
 	Types::RangeDecl* r = GetRangeDecl(Types::GetIntegerType());
-	Types::SetDecl* rs = llvm::dyn_cast<Types::SetDecl>(rty);
-	Types::SetDecl* ls = llvm::dyn_cast<Types::SetDecl>(lty);
-	
+	Types::SetDecl*   rs = llvm::dyn_cast<Types::SetDecl>(rty);
+	Types::SetDecl*   ls = llvm::dyn_cast<Types::SetDecl>(lty);
+
 	if (!rs->SubType() && !ls->SubType())
 	{
 	    rs->UpdateSubtype(r->SubType());
@@ -199,11 +202,11 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 	{
 	    r = GetRangeDecl(rs->SubType());
 	}
-	
+
 	ls->UpdateRange(r);
 	rs->UpdateRange(r);
     }
-    
+
     if (!lty->GetRange() && rty->GetRange())
     {
 	llvm::dyn_cast<Types::SetDecl>(lty)->UpdateRange(GetRangeDecl(rty));
@@ -223,10 +226,10 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
     else if (rr && lr && *rr != *lr)
     {
 	Types::Range* range = new Types::Range(std::min(lr->Start(), rr->Start()),
-					       std::max(lr->End(), rr->End()));
+	                                       std::max(lr->End(), rr->End()));
 
 	Types::RangeDecl* r = new Types::RangeDecl(range, rty->SubType());
-	Types::SetDecl* set = new Types::SetDecl(r, rty->SubType());
+	Types::SetDecl*   set = new Types::SetDecl(r, rty->SubType());
 
 	b->lhs = Recast(b->lhs, set);
 	b->rhs = Recast(b->rhs, set);
@@ -260,7 +263,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(lty);
 	    }
 	}
-	if(Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
+	if (Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
 	{
 	    assert(sd->SubType() && "Should have a subtype");
 	    if (*lty != *sd->SubType())
@@ -279,8 +282,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	ty = Types::GetBooleanType();
     }
 
-    if (!ty && b->oper.IsCompare() && 
-	(lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
+    if (!ty && b->oper.IsCompare() &&
+        (lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
     {
 	ty = Types::GetStringType();
 	b->rhs = Recast(b->rhs, ty);
@@ -307,7 +310,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    Error(b, "Invalid (non-numeric) type for divide");
 	}
-	
+
 	ty = Types::GetRealType();
 	if (lty->IsIntegral())
 	{
@@ -325,10 +328,10 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
     }
 
-    if (!ty && 
-	((llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(b->rhs)) ||
-	 (llvm::isa<Types::PointerDecl>(rty) && llvm::isa<NilExprAST>(b->lhs))) &&
-	(op == Token::Equal || op == Token::NotEqual))
+    if (!ty &&
+        ((llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(b->rhs)) ||
+         (llvm::isa<Types::PointerDecl>(rty) && llvm::isa<NilExprAST>(b->lhs))) &&
+        (op == Token::Equal || op == Token::NotEqual))
     {
 	if (llvm::isa<NilExprAST>(b->rhs))
 	{
@@ -401,7 +404,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     if (llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(a->rhs))
     {
 	Types::Range* r = lty->GetRange();
-	int64_t v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
+	int64_t       v = llvm::dyn_cast<IntegerExprAST>(a->rhs)->Int();
 	if (r->Start() > v || v > r->End())
 	{
 	    Error(a, "Value out of range");
@@ -409,11 +412,10 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	return;
     }
 
-    if (llvm::isa<Types::ArrayDecl>(lty) && 
-	!llvm::isa<Types::StringDecl>(lty) && 
-	llvm::isa<StringExprAST>(a->rhs))
+    if (llvm::isa<Types::ArrayDecl>(lty) && !llvm::isa<Types::StringDecl>(lty) &&
+        llvm::isa<StringExprAST>(a->rhs))
     {
-	StringExprAST* s = llvm::dyn_cast<StringExprAST>(a->rhs);
+	StringExprAST*    s = llvm::dyn_cast<StringExprAST>(a->rhs);
 	Types::ArrayDecl* aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
 	if (aty->SubType()->Type() == Types::TypeDecl::TK_Char && aty->Ranges().size() == 1)
 	{
@@ -464,7 +466,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 {
     TRACE();
 
-    for(size_t i = 0; i < a->indices.size(); i++)
+    for (size_t i = 0; i < a->indices.size(); i++)
     {
 	ExprAST* e = a->indices[i];
 	if (!e->Type()->IsIntegral())
@@ -472,7 +474,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	    Error(e, "Index should be an integral type");
 	}
 	Types::RangeDecl* r = a->ranges[i];
-	if(llvm::isa<RangeReduceAST>(e))
+	if (llvm::isa<RangeReduceAST>(e))
 	    continue;
 	if (r->Type() != e->Type()->Type() && !r->CompatibleType(e->Type()))
 	{
@@ -507,9 +509,9 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	Error(c, "Incorrect number of arguments in call to " + c->proto->Name());
 	return;
     }
-    int idx = 0;
+    int                        idx = 0;
     const std::vector<VarDef>& parg = proto->args;
-    for(auto& a : c->args)
+    for (auto& a : c->args)
     {
 	bool bad = true;
 
@@ -539,9 +541,9 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	    {
 		// Todo: Make this a function
 		std::vector<VariableExprAST*> vf;
-		FunctionAST* fn = fnArg->Proto()->Function();
-		Types::TypeDecl* closureTy = fn->ClosureType();
-		for(auto u : fn->UsedVars())
+		FunctionAST*                  fn = fnArg->Proto()->Function();
+		Types::TypeDecl*              closureTy = fn->ClosureType();
+		for (auto u : fn->UsedVars())
 		{
 		    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
 		}
@@ -566,7 +568,7 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
 {
     // Check start + end and cast if necessary. Fail if incompatible types.
     Types::TypeDecl* vty = f->variable->Type();
-    bool bad = !vty->IsIntegral();
+    bool             bad = !vty->IsIntegral();
     if (bad)
     {
 	Error(f->variable, "Loop iteration variable must be integral type");
@@ -601,7 +603,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 
     if (isText)
     {
-	for(auto arg : r->args)
+	for (auto arg : r->args)
 	{
 	    if (!llvm::isa<VariableExprAST>(arg))
 	    {
@@ -655,7 +657,7 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 
     if (isText)
     {
-	for(auto arg : w->args)
+	for (auto arg : w->args)
 	{
 	    ExprAST* e = arg.expr;
 	    if (e->Type()->IsCompound())
@@ -665,7 +667,7 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 		{
 		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
 		}
-		else 
+		else
 		{
 		    bad = !llvm::isa<Types::StringDecl>(e->Type());
 		}
@@ -710,7 +712,7 @@ void Semantics::RunFixups()
 {
     TRACE();
 
-    for(auto f : fixups)
+    for (auto f : fixups)
     {
 	f->DoIt();
     }

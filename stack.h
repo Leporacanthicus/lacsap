@@ -1,41 +1,37 @@
 #ifndef STACK_H
 #define STACK_H
 
-#include "options.h"
 #include "namedobject.h"
+#include "options.h"
 #include "utils.h"
 #include <deque>
+#include <iostream>
 #include <map>
 #include <string>
-#include <iostream>
 #include <vector>
 
-template <typename T>
+template<typename T>
 class Stack
 {
 public:
     // Expose this so we can use it as InterfaceList for example.
     typedef std::map<std::string, T> MapType;
+
 private:
-    typedef typename MapType::const_iterator MapIter;
-    typedef std::deque<MapType> StackType;
+    typedef typename MapType::const_iterator           MapIter;
+    typedef std::deque<MapType>                        StackType;
     typedef typename StackType::const_reverse_iterator StackRIter;
+
 public:
     Stack() { NewLevel(); }
-    void NewLevel() 
-    { 
-	stack.push_back(MapType()); 
-    }
+    void NewLevel() { stack.push_back(MapType()); }
 
-    size_t MaxLevel() const
-    {
-	return stack.size()-1;
-    }
+    size_t MaxLevel() const { return stack.size() - 1; }
 
     std::vector<T> GetLevel()
     {
 	std::vector<T> v;
-	for(auto i : stack.back())
+	for (auto i : stack.back())
 	{
 	    v.push_back(i.second);
 	}
@@ -46,20 +42,17 @@ public:
     {
 	std::vector<T> v;
 	assert(n < stack.size() && "Requests for getlevel should be in bounds...");
-	for(auto i : stack[n])
+	for (auto i : stack[n])
 	{
 	    v.push_back(i.second);
 	}
 	return v;
     }
 
-    void DropLevel() 
-    { 
-	stack.pop_back(); 
-    }
+    void DropLevel() { stack.pop_back(); }
 
     /* Returns false on failure */
-    bool Add(std::string name, const T v) 
+    bool Add(std::string name, const T v)
     {
 	if (caseInsensitive)
 	{
@@ -89,7 +82,7 @@ public:
 	{
 	    strlower(name);
 	}
-	for(StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
+	for (StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
 	{
 	    MapIter it = s->find(name);
 	    if (it != s->end())
@@ -112,7 +105,7 @@ public:
 	return 0;
     }
 
-    T Find(const std::string& name) 
+    T Find(const std::string& name)
     {
 	size_t dummy;
 	return Find(name, dummy);
@@ -148,36 +141,32 @@ public:
 
     void dump(std::ostream& out) const;
     void dump() const { dump(std::cerr); }
+
 private:
     StackType stack;
 };
 
-template <typename T>
+template<typename T>
 class StackWrapper
 {
 public:
-    StackWrapper(Stack<T> &v) : stack(v)
-    {
-	stack.NewLevel();
-    }
-    ~StackWrapper()
-    {
-	stack.DropLevel();
-    }
+    StackWrapper(Stack<T>& v) : stack(v) { stack.NewLevel(); }
+    ~StackWrapper() { stack.DropLevel(); }
+
 private:
     Stack<T>& stack;
 };
 
 #if !NDEBUG
-template <typename T>
+template<typename T>
 void Stack<T>::dump(std::ostream& out) const
 {
     int n = 0;
-    for(auto s : stack)
+    for (auto s : stack)
     {
 	out << "Level " << n << std::endl;
 	n++;
-	for(auto v : s)
+	for (auto v : s)
 	{
 	    out << v.first << ": ";
 	    v.second->dump(out);
@@ -190,9 +179,10 @@ void Stack<T>::dump(std::ostream& out) const
 class InterfaceList
 {
 public:
-    InterfaceList() {};
-    bool Add(std::string name, const NamedObject* obj);
+    InterfaceList(){};
+    bool                                      Add(std::string name, const NamedObject* obj);
     const Stack<const NamedObject*>::MapType& List() const { return list; }
+
 private:
     Stack<const NamedObject*>::MapType list;
 };

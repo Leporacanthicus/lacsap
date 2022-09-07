@@ -1,15 +1,15 @@
 #include "types.h"
 #include "expr.h"
 #include "trace.h"
+#include <climits>
 #include <llvm/IR/LLVMContext.h>
 #include <sstream>
-#include <climits>
 
 extern llvm::Module* theModule;
 
 namespace Types
 {
-    static std::vector<std::pair <TypeDecl*, llvm::TrackingMDRef>> fwdMap;
+    static std::vector<std::pair<TypeDecl*, llvm::TrackingMDRef>> fwdMap;
 
     size_t TypeDecl::Size() const
     {
@@ -26,7 +26,7 @@ namespace Types
     Range* TypeDecl::GetRange() const
     {
 	assert(IsIntegral());
-	switch(kind)
+	switch (kind)
 	{
 	case TK_Char:
 	    return new Range(0, UCHAR_MAX);
@@ -71,15 +71,9 @@ namespace Types
 	return diType;
     }
 
-    void CharDecl::DoDump(std::ostream& out) const
-    {
-	out << "Type: Char";
-    }
+    void CharDecl::DoDump(std::ostream& out) const { out << "Type: Char"; }
 
-    llvm::Type* CharDecl::GetLlvmType() const
-    {
-	return llvm::Type::getInt8Ty(theContext);
-    }
+    llvm::Type* CharDecl::GetLlvmType() const { return llvm::Type::getInt8Ty(theContext); }
 
     llvm::DIType* CharDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -104,15 +98,9 @@ namespace Types
 	return 0;
     }
 
-    void IntegerDecl::DoDump(std::ostream& out) const
-    {
-	out << "Type: Integer";
-    }
+    void IntegerDecl::DoDump(std::ostream& out) const { out << "Type: Integer"; }
 
-    llvm::Type* IntegerDecl::GetLlvmType() const
-    {
-	return llvm::Type::getInt32Ty(theContext);
-    }
+    llvm::Type* IntegerDecl::GetLlvmType() const { return llvm::Type::getInt32Ty(theContext); }
 
     llvm::DIType* IntegerDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -141,15 +129,9 @@ namespace Types
 	return 0;
     }
 
-    void Int64Decl::DoDump(std::ostream& out) const
-    {
-	out << "Type: Int64";
-    }
+    void Int64Decl::DoDump(std::ostream& out) const { out << "Type: Int64"; }
 
-    llvm::Type* Int64Decl::GetLlvmType() const
-    {
-	return llvm::Type::getInt64Ty(theContext);
-    }
+    llvm::Type* Int64Decl::GetLlvmType() const { return llvm::Type::getInt64Ty(theContext); }
 
     llvm::DIType* Int64Decl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -178,15 +160,9 @@ namespace Types
 	return 0;
     }
 
-    void RealDecl::DoDump(std::ostream& out) const
-    {
-	out << "Type: Real";
-    }
+    void RealDecl::DoDump(std::ostream& out) const { out << "Type: Real"; }
 
-    llvm::Type* RealDecl::GetLlvmType() const
-    {
-	return llvm::Type::getDoubleTy(theContext);
-    }
+    llvm::Type* RealDecl::GetLlvmType() const { return llvm::Type::getDoubleTy(theContext); }
 
     llvm::DIType* RealDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -202,30 +178,15 @@ namespace Types
 	return 0;
     }
 
-    const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const
-    {
-	return CompatibleType(ty);
-    }
+    const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 
-    void VoidDecl::DoDump(std::ostream& out) const
-    {
-	out << "Void";
-    }
+    void VoidDecl::DoDump(std::ostream& out) const { out << "Void"; }
 
-    llvm::Type* VoidDecl::GetLlvmType() const
-    {
-	return llvm::Type::getVoidTy(theContext);
-    }
+    llvm::Type* VoidDecl::GetLlvmType() const { return llvm::Type::getVoidTy(theContext); }
 
-    void BoolDecl::DoDump(std::ostream& out) const
-    {
-	out << "Type: Bool";
-    }
+    void BoolDecl::DoDump(std::ostream& out) const { out << "Type: Bool"; }
 
-    llvm::Type* BoolDecl::GetLlvmType() const
-    {
-	return llvm::Type::getInt1Ty(theContext);
-    }
+    llvm::Type* BoolDecl::GetLlvmType() const { return llvm::Type::getInt1Ty(theContext); }
 
     llvm::DIType* BoolDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -247,7 +208,7 @@ namespace Types
 
     bool CompoundDecl::classof(const TypeDecl* e)
     {
-	switch(e->getKind())
+	switch (e->getKind())
 	{
 	case TK_Array:
 	case TK_String:
@@ -270,13 +231,13 @@ namespace Types
 	{
 	    return true;
 	}
-        // Both need to be pointers!
+	// Both need to be pointers!
 	if (Type() != ty->Type())
 	{
 	    return false;
 	}
 	const CompoundDecl* cty = llvm::dyn_cast<CompoundDecl>(ty);
-        return cty && *cty->SubType() == *baseType;
+	return cty && *cty->SubType() == *baseType;
     }
 
     llvm::Type* PointerDecl::GetLlvmType() const
@@ -299,7 +260,7 @@ namespace Types
     void ArrayDecl::DoDump(std::ostream& out) const
     {
 	out << "Array ";
-	for(auto r : ranges)
+	for (auto r : ranges)
 	{
 	    r->DoDump(out);
 	}
@@ -311,7 +272,7 @@ namespace Types
     {
 	assert(ranges.size() && "Expect ranges to contain something");
 	size_t nelems = 1;
-	for(auto r : ranges)
+	for (auto r : ranges)
 	{
 	    assert(r->GetRange()->Size() && "Expectig range to have a non-zero size!");
 	    nelems *= r->GetRange()->Size();
@@ -325,7 +286,7 @@ namespace Types
     llvm::DIType* ArrayDecl::GetDIType(llvm::DIBuilder* builder) const
     {
 	std::vector<llvm::Metadata*> subscripts;
-	for(auto r : ranges)
+	for (auto r : ranges)
 	{
 	    Range* rr = r->GetRange();
 	    subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
@@ -336,8 +297,7 @@ namespace Types
 	    return 0;
 	}
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(),
-					bd, subsArray);
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), bd, subsArray);
     }
 
     bool ArrayDecl::SameAs(const TypeDecl* ty) const
@@ -350,14 +310,14 @@ namespace Types
 		{
 		    return false;
 		}
-		for(size_t i = 0; i < ranges.size(); i++)
+		for (size_t i = 0; i < ranges.size(); i++)
 		{
 		    if (*ranges[i] != *aty->Ranges()[i])
 		    {
 			return false;
 		    }
 		}
-		
+
 		return true;
 	    }
 	}
@@ -374,7 +334,7 @@ namespace Types
 	{
 	    if (ty->SubType() == SubType() && ranges.size() == aty->Ranges().size())
 	    {
-		for(size_t i = 0; i < ranges.size(); i++)
+		for (size_t i = 0; i < ranges.size(); i++)
 		{
 		    if (ranges[i]->Size() != aty->Ranges()[i]->Size())
 		    {
@@ -386,15 +346,9 @@ namespace Types
 	return this;
     }
 
-    void Range::dump() const
-    {
-	DoDump(std::cerr);
-    }
+    void Range::dump() const { DoDump(std::cerr); }
 
-    void Range::DoDump(std::ostream& out) const
-    {
-	out << "[" << start << ".." << end << "]";
-    }
+    void Range::DoDump(std::ostream& out) const { out << "[" << start << ".." << end << "]"; }
 
     void RangeDecl::DoDump(std::ostream& out) const
     {
@@ -439,7 +393,7 @@ namespace Types
     {
 	unsigned s = range->Size();
 	unsigned b = 1;
-	while(s < (1u << b))
+	while (s < (1u << b))
 	{
 	    b++;
 	}
@@ -449,7 +403,7 @@ namespace Types
     void EnumDecl::SetValues(const std::vector<std::string>& nmv)
     {
 	unsigned int v = 0;
-	for(auto n : nmv)
+	for (auto n : nmv)
 	{
 	    values.push_back(EnumValue(n, v));
 	    v++;
@@ -459,7 +413,7 @@ namespace Types
     void EnumDecl::DoDump(std::ostream& out) const
     {
 	out << "EnumDecl:";
-	for(auto v : values)
+	for (auto v : values)
 	{
 	    out << "   " << v.name << ": " << v.value;
 	}
@@ -473,7 +427,7 @@ namespace Types
 	    {
 		return false;
 	    }
-	    for(size_t i = 0; i < values.size(); i++)
+	    for (size_t i = 0; i < values.size(); i++)
 	    {
 		if (values[i] != ety->values[i])
 		{
@@ -492,7 +446,7 @@ namespace Types
     {
 	unsigned s = values.size();
 	unsigned b = 1;
-	while(s < (1u << b))
+	while (s < (1u << b))
 	{
 	    b++;
 	}
@@ -501,28 +455,21 @@ namespace Types
 
     llvm::DIType* EnumDecl::GetDIType(llvm::DIBuilder* builder) const
     {
-	const int size = 32;
-	const int align = 32;
+	const int                    size = 32;
+	const int                    align = 32;
 	std::vector<llvm::Metadata*> enumerators;
-	for (const auto& i : values )
+	for (const auto& i : values)
 	{
 	    enumerators.push_back(builder->createEnumerator(i.name, i.value));
 	}
 	llvm::DINodeArray eltArray = builder->getOrCreateArray(enumerators);
-	int line = 0;
-	return builder->createEnumerationType(0, "", 0,
-					      line, size, align, eltArray, 0, "");
+	int               line = 0;
+	return builder->createEnumerationType(0, "", 0, line, size, align, eltArray, 0, "");
     }
 
-    FunctionDecl:: FunctionDecl(PrototypeAST* p)
-	: CompoundDecl(TK_Function, p->Type()), proto(p)
-    {
-    }
+    FunctionDecl::FunctionDecl(PrototypeAST* p) : CompoundDecl(TK_Function, p->Type()), proto(p) {}
 
-    void FunctionDecl::DoDump(std::ostream& out) const
-    {
-	out << "Function " << baseType;
-    }
+    void FunctionDecl::DoDump(std::ostream& out) const { out << "Function " << baseType; }
 
     void FieldDecl::DoDump(std::ostream& out) const
     {
@@ -533,7 +480,7 @@ namespace Types
     void VariantDecl::DoDump(std::ostream& out) const
     {
 	out << "Variant ";
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    f->DoDump(out);
 	    std::cerr << std::endl;
@@ -543,13 +490,13 @@ namespace Types
     llvm::Type* VariantDecl::GetLlvmType() const
     {
 	const llvm::DataLayout dl(theModule);
-	size_t maxSize = 0;
-	size_t maxSizeElt = 0;
-	size_t maxAlign = 0;
-	size_t maxAlignElt = 0;
-	size_t maxAlignSize = 0;
-	size_t elt = 0;
-	for(auto f : fields)
+	size_t                 maxSize = 0;
+	size_t                 maxSizeElt = 0;
+	size_t                 maxAlign = 0;
+	size_t                 maxAlignElt = 0;
+	size_t                 maxAlignSize = 0;
+	size_t                 elt = 0;
+	for (auto f : fields)
 	{
 	    llvm::Type* ty = f->LlvmType();
 	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
@@ -579,11 +526,11 @@ namespace Types
 	    elt++;
 	}
 
-	llvm::Type* ty = fields[maxAlignElt]->LlvmType();
+	llvm::Type*              ty = fields[maxAlignElt]->LlvmType();
 	std::vector<llvm::Type*> fv = { ty };
 	if (maxAlignElt != maxSizeElt)
 	{
-	    size_t nelems = maxSize - maxAlignSize;
+	    size_t      nelems = maxSize - maxAlignSize;
 	    llvm::Type* ty = llvm::ArrayType::get(GetCharType()->LlvmType(), nelems);
 	    fv.push_back(ty);
 	}
@@ -601,18 +548,18 @@ namespace Types
 	if (opaqueType && opaqueType->isOpaque())
 	{
 	    llvm::Type* ty = GetLlvmType();
-	    (void) ty;
+	    (void)ty;
 	    assert(ty == opaqueType && "Expect opaqueType to be returned");
 	    assert(!opaqueType->isOpaque() && "Expect opaqueness to have gone away");
 	}
     }
 
-// This is a very basic algorithm, but I think it's good enough for
-// most structures - there's unlikely to be a HUGE number of them.
+    // This is a very basic algorithm, but I think it's good enough for
+    // most structures - there's unlikely to be a HUGE number of them.
     int FieldCollection::Element(const std::string& name) const
     {
 	int i = 0;
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    // Check for special record type
 	    if (f->Name() == "")
@@ -646,9 +593,9 @@ namespace Types
 	    {
 		return false;
 	    }
-	    for(size_t i = 0; i < fields.size(); i++)
+	    for (size_t i = 0; i < fields.size(); i++)
 	    {
-		if(fields[i] != fty->fields[i])
+		if (fields[i] != fty->fields[i])
 		{
 		    return false;
 		}
@@ -667,7 +614,7 @@ namespace Types
     void RecordDecl::DoDump(std::ostream& out) const
     {
 	out << "Record ";
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    f->DoDump(out);
 	    out << std::endl;
@@ -681,7 +628,7 @@ namespace Types
     llvm::Type* RecordDecl::GetLlvmType() const
     {
 	std::vector<llvm::Type*> fv;
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->FieldType()))
 	    {
@@ -718,12 +665,12 @@ namespace Types
 
 	// TODO: Add unit and name (if available).
 	llvm::DIScope* scope = 0;
-	llvm::DIFile* unit = 0;
-	int lineNo = 0;
-	int index = 0;
+	llvm::DIFile*  unit = 0;
+	int            lineNo = 0;
+	int            index = 0;
 
-	llvm::StructType* st = llvm::cast<llvm::StructType>(LlvmType());
-	const llvm::DataLayout dl(theModule);
+	llvm::StructType*         st = llvm::cast<llvm::StructType>(LlvmType());
+	const llvm::DataLayout    dl(theModule);
 	const llvm::StructLayout* sl = 0;
 	if (!st->isOpaque())
 	{
@@ -731,11 +678,11 @@ namespace Types
 	}
 
 	// TODO: Need to deal with recursive types here...
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    llvm::DIType* d = 0;
-	    size_t size = 0;
-	    size_t align = 0;
+	    size_t        size = 0;
+	    size_t        align = 0;
 	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
 	    {
 		if (pf->IsForward() && !pf->DiType())
@@ -743,9 +690,9 @@ namespace Types
 		    std::string fullname = "";
 		    size = pf->SubType()->Size();
 		    align = pf->SubType()->AlignSize();
-		    d = builder->createReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type,
-								"", scope, unit, lineNo, 0, size, align,
-								llvm::DINode::FlagFwdDecl, fullname);
+		    d = builder->createReplaceableCompositeType(llvm::dwarf::DW_TAG_structure_type, "", scope,
+		                                                unit, lineNo, 0, size, align,
+		                                                llvm::DINode::FlagFwdDecl, fullname);
 		    pf->SubType()->DiType(d);
 		    fwdMap.push_back(std::make_pair(pf->SubType(), llvm::TrackingMDRef(d)));
 		    size = pf->Size();
@@ -770,8 +717,8 @@ namespace Types
 	    {
 		offsetInBits = sl->getElementOffsetInBits(index);
 	    }
-	    d = builder->createMemberType(scope, f->Name(), unit, lineNo, size,
-					  align, offsetInBits, llvm::DINode::FlagZero, d);
+	    d = builder->createMemberType(scope, f->Name(), unit, lineNo, size, align, offsetInBits,
+	                                  llvm::DINode::FlagZero, d);
 	    index++;
 	    eltTys.push_back(d);
 	}
@@ -782,17 +729,17 @@ namespace Types
 	}
 	llvm::DINodeArray elements = builder->getOrCreateArray(eltTys);
 
-	std::string name = "";
-	uint64_t size = Size() * CHAR_BIT;
-	uint64_t align = AlignSize() * CHAR_BIT;
+	std::string   name = "";
+	uint64_t      size = Size() * CHAR_BIT;
+	uint64_t      align = AlignSize() * CHAR_BIT;
 	llvm::DIType* derivedFrom = 0;
-	return builder->createStructType(scope, name, unit, lineNo, size, align, llvm::DINode::FlagZero, 
-					 derivedFrom, elements);
+	return builder->createStructType(scope, name, unit, lineNo, size, align, llvm::DINode::FlagZero,
+	                                 derivedFrom, elements);
     }
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,
-			 const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
-	: FieldCollection(TK_Class, flds), baseobj(base), variant(v), vtableType(0)
+                         const std::vector<MemberFuncDecl*> mf, VariantDecl* v, ClassDecl* base)
+        : FieldCollection(TK_Class, flds), baseobj(base), variant(v), vtableType(0)
     {
 	Name(nm);
 	if (baseobj)
@@ -801,7 +748,7 @@ namespace Types
 	}
 
 	std::vector<VarDef> self = { VarDef("self", this, true) };
-	for(auto i : mf)
+	for (auto i : mf)
 	{
 	    if (!i->IsStatic())
 	    {
@@ -811,7 +758,7 @@ namespace Types
 	    }
 	    i->LongName(name + "$" + i->Proto()->Name());
 	    bool found = false;
-	    for(auto& j : membfuncs)
+	    for (auto& j : membfuncs)
 	    {
 		if (j->Proto()->Name() == i->Proto()->Name())
 		{
@@ -836,7 +783,7 @@ namespace Types
     void ClassDecl::DoDump(std::ostream& out) const
     {
 	out << "Object: " << Name() << " ";
-	for(auto f : fields)
+	for (auto f : fields)
 	{
 	    f->DoDump(out);
 	    out << std::endl;
@@ -847,14 +794,11 @@ namespace Types
 	}
     }
 
-    size_t ClassDecl::MembFuncCount() const
-    {
-	return membfuncs.size();
-    }
+    size_t ClassDecl::MembFuncCount() const { return membfuncs.size(); }
 
     int ClassDecl::MembFunc(const std::string& nm) const
     {
-	for(size_t i = 0; i < membfuncs.size();  i++)
+	for (size_t i = 0; i < membfuncs.size(); i++)
 	{
 	    if (membfuncs[i]->Proto()->Name() == nm)
 	    {
@@ -873,7 +817,7 @@ namespace Types
     size_t ClassDecl::NumVirtFuncs() const
     {
 	size_t count = 0;
-	for(auto mf : membfuncs)
+	for (auto mf : membfuncs)
 	{
 	    count += mf->IsVirtual() || mf->IsOverride();
 	}
@@ -889,13 +833,13 @@ namespace Types
 
 	if (baseobj)
 	{
-	    (void) baseobj->VTableType(opaque);
+	    (void)baseobj->VTableType(opaque);
 	}
 
 	std::vector<llvm::Type*> vt;
-	bool needed = false;
-	int index =  0;
-	for(auto m : membfuncs)
+	bool                     needed = false;
+	int                      index = 0;
+	for (auto m : membfuncs)
 	{
 	    if (m->IsVirtual())
 	    {
@@ -912,7 +856,7 @@ namespace Types
 		if (elem < 0)
 		{
 		    std::cerr << "Overriding function " + m->Proto()->Name() +
-			" that is not a virtual function in the baseclass!";
+		                     " that is not a virtual function in the baseclass!";
 		    return 0;
 		}
 		// We need to continue digging here for multi-level functions
@@ -980,10 +924,7 @@ namespace Types
 	return GetElement(n, objname);
     }
 
-    int ClassDecl::FieldCount() const
-    {
-	return fields.size() + (baseobj ? baseobj->FieldCount(): 0);
-    }
+    int ClassDecl::FieldCount() const { return fields.size() + (baseobj ? baseobj->FieldCount() : 0); }
 
     const TypeDecl* ClassDecl::CompatibleType(const TypeDecl* ty) const
     {
@@ -1006,9 +947,9 @@ namespace Types
 	{
 	    fv.push_back(llvm::PointerType::getUnqual(vtableType));
 	}
-	
+
 	int fc = FieldCount();
-	for(int i = 0; i < fc; i++)
+	for (int i = 0; i < fc; i++)
 	{
 	    const FieldDecl* f = GetElement(i);
 
@@ -1056,28 +997,26 @@ namespace Types
 
     void MemberFuncDecl::DoDump(std::ostream& out) const
     {
-	out << "Member function "; proto->dump(out);
+	out << "Member function ";
+	proto->dump(out);
     }
 
-    void FuncPtrDecl::DoDump(std::ostream& out) const
-    {
-	out << "FunctionPtr ";
-    }
+    void FuncPtrDecl::DoDump(std::ostream& out) const { out << "FunctionPtr "; }
 
     llvm::Type* FuncPtrDecl::GetLlvmType() const
     {
-	llvm::Type* resty = proto->Type()->LlvmType();
+	llvm::Type*              resty = proto->Type()->LlvmType();
 	std::vector<llvm::Type*> argTys;
-	for(auto v : proto->Args())
+	for (auto v : proto->Args())
 	{
 	    llvm::Type* ty = v.Type()->LlvmType();
-	    if (v.IsRef() || v.Type()->IsCompound() )
+	    if (v.IsRef() || v.Type()->IsCompound())
 	    {
 		ty = llvm::PointerType::getUnqual(ty);
 	    }
 	    argTys.push_back(ty);
 	}
-	llvm::Type*  ty = llvm::FunctionType::get(resty, argTys, false);
+	llvm::Type* ty = llvm::FunctionType::get(resty, argTys, false);
 	return llvm::PointerType::getUnqual(ty);
     }
 
@@ -1087,10 +1026,7 @@ namespace Types
 	return 0;
     }
 
-    FuncPtrDecl::FuncPtrDecl(PrototypeAST* func)
-	: CompoundDecl(TK_FuncPtr, 0), proto(func)
-    {
-    }
+    FuncPtrDecl::FuncPtrDecl(PrototypeAST* func) : CompoundDecl(TK_FuncPtr, 0), proto(func) {}
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
     {
@@ -1109,29 +1045,29 @@ namespace Types
 	return false;
     }
 
-/*
- * A "file" is represented by:
- * struct
- * {
- *    int32     handle;
- *    baseType *ptr;
- *    int32     recordSize;
- *    baseType  isText;
- * };
- *
- * The translation from handle to actual file is done inside the C runtime
- * part.
- *
- * Note that this arrangement has to agree with the runtime.c definition.
- *
- * The type name is used to determine if the file is a "text" or "file of TYPE" type.
- */
+    /*
+     * A "file" is represented by:
+     * struct
+     * {
+     *    int32     handle;
+     *    baseType *ptr;
+     *    int32     recordSize;
+     *    baseType  isText;
+     * };
+     *
+     * The translation from handle to actual file is done inside the C runtime
+     * part.
+     *
+     * Note that this arrangement has to agree with the runtime.c definition.
+     *
+     * The type name is used to determine if the file is a "text" or "file of TYPE" type.
+     */
     llvm::Type* FileDecl::GetLlvmType() const
     {
-	llvm::Type* ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	llvm::Type* intTy = GetIntegerType()->LlvmType();
+	llvm::Type*              ty = llvm::PointerType::getUnqual(baseType->LlvmType());
+	llvm::Type*              intTy = GetIntegerType()->LlvmType();
 	std::vector<llvm::Type*> fv = { intTy, ty, intTy, intTy };
-	return llvm::StructType::create(fv, Type() == TK_Text?"text":"file");
+	return llvm::StructType::create(fv, Type() == TK_Text ? "text" : "file");
     }
 
     llvm::DIType* FileDecl::GetDIType(llvm::DIBuilder* builder) const
@@ -1146,17 +1082,13 @@ namespace Types
 	baseType->DoDump(out);
     }
 
-    void TextDecl::DoDump(std::ostream& out) const
-    {
-	out << "Text ";
-    }
+    void TextDecl::DoDump(std::ostream& out) const { out << "Text "; }
 
-    SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty)
-	: CompoundDecl(TK_Set, ty), range(r)
+    SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty) : CompoundDecl(TK_Set, ty), range(r)
     {
 	assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
 	assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
-	assert(SetMask == SetBits-1 && "Set pow2 mismatch");
+	assert(SetMask == SetBits - 1 && "Set pow2 mismatch");
 	if (r)
 	{
 	    assert(r->GetRange()->Size() <= MaxSetSize && "Set too large");
@@ -1168,19 +1100,18 @@ namespace Types
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
 	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetIntegerType()->LlvmType());
-	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
+	llvm::Type*        ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
 
     llvm::DIType* SetDecl::GetDIType(llvm::DIBuilder* builder) const
     {
 	std::vector<llvm::Metadata*> subscripts;
-	Range* rr = range->GetRange();
+	Range*                       rr = range->GetRange();
 	subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
-	llvm::DIType* bd = builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_unsigned);
+	llvm::DIType*     bd = builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_unsigned);
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(),
-					bd, subsArray);
+	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), bd, subsArray);
     }
 
     void SetDecl::DoDump(std::ostream& out) const
@@ -1269,7 +1200,7 @@ namespace Types
 	return 0;
     }
 
-// Void pointer is not a "pointer to void", but a "pointer to Int8".
+    // Void pointer is not a "pointer to void", but a "pointer to Int8".
     llvm::Type* GetVoidPtrType()
     {
 	llvm::Type* base = llvm::IntegerType::getInt8Ty(theContext);
@@ -1360,7 +1291,7 @@ namespace Types
 
     void Finalize(llvm::DIBuilder* builder)
     {
-	for(auto t : fwdMap)
+	for (auto t : fwdMap)
 	{
 	    llvm::DIType* ty = llvm::cast<llvm::DIType>(t.second);
 
@@ -1370,7 +1301,7 @@ namespace Types
 	    builder->replaceTemporary(llvm::TempDIType(ty), newTy);
 	}
     }
-}
+} // namespace Types
 
 bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty)
 {

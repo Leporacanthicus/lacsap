@@ -1,7 +1,6 @@
 #include "namedobject.h"
 #include "expr.h"
 
-
 void NamedObject::dump(std::ostream& out) const
 {
     out << Name() << " Type: ";
@@ -11,8 +10,7 @@ void NamedObject::dump(std::ostream& out) const
 
 void ConstDef::dump(std::ostream& out) const
 {
-    out << "Const: " << Name() << " Value: " << constVal->Translate().ToString()
-	<< std::endl;
+    out << "Const: " << Name() << " Value: " << constVal->Translate().ToString() << std::endl;
 }
 
 void EnumDef::dump(std::ostream& out) const
@@ -26,12 +24,12 @@ void WithDef::dump(std::ostream& out) const
     actual->dump(out);
     out << " Type: ";
     Type()->dump(out);
-    out << std::endl; 
+    out << std::endl;
 }
 
 void MembFuncDef::dump(std::ostream& out) const
 {
-    out << "Membfunc: " << Name() << " Index:" << Index(); 
+    out << "Membfunc: " << Name() << " Index:" << Index();
     Type()->dump(out);
     out << std::endl;
 }

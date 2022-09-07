@@ -1,15 +1,13 @@
 #include "lexer.h"
-#include "types.h"
 #include "constants.h"
+#include "types.h"
 
 #include <cassert>
 #include <cctype>
-#include <iostream>
 #include <cstdlib>
+#include <iostream>
 
-Lexer::Lexer(Source& source) : source(source), curValid(0)
-{
-}
+Lexer::Lexer(Source& source) : source(source), curValid(0) {}
 
 int Lexer::GetChar()
 {
@@ -47,10 +45,10 @@ int Lexer::PeekChar()
     return nextChar = GetChar();
 }
 
-static Token ConvertFloat(std::string &num, Location w)
+static Token ConvertFloat(std::string& num, Location w)
 {
     double v = 0;
-    char *endPtr = 0;
+    char*  endPtr = 0;
     v = strtod(num.c_str(), &endPtr);
     if (*endPtr != 0)
     {
@@ -59,9 +57,9 @@ static Token ConvertFloat(std::string &num, Location w)
     return Token(Token::Real, w, v);
 }
 
-static Token ConvertInt(std::string &num, Location w, int base)
+static Token ConvertInt(std::string& num, Location w, int base)
 {
-    char *endPtr = 0;
+    char*    endPtr = 0;
     uint64_t v = strtoull(num.c_str(), &endPtr, base);
     if (*endPtr != 0 || (v == std::numeric_limits<unsigned long long>::max() && errno == ERANGE))
     {
@@ -72,10 +70,10 @@ static Token ConvertInt(std::string &num, Location w, int base)
 
 Token Lexer::NumberToken()
 {
-    int ch = CurChar();
-    Location w = Where();
+    int         ch = CurChar();
+    Location    w = Where();
     std::string num;
-    int base = 10;
+    int         base = 10;
 
     if (ch == '$')
     {
@@ -93,14 +91,13 @@ Token Lexer::NumberToken()
     } state = Intpart;
 
     bool isFloat = false;
-    while(state != Done)
+    while (state != Done)
     {
-	switch(state)
+	switch (state)
 	{
 	case Intpart:
 	    ch = NextChar();
-	    while((base == 10 && isdigit(ch)) ||
-		  (base == 16 && isxdigit(ch)))
+	    while ((base == 10 && isdigit(ch)) || (base == 16 && isxdigit(ch)))
 	    {
 		num += ch;
 		ch = NextChar();
@@ -115,7 +112,7 @@ Token Lexer::NumberToken()
 	    }
 	    isFloat = true;
 	    num += ch;
-	    while(isdigit(ch = NextChar()))
+	    while (isdigit(ch = NextChar()))
 	    {
 		num += ch;
 	    }
@@ -131,7 +128,7 @@ Token Lexer::NumberToken()
 		num += ch;
 		ch = NextChar();
 	    }
-	    while(isdigit(ch))
+	    while (isdigit(ch))
 	    {
 		num += ch;
 		ch = NextChar();
@@ -169,10 +166,10 @@ Token Lexer::NumberToken()
 Token Lexer::StringToken()
 {
     std::string str;
-    Location w = Where();
-    int quote = CurChar();
-    int ch = NextChar();
-    for(;;)
+    Location    w = Where();
+    int         quote = CurChar();
+    int         ch = NextChar();
+    for (;;)
     {
 	if (ch == quote)
 	{
@@ -199,39 +196,30 @@ Token Lexer::StringToken()
 
 struct SingleCharToken
 {
-    char ch;
+    char             ch;
     Token::TokenType t;
 };
 
-static const SingleCharToken singleCharTokenTable[] =
-{
-    { '(', Token::LeftParen },
-    { ')', Token::RightParen },
-    { '+', Token::Plus },
-    { '-', Token::Minus },
-    { '*', Token::Multiply },
-    { '/', Token::Divide },
-    { ',', Token::Comma },
-    { ';', Token::Semicolon },
-    { '=', Token::Equal },
-    { '[', Token::LeftSquare },
-    { ']', Token::RightSquare },
-    { '^', Token::Uparrow },
+static const SingleCharToken singleCharTokenTable[] = {
+    { '(', Token::LeftParen },  { ')', Token::RightParen },  { '+', Token::Plus },
+    { '-', Token::Minus },      { '*', Token::Multiply },    { '/', Token::Divide },
+    { ',', Token::Comma },      { ';', Token::Semicolon },   { '=', Token::Equal },
+    { '[', Token::LeftSquare }, { ']', Token::RightSquare }, { '^', Token::Uparrow },
     { '@', Token::At },
 };
 
 Token Lexer::GetToken()
 {
-    int ch = CurChar();
+    int      ch = CurChar();
     Location w = Where();
 
     do
     {
-	while(isspace(ch))
+	while (isspace(ch))
 	{
 	    ch = NextChar();
 	}
-	
+
 	if (ch == '{')
 	{
 	    while ((ch = NextChar()) != EOF && ch != '}')
@@ -246,7 +234,7 @@ Token Lexer::GetToken()
 	    NextChar();
 	    ch = NextChar();
 	}
-    } while(isspace(ch));
+    } while (isspace(ch));
 
     // EOF -> return now...
     if (ch == EOF)
@@ -255,7 +243,7 @@ Token Lexer::GetToken()
     }
 
     Token::TokenType tt = Token::Unknown;
-    switch(ch)
+    switch (ch)
     {
     case '.':
 	tt = Token::Period;
@@ -318,7 +306,7 @@ Token Lexer::GetToken()
 	NextChar();
 	return Token(tt, w);
     }
-    for(auto i : singleCharTokenTable)
+    for (auto i : singleCharTokenTable)
     {
 	if (i.ch == ch)
 	{
@@ -337,9 +325,9 @@ Token Lexer::GetToken()
     {
 	std::string str;
 	// Default to the "most likely".
-	str = static_cast<char>(ch);	
+	str = static_cast<char>(ch);
 	// Allow alphanumeric and underscore.
-	while(std::isalnum(ch = NextChar()) || ch == '_')
+	while (std::isalnum(ch = NextChar()) || ch == '_')
 	{
 	    str += static_cast<char>(ch);
 	}
@@ -348,7 +336,7 @@ Token Lexer::GetToken()
 	{
 	    if (tt == Token::LineNumber)
 	    {
-	      return Token(Token::Integer, w, (uint64_t)w.LineNumber());
+		return Token(Token::Integer, w, (uint64_t)w.LineNumber());
 	    }
 	    else if (tt == Token::FileName)
 	    {

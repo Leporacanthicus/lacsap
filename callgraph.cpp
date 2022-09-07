@@ -3,7 +3,7 @@
 #include <map>
 #include <set>
 
-class CFGVisitor: public ASTVisitor
+class CFGVisitor : public ASTVisitor
 {
 public:
     CFGVisitor(CallGraphVisitor& cfgv) : visitor(cfgv) {}
@@ -31,6 +31,7 @@ public:
 	    }
 	}
     }
+
 private:
     CallGraphVisitor& visitor;
 };
@@ -49,7 +50,7 @@ static void PrintFunctionName(const FunctionAST* f, int level)
     }
     if (f->Parent())
     {
-	PrintFunctionName(f->Parent(), level+1);
+	PrintFunctionName(f->Parent(), level + 1);
 	std::cout << ":";
     }
     std::cout << f->Proto()->Name();
@@ -74,7 +75,7 @@ void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
     if (Types::TypeDecl* closureTy = fn->ClosureType())
     {
 	std::vector<VariableExprAST*> vf;
-	for(auto u : fn->UsedVars())
+	for (auto u : fn->UsedVars())
 	{
 	    vf.push_back(new VariableExprAST(fn->Loc(), u.Name(), u.Type()));
 	}
@@ -86,8 +87,9 @@ void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args)
 class UpdateCallVisitor : public ASTVisitor
 {
 public:
-    UpdateCallVisitor(const PrototypeAST *p) : proto(p) {}
+    UpdateCallVisitor(const PrototypeAST* p) : proto(p) {}
     virtual void visit(ExprAST* expr);
+
 private:
     const PrototypeAST* proto;
 };
@@ -99,8 +101,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 {
     if (CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
     {
-	if (call->Proto()->Name() == proto->Name()
-	    && call->Args().size() != proto->Args().size())
+	if (call->Proto()->Name() == proto->Name() && call->Args().size() != proto->Args().size())
 	{
 	    if (verbosity)
 	    {
@@ -124,8 +125,8 @@ public:
     void AddVarDecls(const std::vector<VarDef>& vars, FunctionAST* f);
     void CollectUseData(FunctionAST* f);
 
-    std::map<const FunctionAST*, VarSet> useMap;
-    std::map<const FunctionAST*, VarMap> declMap;
+    std::map<const FunctionAST*, VarSet>  useMap;
+    std::map<const FunctionAST*, VarMap>  declMap;
     std::map<const FunctionAST*, CallSet> callMap;
 };
 
@@ -162,13 +163,13 @@ public:
 	}
     }
     CallSet calls;
-    VarSet uses;
+    VarSet  uses;
 };
 
 void CallGraphClosureCollector::AddVarDecls(const std::vector<VarDef>& vars, FunctionAST* f)
 {
-    VarMap &dm = declMap[f];
-    for(auto d: vars)
+    VarMap& dm = declMap[f];
+    for (auto d : vars)
     {
 	assert(d.Name() != "");
 	dm.insert(std::pair<std::string, VarDef>(d.Name(), d));
@@ -190,7 +191,7 @@ void CallGraphClosureCollector::CollectUseData(FunctionAST* f)
 
 void RemoveFromUses(VarSet& uses, const VarMap& decls)
 {
-    for(auto d : decls)
+    for (auto d : decls)
     {
 	uses.erase(d.second.Name());
     }
@@ -198,7 +199,7 @@ void RemoveFromUses(VarSet& uses, const VarMap& decls)
 
 void AddToUses(VarSet& uses, VarSet& more)
 {
-    for(auto v : more)
+    for (auto v : more)
     {
 	uses.insert(v);
     }
@@ -209,39 +210,39 @@ void BuildClosures(ExprAST* ast)
     CallGraphClosureCollector v;
     CallGraph(ast, v);
 
-    for(auto usage : v.useMap)
+    for (auto usage : v.useMap)
     {
-	VarSet uses = usage.second;
+	VarSet       uses = usage.second;
 	FunctionAST* func = const_cast<FunctionAST*>(usage.first);
 
 	// Remove local declarations.
 	RemoveFromUses(uses, v.declMap[func]);
 
 	// Add uses from subfunctions.
-	for(auto sub: func->SubFunctions())
+	for (auto sub : func->SubFunctions())
 	{
 	    VarSet use = v.useMap[sub];
 	    RemoveFromUses(use, v.declMap[sub]);
 	    AddToUses(uses, use);
 	}
 
-	for(auto call: v.callMap[func])
+	for (auto call : v.callMap[func])
 	{
 	    VarSet callerUse = v.useMap[call];
 	    RemoveFromUses(callerUse, v.declMap[call]);
 	    AddToUses(uses, callerUse);
 	}
-	
+
 	// Now search up the stack until to see if
 	// it's local "above" us.
 	std::set<VarDef> used;
-	for(auto use : uses)
+	for (auto use : uses)
 	{
-	    for(const FunctionAST* f = func->Parent(); f; f = f->Parent())
+	    for (const FunctionAST* f = func->Parent(); f; f = f->Parent())
 	    {
 		const VarMap& dm = v.declMap[f];
-		auto v = dm.find(use);
-		if (v !=  dm.end())
+		auto          v = dm.find(use);
+		if (v != dm.end())
 		{
 		    used.insert(v->second);
 		    break;
@@ -250,7 +251,7 @@ void BuildClosures(ExprAST* ast)
 	}
 
 	func->SetUsedVars(used);
-	if (Types::TypeDecl *closure = func->ClosureType())
+	if (Types::TypeDecl* closure = func->ClosureType())
 	{
 	    func->Proto()->AddExtraArgsFirst({ VarDef(func->ClosureName(), closure, true, false, true) });
 	    UpdateCallVisitor updater(func->Proto());

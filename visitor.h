@@ -6,14 +6,14 @@ class Visitor
 {
 public:
     virtual void visit(T* elem) = 0;
-    virtual ~Visitor() {};
+    virtual ~Visitor(){};
 };
 
 template<typename T>
 class Visitable
 {
 public:
-    virtual void accept(Visitor<T> &v) = 0;
+    virtual void accept(Visitor<T>& v) = 0;
     virtual ~Visitable() {}
 };
 

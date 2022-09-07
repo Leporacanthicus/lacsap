@@ -10,18 +10,17 @@ class Semantics
 {
 public:
     Semantics() : errors(0) {}
-    ~Semantics() { }
+    ~Semantics() {}
 
     void Analyse(ExprAST* ast);
-    int GetErrors() { return errors; }
+    int  GetErrors() { return errors; }
     void AddError() { errors++; }
-    void AddFixup(SemaFixup *f);
+    void AddFixup(SemaFixup* f);
     void RunFixups();
 
 private:
-    int                      errors;
+    int                     errors;
     std::vector<SemaFixup*> fixups;
 };
-
 
 #endif

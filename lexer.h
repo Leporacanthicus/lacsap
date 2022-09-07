@@ -1,19 +1,19 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include "constants.h"
 #include "location.h"
+#include "source.h"
 #include "token.h"
 #include "types.h"
-#include "constants.h"
-#include "source.h"
-#include <string>
-#include <fstream>
 #include <exception>
+#include <fstream>
+#include <string>
 
 class Lexer
 {
 public:
-    Lexer(Source &source);
+    Lexer(Source& source);
     Token GetToken();
 
 private:
@@ -28,7 +28,7 @@ private:
     Location Where() const { return Location(source); }
 
 private:
-    Source &source;
+    Source& source;
     int     curChar;
     int     nextChar;
     int     curValid;

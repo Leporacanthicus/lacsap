@@ -1,8 +1,8 @@
-#include <string.h>
 #include "runtime.h"
+#include <string.h>
 
 /*******************************************
- * String functions 
+ * String functions
  *******************************************
  */
 void __StrConcat(String* res, String* a, String* b)
@@ -12,7 +12,7 @@ void __StrConcat(String* res, String* a, String* b)
     if (total > MaxStringLen)
     {
 	total = MaxStringLen;
-	blen = MaxStringLen-a->len;
+	blen = MaxStringLen - a->len;
     }
     res->len = total;
 
@@ -27,10 +27,10 @@ void __StrAssign(String* a, String* b)
     memcpy(a->str, b->str, a->len);
 }
 
-/* Return >0 if a is greater than b, 
- * Return <0 if a is less than b. 
- * Return 0 if a == b. 
- */ 
+/* Return >0 if a is greater than b,
+ * Return <0 if a is less than b.
+ * Return 0 if a == b.
+ */
 int __StrCompare(String* a, String* b)
 {
     int alen = a->len;
@@ -40,7 +40,7 @@ int __StrCompare(String* a, String* b)
     {
 	shortest = blen;
     }
-    for(int i = 0; i < shortest; i++)
+    for (int i = 0; i < shortest; i++)
     {
 	if (a->str[i] != b->str[i])
 	{
@@ -55,8 +55,8 @@ String __StrCopy(String* str, int start, int len)
 {
     assert(start >= 1);
     assert(len >= 0);
-    
-    if (start > str->len) 
+
+    if (start > str->len)
     {
 	len = 0;
     }
@@ -70,6 +70,6 @@ String __StrCopy(String* str, int start, int len)
     }
 
     String result = { len, "" };
-    memcpy(result.str, &str->str[start-1], len);
+    memcpy(result.str, &str->str[start - 1], len);
     return result;
 }

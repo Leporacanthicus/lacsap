@@ -1,9 +1,9 @@
-#include <string.h>
 #include "runtime.h"
+#include <string.h>
 
-void __write_bin(File* file, void *val)
+void __write_bin(File* file, void* val)
 {
-    struct FileEntry *f = 0;
+    struct FileEntry* f = 0;
     if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
@@ -13,6 +13,6 @@ void __write_bin(File* file, void *val)
 	fprintf(stderr, "Invalid file used for write binary file\n");
 	return;
     }
-    memcpy(file->buffer, val, file->recordSize); 
+    memcpy(file->buffer, val, file->recordSize);
     __put(file);
 }

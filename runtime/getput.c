@@ -5,9 +5,9 @@
  *******************************************
  */
 
-void __put(File *file)
+void __put(File* file)
 {
-    struct FileEntry *f = 0;
+    struct FileEntry* f = 0;
     if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];
@@ -15,9 +15,9 @@ void __put(File *file)
     fwrite(file->buffer, file->recordSize, 1, f->file);
 }
 
-int __get(File *file)
+int __get(File* file)
 {
-    struct FileEntry *f = 0;
+    struct FileEntry* f = 0;
     if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];

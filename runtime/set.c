@@ -1,54 +1,53 @@
-#include <string.h>
 #include "runtime.h"
+#include <string.h>
 
 /*******************************************
- * Set functions 
+ * Set functions
  *******************************************
  */
 
-typedef struct 
+typedef struct
 {
     unsigned int v[1];
 } Set;
 
-
 /*******************************************
- * Set functions 
+ * Set functions
  *******************************************
  */
-int __SetEqual(Set *a, Set *b, int setWords)
+int __SetEqual(Set* a, Set* b, int setWords)
 {
     return !memcmp(a->v, b->v, sizeof(*a) * setWords);
 }
 
-void __SetUnion(Set *res, Set *a, Set *b, int setWords)
+void __SetUnion(Set* res, Set* a, Set* b, int setWords)
 {
-    for(int i = 0; i < setWords; i++)
+    for (int i = 0; i < setWords; i++)
     {
-	res->v[i] = a->v[i] | b->v[i]; 
+	res->v[i] = a->v[i] | b->v[i];
     }
 }
 
-void __SetDiff(Set *res, Set *a, Set *b, int setWords)
+void __SetDiff(Set* res, Set* a, Set* b, int setWords)
 {
-    for(int i = 0; i < setWords; i++)
+    for (int i = 0; i < setWords; i++)
     {
-	res->v[i] = a->v[i] & ~b->v[i]; 
+	res->v[i] = a->v[i] & ~b->v[i];
     }
 }
 
-void __SetIntersect(Set *res, Set *a, Set *b, int setWords)
+void __SetIntersect(Set* res, Set* a, Set* b, int setWords)
 {
-    for(int i = 0; i < setWords; i++)
+    for (int i = 0; i < setWords; i++)
     {
-	res->v[i] = a->v[i] & b->v[i]; 
+	res->v[i] = a->v[i] & b->v[i];
     }
 }
 
 /* Check if all values in a are in set b. */
-int __SetContains(Set *a, Set *b, int setWords)
+int __SetContains(Set* a, Set* b, int setWords)
 {
-    for(int i = 0; i < setWords; i++)
+    for (int i = 0; i < setWords; i++)
     {
 	if ((a->v[i] & b->v[i]) != a->v[i])
 	    return 0;

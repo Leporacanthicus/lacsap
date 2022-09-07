@@ -1,13 +1,13 @@
-#include <string.h>
-#include <stdlib.h>
 #include "runtime.h"
+#include <stdlib.h>
+#include <string.h>
 
 /*******************************************
  * File Basics, low level I/O.
  *******************************************
  */
 
-static void FileError(const char *op)
+static void FileError(const char* op)
 {
     fprintf(stderr, "Attempt to %s file failed\n", op);
     exit(1);
@@ -33,11 +33,11 @@ static void OpenFile(File* f, int recSize, int isText, const char* mode)
     SetupFile(f, recSize, isText);
     if (files[f->handle].inUse)
     {
-	if (files[f->handle].file) 
+	if (files[f->handle].file)
 	{
 	    __close(f);
 	}
-	files[f->handle].file = fopen(files[f->handle].name,  mode);
+	files[f->handle].file = fopen(files[f->handle].name, mode);
 	if (files[f->handle].file)
 	{
 	    return;

@@ -1,12 +1,12 @@
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
 #include "runtime.h"
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
 
 static int read_chunk_text(struct FileEntry* f)
 {
     File* file = f->fileData;
-    if(file->isText & 2)
+    if (file->isText & 2)
     {
 	int ch = fgetc(f->file);
 	f->readAhead = f->bufferSize = (ch != EOF);
@@ -43,8 +43,8 @@ int get_next(struct FileEntry* f)
 /* Make a local function so it can inline */
 static int __get_text(File* file)
 {
-    struct FileEntry *f = &files[file->handle];
-    int ch = get_next(f);
+    struct FileEntry* f = &files[file->handle];
+    int               ch = get_next(f);
     *file->buffer = ch;
     if (ch == EOF)
     {
@@ -88,7 +88,7 @@ int __eoln(File* file)
  */
 static void skip_spaces(File* file)
 {
-    while(isspace(*file->buffer) && !__eof(file))
+    while (isspace(*file->buffer) && !__eof(file))
     {
 	__get_text(file);
     }
@@ -108,11 +108,11 @@ static int get_sign(File* file)
     return 1;
 }
 
-// Turn an exponent into a multiplier value. 
+// Turn an exponent into a multiplier value.
 static double exponent_to_multi(int exponent)
 {
     double m = 1.0;
-    int oneover = 0;
+    int    oneover = 0;
     if (exponent < 0)
     {
 	oneover = 1;
@@ -133,7 +133,7 @@ static double exponent_to_multi(int exponent)
     }
     if (oneover)
     {
-	return 1.0/m;
+	return 1.0 / m;
     }
     return m;
 }
@@ -153,7 +153,7 @@ void __read_int(File* file, int* v)
     }
     skip_spaces(file);
     sign = get_sign(file);
-    while(isdigit(*file->buffer))
+    while (isdigit(*file->buffer))
     {
 	n *= 10;
 	n += (*file->buffer) - '0';
@@ -182,12 +182,12 @@ void __read_chr(File* file, char* v)
 }
 
 void __read_real(File* file, double* v)
-{ 
+{
     double n = 0;
     double divisor = 1.0;
     double multiplicand = 1.0;
-    int exponent = 0;
-    int sign;
+    int    exponent = 0;
+    int    sign;
 
     if (file->handle >= MaxPascalFiles)
     {
@@ -200,8 +200,8 @@ void __read_real(File* file, double* v)
 
     skip_spaces(file);
     sign = get_sign(file);
-    
-    while(isdigit(*file->buffer))
+
+    while (isdigit(*file->buffer))
     {
 	n *= 10.0;
 	n += (*file->buffer) - '0';
@@ -213,7 +213,7 @@ void __read_real(File* file, double* v)
     if (*file->buffer == '.')
     {
 	__get_text(file);
-	while(isdigit(*file->buffer))
+	while (isdigit(*file->buffer))
 	{
 	    n *= 10.0;
 	    n += (*file->buffer) - '0';
@@ -228,7 +228,7 @@ void __read_real(File* file, double* v)
     {
 	__get_text(file);
 	int expsign = get_sign(file);
-	while(isdigit(*file->buffer) && !__eoln(file))
+	while (isdigit(*file->buffer) && !__eoln(file))
 	{
 	    exponent *= 10;
 	    exponent += (*file->buffer) - '0';
@@ -253,7 +253,7 @@ void __read_nl(File* file)
 	    return;
 	}
     }
-    while(*file->buffer != '\n')
+    while (*file->buffer != '\n')
     {
 	if (!__get_text(file))
 	    break;
@@ -263,7 +263,7 @@ void __read_nl(File* file)
 
 void __read_str(File* file, String* val)
 {
-    char buffer[256];
+    char   buffer[256];
     size_t count = 0;
 
     if (file->handle >= MaxPascalFiles)
@@ -274,7 +274,7 @@ void __read_str(File* file, String* val)
     {
 	__get_text(file);
     }
-    while(*file->buffer != '\n' && count < sizeof(buffer))
+    while (*file->buffer != '\n' && count < sizeof(buffer))
     {
 	buffer[count++] = *file->buffer;
 	if (!__get_text(file))
@@ -296,7 +296,7 @@ void __read_chars(File* file, char* v)
     {
 	__get_text(file);
     }
-    while(*file->buffer != '\n')
+    while (*file->buffer != '\n')
     {
 	*v++ = *file->buffer;
 	if (!__get_text(file))

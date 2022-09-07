@@ -1,8 +1,8 @@
+#include "runtime.h"
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include "runtime.h"
 
 /*******************************************
  * Write Functionality
@@ -17,7 +17,7 @@ void __write_int(File* file, int v, int width)
 void __write_int64(File* file, int64_t v, int width)
 {
     FILE* f = getFile(file);
-    fprintf(f, "%*"PRId64, width, v);
+    fprintf(f, "%*" PRId64, width, v);
 }
 
 void __write_real(File* file, double v, int width, int precision)
@@ -33,7 +33,7 @@ void __write_real(File* file, double v, int width, int precision)
 	{
 	    width = 13;
 	}
-	precision = (width > 8)?width-7:1;
+	precision = (width > 8) ? width - 7 : 1;
 	fprintf(f, "% *.*E", width, precision, v);
     }
 }
@@ -49,12 +49,12 @@ void __write_char(File* file, char v, int width)
     {
 	fprintf(f, "%c", v);
     }
-}    
+}
 
 void __write_bool(File* file, int v, int width)
 {
-    FILE* f = getFile(file);
-    const char* vstr = (v & 1)?"TRUE":"FALSE";
+    FILE*       f = getFile(file);
+    const char* vstr = (v & 1) ? "TRUE" : "FALSE";
     if (width > 0)
     {
 	fprintf(f, "%*s", width, vstr);
@@ -63,8 +63,8 @@ void __write_bool(File* file, int v, int width)
     {
 	fprintf(f, "%s", vstr);
     }
-}   
- 
+}
+
 void __write_chars(File* file, const char* v, int len, int width)
 {
     FILE* f = getFile(file);
@@ -85,7 +85,7 @@ void __write_chars(File* file, const char* v, int len, int width)
 void __write_str(File* file, const String* v, int width)
 {
     FILE* f = getFile(file);
-    char s[256];
+    char  s[256];
     memcpy(s, v->str, v->len);
     s[v->len] = 0;
     if (width < v->len)
@@ -94,14 +94,12 @@ void __write_str(File* file, const String* v, int width)
     }
     else
     {
-	fprintf(f, "%s",s);
+	fprintf(f, "%s", s);
     }
 }
-
 
 void __write_nl(File* file)
 {
     FILE* f = getFile(file);
     fputc('\n', f);
 }
-

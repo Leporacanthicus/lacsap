@@ -1,5 +1,5 @@
-#include <stdlib.h>
 #include "runtime.h"
+#include <stdlib.h>
 
 /*******************************************
  * Memory allocation functions

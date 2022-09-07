@@ -1,12 +1,12 @@
-#include <string.h>
 #include "runtime.h"
+#include <string.h>
 
-extern char **c_argv;
-extern int c_argc;
+extern char** c_argv;
+extern int    c_argc;
 
 String __ParamStr(int n)
 {
-    String s = {0, ""};
+    String s = { 0, "" };
     if (n < c_argc)
     {
 	size_t len = strlen(c_argv[n]);
@@ -22,5 +22,5 @@ String __ParamStr(int n)
 
 int __ParamCount()
 {
-    return c_argc-1;
+    return c_argc - 1;
 }

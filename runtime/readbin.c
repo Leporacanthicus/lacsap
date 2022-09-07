@@ -1,9 +1,9 @@
-#include <string.h>
 #include "runtime.h"
+#include <string.h>
 
-void __read_bin(File* file, void *val)
+void __read_bin(File* file, void* val)
 {
-    struct FileEntry *f = 0;
+    struct FileEntry* f = 0;
     if (file->handle < MaxPascalFiles && files[file->handle].inUse)
     {
 	f = &files[file->handle];

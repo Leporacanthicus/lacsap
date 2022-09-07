@@ -1,6 +1,6 @@
-#include <stdio.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /*******************************************
  * Enum declarations
@@ -9,8 +9,8 @@
 /* Max number/size values */
 enum
 {
-    MaxPascalFiles =  1000,
-    MaxStringLen   =  255,
+    MaxPascalFiles = 1000,
+    MaxStringLen = 255,
 };
 
 /*******************************************
@@ -20,10 +20,10 @@ enum
 /* Note: This should match the definition in the compiler, or weirdness happens! */
 typedef struct File
 {
-    int    handle;
-    char*  buffer;
-    int    recordSize;
-    int    isText;
+    int   handle;
+    char* buffer;
+    int   recordSize;
+    int   isText;
 } File;
 
 struct FileEntry
@@ -37,7 +37,7 @@ struct FileEntry
     int   bufferSize;
 };
 
-typedef struct 
+typedef struct
 {
     unsigned char len;
     unsigned char str[MaxStringLen];
@@ -76,9 +76,9 @@ static inline FILE* getFile(File* f)
     return NULL;
 }
 
-int __get(File *file);
-void __put(File *file);
-int __eof(File* file);
-int __eoln(File* file);
+int  __get(File* file);
+void __put(File* file);
+int  __eof(File* file);
+int  __eoln(File* file);
 void __assign(File* f, char* name);
 void __assign_unnamed(File* f);

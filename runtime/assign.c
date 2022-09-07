@@ -1,12 +1,12 @@
 #include <string.h>
 #define __USE_POSIX 1
+#include "runtime.h"
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <limits.h>
-#include "runtime.h"
 
-struct FileEntry files[MaxPascalFiles] = { };
+struct FileEntry files[MaxPascalFiles] = {};
 
 /*******************************************
  * InitFiles
@@ -30,7 +30,7 @@ void InitFiles()
  */
 void SetupFile(File* f, int recSize, int isText)
 {
-    f->recordSize = (isText)? 1024 : recSize;
+    f->recordSize = (isText) ? 1024 : recSize;
     f->isText = isText;
     f->buffer = malloc(f->recordSize);
     files[f->handle].readPos = 0;
@@ -45,7 +45,7 @@ void SetupFile(File* f, int recSize, int isText)
 void __assign(File* f, char* name)
 {
     int i;
-    for(i = 0; i < MaxPascalFiles && files[i].inUse; i++)
+    for (i = 0; i < MaxPascalFiles && files[i].inUse; i++)
 	;
     if (i == MaxPascalFiles)
     {
@@ -54,7 +54,7 @@ void __assign(File* f, char* name)
     }
     f->handle = i;
     files[i].inUse = 1;
-    files[i].name = malloc(strlen(name)+1);
+    files[i].name = malloc(strlen(name) + 1);
     files[i].fileData = f;
     files[i].readAhead = 0;
     strcpy(files[i].name, name);
@@ -66,12 +66,12 @@ void __assign(File* f, char* name)
  */
 void __assign_unnamed(File* f)
 {
-    char name[] = "lacsap_tmp_file_NNNNNN";
+    char       name[] = "lacsap_tmp_file_NNNNNN";
     static int n = 0;
     n++;
     n %= MaxPascalFiles;
     size_t pos = strlen(name) - 1;
-    for(int i = 0; i < 6; i++)
+    for (int i = 0; i < 6; i++)
     {
 	name[pos] = '0' + (n % 10);
 	n /= 10;
@@ -79,4 +79,3 @@ void __assign_unnamed(File* f)
     }
     __assign(f, name);
 }
-

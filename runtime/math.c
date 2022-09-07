@@ -1,8 +1,7 @@
+#include "runtime.h"
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
-#include <limits.h>
-#include "runtime.h"
-
 
 /* Use our own random number gemerator, so that it is consistent regardless
  * of what host system is used. Using linear congruent generator.
@@ -23,7 +22,8 @@ static unsigned urand()
  */
 double __random(void)
 {
-    return urand() / (double)UINT_MAX;;
+    return urand() / (double)UINT_MAX;
+    ;
 }
 
 double __arctan2(double x, double y)

@@ -1,7 +1,6 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-// Need token for "location".
 #include "token.h"
 #include "types.h"
 

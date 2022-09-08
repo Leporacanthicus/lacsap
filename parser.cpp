@@ -8,6 +8,11 @@
 #include "stack.h"
 #include "trace.h"
 #include "utils.h"
+
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/APSInt.h>
+#include <llvm/Support/MathExtras.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -3505,14 +3510,22 @@ ExprAST* Parser::Parse(ParserType type)
 
 Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
 {
+    const llvm::fltSemantics& sem = llvm::APFloat::IEEEdouble();
+    double                    maxReal = llvm::APFloat::getLargest(sem).convertToDouble();
+    double                    minReal = llvm::APFloat::getLargest(sem, /*Negative=*/true).convertToDouble();
+    Location                  unknownLoc = Location("", 0, 0);
     if (!(AddType("integer", Types::GetIntegerType()) && AddType("longint", Types::GetLongIntType()) &&
           AddType("int64", Types::GetLongIntType()) && AddType("real", Types::GetRealType()) &&
           AddType("char", Types::GetCharType()) && AddType("text", Types::GetTextType()) &&
           AddType("boolean", Types::GetBooleanType()) &&
           nameStack.Add("false", new EnumDef("false", 0, Types::GetBooleanType())) &&
           nameStack.Add("true", new EnumDef("true", 1, Types::GetBooleanType())) &&
-          AddConst("maxint", new Constants::IntConstDecl(Location("", 0, 0), INT_MAX)) &&
-          AddConst("pi", new Constants::RealConstDecl(Location("", 0, 0), M_PI))))
+          AddConst("maxint", new Constants::IntConstDecl(unknownLoc, INT_MAX)) &&
+          AddConst("maxchar", new Constants::IntConstDecl(unknownLoc, UCHAR_MAX)) &&
+          AddConst("pi", new Constants::RealConstDecl(unknownLoc, llvm::numbers::pi)) &&
+          AddConst("maxreal", new Constants::RealConstDecl(unknownLoc, maxReal)) &&
+          AddConst("minreal", new Constants::RealConstDecl(unknownLoc, minReal)) &&
+          AddConst("epsreal", new Constants::RealConstDecl(unknownLoc, 0x1.0p-52))))
     {
 	assert(0 && "Failed to add builtin constants");
     }

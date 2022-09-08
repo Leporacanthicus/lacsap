@@ -6,9 +6,6 @@ The existance of this document is by no means a promise of ISO 10206
 functionality appearing anytime soon (or ever).
 
 Constants:
-   maxreal, minreal, epsreal
-   maxchar
-
    Array and struct constant declarations
 
    Extended integers, e.g 16#ff or  8#377 same as 255.

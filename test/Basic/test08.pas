@@ -24,5 +24,10 @@ begin
    writeln(true or true);
    writeln(false or true);
    writeln(false or false);
-   writeln;	
+   writeln;
+
+   writeln(true and_then not false);
+   writeln(false and_then true);
+   writeln(true or_else not false);
+   writeln(false or_else true);
 end.

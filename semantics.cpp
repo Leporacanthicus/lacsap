@@ -296,6 +296,15 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	ty = BinarySetUpdate(b);
     }
 
+    if (!ty && (op == Token::And_Then || op == Token::Or_Else))
+    {
+	ty = Types::GetBooleanType();
+	if (ty->Type() != lty->Type() || ty->Type() != rty->Type())
+	{
+	    Error(b, "Types for And_Then and Or_Else should be boolean");
+	}
+    }
+
     if (!ty && (op == Token::Plus))
     {
 	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)

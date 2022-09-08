@@ -417,6 +417,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Game of life", "gol.pas", "< gol.txt" },
     { 0, "Basic", "Inline", "inline.pas", "" },
     { 0, "Basic", "Val", "val.pas", "12345 42" },
+    { 0, "Basic", "Bool Ops", "boolops.pas", "12345 42" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.
@@ -436,6 +437,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "For w. ptr", "forptr.pas", "" },
     { 0, "CompErr", "For w. rec", "forrec.pas", "" },
     { 0, "CompErr", "Arr Index", "arr.pas", "" },
+    { 0, "CompErr", "Boolean Ops", "boolop.pas", "" },
     { 0, "CompErr", "Case Else", "caseelse.pas", "" },
     { 0, "CompErr", "Const", "const.pas", "" },
     { 0, "CompErr", "Const 2", "const2.pas", "" },
@@ -514,6 +516,7 @@ int main(int argc, char** argv)
     }
 
     if (mode == "full" || !negative)
+    {
 	for (auto t : testCaseList)
 	{
 	    if ((t.flags & flags) == 0)
@@ -521,6 +524,7 @@ int main(int argc, char** argv)
 		tc.push_back(TestCaseFactory(t.type, t.name, t.source, t.args));
 	    }
 	}
+    }
 
     if (mode == "full" || negative)
     {

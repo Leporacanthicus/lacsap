@@ -948,6 +948,55 @@ llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
     }
 }
 
+static llvm::Value* ShortCtOr(ExprAST* lhs, ExprAST* rhs)
+{
+    llvm::Value*      l = lhs->CodeGen();
+    llvm::BasicBlock* originBlock = builder.GetInsertBlock();
+    llvm::Function*   theFunction = originBlock->getParent();
+    llvm::BasicBlock* falseBB = llvm::BasicBlock::Create(theContext, "false", theFunction);
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "merge", theFunction);
+    llvm::Value*      bfalse = MakeBooleanConstant(0);
+    llvm::Value*      btrue = MakeBooleanConstant(1);
+
+    llvm::Value* condl = builder.CreateICmpEQ(l, bfalse, "condl");
+    builder.CreateCondBr(condl, falseBB, mergeBB);
+    builder.SetInsertPoint(falseBB);
+    llvm::Value* r = rhs->CodeGen();
+    llvm::Value* condr = builder.CreateICmpNE(r, bfalse, "condr");
+
+    builder.CreateBr(mergeBB);
+
+    builder.SetInsertPoint(mergeBB);
+    llvm::PHINode* phi = builder.CreatePHI(Types::GetBooleanType()->LlvmType(), 2, "phi");
+    phi->addIncoming(btrue, originBlock);
+    phi->addIncoming(condr, falseBB);
+    return phi;
+}
+
+static llvm::Value* ShortCtAnd(ExprAST* lhs, ExprAST* rhs)
+{
+    llvm::Value*      l = lhs->CodeGen();
+    llvm::BasicBlock* originBlock = builder.GetInsertBlock();
+    llvm::Function*   theFunction = originBlock->getParent();
+    llvm::BasicBlock* trueBB = llvm::BasicBlock::Create(theContext, "true", theFunction);
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "merge", theFunction);
+    llvm::Value*      bfalse = MakeBooleanConstant(0);
+
+    llvm::Value* condl = builder.CreateICmpNE(l, bfalse, "condl");
+    builder.CreateCondBr(condl, trueBB, mergeBB);
+    builder.SetInsertPoint(trueBB);
+    llvm::Value* r = rhs->CodeGen();
+    llvm::Value* condr = builder.CreateICmpNE(r, bfalse, "condr");
+
+    builder.CreateBr(mergeBB);
+
+    builder.SetInsertPoint(mergeBB);
+    llvm::PHINode* phi = builder.CreatePHI(Types::GetBooleanType()->LlvmType(), 2, "phi");
+    phi->addIncoming(bfalse, originBlock);
+    phi->addIncoming(condr, trueBB);
+    return phi;
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -1003,6 +1052,16 @@ llvm::Value* BinaryExprAST::CodeGen()
 		return MakeStrCompare(oper, CallArrFunc("Compare", rr[0]->Size()));
 	    }
 	}
+    }
+
+    switch (oper.GetToken())
+    {
+    case Token::And_Then:
+	return ShortCtAnd(lhs, rhs);
+    case Token::Or_Else:
+	return ShortCtOr(lhs, rhs);
+    default:
+	break;
     }
 
     llvm::Value* l = lhs->CodeGen();

@@ -19,7 +19,6 @@ Variables:
 
 Operators:
    **, pow
-   and_then, or_else    { We already do this, I think... }
 
 Control structure:
    for m in setvar do ...

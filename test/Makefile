@@ -19,6 +19,7 @@ fulltests: testrunner
 
 fasttests: testrunner
 	./testrunner -O1
+	./testrunner -N -O1
 
 debugtests: testrunner
 	./testrunner -g

@@ -23,6 +23,7 @@ private:
     void             CheckForExpr(ForExprAST* f);
     void             CheckReadExpr(ReadAST* f);
     void             CheckWriteExpr(WriteAST* f);
+    void CheckCaseExpr(CaseExprAST* c);
     void             Error(const ExprAST* e, const std::string& msg) const;
 
 private:
@@ -154,6 +155,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (WriteAST* w = llvm::dyn_cast<WriteAST>(expr))
     {
 	CheckWriteExpr(w);
+    }
+    else if (CaseExprAST* c = llvm::dyn_cast<CaseExprAST>(expr))
+    {
+	CheckCaseExpr(c);
     }
 }
 
@@ -725,6 +730,23 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 		    Error(arg, "Write argument should match elements of the file");
 		}
 	    }
+	}
+    }
+}
+
+void TypeCheckVisitor::CheckCaseExpr(CaseExprAST* c)
+{
+    TRACE();
+    std::vector<int> vals;
+    for(auto l: c->labels)
+    {
+	for (auto i: l->labelValues)
+	{
+	    if (std::find(vals.begin(), vals.end(), i) != vals.end())
+	    {
+		Error(c, "Duplicate case label " + std::to_string(i));
+	    }
+	    vals.push_back(i);
 	}
     }
 }

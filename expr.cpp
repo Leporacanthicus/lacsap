@@ -2912,6 +2912,7 @@ void CaseExprAST::DoDump(std::ostream& out) const
 
 void CaseExprAST::accept(ASTVisitor& v)
 {
+    TRACE();
     expr->accept(v);
     for (auto l : labels)
     {
@@ -2921,6 +2922,7 @@ void CaseExprAST::accept(ASTVisitor& v)
     {
 	otherwise->accept(v);
     }
+    v.visit(this);
 }
 
 llvm::Value* CaseExprAST::CodeGen()

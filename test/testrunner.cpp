@@ -419,6 +419,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Val", "val.pas", "12345 42" },
     { 0, "Basic", "Bool Ops", "boolops.pas", "" },
     { 0, "Basic", "Exponentiation", "pow.pas", "" },
+    { 0, "Basic", "Case Expressions", "caseexpr.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.
@@ -447,6 +448,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "Crazy", "crazy.pas", "" },
     { 0, "CompErr", "Crazy 2", "crazy2.pas", "" },
     { 0, "CompErr", "DivMod", "divmod.pas", "" },
+    { 0, "CompErr", "Duplicate Case Labels", "dupcaselabel.pas", "" },
     { 0, "CompErr", "Packed", "packed.pas", "" },
     { 0, "CompErr", "Wrong args", "wrongargs.pas", "" },
     { 0, "CompErr", "Wrong args 2", "wrongargs2.pas", "" },

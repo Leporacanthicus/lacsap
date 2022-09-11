@@ -383,6 +383,28 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
+int64_t ConstDeclToInt(const Constants::ConstDecl *c)
+{
+    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
+    {
+	return ci->Value();
+    }
+    if (auto cc = llvm::dyn_cast<Constants::CharConstDecl>(c))
+    {
+	return cc->Value();
+    }
+    if (auto ce = llvm::dyn_cast<Constants::EnumConstDecl>(c))
+    {
+	return ce->Value();
+    }
+    if (auto cb = llvm::dyn_cast<Constants::BoolConstDecl>(c))
+    {
+	return cb->Value();
+    }
+    assert(0 && "Didn't expect to get here");
+    return -1;
+}
+
 Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken)
 {
@@ -398,51 +420,9 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType en
 	return 0;
     }
 
-    int64_t                        start;
-    int64_t                        end;
-    const Constants::IntConstDecl* startI = llvm::dyn_cast<Constants::IntConstDecl>(startC);
-    const Constants::IntConstDecl* endI = llvm::dyn_cast<Constants::IntConstDecl>(endC);
-    if (startI && endI)
-    {
-	start = startI->Value();
-	end = endI->Value();
-    }
-    else
-    {
-	const Constants::CharConstDecl* startCh = llvm::dyn_cast<Constants::CharConstDecl>(startC);
-	const Constants::CharConstDecl* endCh = llvm::dyn_cast<Constants::CharConstDecl>(endC);
-	if (startCh && endCh)
-	{
-	    start = startCh->Value();
-	    end = endCh->Value();
-	}
-	else
-	{
-	    const Constants::EnumConstDecl* startE = llvm::dyn_cast<Constants::EnumConstDecl>(startC);
-	    const Constants::EnumConstDecl* endE = llvm::dyn_cast<Constants::EnumConstDecl>(endC);
-
-	    if (startE && endE)
-	    {
-		start = startE->Value();
-		end = endE->Value();
-	    }
-	    else
-	    {
-		const Constants::BoolConstDecl* startB = llvm::dyn_cast<Constants::BoolConstDecl>(startC);
-		const Constants::BoolConstDecl* endB = llvm::dyn_cast<Constants::BoolConstDecl>(endC);
-
-		if (startB && endB)
-		{
-		    start = startB->Value();
-		    end = endB->Value();
-		}
-		else
-		{
-		    return ErrorR(CurrentToken(), "Unkown constant type");
-		}
-	    }
-	}
-    }
+    int64_t start = ConstDeclToInt(startC);
+    int64_t end = ConstDeclToInt(endC);
+    
     type = startC->Type();
     assert(type == endC->Type() && "Expect same type on both sides");
     if (end <= start)
@@ -2812,52 +2792,41 @@ ExprAST* Parser::ParseCaseExpr()
     std::vector<int>           lab;
     bool                       isFirst = true;
     Token::TokenType           prevTT;
-    ExprAST*                   otherwise = 0;
+    ExprAST*                   otherwise{0};
     do
     {
-	bool isOtherwise = false;
 	if (isFirst)
 	{
 	    prevTT = CurrentToken().GetToken();
 	    isFirst = false;
 	}
-	else if (CurrentToken().GetToken() != Token::Otherwise && CurrentToken().GetToken() != Token::Else &&
-	         prevTT != CurrentToken().GetToken())
+	
+	if (CurrentToken().GetToken() == Token::Otherwise || CurrentToken().GetToken() == Token::Else)
 	{
-	    return Error(CurrentToken(), "Type of case labels must not change type");
-	}
-	Token token = TranslateToken(CurrentToken());
-	switch (token.GetToken())
-	{
-	case Token::Char:
-	case Token::Integer:
-	    lab.push_back(token.GetIntVal());
-	    break;
-
-	case Token::Identifier:
-	    if (const EnumDef* ed = GetEnumValue(token.GetIdentName()))
-	    {
-		lab.push_back(ed->Value());
-		break;
-	    }
-	    return Error(CurrentToken(), "Expected constant or enumerated value");
-
-	case Token::Else:
-	case Token::Otherwise:
+	    Location loc = NextToken().Loc();
 	    if (otherwise)
 	    {
-		return Error(token, "An 'otherwise' or 'else' already used in this case block");
+		return Error(CurrentToken(), "An 'otherwise' or 'else' already used in this case block");
 	    }
-	    isOtherwise = true;
-	    break;
-
-	default:
-	    return Error(CurrentToken(), "Syntax error, expected case label");
+	    if (lab.size())
+	    {
+		return Error(CurrentToken(), "Can't have multiple case labels with 'otherwise' "
+			     "or 'else' case label");
+	    }
+	    otherwise = ParseStatement();
+	    labels.push_back(new LabelExprAST(loc, {}, otherwise));
+	    if (!ExpectSemicolonOrEnd())
+	    {
+		return 0;
+	    }
 	}
-	if (CurrentToken().GetToken() != Token::Else && CurrentToken().GetToken() != Token::Otherwise)
+	else
 	{
-	    NextToken();
+	    const Constants::ConstDecl* cd = ParseConstExpr(Token::Comma, Token::Colon);
+	    int value = ConstDeclToInt(cd);
+	    lab.push_back(value);
 	}
+
 	switch (CurrentToken().GetToken())
 	{
 	case Token::Comma:
@@ -2865,31 +2834,19 @@ ExprAST* Parser::ParseCaseExpr()
 	    break;
 
 	case Token::Colon:
-	case Token::Otherwise:
-	case Token::Else:
 	{
 	    Location locColon = NextToken().Loc();
 	    ExprAST* s = ParseStatement();
-	    if (isOtherwise)
-	    {
-		otherwise = s;
-		if (lab.size())
-		{
-		    return Error(CurrentToken(), "Can't have multiple case labels with 'otherwise' "
-		                                 "or 'else' case label");
-		}
-	    }
-	    else
-	    {
-		labels.push_back(new LabelExprAST(locColon, lab, s));
-		lab.clear();
-	    }
+	    labels.push_back(new LabelExprAST(locColon, lab, s));
+	    lab.clear();
 	    if (!ExpectSemicolonOrEnd())
 	    {
 		return 0;
 	    }
 	    break;
 	}
+	case Token::End:
+	    break;
 
 	default:
 	    return Error(CurrentToken(), "Syntax error: Expected ',' or ':' in case-statement.");

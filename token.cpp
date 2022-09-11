@@ -154,6 +154,7 @@ const TokenEntry tokenTable[] = {
     { Token::Xor, true, 10, "xor" },
     { Token::Shr, true, 40, "shr" },
     { Token::Shl, true, 40, "shl" },
+    { Token::SymDiff, false, 40, "><" },
     { Token::Pow, true, 50, "pow" },
     { Token::In, true, 5, "in" },
     { Token::Plus, false, 10, "+" },

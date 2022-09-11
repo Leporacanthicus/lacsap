@@ -282,6 +282,11 @@ Token Lexer::GetToken()
 	    tt = Token::GreaterOrEqual;
 	    NextChar();
 	}
+	else if (PeekChar() == '<')
+	{
+	    tt = Token::SymDiff;
+	    NextChar();
+	}
 	break;
 
     case ':':

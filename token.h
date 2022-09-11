@@ -58,6 +58,7 @@ public:
 	Xor,
 	Shr,
 	Shl,
+	SymDiff,
 
 	// Comparison symbols - these return bool in binary ops.
 	LessOrEqual,

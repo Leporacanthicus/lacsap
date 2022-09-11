@@ -23,7 +23,7 @@ private:
     void             CheckForExpr(ForExprAST* f);
     void             CheckReadExpr(ReadAST* f);
     void             CheckWriteExpr(WriteAST* f);
-    void CheckCaseExpr(CaseExprAST* c);
+    void             CheckCaseExpr(CaseExprAST* c);
     void             Error(const ExprAST* e, const std::string& msg) const;
 
 private:
@@ -738,9 +738,9 @@ void TypeCheckVisitor::CheckCaseExpr(CaseExprAST* c)
 {
     TRACE();
     std::vector<int> vals;
-    for(auto l: c->labels)
+    for (auto l : c->labels)
     {
-	for (auto i: l->labelValues)
+	for (auto i : l->labelValues)
 	{
 	    if (std::find(vals.begin(), vals.end(), i) != vals.end())
 	    {

@@ -1049,6 +1049,7 @@ namespace Builtin
 	AddBIFCreator("halt", NEW(Halt));
 	AddBIFCreator("length", NEW(Length));
 	AddBIFCreator("popcnt", NEW(Popcnt));
+	AddBIFCreator("card", NEW(Popcnt));
 	AddBIFCreator("assign", NEW(Assign));
 	AddBIFCreator("panic", NEW(Panic));
 	AddBIFCreator("clock", NEW(Clock));

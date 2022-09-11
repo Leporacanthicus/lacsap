@@ -657,6 +657,10 @@ static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm
     {
 	return builder.CreateAnd(res, src);
     }
+    if (name == "SymDiff")
+    {
+	return builder.CreateXor(res, src);
+    }
     if (name == "Diff")
     {
 	src = builder.CreateNot(src);
@@ -667,7 +671,7 @@ static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm
 
 llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
 {
-    if (optimization >= O1 && (name == "Union" || name == "Intersect" || name == "Diff"))
+    if (optimization >= O1 && (name == "Union" || name == "Intersect" || name == "Diff" || name == "SymDiff"))
     {
 	Types::TypeDecl* type = rhs->Type();
 
@@ -884,6 +888,9 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 
 	case Token::LessOrEqual:
 	    return CallSetFunc("Contains", false);
+
+	case Token::SymDiff:
+	    return CallSetFunc("SymDiff", true);
 
 	case Token::GreaterOrEqual:
 	{

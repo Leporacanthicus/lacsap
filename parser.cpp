@@ -383,7 +383,7 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
-int64_t ConstDeclToInt(const Constants::ConstDecl *c)
+int64_t ConstDeclToInt(const Constants::ConstDecl* c)
 {
     if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
     {
@@ -422,7 +422,7 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType en
 
     int64_t start = ConstDeclToInt(startC);
     int64_t end = ConstDeclToInt(endC);
-    
+
     type = startC->Type();
     assert(type == endC->Type() && "Expect same type on both sides");
     if (end <= start)
@@ -2790,17 +2790,10 @@ ExprAST* Parser::ParseCaseExpr()
     }
     std::vector<LabelExprAST*> labels;
     std::vector<int>           lab;
-    bool                       isFirst = true;
-    Token::TokenType           prevTT;
-    ExprAST*                   otherwise{0};
+    ExprAST*                   otherwise{nullptr};
+    Types::TypeDecl*           type{nullptr};
     do
     {
-	if (isFirst)
-	{
-	    prevTT = CurrentToken().GetToken();
-	    isFirst = false;
-	}
-	
 	if (CurrentToken().GetToken() == Token::Otherwise || CurrentToken().GetToken() == Token::Else)
 	{
 	    Location loc = NextToken().Loc();
@@ -2811,7 +2804,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    if (lab.size())
 	    {
 		return Error(CurrentToken(), "Can't have multiple case labels with 'otherwise' "
-			     "or 'else' case label");
+		                             "or 'else' case label");
 	    }
 	    otherwise = ParseStatement();
 	    labels.push_back(new LabelExprAST(loc, {}, otherwise));
@@ -2823,7 +2816,18 @@ ExprAST* Parser::ParseCaseExpr()
 	else
 	{
 	    const Constants::ConstDecl* cd = ParseConstExpr(Token::Comma, Token::Colon);
-	    int value = ConstDeclToInt(cd);
+	    int                         value = ConstDeclToInt(cd);
+	    if (type)
+	    {
+		if (type != cd->Type())
+		{
+		    return Error(CurrentToken(), "Expected case labels to have same type");
+		}
+	    }
+	    else
+	    {
+		type = cd->Type();
+	    }
 	    lab.push_back(value);
 	}
 

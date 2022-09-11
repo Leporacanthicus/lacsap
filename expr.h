@@ -716,7 +716,7 @@ private:
 class LabelExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
-    
+
 public:
     LabelExprAST(const Location& w, const std::vector<int>& lab, ExprAST* st)
         : ExprAST(w, EK_LabelExpr), labelValues(lab), stmt(st)
@@ -736,7 +736,7 @@ private:
 class CaseExprAST : public ExprAST
 {
     friend class TypeCheckVisitor;
-    
+
 public:
     CaseExprAST(const Location& w, ExprAST* e, const std::vector<LabelExprAST*>& lab, ExprAST* other)
         : ExprAST(w, EK_CaseExpr), expr(e), labels(lab), otherwise(other)

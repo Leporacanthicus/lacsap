@@ -44,6 +44,14 @@ void __SetIntersect(Set* res, Set* a, Set* b, int setWords)
     }
 }
 
+void __SetSymDiff(Set* res, Set* a, Set* b, int setWords)
+{
+    for (int i = 0; i < setWords; i++)
+    {
+	res->v[i] = a->v[i] ^ b->v[i];
+    }
+}
+
 /* Check if all values in a are in set b. */
 int __SetContains(Set* a, Set* b, int setWords)
 {

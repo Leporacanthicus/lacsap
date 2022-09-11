@@ -305,11 +305,29 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
     }
 
+    if (!ty && (op == Token::Div || op == Token::Mod || op == Token::Pow))
+    {
+	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char ||
+	    !lty->IsIntegral() || !rty->IsIntegral())
+	{
+	    Error(b, "Types for DIV, MOD and POW should be integer");
+	}
+    }
+
     if (!ty && (op == Token::Plus))
     {
 	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
 	{
 	    ty = Types::GetStringType();
+	}
+    }
+
+    if (!ty && (op == Token::Minus || op == Token::Multiply || op == Token::And || op == Token::Xor ||
+                op == Token::Or))
+    {
+	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
+	{
+	    Error(b, "Types for binary operation should not be CHARACTER");
 	}
     }
 

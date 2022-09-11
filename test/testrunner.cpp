@@ -418,7 +418,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Inline", "inline.pas", "" },
     { 0, "Basic", "Val", "val.pas", "12345 42" },
     { 0, "Basic", "Bool Ops", "boolops.pas", "" },
-    { 0, "Basic", "Ex[pmemtiation", "pow.pas", "" },
+    { 0, "Basic", "Exponentiation", "pow.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.
@@ -438,6 +438,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "For w. ptr", "forptr.pas", "" },
     { 0, "CompErr", "For w. rec", "forrec.pas", "" },
     { 0, "CompErr", "Arr Index", "arr.pas", "" },
+    { 0, "CompErr", "Binary Ops", "binops.pas", "" },
     { 0, "CompErr", "Boolean Ops", "boolop.pas", "" },
     { 0, "CompErr", "Case Else", "caseelse.pas", "" },
     { 0, "CompErr", "Const", "const.pas", "" },
@@ -445,6 +446,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "Const 3", "const3.pas", "" },
     { 0, "CompErr", "Crazy", "crazy.pas", "" },
     { 0, "CompErr", "Crazy 2", "crazy2.pas", "" },
+    { 0, "CompErr", "DivMod", "divmod.pas", "" },
     { 0, "CompErr", "Packed", "packed.pas", "" },
     { 0, "CompErr", "Wrong args", "wrongargs.pas", "" },
     { 0, "CompErr", "Wrong args 2", "wrongargs2.pas", "" },

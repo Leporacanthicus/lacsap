@@ -313,7 +313,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
     }
 
-    if (!ty && (op == Token::Divide))
+    if (!ty && (op == Token::Divide || op == Token::Power))
     {
 	if (!isNumeric(lty) || !isNumeric(rty))
 	{

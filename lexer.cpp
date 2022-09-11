@@ -295,9 +295,15 @@ Token Lexer::GetToken()
     case '(':
 	if (PeekChar() == '.')
 	{
-
 	    NextChar();
 	    tt = Token::LeftSquare;
+	}
+	break;
+    case '*':
+	if (PeekChar() == '*')
+	{
+	    NextChar();
+	    tt = Token::Power;
 	}
 	break;
     }

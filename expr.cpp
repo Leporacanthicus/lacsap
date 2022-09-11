@@ -921,7 +921,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
     return ErrorV(this, "Invalid arguments in set operation");
 }
 
-llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
+static llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
 {
     switch (oper.GetToken())
     {
@@ -994,6 +994,89 @@ static llvm::Value* ShortCtAnd(ExprAST* lhs, ExprAST* rhs)
     llvm::PHINode* phi = builder.CreatePHI(Types::GetBooleanType()->LlvmType(), 2, "phi");
     phi->addIncoming(bfalse, originBlock);
     phi->addIncoming(condr, trueBB);
+    return phi;
+}
+
+// Calculate base ^ exp.
+//    if (e < 0) {
+//	if (b == -1 && (e & 1)) return b;
+//	if (b > 1) return 0;
+//    }
+//    int res = 1;
+//    while (e > 0) {
+//	if (e & 1) { res *= b; e--; }
+//	else { res *= b * b; e -= 2; }
+//    }
+//    return res;
+static llvm::Value* PowerInt(llvm::Value* base, llvm::Value* exp, Types::TypeDecl* ty)
+{
+    llvm::BasicBlock* originBlock = builder.GetInsertBlock();
+    llvm::Function*   theFunction = originBlock->getParent();
+    llvm::BasicBlock* expNegBB = llvm::BasicBlock::Create(theContext, "expNeg", theFunction);
+    llvm::BasicBlock* oddEvenBB = llvm::BasicBlock::Create(theContext, "oddeven", theFunction);
+    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
+    llvm::BasicBlock* moreBB = llvm::BasicBlock::Create(theContext, "more", theFunction);
+    llvm::BasicBlock* moreOddBB = llvm::BasicBlock::Create(theContext, "moreOdd", theFunction);
+    llvm::BasicBlock* moreEvenBB = llvm::BasicBlock::Create(theContext, "moreEven", theFunction);
+    llvm::BasicBlock* moreMergeBB = llvm::BasicBlock::Create(theContext, "moreMerge", theFunction);
+    llvm::BasicBlock* doneBB = llvm::BasicBlock::Create(theContext, "powdone", theFunction);
+
+    llvm::Constant* one = MakeIntegerConstant(1);
+    llvm::Constant* zero = MakeIntegerConstant(0);
+    llvm::Value*    res = CreateTempAlloca(ty);
+    builder.CreateStore(one, res);
+
+    llvm::Value* expneg = builder.CreateICmpSLT(exp, zero, "expneg");
+    builder.CreateCondBr(expneg, expNegBB, loopBB);
+    // e < 0 case:
+    builder.SetInsertPoint(expNegBB);
+    llvm::Value* bIsMinus1 = builder.CreateICmpEQ(base, MakeIntegerConstant(-1), "isNeg1");
+    builder.CreateCondBr(bIsMinus1, oddEvenBB, doneBB);
+
+    builder.SetInsertPoint(oddEvenBB);
+    llvm::Value* isOdd = builder.CreateICmpEQ(builder.CreateAnd(exp, one, "odd"), one, "isOdd");
+    // b = -1 && e & 1 => return b;
+    builder.CreateCondBr(isOdd, doneBB, loopBB);
+
+    builder.SetInsertPoint(loopBB);
+    llvm::PHINode* phiLoop = builder.CreatePHI(ty->LlvmType(), 2, "phi");
+    phiLoop->addIncoming(exp, originBlock);
+    phiLoop->addIncoming(exp, oddEvenBB);
+    llvm::Value* expgt0 = builder.CreateICmpSLE(phiLoop, zero, "expgt0");
+    llvm::Value* curVal = builder.CreateLoad(res);
+    builder.CreateCondBr(expgt0, doneBB, moreBB);
+
+    builder.SetInsertPoint(moreBB);
+    llvm::Value* isOdd1 = builder.CreateICmpEQ(builder.CreateAnd(exp, one, "odd1"), one, "isOdd1");
+    builder.CreateCondBr(isOdd1, moreOddBB, moreEvenBB);
+
+    builder.SetInsertPoint(moreOddBB);
+    llvm::Value* valOdd = builder.CreateMul(curVal, base);
+    builder.CreateBr(moreMergeBB);
+
+    builder.SetInsertPoint(moreEvenBB);
+    llvm::Value* valEven = builder.CreateMul(curVal, builder.CreateMul(base, base));
+    builder.CreateBr(moreMergeBB);
+
+    builder.SetInsertPoint(moreMergeBB);
+    llvm::PHINode* phiMerge = builder.CreatePHI(ty->LlvmType(), 2, "phi");
+    phiMerge->addIncoming(valEven, moreEvenBB);
+    phiMerge->addIncoming(valOdd, moreOddBB);
+    llvm::PHINode* phiMerge2 = builder.CreatePHI(ty->LlvmType(), 2, "phi");
+    phiMerge2->addIncoming(MakeIntegerConstant(2), moreEvenBB);
+    phiMerge2->addIncoming(one, moreOddBB);
+    builder.CreateStore(phiMerge, res);
+    phiLoop->addIncoming(builder.CreateSub(phiLoop, phiMerge2), moreMergeBB);
+    builder.CreateBr(loopBB);
+
+    builder.SetInsertPoint(doneBB);
+    llvm::PHINode* phi = builder.CreatePHI(ty->LlvmType(), 3, "phi");
+    // e < 0, b != -1
+    phi->addIncoming(zero, expNegBB);
+    // e < 0, e is odd, b = -1
+    phi->addIncoming(base, oddEvenBB);
+    // all other cases.
+    phi->addIncoming(curVal, loopBB);
     return phi;
 }
 
@@ -1113,6 +1196,9 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateAnd(l, r, "and");
 	case Token::Or:
 	    return builder.CreateOr(l, r, "or");
+	case Token::Pow:
+	    assert(Type() && "Execpted to have a type here");
+	    return PowerInt(l, r, Type());
 
 	case Token::LessThan:
 	    if (IsUnsigned)
@@ -1155,6 +1241,14 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    return builder.CreateFMul(l, r, "multmp");
 	case Token::Divide:
 	    return builder.CreateFDiv(l, r, "divtmp");
+	case Token::Power:
+	{
+	    llvm::Type*               ty = Type()->LlvmType();
+	    llvm::FunctionCallee      f = GetFunction(ty, { ty, ty }, "llvm.pow.f64");
+	    std::vector<llvm::Value*> args = { l, r };
+
+	    return builder.CreateCall(f, args, "powtmp");
+	}
 
 	case Token::Equal:
 	    return builder.CreateFCmpOEQ(l, r, "eq");

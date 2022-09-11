@@ -417,7 +417,8 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Game of life", "gol.pas", "< gol.txt" },
     { 0, "Basic", "Inline", "inline.pas", "" },
     { 0, "Basic", "Val", "val.pas", "12345 42" },
-    { 0, "Basic", "Bool Ops", "boolops.pas", "12345 42" },
+    { 0, "Basic", "Bool Ops", "boolops.pas", "" },
+    { 0, "Basic", "Ex[pmemtiation", "pow.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

@@ -620,10 +620,18 @@ public:
         : ExprAST(w, EK_ForExpr), variable(v), start(s), stepDown(down), end(e), body(b)
     {
     }
+    // for-in-set
+    ForExprAST(const Location& w, VariableExprAST* v, ExprAST* s, ExprAST* b)
+        : ExprAST(w, EK_ForExpr), variable(v), start(s), stepDown(false), end(nullptr), body(b)
+    {
+    }
     void         DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_ForExpr; }
     void         accept(ASTVisitor& v) override;
+
+private:
+    llvm::Value* ForInGen();
 
 private:
     VariableExprAST* variable;

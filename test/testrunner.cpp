@@ -420,6 +420,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Bool Ops", "boolops.pas", "" },
     { 0, "Basic", "Exponentiation", "pow.pas", "" },
     { 0, "Basic", "Case Expressions", "caseexpr.pas", "" },
+    { 0, "Basic", "for in set", "forinset.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

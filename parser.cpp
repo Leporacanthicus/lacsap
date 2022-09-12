@@ -2706,7 +2706,7 @@ ExprAST* Parser::ParseForExpr()
 	return Error(CurrentToken(), "Loop variable not found");
     }
     VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
-    if (Expect(Token::Assign, true))
+    if (AcceptToken(Token::Assign))
     {
 	if (ExprAST* start = ParseExpression())
 	{
@@ -2728,6 +2728,19 @@ ExprAST* Parser::ParseForExpr()
 		if (ExprAST* body = ParseStatement())
 		{
 		    return new ForExprAST(loc, varExpr, start, end, down, body);
+		}
+	    }
+	}
+    }
+    else if (AcceptToken(Token::In))
+    {
+	if (ExprAST* start = ParseExpression())
+	{
+	    if (Expect(Token::Do, true))
+	    {
+		if (ExprAST* body = ParseStatement())
+		{
+		    return new ForExprAST(loc, varExpr, start, body);
 		}
 	    }
 	}

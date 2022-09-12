@@ -606,22 +606,39 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
 	Error(f->variable, "Loop iteration variable must be integral type");
 	return;
     }
-
-    if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(vty))
+    if (f->end)
     {
-	f->start = Recast(f->start, ty);
+	if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(vty))
+	{
+	    f->start = Recast(f->start, ty);
+	}
+	else
+	{
+	    bad = true;
+	}
+	if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(vty))
+	{
+	    f->end = Recast(f->end, ty);
+	}
+	else
+	{
+	    bad = true;
+	}
     }
+    // No end = for x in set
     else
     {
-	bad = true;
-    }
-    if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(vty))
-    {
-	f->end = Recast(f->end, ty);
-    }
-    else
-    {
-	bad = true;
+	if (auto setDecl = llvm::dyn_cast<Types::SetDecl>(f->start->Type()))
+	{
+	    if (!setDecl->SubType()->CompatibleType(vty))
+	    {
+		Error(f->variable, "Expected variable to be compatible with set");
+	    }
+	}
+	else
+	{
+	    Error(f->start, "Expected to be a set");
+	}
     }
     if (bad)
     {

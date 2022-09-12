@@ -2168,9 +2168,106 @@ void ForExprAST::DoDump(std::ostream& out) const
 void ForExprAST::accept(ASTVisitor& v)
 {
     start->accept(v);
-    end->accept(v);
+    if (end)
+    {
+	end->accept(v);
+    }
     body->accept(v);
     v.visit(this);
+}
+
+llvm::Value* ForExprAST::ForInGen()
+{
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
+
+    llvm::Value* words = 0;
+    llvm::Value* setV = MakeAddressable(start);
+    int          rangeStart = 0;
+    if (auto sd = llvm::dyn_cast<Types::SetDecl>(start->Type()))
+    {
+	words = MakeIntegerConstant(sd->SetWords());
+	rangeStart = sd->GetRange()->Start();
+    }
+    else
+    {
+	assert(0 && "Hmnm, shouldn't we have a SetDecl here?");
+	return 0;
+    }
+
+    llvm::Value* one = MakeIntegerConstant(1);
+    llvm::Value* zero = MakeIntegerConstant(0);
+    llvm::Value* shift = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
+    llvm::Value* var = variable->Address();
+    assert(var && "Expected variable here");
+
+    llvm::BasicBlock* beforeBB = llvm::BasicBlock::Create(theContext, "before", theFunction);
+    llvm::BasicBlock* preOuterLoopBB = llvm::BasicBlock::Create(theContext, "outerloop", theFunction);
+    llvm::BasicBlock* preLoopBB = llvm::BasicBlock::Create(theContext, "preloop", theFunction);
+    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
+    llvm::BasicBlock* nextLoopBB = llvm::BasicBlock::Create(theContext, "nextLoop", theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
+
+    builder.CreateBr(beforeBB);
+    builder.SetInsertPoint(beforeBB);
+
+    llvm::Value* index = zero;
+    builder.CreateBr(preOuterLoopBB);
+
+    builder.SetInsertPoint(preOuterLoopBB);
+
+    // before:
+    // index = 0;
+    // preOuterLoop:
+    // while(index < words)
+    //    preLoop:
+    //    while ((bit = find_first_set(set[index])) != 32)
+    //      loopBB:
+    //      loopvar = bit + setbits * index + rangestart;
+    //      loop-body;
+    //    after:
+
+    llvm::PHINode* idxPhi = builder.CreatePHI(index->getType(), 2, "idxPhi");
+    idxPhi->addIncoming(index, beforeBB);
+    llvm::Value* bitsetAddr = builder.CreateGEP(setV, { zero, idxPhi }, "valueindex");
+    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
+
+    llvm::Value* cmp = builder.CreateICmpSLT(idxPhi, words);
+    builder.CreateCondBr(cmp, preLoopBB, afterBB);
+
+    builder.SetInsertPoint(preLoopBB);
+    llvm::Type*          ty = Types::GetIntegerType()->LlvmType();
+    llvm::FunctionCallee cttz = GetFunction(ty, { ty, Types::GetBooleanType()->LlvmType() }, "llvm.cttz.i32");
+    llvm::Value*         isZero = builder.CreateICmpEQ(bitset, zero);
+    builder.CreateCondBr(isZero, nextLoopBB, loopBB);
+
+    builder.SetInsertPoint(loopBB);
+    llvm::PHINode* phi = builder.CreatePHI(bitset->getType(), 2, "phi");
+    phi->addIncoming(bitset, preLoopBB);
+
+    llvm::Value* pos = builder.CreateCall(cttz, { phi, MakeBooleanConstant(true) }, "pos");
+
+    llvm::Value* sumVar = builder.CreateAdd(builder.CreateAdd(pos, builder.CreateShl(idxPhi, shift)),
+                                            MakeIntegerConstant(rangeStart));
+    llvm::Value* sumT = builder.CreateTrunc(sumVar, variable->Type()->LlvmType());
+    builder.CreateStore(sumT, var);
+
+    if (!body->CodeGen())
+    {
+	return 0;
+    }
+    bitset = builder.CreateAnd(phi, builder.CreateNot(builder.CreateShl(one, pos)));
+    isZero = builder.CreateICmpEQ(bitset, zero);
+    phi->addIncoming(bitset, loopBB);
+    builder.CreateCondBr(isZero, nextLoopBB, loopBB);
+
+    builder.SetInsertPoint(nextLoopBB);
+    index = builder.CreateAdd(idxPhi, one);
+    idxPhi->addIncoming(index, nextLoopBB);
+    builder.CreateBr(preOuterLoopBB);
+
+    builder.SetInsertPoint(afterBB);
+    BasicDebugInfo(this);
+    return afterBB;
 }
 
 llvm::Value* ForExprAST::CodeGen()
@@ -2178,23 +2275,28 @@ llvm::Value* ForExprAST::CodeGen()
     TRACE();
     BasicDebugInfo(this);
 
+    // for x in set has no end.
+    if (!end)
+    {
+	return ForInGen();
+    }
+
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::Value*    var = variable->Address();
     assert(var && "Expected variable here");
 
     llvm::Value* startV = start->CodeGen();
     assert(startV && "Expected start to generate code");
-
-    llvm::Value* stepVal = MakeConstant((stepDown) ? -1 : 1, start->Type());
     llvm::Value* endV = end->CodeGen();
     assert(endV && "Expected end to generate code");
-
+    llvm::Value* stepVal = MakeConstant((stepDown) ? -1 : 1, start->Type());
     builder.CreateStore(startV, var);
 
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
 
     llvm::Value* curVar = builder.CreateLoad(var, variable->Name());
+
     llvm::Value* endCond;
 
     if (start->Type()->IsUnsigned())
@@ -2219,7 +2321,6 @@ llvm::Value* ForExprAST::CodeGen()
 	    endCond = builder.CreateICmpSLE(curVar, endV, "loopcond");
 	}
     }
-    builder.CreateSub(endV, stepVal);
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
     builder.SetInsertPoint(loopBB);
@@ -2228,6 +2329,7 @@ llvm::Value* ForExprAST::CodeGen()
 	return 0;
     }
     curVar = builder.CreateLoad(var, variable->Name());
+
     if (start->Type()->IsUnsigned())
     {
 	if (stepDown)
@@ -2252,9 +2354,9 @@ llvm::Value* ForExprAST::CodeGen()
     }
     curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
     builder.CreateStore(curVar, var);
+    builder.CreateCondBr(endCond, loopBB, afterBB);
 
     BasicDebugInfo(this);
-    builder.CreateCondBr(endCond, loopBB, afterBB);
 
     builder.SetInsertPoint(afterBB);
 
@@ -2465,7 +2567,6 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	return ErrorF(0, "Invalid type argument for write");
     }
     return GetFunction(MakeVoidType(), argTypes, "__write_" + suffix);
-    ;
 }
 
 static llvm::FunctionCallee CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)

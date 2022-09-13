@@ -669,7 +669,7 @@ static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm
     return 0;
 }
 
-llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name, bool resTyIsSet)
+llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name)
 {
     if (optimization >= O1 && (name == "Union" || name == "Intersect" || name == "Diff" || name == "SymDiff"))
     {
@@ -703,7 +703,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 {
     TRACE();
 
-    if (llvm::Value* inl = InlineSetFunc(name, resTyIsSet))
+    if (llvm::Value* inl = InlineSetFunc(name))
     {
 	return inl;
     }

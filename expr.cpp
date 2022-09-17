@@ -3248,8 +3248,7 @@ llvm::Value* SetExprAST::Address()
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 
-	    loop = builder.CreateAdd(loop, MakeConstant(1, llvm::dyn_cast<Types::SetDecl>(type)->SubType()),
-	                             "update");
+	    loop = builder.CreateAdd(loop, MakeIntegerConstant(1), "update");
 	    builder.CreateStore(loop, loopVar);
 
 	    llvm::Value* endCond = builder.CreateICmpSLE(loop, high, "loopcond");

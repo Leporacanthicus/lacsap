@@ -2803,8 +2803,8 @@ ExprAST* Parser::ParseCaseExpr()
     }
     std::vector<LabelExprAST*> labels;
     std::vector<int>           lab;
-    ExprAST*                   otherwise{nullptr};
-    Types::TypeDecl*           type{nullptr};
+    ExprAST*                   otherwise{ nullptr };
+    Types::TypeDecl*           type{ nullptr };
     do
     {
 	if (CurrentToken().GetToken() == Token::Otherwise || CurrentToken().GetToken() == Token::Else)

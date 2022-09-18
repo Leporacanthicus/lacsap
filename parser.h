@@ -154,8 +154,6 @@ public:
                                           const Stack<const NamedObject*>& nameStack);
 
 private:
-    typedef StackWrapper<const NamedObject*> NameWrapper;
-
     Lexer                     lexer;
     Token                     curToken;
     Token                     nextToken;

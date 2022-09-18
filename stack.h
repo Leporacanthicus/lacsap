@@ -18,9 +18,9 @@ public:
     typedef std::map<std::string, T> MapType;
 
 private:
-    typedef typename MapType::const_iterator           MapIter;
-    typedef std::deque<MapType>                        StackType;
-    typedef typename StackType::const_reverse_iterator StackRIter;
+    using MapIter = typename MapType::const_iterator;
+    using StackType = std::deque<MapType>;
+    using StackRIter = typename StackType::const_reverse_iterator;
 
 public:
     Stack() { NewLevel(); }

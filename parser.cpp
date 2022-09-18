@@ -20,6 +20,8 @@
 #include <limits>
 #include <vector>
 
+using NameWrapper = StackWrapper<const NamedObject*>;
+
 ExprAST* Parser::Error(Token t, const std::string& msg)
 {
     if (Location loc = t.Loc())

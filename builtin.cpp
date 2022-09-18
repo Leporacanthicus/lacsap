@@ -22,9 +22,9 @@ namespace Builtin
 	return true;
     }
 
-    typedef const std::vector<ExprAST*> ArgList;
+    using ArgList = const std::vector<ExprAST*>;
+    using CreateBIFObject = std::function<FunctionBase*(const std::vector<ExprAST*>&)>;
 
-    typedef std::function<FunctionBase*(const std::vector<ExprAST*>&)>        CreateBIFObject;
     std::map<std::string, CreateBIFObject>                                    BIFMap;
 
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, const std::string& func,

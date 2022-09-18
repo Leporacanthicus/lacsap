@@ -346,6 +346,23 @@ namespace Builtin
 	bool             Semantics() override;
     };
 
+    class FunctionTrim : public FunctionBase
+    {
+    public:
+	using FunctionBase::FunctionBase;
+	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override { return Types::GetStringType(); }
+	bool             Semantics() override;
+    };
+
+    class FunctionIndex : public FunctionInt
+    {
+    public:
+	using FunctionInt::FunctionInt;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
+    };
+
     class FunctionMin : public FunctionSameAsArg2
     {
     public:
@@ -793,7 +810,7 @@ namespace Builtin
 
     llvm::Value* FunctionCopy::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Value* str = MakeAddressable(args[0]);
+	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
 	llvm::Value* start = args[1]->CodeGen();
 	llvm::Value* len = args[2]->CodeGen();
 
@@ -808,9 +825,37 @@ namespace Builtin
 
     bool FunctionCopy::Semantics()
     {
-	return args.size() == 3 && args[0]->Type()->Type() == Types::TypeDecl::TK_String &&
+	return args.size() == 3 && args[0]->Type()->IsStringLike() &&
 	       args[1]->Type()->Type() == Types::TypeDecl::TK_Integer &&
 	       args[2]->Type()->Type() == Types::TypeDecl::TK_Integer;
+    }
+
+    llvm::Value* FunctionTrim::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
+
+	llvm::Type*          strTy = Types::GetStringType()->LlvmType();
+	llvm::FunctionCallee f = GetFunction(strTy, { str->getType() }, "__StrTrim");
+
+	return builder.CreateCall(f, { str }, "trim");
+    }
+
+    bool FunctionTrim::Semantics() { return args.size() == 1 && args[0]->Type()->IsStringLike(); }
+
+    llvm::Value* FunctionIndex::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* str1 = MakeStringFromExpr(args[0], args[0]->Type());
+	llvm::Value* str2 = MakeStringFromExpr(args[1], args[1]->Type());
+
+	llvm::Type*          retTy = Types::GetIntegerType()->LlvmType();
+	llvm::FunctionCallee f = GetFunction(retTy, { str1->getType(), str2->getType() }, "__StrIndex");
+
+	return builder.CreateCall(f, { str1, str2 }, "Index");
+    }
+
+    bool FunctionIndex::Semantics()
+    {
+	return args.size() == 2 && args[0]->Type()->IsStringLike() && args[1]->Type()->IsStringLike();
     }
 
     llvm::Value* FunctionClock::CodeGen(llvm::IRBuilder<>& builder)
@@ -1044,6 +1089,9 @@ namespace Builtin
 	AddBIFCreator("paramcount", NEW(Paramcount));
 	AddBIFCreator("paramstr", NEW(Paramstr));
 	AddBIFCreator("copy", NEW(Copy));
+	AddBIFCreator("substr", NEW(Copy));
+	AddBIFCreator("trim", NEW(Trim));
+	AddBIFCreator("index", NEW(Index));
 	AddBIFCreator("max", NEW(Max));
 	AddBIFCreator("min", NEW(Min));
 	AddBIFCreator("sign", NEW(Sign));

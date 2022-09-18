@@ -20,7 +20,7 @@ begin
    for b in s2 do
       writeln(b);
    
-   s3 := [1000..1005];
+   s3 := [1000..1005] + [1100..1102, 1299..1301, 1490..1500];
    for b in s3 do
       writeln(b);
 end.

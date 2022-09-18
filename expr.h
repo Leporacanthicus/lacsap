@@ -425,9 +425,9 @@ public:
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_AssignExpr; }
     void         accept(ASTVisitor& v) override
     {
-	rhs->accept(v);
 	lhs->accept(v);
 	v.visit(this);
+	rhs->accept(v);
     }
 
 private:
@@ -825,6 +825,11 @@ public:
     llvm::Value* Address() override;
     ExprAST*     Expr() { return expr; }
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_TypeCastExpr; }
+    void         accept(ASTVisitor& v) override
+    {
+	expr->accept(v);
+	v.visit(this);
+    }
 
 private:
     ExprAST* expr;

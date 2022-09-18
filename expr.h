@@ -581,7 +581,7 @@ class BuiltinExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    BuiltinExprAST(const Location& w, Builtin::BuiltinFunctionBase* b)
+    BuiltinExprAST(const Location& w, Builtin::FunctionBase* b)
         : ExprAST(w, EK_BuiltinExpr, b->Type()), bif(b)
     {
     }
@@ -591,7 +591,7 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    Builtin::BuiltinFunctionBase* bif;
+    Builtin::FunctionBase* bif;
 };
 
 class IfExprAST : public ExprAST

@@ -13,15 +13,15 @@ class ExprAST;
 
 namespace Builtin
 {
-    class BuiltinFunctionBase
+    class FunctionBase
     {
     public:
-	BuiltinFunctionBase(const std::vector<ExprAST*>& a) : args(a) {}
+	FunctionBase(const std::vector<ExprAST*>& a) : args(a) {}
 	virtual llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) = 0;
 	virtual Types::TypeDecl* Type() const = 0;
 	virtual bool             Semantics() = 0;
 	virtual void             accept(ASTVisitor& v);
-	virtual ~BuiltinFunctionBase() {}
+	virtual ~FunctionBase() {}
 
     protected:
 	std::vector<ExprAST*> args;
@@ -29,7 +29,7 @@ namespace Builtin
 
     bool                 IsBuiltin(std::string funcname);
     void                 InitBuiltins();
-    BuiltinFunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args);
+    FunctionBase*        CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args);
 } // namespace Builtin
 
 #endif

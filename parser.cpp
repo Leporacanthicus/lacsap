@@ -2135,7 +2135,7 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
     }
 
     assert(isBuiltin && "Should be a builtin function by now...");
-    if (Builtin::BuiltinFunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
+    if (Builtin::FunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
     {
 	return new BuiltinExprAST(CurrentToken().Loc(), bif);
     }

@@ -57,15 +57,45 @@ static Token ConvertFloat(std::string& num, Location w)
     return Token(Token::Real, w, v);
 }
 
+template<typename T, typename FN>
+static T SafeConvert(const std::string& num, bool& err, FN fn, int base)
+{
+    err = false;
+    char* endPtr = 0;
+    T     v = fn(num.c_str(), &endPtr, base);
+    if (*endPtr != 0 || (v == std::numeric_limits<T>::max() && errno == ERANGE))
+    {
+	err = true;
+    }
+    return v;
+}
+
 static Token ConvertInt(std::string& num, Location w, int base)
 {
-    char*    endPtr = 0;
-    uint64_t v = strtoull(num.c_str(), &endPtr, base);
-    if (*endPtr != 0 || (v == std::numeric_limits<unsigned long long>::max() && errno == ERANGE))
+    bool     err;
+    uint64_t v = SafeConvert<uint64_t>(num, err, strtoull, base);
+    if (err)
     {
 	return Token(Token::Overflow, w);
     }
     return Token(Token::Integer, w, v);
+}
+
+bool ValidForBase(char c, int base)
+{
+    if (base == 10)
+	return isdigit(c);
+    if (base == 16)
+	return isxdigit(c);
+
+    if (base < 10 && (c >= '0' && c < '0' + base))
+    {
+	return true;
+    }
+
+    c = std::tolower(static_cast<unsigned char>(c));
+    // We have base > 10, as base = 10 has already been done.
+    return (isdigit(c) || (c >= 'a' && c < 'a' + (base - 10)));
 }
 
 Token Lexer::NumberToken()
@@ -97,8 +127,19 @@ Token Lexer::NumberToken()
 	{
 	case Intpart:
 	    ch = NextChar();
-	    while ((base == 10 && isdigit(ch)) || (base == 16 && isxdigit(ch)))
+	    while (ValidForBase(ch, base) || ch == '#')
 	    {
+		if (ch == '#' && base == 10)
+		{
+		    ch = NextChar();
+		    bool err;
+		    base = SafeConvert<int>(num, err, strtol, 10);
+		    if (err || base < 2 || base > 36)
+		    {
+			return Token(Token::Unknown, w);
+		    }
+		    num = "";
+		}
 		num += ch;
 		ch = NextChar();
 	    }

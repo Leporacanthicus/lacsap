@@ -58,19 +58,6 @@ void SetRangeFixup::DoIt()
     }
 }
 
-static bool isNumeric(Types::TypeDecl* t)
-{
-    switch (t->Type())
-    {
-    case Types::TypeDecl::TK_Integer:
-    case Types::TypeDecl::TK_LongInt:
-    case Types::TypeDecl::TK_Real:
-	return true;
-    default:
-	return false;
-    }
-}
-
 static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 {
     Types::Range*    r = ty->GetRange();
@@ -338,7 +325,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::Divide || op == Token::Power))
     {
-	if (!isNumeric(lty) || !isNumeric(rty))
+	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
 	{
 	    Error(b, "Invalid (non-numeric) type for divide");
 	}
@@ -661,13 +648,9 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 	    if (arg->Type()->IsCompound())
 	    {
 		bool bad = true;
-		if (Types::ArrayDecl* a = llvm::dyn_cast<Types::ArrayDecl>(arg->Type()))
+		if (llvm::isa<Types::ArrayDecl>(arg->Type()))
 		{
-		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
-		}
-		else
-		{
-		    bad = !llvm::isa<Types::StringDecl>(arg->Type());
+		    bad = !Types::IsCharArray(arg->Type()) && !llvm::isa<Types::StringDecl>(arg->Type());
 		}
 		if (bad)
 		{
@@ -712,9 +695,9 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 	    if (e->Type()->IsCompound())
 	    {
 		bool bad = true;
-		if (Types::ArrayDecl* a = llvm::dyn_cast<Types::ArrayDecl>(e->Type()))
+		if (llvm::isa<Types::ArrayDecl>(e->Type()))
 		{
-		    bad = !llvm::isa<Types::CharDecl>(a->SubType());
+		    bad = !Types::IsCharArray(e->Type());
 		}
 		else
 		{

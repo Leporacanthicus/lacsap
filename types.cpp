@@ -1291,6 +1291,24 @@ namespace Types
 	return booleanType;
     }
 
+    bool IsNumeric(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_Integer:
+	case TypeDecl::TK_LongInt:
+	case TypeDecl::TK_Real:
+	    return true;
+	default:
+	    return false;
+	}
+    }
+
+    bool IsCharArray(const TypeDecl* t)
+    {
+	return (t->Type() == TypeDecl::TK_Array && t->SubType()->Type() == TypeDecl::TK_Char);
+    }
+
     static RangeDecl* MakeRange(int64_t s, int64_t e)
     {
 	return new RangeDecl(new Range(s, e), GetIntegerType());

@@ -425,18 +425,11 @@ namespace Builtin
 	}
     }
 
-    bool FunctionSameAsArg::Semantics()
-    {
-	return (args.size() == 1) && (args[0]->Type()->Type() != Types::TypeDecl::TK_Char) &&
-	       (args[0]->Type()->Type() != Types::TypeDecl::TK_Enum) &&
-	       (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
-    }
+    bool FunctionSameAsArg::Semantics() { return (args.size() == 1) && Types::IsNumeric(args[0]->Type()); }
 
     bool FunctionSameAsArg2::Semantics()
     {
-	return (args.size() == 2) &&
-	       ((args[0]->Type()->IsIntegral()) || args[0]->Type()->Type() == Types::TypeDecl::TK_Real) &&
-	       ((args[1]->Type()->IsIntegral()) || args[1]->Type()->Type() == Types::TypeDecl::TK_Real);
+	return (args.size() == 2) && Types::IsNumeric(args[0]->Type()) && Types::IsNumeric(args[1]->Type());
     }
 
     llvm::Value* FunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
@@ -475,12 +468,7 @@ namespace Builtin
 	return builder.CreateFMul(a, a, "sqr");
     }
 
-    bool FunctionSqr::Semantics()
-    {
-	return args.size() == 1 && args[0]->Type()->Type() != Types::TypeDecl::TK_Char &&
-	       args[0]->Type()->Type() != Types::TypeDecl::TK_Enum &&
-	       (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
-    }
+    bool FunctionSqr::Semantics() { return args.size() == 1 && Types::IsNumeric(args[0]->Type()); }
 
     llvm::Value* FunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1040,11 +1028,7 @@ namespace Builtin
 	return builder.CreateSelect(sel, a, b, "min");
     }
 
-    bool FunctionSign::Semantics()
-    {
-	return args.size() == 1 &&
-	       (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
-    }
+    bool FunctionSign::Semantics() { return args.size() == 1 && Types::IsNumeric(args[0]->Type()); }
 
     llvm::Value* FunctionSign::CodeGen(llvm::IRBuilder<>& builder)
     {

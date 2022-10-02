@@ -2014,21 +2014,17 @@ llvm::Value* AssignExprAST::CodeGen()
 	return AssignSet();
     }
 
-    if (llvm::isa<StringExprAST>(rhs) && lhs->Type()->Type() == Types::TypeDecl::TK_Array)
+    if (llvm::isa<StringExprAST>(rhs) && Types::IsCharArray(lhs->Type()))
     {
-	Types::ArrayDecl* arr = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
-	if (arr->SubType()->Type() == Types::TypeDecl::TK_Char)
-	{
-	    StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
-	    assert(rhs && "Expected string to convert correctly");
-	    llvm::Value*              dest = lhsv->Address();
-	    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	    llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
-	    llvm::Value*              v = rhs->CodeGen();
-	    llvm::Align               dest_align{ std::max(AlignOfType(dest1->getType()), MIN_ALIGN) };
-	    llvm::Align               src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
-	    return builder.CreateMemCpy(dest1, dest_align, v, src_align, str->Str().size());
-	}
+	StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
+	assert(rhs && "Expected string to convert correctly");
+	llvm::Value*              dest = lhsv->Address();
+	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
+	llvm::Value*              v = rhs->CodeGen();
+	llvm::Align               dest_align{ std::max(AlignOfType(dest1->getType()), MIN_ALIGN) };
+	llvm::Align               src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
+	return builder.CreateMemCpy(dest1, dest_align, v, src_align, str->Str().size());
     }
 
     llvm::Value* dest = lhsv->Address();
@@ -2618,8 +2614,7 @@ llvm::Value* WriteAST::CodeGen()
 		std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
 		v = builder.CreateGEP(v, ind, "str_addr");
 	    }
-	    else if (type->Type() == Types::TypeDecl::TK_Array &&
-	             type->SubType()->Type() == Types::TypeDecl::TK_Char)
+	    else if (Types::IsCharArray(type))
 	    {
 		if (llvm::isa<StringExprAST>(arg.expr) || llvm::isa<BuiltinExprAST>(arg.expr))
 		{
@@ -3497,9 +3492,7 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
-    if (((current->Type() == Types::TypeDecl::TK_Array &&
-          current->SubType()->Type() == Types::TypeDecl::TK_Char) ||
-         current->Type() == Types::TypeDecl::TK_Char) &&
+    if ((Types::IsCharArray(current) || current->Type() == Types::TypeDecl::TK_Char) &&
         type->Type() == Types::TypeDecl::TK_String)
     {
 	return MakeStringFromExpr(expr, type);

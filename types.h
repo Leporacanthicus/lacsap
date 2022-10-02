@@ -24,6 +24,9 @@ namespace Types
     TypeDecl* GetStringType();
     TypeDecl* GetTimeStampType();
 
+    bool IsNumeric(const TypeDecl* t);
+    bool IsCharArray(const TypeDecl* t);
+
     // Range is either created by the user, or calculated on basetype
     class Range
     {
@@ -44,8 +47,6 @@ namespace Types
 	int64_t start;
 	int64_t end;
     };
-
-    using InitializerList = std::vector<std::pair<int, InitializerAST*>>;
 
     class TypeDecl
     {

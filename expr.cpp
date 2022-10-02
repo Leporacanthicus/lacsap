@@ -213,7 +213,7 @@ static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
     return CreateNamedAlloca(fn, var.Type(), var.Name());
 }
 
-static llvm::AllocaInst* CreateTempAlloca(Types::TypeDecl* ty)
+llvm::AllocaInst* CreateTempAlloca(Types::TypeDecl* ty)
 {
     // Get the "entry" block
     llvm::Function* fn = builder.GetInsertBlock()->getParent();
@@ -2621,7 +2621,7 @@ llvm::Value* WriteAST::CodeGen()
 	    else if (type->Type() == Types::TypeDecl::TK_Array &&
 	             type->SubType()->Type() == Types::TypeDecl::TK_Char)
 	    {
-		if (llvm::isa<StringExprAST>(arg.expr))
+		if (llvm::isa<StringExprAST>(arg.expr) || llvm::isa<BuiltinExprAST>(arg.expr))
 		{
 		    v = arg.expr->CodeGen();
 		}

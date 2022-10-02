@@ -22,6 +22,7 @@ namespace Types
     TypeDecl* GetVoidType();
     TypeDecl* GetTextType();
     TypeDecl* GetStringType();
+    TypeDecl* GetTimeStampType();
 
     // Range is either created by the user, or calculated on basetype
     class Range

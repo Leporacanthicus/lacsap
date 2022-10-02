@@ -952,5 +952,6 @@ llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type
 std::string          ShortName(const std::string& name);
 ExprAST*             Recast(ExprAST* a, const Types::TypeDecl* ty);
 size_t               AlignOfType(llvm::Type* ty);
+llvm::AllocaInst*    CreateTempAlloca(Types::TypeDecl* ty);
 
 #endif

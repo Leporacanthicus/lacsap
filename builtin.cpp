@@ -385,6 +385,38 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class FunctionGetTimeStamp : public FunctionVoid
+    {
+    public:
+	using FunctionVoid::FunctionVoid;
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class FunctionTime : public FunctionBase
+    {
+    public:
+	FunctionTime(const std::vector<ExprAST*>& a);
+	bool             Semantics() override;
+	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+
+    private:
+	Types::TypeDecl* arrayType;
+    };
+
+    class FunctionDate : public FunctionBase
+    {
+    public:
+	FunctionDate(const std::vector<ExprAST*>& a);
+	bool             Semantics() override;
+	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+
+    private:
+	Types::TypeDecl* arrayType;
+    };
+
     void FunctionBase::accept(ASTVisitor& v)
     {
 	for (auto a : args)
@@ -1010,7 +1042,8 @@ namespace Builtin
 
     bool FunctionSign::Semantics()
     {
-	return args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real;
+	return args.size() == 1 &&
+	       (args[0]->Type()->IsIntegral() || args[0]->Type()->Type() == Types::TypeDecl::TK_Real);
     }
 
     llvm::Value* FunctionSign::CodeGen(llvm::IRBuilder<>& builder)
@@ -1036,6 +1069,80 @@ namespace Builtin
 	llvm::Value* sel2 = builder.CreateICmpSLT(v, zero, "lt");
 	llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
 	return builder.CreateSelect(sel2, mone, res, "sgn2");
+    }
+
+    bool FunctionGetTimeStamp::Semantics()
+    {
+	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
+	       llvm::isa<VariableExprAST>(args[0]);
+    }
+
+    llvm::Value* FunctionGetTimeStamp::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	llvm::Value*     tsaddr = ts->Address();
+
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(), { tsaddr->getType() },
+	                                     "__gettimestamp");
+	return builder.CreateCall(f, { tsaddr });
+    }
+
+    FunctionTime::FunctionTime(const std::vector<ExprAST*>& a) : FunctionBase(a)
+    {
+	arrayType = new Types::ArrayDecl(
+	    Types::GetCharType(), { new Types::RangeDecl(new Types::Range(1, 9), Types::GetIntegerType()) });
+    }
+
+    bool FunctionTime::Semantics()
+    {
+	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
+	       llvm::isa<VariableExprAST>(args[0]);
+    }
+
+    Types::TypeDecl* FunctionTime::Type() const { return arrayType; }
+
+    llvm::Value* FunctionTime::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value*     storage = CreateTempAlloca(arrayType);
+	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	llvm::Value*     tsaddr = ts->Address();
+
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
+	                                     { tsaddr->getType(), storage->getType() }, "__Time");
+	builder.CreateCall(f, { tsaddr, storage });
+	llvm::Value* addr = builder.CreateGEP(storage, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
+	                                      "addr");
+
+	return addr;
+    }
+
+    FunctionDate::FunctionDate(const std::vector<ExprAST*>& a) : FunctionBase(a)
+    {
+	arrayType = new Types::ArrayDecl(
+	    Types::GetCharType(), { new Types::RangeDecl(new Types::Range(1, 11), Types::GetIntegerType()) });
+    }
+
+    bool FunctionDate::Semantics()
+    {
+	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
+	       llvm::isa<VariableExprAST>(args[0]);
+    }
+
+    Types::TypeDecl* FunctionDate::Type() const { return arrayType; }
+
+    llvm::Value* FunctionDate::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value*     storage = CreateTempAlloca(arrayType);
+	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	llvm::Value*     tsaddr = ts->Address();
+
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
+	                                     { tsaddr->getType(), storage->getType() }, "__Date");
+	builder.CreateCall(f, { tsaddr, storage });
+	llvm::Value* addr = builder.CreateGEP(storage, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
+	                                      "addr");
+
+	return addr;
     }
 
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
@@ -1117,5 +1224,8 @@ namespace Builtin
 	AddBIFCreator("put", NEW2(File, "put"));
 	AddBIFCreator("eof", NEW2(FileBool, "eof"));
 	AddBIFCreator("eoln", NEW2(FileBool, "eoln"));
+	AddBIFCreator("gettimestamp", NEW(GetTimeStamp));
+	AddBIFCreator("time", NEW(Time));
+	AddBIFCreator("date", NEW(Date));
     }
 } // namespace Builtin

@@ -1,5 +1,6 @@
 #include "types.h"
 #include "expr.h"
+#include "runtime/runtime.h"
 #include "trace.h"
 #include <climits>
 #include <llvm/IR/LLVMContext.h>
@@ -1216,6 +1217,7 @@ namespace Types
     static TypeDecl* realType = 0;
     static TypeDecl* charType = 0;
     static TypeDecl* booleanType = 0;
+    static TypeDecl* timeStampType = 0;
 
     TypeDecl* GetVoidType()
     {
@@ -1287,6 +1289,34 @@ namespace Types
 	    booleanType = new BoolDecl;
 	}
 	return booleanType;
+    }
+
+    static RangeDecl* MakeRange(int64_t s, int64_t e)
+    {
+	return new RangeDecl(new Range(s, e), GetIntegerType());
+    }
+
+    TypeDecl* GetTimeStampType()
+    {
+	if (!timeStampType)
+	{
+	    // DateValid, TimeValid, Year, Month, Day, Hour, Minute, Second
+	    std::vector<FieldDecl*> fields = {
+		new FieldDecl("DateValid", GetBooleanType(), false),
+		new FieldDecl("TimeValid", GetBooleanType(), false),
+		new FieldDecl("Year", GetIntegerType(), false),
+		new FieldDecl("Month", MakeRange(1, 12), false),
+		new FieldDecl("Day", MakeRange(1, 31), false),
+		new FieldDecl("Hour", MakeRange(0, 23), false),
+		new FieldDecl("Minute", MakeRange(0, 59), false),
+		new FieldDecl("Second", MakeRange(0, 61), false),
+		new FieldDecl("MicroSecond", MakeRange(0, 999999), false),
+	    };
+	    timeStampType = new RecordDecl(fields, nullptr);
+	    assert(sizeof(TimeStamp) == timeStampType->Size() &&
+	           "Runtime and Pascal type should match in size");
+	}
+	return timeStampType;
     }
 
     void Finalize(llvm::DIBuilder* builder)

@@ -43,6 +43,19 @@ typedef struct
     unsigned char str[MaxStringLen];
 } String;
 
+struct TimeStamp
+{
+    bool DateValid;
+    bool TimeValid;
+    int  Year;
+    int  Month;
+    int  Day;
+    int  Hour;
+    int  Minute;
+    int  Second;
+    int  MicroSecond;
+};
+
 /*******************************************
  * Local variables
  *******************************************

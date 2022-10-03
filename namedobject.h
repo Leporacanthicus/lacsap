@@ -40,21 +40,62 @@ private:
 class VarDef : public NamedObject
 {
 public:
-    VarDef(const std::string& nm, Types::TypeDecl* ty, bool ref = false, bool external = false,
-           bool closure = false)
-        : NamedObject(NK_Var, nm, ty), isRef(ref), isExt(external), isClosure(closure)
+    enum class Flags
+    {
+	Reference = 1 << 0,
+	External = 1 << 1,
+	Protected = 1 << 2,
+	Closure = 1 << 3,
+	None = 0,
+	All = Reference | External | Protected | Closure,
+    };
+
+    VarDef(const std::string& nm, Types::TypeDecl* ty, Flags f = Flags::None)
+        : NamedObject(NK_Var, nm, ty), flags(f)
     {
     }
-    bool        IsRef() const { return isRef; }
-    bool        IsExternal() const { return isExt; }
-    bool        IsClosure() const { return isClosure; }
+    bool        IsRef() const;
+    bool        IsExternal() const;
+    bool        IsProtected() const;
+    bool        IsClosure() const;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 
 private:
-    bool isRef;     // "var" arguments are "references"
-    bool isExt;     // global variable defined outside this module
-    bool isClosure; // special closure variable
+    Flags flags;
 };
+
+constexpr VarDef::Flags operator&(const VarDef::Flags a, const VarDef::Flags b)
+{
+    return static_cast<VarDef::Flags>(static_cast<const int>(a) & static_cast<const int>(b));
+}
+
+constexpr VarDef::Flags operator|(const VarDef::Flags a, const VarDef::Flags b)
+{
+    return static_cast<VarDef::Flags>(static_cast<const int>(a) | static_cast<const int>(b));
+}
+
+constexpr VarDef::Flags operator|=(VarDef::Flags& a, const VarDef::Flags b)
+{
+    a = a | b;
+    return a;
+}
+
+inline bool VarDef::IsRef() const
+{
+    return (flags & VarDef::Flags::Reference) != VarDef::Flags::None;
+}
+inline bool VarDef::IsExternal() const
+{
+    return (flags & VarDef::Flags::External) != VarDef::Flags::None;
+}
+inline bool VarDef::IsProtected() const
+{
+    return (flags & VarDef::Flags::Protected) != VarDef::Flags::None;
+}
+inline bool VarDef::IsClosure() const
+{
+    return (flags & VarDef::Flags::Closure) != VarDef::Flags::None;
+}
 
 inline bool operator<(const VarDef& lhs, const VarDef& rhs)
 {
@@ -79,8 +120,15 @@ private:
 class TypeDef : public NamedObject
 {
 public:
-    TypeDef(const std::string& nm, Types::TypeDecl* ty) : NamedObject(NK_Type, nm, ty) {}
+    TypeDef(const std::string& nm, Types::TypeDecl* ty, bool restr = false)
+        : NamedObject(NK_Type, nm, ty), restricted(restr)
+    {
+    }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Type; }
+    bool        IsRestricted() { return restricted; }
+
+private:
+    bool restricted;
 };
 
 class ConstDef : public NamedObject

@@ -111,6 +111,7 @@ public:
 	Private,
 	Public,
 	Protected,
+	Restricted,
 	Constructor,
 	Destructor,
 	Label,

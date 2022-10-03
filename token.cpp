@@ -190,6 +190,7 @@ const TokenEntry tokenTable[] = {
     { Token::Private, true, -1, "private" },
     { Token::Public, true, -1, "public" },
     { Token::Protected, true, -1, "protected" },
+    { Token::Restricted, true, -1, "restricted" },
     { Token::Constructor, true, -1, "constructor" },
     { Token::Destructor, true, -1, "destructor" },
     { Token::Label, true, -1, "label" },

@@ -275,9 +275,9 @@ const EnumDef* Parser::GetEnumValue(const std::string& name)
     return llvm::dyn_cast_or_null<EnumDef>(nameStack.Find(name));
 }
 
-bool Parser::AddType(const std::string& name, Types::TypeDecl* ty)
+bool Parser::AddType(const std::string& name, Types::TypeDecl* ty, bool restricted)
 {
-    return nameStack.Add(name, new TypeDef(name, ty));
+    return nameStack.Add(name, new TypeDef(name, ty, restricted));
 }
 
 bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
@@ -716,9 +716,10 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
+	bool restricted = AcceptToken(Token::Restricted);
 	if (Types::TypeDecl* ty = ParseType(nm, true))
 	{
-	    if (!AddType(nm, ty))
+	    if (!AddType(nm, ty, restricted))
 	    {
 		Error(token, "Name " + nm + " is already in use.");
 		return;
@@ -2224,7 +2225,7 @@ VarDeclAST* Parser::ParseVarDecls()
 		{
 		    VarDef v(n, type);
 		    varList.push_back(v);
-		    if (!nameStack.Add(n, new VarDef(n, type)))
+		    if (!nameStack.Add(n, new VarDef(v)))
 		    {
 			return reinterpret_cast<VarDeclAST*>(
 			    Error(CurrentToken(), "Name '" + n + "' is already defined"));
@@ -2326,8 +2327,8 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     if (AcceptToken(Token::LeftParen))
     {
 	std::vector<std::string> names;
-	bool                     isRef = false;
 
+	VarDef::Flags flags = VarDef::Flags::None;
 	while (!AcceptToken(Token::RightParen))
 	{
 	    if (CurrentToken().GetToken() == Token::Function || CurrentToken().GetToken() == Token::Procedure)
@@ -2335,7 +2336,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		if (PrototypeAST* proto = ParsePrototype(false))
 		{
 		    Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
-		    VarDef           v(proto->Name(), type, false);
+		    VarDef           v(proto->Name(), type);
 		    args.push_back(v);
 		    if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Semicolon, true))
 		    {
@@ -2349,9 +2350,13 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	    }
 	    else
 	    {
+		if (AcceptToken(Token::Protected))
+		{
+		    flags |= VarDef::Flags::Protected;
+		}
 		if (AcceptToken(Token::Var))
 		{
-		    isRef = true;
+		    flags |= VarDef::Flags::Reference;
 		}
 		if (!Expect(Token::Identifier, false))
 		{
@@ -2367,10 +2372,10 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		    {
 			for (auto n : names)
 			{
-			    VarDef v(n, type, isRef);
+			    VarDef v(n, type, flags);
 			    args.push_back(v);
 			}
-			isRef = false;
+			flags = VarDef::Flags::None;
 			names.clear();
 			if (CurrentToken().GetToken() != Token::RightParen && !Expect(Token::Semicolon, true))
 			{
@@ -3473,8 +3478,8 @@ ExprAST* Parser::Parse(ParserType type)
     NextToken();
     if (type == Program)
     {
-	VarDef input("input", Types::GetTextType(), false, true);
-	VarDef output("output", Types::GetTextType(), false, true);
+	VarDef input("input", Types::GetTextType(), VarDef::Flags::External);
+	VarDef output("output", Types::GetTextType(), VarDef::Flags::External);
 	nameStack.Add("input", new VarDef(input));
 	nameStack.Add("output", new VarDef(output));
 	std::vector<VarDef> varList{ input, output };

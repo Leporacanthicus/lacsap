@@ -748,7 +748,7 @@ namespace Types
 	    membfuncs = baseobj->membfuncs;
 	}
 
-	std::vector<VarDef> self = { VarDef("self", this, true) };
+	std::vector<VarDef> self = { VarDef("self", this, VarDef::Flags::Reference) };
 	for (auto i : mf)
 	{
 	    if (!i->IsStatic())

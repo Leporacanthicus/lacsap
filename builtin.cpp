@@ -1201,6 +1201,7 @@ namespace Builtin
 	AddBIFCreator("arctan2", NEW2(Float2Arg, "atan2"));
 	AddBIFCreator("fmod", NEW2(Float2Arg, "fmod"));
 	AddBIFCreator("reset", NEW2(FileInfo, "reset"));
+	AddBIFCreator("page", NEW2(FileInfo, "page"));
 	AddBIFCreator("rewrite", NEW2(FileInfo, "rewrite"));
 	AddBIFCreator("append", NEW2(FileInfo, "append"));
 	AddBIFCreator("close", NEW2(File, "close"));

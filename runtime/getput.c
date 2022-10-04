@@ -40,3 +40,13 @@ int __get(File* file)
     }
     return 0;
 }
+
+void __page(File* file)
+{
+    struct FileEntry* f = 0;
+    if (file->handle < MaxPascalFiles && files[file->handle].inUse)
+    {
+	f = &files[file->handle];
+    }
+    fputc('\014', f->file);
+}

@@ -431,14 +431,13 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	return;
     }
 
-    if (llvm::isa<Types::ArrayDecl>(lty) && !llvm::isa<Types::StringDecl>(lty) &&
-        llvm::isa<StringExprAST>(a->rhs))
+    if (Types::IsCharArray(lty) && !llvm::isa<Types::StringDecl>(lty) && llvm::isa<StringExprAST>(a->rhs))
     {
 	StringExprAST*    s = llvm::dyn_cast<StringExprAST>(a->rhs);
 	Types::ArrayDecl* aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
-	if (aty->SubType()->Type() == Types::TypeDecl::TK_Char && aty->Ranges().size() == 1)
+	if (aty->Ranges().size() == 1)
 	{
-	    if (aty->Ranges()[0]->GetRange()->Size() == s->Str().size())
+	    if (aty->Ranges()[0]->GetRange()->Size() >= s->Str().size())
 	    {
 		return;
 	    }

@@ -766,16 +766,16 @@ class CCNames : public Parser::CommaConsumer
 {
 public:
     bool Consume(Parser& parser)
-    {
-	// Don't move forward here.
-	if (parser.Expect(Token::Identifier, false))
 	{
-	    names.push_back(parser.CurrentToken().GetIdentName());
-	    parser.AssertToken(Token::Identifier);
-	    return true;
-	}
-	return false;
-    }
+	    // Don't move forward here.
+	    if (parser.Expect(Token::Identifier, false))
+	    {
+	        names.push_back(parser.CurrentToken().GetIdentName());
+	        parser.AssertToken(Token::Identifier);
+	        return true;
+	    }
+	    return false;
+        }
     std::vector<std::string>& Names() { return names; }
 
 private:
@@ -786,24 +786,24 @@ class CCIntegers : public Parser::CommaConsumer
 {
 public:
     virtual bool GetValue(Parser& parser, int& val)
-    {
-	if (parser.CurrentToken().GetToken() == Token::Integer)
 	{
-	    val = parser.CurrentToken().GetIntVal();
-	}
-	return parser.Expect(Token::Integer, true);
-    }
+	    if (parser.CurrentToken().GetToken() == Token::Integer)
+	    {
+	        val = parser.CurrentToken().GetIntVal();
+	    }
+	    return parser.Expect(Token::Integer, true);
+        }
     bool Consume(Parser& parser) override
-    {
-	// Don't move forward here.
-	int val;
-	if (GetValue(parser, val))
 	{
-	    values.push_back(val);
-	    return true;
-	}
-	return false;
-    }
+	    // Don't move forward here.
+	    int val;
+	    if (GetValue(parser, val))
+	    {
+	        values.push_back(val);
+	        return true;
+	    }
+	    return false;
+        }
     std::vector<int>& Values() { return values; }
 
 private:
@@ -1370,6 +1370,30 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 
     switch (tt)
     {
+    case Token::Type:
+    {
+	// Accept "type of x", where x is a variable-expression. ISO10206 feature.
+	NextToken();
+	if (!Expect(Token::Of, true))
+	{
+	    return 0;
+	}
+	if (Expect(Token::Identifier, false))
+	{
+	    std::string varName = CurrentToken().GetIdentName();
+	    if (const NamedObject* def = nameStack.Find(varName))
+	    {
+		if (!llvm::isa<VarDef>(def))
+		{
+		    return ErrorT(CurrentToken(), "Expected variable name");
+		}
+		NextToken();
+		return def->Type();
+	    }
+	}
+	return ErrorT(CurrentToken(), "Expected an identifier for 'type of'");
+    }
+    break;
     case Token::Identifier:
     {
 	if (!GetEnumValue(CurrentToken().GetIdentName()))
@@ -2711,6 +2735,10 @@ ExprAST* Parser::ParseForExpr()
     if (!def)
     {
 	return Error(CurrentToken(), "Loop variable not found");
+    }
+    if (!llvm::isa<VarDef>(def))
+    {
+	return Error(CurrentToken(), "Loop induction must be a variable");
     }
     VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
     if (AcceptToken(Token::Assign))

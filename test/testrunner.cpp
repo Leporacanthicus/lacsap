@@ -426,6 +426,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Time", "time.pas", "" },
     { 0, "Basic", "Time", "time.pas", "" },
     { 0, "Basic", "Pred & Succ w. 2 args", "predsucc.pas", "" },
+    { 0, "Basic", "Type Of", "typeof.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.
@@ -444,6 +445,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "For w. real", "forreal.pas", "" },
     { 0, "CompErr", "For w. ptr", "forptr.pas", "" },
     { 0, "CompErr", "For w. rec", "forrec.pas", "" },
+    { 0, "CompErr", "For w. type", "fortype.pas", "" },
     { 0, "CompErr", "Arr Index", "arr.pas", "" },
     { 0, "CompErr", "Binary Ops", "binops.pas", "" },
     { 0, "CompErr", "Boolean Ops", "boolop.pas", "" },

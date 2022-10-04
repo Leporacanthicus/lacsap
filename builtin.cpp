@@ -521,15 +521,24 @@ namespace Builtin
     llvm::Value* FunctionSucc::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateAdd(a, MakeConstant(1, args[0]->Type()), "succ");
+	llvm::Value* b = (args.size() == 2) ? args[1]->CodeGen() : MakeConstant(1, args[0]->Type());
+
+	return builder.CreateAdd(a, b, "succ");
     }
 
-    bool FunctionSucc::Semantics() { return args.size() == 1 && args[0]->Type()->IsIntegral(); }
+    bool FunctionSucc::Semantics()
+    {
+	return (args.size() == 1 && args[0]->Type()->IsIntegral()) ||
+	       (args.size() == 2 && args[0]->Type()->IsIntegral() &&
+	        args[1]->Type() == Types::GetIntegerType());
+    }
 
     llvm::Value* FunctionPred::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* a = args[0]->CodeGen();
-	return builder.CreateSub(a, MakeConstant(1, args[0]->Type()), "pred");
+	llvm::Value* b = (args.size() == 2) ? args[1]->CodeGen() : MakeConstant(1, args[0]->Type());
+
+	return builder.CreateSub(a, b, "pred");
     }
 
     llvm::Value* FunctionNew::CodeGen(llvm::IRBuilder<>& builder)

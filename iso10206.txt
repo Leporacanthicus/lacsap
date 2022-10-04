@@ -8,27 +8,18 @@ functionality appearing anytime soon (or ever).
 Constants:
    Array and struct constant declarations
 
-   Extended integers, e.g 16#ff or  8#377 same as 255.
-
 Types:
    complex
-   Restricted types (Opaque types for modules)
+   Restricted types (Opaque types for modules) [supported by parser]
 
 Variables:
    Value initializers.
 
-Operators:
-   **, pow
-
-Control structure:
-   for m in setvar do ...
-
 Functions
-   DateStamp, TimeStamp
+   DateStamp
 
    { string functions }
-   trim, index
-   substr(s, i, j), substr(s, i)
+   substr(s, i)
    EQ(s1, s2)
    LT(s1, s2)
    GT(s1, s2)
@@ -46,9 +37,7 @@ Functions
    position(f)
    lastposition(f)
 
-   card { the equivalent of popcnt }
-
 Modules
 
    New keywords:
-     "module", "export", "import", "interface", "implementation", "qualified", "restricted"
+     "module", "export", "import", "interface", "implementation", "qualified"

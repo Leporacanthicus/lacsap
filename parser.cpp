@@ -385,7 +385,7 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     return result;
 }
 
-int64_t ConstDeclToInt(const Constants::ConstDecl* c)
+static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
 {
     if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
     {
@@ -410,13 +410,13 @@ int64_t ConstDeclToInt(const Constants::ConstDecl* c)
 Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken)
 {
-    const Constants::ConstDecl* startC = ParseConstExpr(Token::DotDot);
+    const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
     if (!(startC && Expect(Token::DotDot, true)))
     {
 	return 0;
     }
 
-    const Constants::ConstDecl* endC = ParseConstExpr(endToken, altToken);
+    const Constants::ConstDecl* endC = ParseConstExpr({ endToken, altToken });
     if (!endC)
     {
 	return 0;
@@ -501,7 +501,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     {
     case Token::LeftParen:
 	AssertToken(Token::LeftParen);
-	cd = ParseConstExpr(Token::RightParen);
+	cd = ParseConstExpr({ Token::RightParen });
 	// We don't eat the right paren here, it gets eaten later.
 	if (!Expect(Token::RightParen, false))
 	{
@@ -643,7 +643,17 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
     }
 }
 
-const Constants::ConstDecl* Parser::ParseConstExpr(Token::TokenType token, Token::TokenType altToken)
+static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
+{
+    for (auto i : list)
+    {
+	if (t == i)
+	    return true;
+    }
+    return false;
+}
+
+const Constants::ConstDecl* Parser::ParseConstExpr(const TerminatorList& terminators)
 {
     Location                    loc = CurrentToken().Loc();
     const Constants::ConstDecl* cd;
@@ -655,14 +665,14 @@ const Constants::ConstDecl* Parser::ParseConstExpr(Token::TokenType token, Token
 	    return 0;
 	}
 
-	if (CurrentToken().GetToken() != token && CurrentToken().GetToken() != altToken)
+	if (!IsOneOf(CurrentToken().GetToken(), terminators))
 	{
 	    if (!(cd = ParseConstRHS(0, cd)))
 	    {
 		return 0;
 	    }
 	}
-    } while (CurrentToken().GetToken() != token && CurrentToken().GetToken() != altToken);
+    } while (!IsOneOf(CurrentToken().GetToken(), terminators));
     return cd;
 }
 
@@ -681,7 +691,7 @@ void Parser::ParseConstDef()
 	{
 	    return;
 	}
-	const Constants::ConstDecl* cd = ParseConstExpr(Token::Semicolon);
+	const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
 	if (!cd)
 	{
 	    Error(CurrentToken(), "Invalid constant value");
@@ -2515,7 +2525,7 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 		return reinterpret_cast<BlockAST*>(
 		    Error(CurrentToken(), "Can't use label in a different scope than the declaration"));
 	    }
-	    v.push_back(new LabelExprAST(token.Loc(), { n }, 0));
+	    v.push_back(new LabelExprAST(token.Loc(), { { n, n } }, 0));
 	}
 	else if (ExprAST* ast = ParseStatement())
 	{
@@ -2837,9 +2847,10 @@ ExprAST* Parser::ParseCaseExpr()
 	return 0;
     }
     std::vector<LabelExprAST*> labels;
-    std::vector<int>           lab;
+    std::vector<std::pair<int, int>> ranges;
     ExprAST*                   otherwise{ nullptr };
     Types::TypeDecl*           type{ nullptr };
+
     do
     {
 	if (CurrentToken().GetToken() == Token::Otherwise || CurrentToken().GetToken() == Token::Else)
@@ -2849,7 +2860,7 @@ ExprAST* Parser::ParseCaseExpr()
 	    {
 		return Error(CurrentToken(), "An 'otherwise' or 'else' already used in this case block");
 	    }
-	    if (lab.size())
+	    if (ranges.size())
 	    {
 		return Error(CurrentToken(), "Can't have multiple case labels with 'otherwise' "
 		                             "or 'else' case label");
@@ -2863,7 +2874,7 @@ ExprAST* Parser::ParseCaseExpr()
 	}
 	else
 	{
-	    const Constants::ConstDecl* cd = ParseConstExpr(Token::Comma, Token::Colon);
+	    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot });
 	    int                         value = ConstDeclToInt(cd);
 	    if (type)
 	    {
@@ -2876,7 +2887,21 @@ ExprAST* Parser::ParseCaseExpr()
 	    {
 		type = cd->Type();
 	    }
-	    lab.push_back(value);
+	    int end = value;
+	    if (AcceptToken(Token::DotDot))
+	    {
+		cd = ParseConstExpr({ Token::Comma, Token::Colon });
+		if (type != cd->Type())
+		{
+		    return Error(CurrentToken(), "Expected case labels to have same type");
+		}
+		end = ConstDeclToInt(cd);
+		if (end <= value)
+		{
+		    return Error(CurrentToken(), "Expected case label range to be low..high");
+		}
+	    }
+	    ranges.push_back({ value, end });
 	}
 
 	switch (CurrentToken().GetToken())
@@ -2889,8 +2914,8 @@ ExprAST* Parser::ParseCaseExpr()
 	{
 	    Location locColon = NextToken().Loc();
 	    ExprAST* s = ParseStatement();
-	    labels.push_back(new LabelExprAST(locColon, lab, s));
-	    lab.clear();
+	    labels.push_back(new LabelExprAST(locColon, ranges, s));
+	    ranges.clear();
 	    if (!ExpectSemicolonOrEnd())
 	    {
 		return 0;

@@ -726,18 +726,19 @@ class LabelExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    LabelExprAST(const Location& w, const std::vector<int>& lab, ExprAST* st)
+    LabelExprAST(const Location& w, const std::vector<std::pair<int, int>>& lab, ExprAST* st)
         : ExprAST(w, EK_LabelExpr), labelValues(lab), stmt(st)
     {
     }
     void         DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
-    llvm::Value* CodeGen(llvm::SwitchInst* inst, llvm::BasicBlock* afterBB, llvm::Type* ty);
+    llvm::Value*                            CodeGen(llvm::BasicBlock* caseBB, llvm::BasicBlock* afterBB);
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
     void         accept(ASTVisitor& v) override;
+    const std::vector<std::pair<int, int>>& LabelValues() { return labelValues; }
 
 private:
-    std::vector<int> labelValues;
+    std::vector<std::pair<int, int>> labelValues;
     ExprAST*         stmt;
 };
 

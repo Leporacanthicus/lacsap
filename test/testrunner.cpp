@@ -427,6 +427,8 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Time", "time.pas", "" },
     { 0, "Basic", "Pred & Succ w. 2 args", "predsucc.pas", "" },
     { 0, "Basic", "Type Of", "typeof.pas", "" },
+    { 0, "Basic", "Caserange", "caserange.pas", "" },
+    { 0, "Basic", "Caserange2", "caserange2.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

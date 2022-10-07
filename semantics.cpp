@@ -736,14 +736,19 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 void TypeCheckVisitor::CheckCaseExpr(CaseExprAST* c)
 {
     TRACE();
-    std::vector<int> vals;
+    if (!c->expr->Type()->IsIntegral())
+    {
+	Error(c, "Case selection must be integral type");
+    }
+
+    std::vector<std::pair<int, int>> vals;
     for (auto l : c->labels)
     {
 	for (auto i : l->labelValues)
 	{
 	    if (std::find(vals.begin(), vals.end(), i) != vals.end())
 	    {
-		Error(c, "Duplicate case label " + std::to_string(i));
+		Error(c, "Duplicate case label " + std::to_string(i.first));
 	    }
 	    vals.push_back(i);
 	}

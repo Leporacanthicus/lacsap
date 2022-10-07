@@ -2945,7 +2945,11 @@ void LabelExprAST::DoDump(std::ostream& out) const
 	{
 	    out << ", ";
 	}
-	out << l;
+	out << l.first;
+	if (l.first != l.second)
+	{
+	    out << ".." << l.second;
+	}
 	first = false;
     }
     out << ": ";
@@ -2959,7 +2963,8 @@ llvm::Value* LabelExprAST::CodeGen()
     BasicDebugInfo(this);
 
     assert(!stmt && "Expected no statement for 'goto' label expression");
-    llvm::BasicBlock* labelBB = CreateGotoTarget(labelValues[0]);
+    assert(labelValues.size() == 1 && labelValues[0].first == labelValues[0].second);
+    llvm::BasicBlock* labelBB = CreateGotoTarget(labelValues[0].first);
     // Make LLVM-IR valid by jumping to the neew block!
     llvm::Value* v = builder.CreateBr(labelBB);
     builder.SetInsertPoint(labelBB);
@@ -2967,24 +2972,17 @@ llvm::Value* LabelExprAST::CodeGen()
     return v;
 }
 
-llvm::Value* LabelExprAST::CodeGen(llvm::SwitchInst* sw, llvm::BasicBlock* afterBB, llvm::Type* ty)
+llvm::Value* LabelExprAST::CodeGen(llvm::BasicBlock* caseBB, llvm::BasicBlock* afterBB)
 {
     TRACE();
 
     BasicDebugInfo(this);
 
     assert(stmt && "Expected a statement for 'case' label expression");
-    llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(theContext, "case", theFunction);
-
     builder.SetInsertPoint(caseBB);
     stmt->CodeGen();
     builder.CreateBr(afterBB);
-    for (auto l : labelValues)
-    {
-	llvm::IntegerType* intTy = llvm::dyn_cast<llvm::IntegerType>(ty);
-	sw->addCase(llvm::ConstantInt::get(intTy, l), caseBB);
-    }
+
     return caseBB;
 }
 
@@ -3028,30 +3026,83 @@ void CaseExprAST::accept(ASTVisitor& v)
     v.visit(this);
 }
 
+static uint64_t Distance(std::pair<int, int> p)
+{
+    assert(p.first <= p.second && "Expect ordered pair");
+    if (p.first > 0)
+    {
+	return p.second - p.first;
+    }
+    if (p.first < 0 && p.second > 0)
+    {
+	return (uint64_t)-p.first + p.second;
+    }
+    // Both are negative.
+    return -p.first - -p.second;
+}
+
 llvm::Value* CaseExprAST::CodeGen()
 {
     TRACE();
+
+    const int MaxRangeInSwitch = 32;
 
     BasicDebugInfo(this);
 
     llvm::Value* v = expr->CodeGen();
     llvm::Type*  ty = v->getType();
-    if (!v->getType()->isIntegerTy())
-    {
-	return ErrorV(this, "Case selection must be integral type");
-    }
 
-    llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* bb = builder.GetInsertBlock();
+
+    llvm::Function*   theFunction = bb->getParent();
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "after", theFunction);
     llvm::BasicBlock* defaultBB = afterBB;
     if (otherwise)
     {
 	defaultBB = llvm::BasicBlock::Create(theContext, "default", theFunction);
     }
-    llvm::SwitchInst* sw = builder.CreateSwitch(v, defaultBB, labels.size());
+    std::vector<std::pair<LabelExprAST*, llvm::BasicBlock*>> labbb;
     for (auto ll : labels)
     {
-	ll->CodeGen(sw, afterBB, ty);
+	llvm::BasicBlock* caseBB = llvm::BasicBlock::Create(theContext, "case", theFunction);
+	ll->CodeGen(caseBB, afterBB);
+	labbb.push_back({ ll, caseBB });
+    }
+
+    builder.SetInsertPoint(bb);
+    for (auto ll : labbb)
+    {
+	for (auto val : ll.first->LabelValues())
+	{
+	    if (Distance(val) > MaxRangeInSwitch)
+	    {
+		llvm::BasicBlock* next = llvm::BasicBlock::Create(theContext, "next", theFunction);
+		llvm::BasicBlock* maybe = llvm::BasicBlock::Create(theContext, "maybe", theFunction);
+		llvm::Value*      lt = builder.CreateICmpSLT(v, MakeIntegerConstant(val.first), "lt");
+		builder.CreateCondBr(lt, next, maybe);
+		builder.SetInsertPoint(maybe);
+		llvm::Value* gt = builder.CreateICmpSGT(v, MakeIntegerConstant(val.second), "gt");
+		builder.CreateCondBr(gt, next, ll.second);
+		builder.SetInsertPoint(next);
+	    }
+	}
+    }
+
+    llvm::SwitchInst* sw = builder.CreateSwitch(v, defaultBB, labels.size());
+
+    for (auto ll : labbb)
+    {
+	for (auto val : ll.first->LabelValues())
+	{
+	    if (Distance(val) <= MaxRangeInSwitch)
+	    {
+		for (int i = val.first; i <= val.second; i++)
+		{
+		    llvm::IntegerType* intTy = llvm::dyn_cast<llvm::IntegerType>(ty);
+		    sw->addCase(llvm::ConstantInt::get(intTy, i), ll.second);
+		}
+	    }
+	}
     }
 
     if (otherwise)

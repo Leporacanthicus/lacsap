@@ -9,6 +9,8 @@
 
 #include <string>
 
+using TerminatorList = std::vector<Token::TokenType>;
+
 class Parser
 {
 public:
@@ -88,8 +90,7 @@ public:
     void  ParseConstDef();
     Token TranslateToken(const Token& token);
 
-    const Constants::ConstDecl* ParseConstExpr(Token::TokenType token,
-                                               Token::TokenType altToken = Token::Unknown);
+    const Constants::ConstDecl* ParseConstExpr(const TerminatorList& terminators);
     const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
     Constants::ConstDecl*       ParseConstEval(const Constants::ConstDecl* lhs, const Token& binOp,
                                                const Constants::ConstDecl* rhs);

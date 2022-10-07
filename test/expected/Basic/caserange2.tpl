@@ -1,0 +1,15 @@
+One thousand: 1001
+Two thousand: 2002
+Three thousand: 3003
+Four thousand: 4004
+Five thousand: 5005
+Six thousand: 6006
+Seven thousand: 7007
+Eight thousand: 8008
+Nine thousand: 9009
+Ten thousand: 10010
+Eleven thousand: 11011
+Twelve thousand: 12012
+Thirteen thousand: 13013
+Fourteen thousand: 14014
+Fifteen thousand: 15015

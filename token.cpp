@@ -98,24 +98,11 @@ const TokenEntry tokenTable[] = {
     { Token::If, true, -1, "if" },
     { Token::Then, true, -1, "then" },
     { Token::Else, true, -1, "else" },
-    {
-        Token::While,
-        true,
-        -1,
-        "while",
-    },
-    {
-        Token::Repeat,
-        true,
-        -1,
-        "repeat",
-    },
-    {
-        Token::Until,
-        true,
-        -1,
-        "until",
-    },
+    // clang-format off
+    { Token::While, true, -1, "while", },
+    { Token::Repeat, true, -1, "repeat", },
+    { Token::Until, true, -1, "until", },
+    // clang-format on
     { Token::Begin, true, -1, "begin" },
     { Token::End, true, -1, "end" },
     { Token::Case, true, -1, "case" },
@@ -197,6 +184,7 @@ const TokenEntry tokenTable[] = {
     { Token::Goto, true, -1, "goto" },
     { Token::Uses, true, -1, "uses" },
     { Token::At, false, -1, "@" },
+    { Token::Bindable, true, -1, "bindable" },
     { Token::LineNumber, true, -1, "__LINE__" },
     { Token::FileName, true, -1, "__FILE__" },
     { Token::SizeOf, true, -1, "sizeof" },

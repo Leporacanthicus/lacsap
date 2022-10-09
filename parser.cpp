@@ -1366,14 +1366,16 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 {
     TRACE();
     Token::TokenType tt = CurrentToken().GetToken();
-    if (tt == Token::Packed)
+    if (AcceptToken(Token::Packed))
     {
-	tt = NextToken().GetToken();
+	tt = CurrentToken().GetToken();
 	if (tt != Token::Array && tt != Token::Record && tt != Token::Set && tt != Token::File)
 	{
 	    return ErrorT(CurrentToken(), "Expected 'array', 'record', 'file' or 'set' after 'packed'");
 	}
     }
+
+    AcceptToken(Token::Bindable);
 
     Token token = TranslateToken(CurrentToken());
     tt = token.GetToken();
@@ -1404,6 +1406,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 	return ErrorT(CurrentToken(), "Expected an identifier for 'type of'");
     }
     break;
+   	
     case Token::Identifier:
     {
 	if (!GetEnumValue(CurrentToken().GetIdentName()))

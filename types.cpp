@@ -1218,6 +1218,7 @@ namespace Types
     static TypeDecl* charType = 0;
     static TypeDecl* booleanType = 0;
     static TypeDecl* timeStampType = 0;
+    static TypeDecl* bindingType = 0;
 
     TypeDecl* GetVoidType()
     {
@@ -1335,6 +1336,19 @@ namespace Types
 	           "Runtime and Pascal type should match in size");
 	}
 	return timeStampType;
+    }
+
+    TypeDecl* GetBindingType()
+    {
+	if (!bindingType)
+	{
+	    std::vector<FieldDecl*> fields = {
+		new FieldDecl("Bound", GetBooleanType(), false),
+		new FieldDecl("Name", GetStringType(), false),
+	    };
+	    bindingType = new RecordDecl(fields, nullptr);
+	}
+	return bindingType;
     }
 
     void Finalize(llvm::DIBuilder* builder)

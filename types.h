@@ -23,6 +23,7 @@ namespace Types
     TypeDecl* GetTextType();
     TypeDecl* GetStringType();
     TypeDecl* GetTimeStampType();
+    TypeDecl* GetBindingType();
 
     bool IsNumeric(const TypeDecl* t);
     bool IsCharArray(const TypeDecl* t);

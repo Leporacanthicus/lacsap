@@ -417,6 +417,19 @@ namespace Builtin
 	Types::TypeDecl* arrayType;
     };
 
+    class FunctionBinding : public FunctionFile
+    {
+	using FunctionFile::FunctionFile;
+	Types::TypeDecl* Type() const override { return Types::GetBindingType(); }
+    };
+
+    class FunctionBind : public FunctionFile
+    {
+	using FunctionFile::FunctionFile;
+	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+    
     void FunctionBase::accept(ASTVisitor& v)
     {
 	for (auto a : args)
@@ -1138,6 +1151,23 @@ namespace Builtin
 	return addr;
     }
 
+    bool FunctionBind::Semantics()
+    {
+	return (args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) && args[1]->Type() == Types::GetBindingType() && llvm::isa<VariableExprAST>(args[0]));
+    }
+
+    llvm::Value* FunctionBind::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	assert(fvar && "Should be a variable here");
+	llvm::Value*             faddr = fvar->Address();
+	llvm::Value*  binding = args[1]->CodeGen();
+	std::vector<llvm::Type*> argTypes = { faddr->getType(), Types::GetBindingType()->LlvmType() };
+	llvm::FunctionCallee     f = GetFunction(Type()->LlvmType(), argTypes, "__" + funcname);
+
+	return builder.CreateCall(f, { faddr, binding });
+    }
+    
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1210,7 +1240,7 @@ namespace Builtin
 	AddBIFCreator("arctan2", NEW2(Float2Arg, "atan2"));
 	AddBIFCreator("fmod", NEW2(Float2Arg, "fmod"));
 	AddBIFCreator("reset", NEW2(FileInfo, "reset"));
-	AddBIFCreator("page", NEW2(FileInfo, "page"));
+	AddBIFCreator("page", NEW2(File, "page"));
 	AddBIFCreator("rewrite", NEW2(FileInfo, "rewrite"));
 	AddBIFCreator("append", NEW2(FileInfo, "append"));
 	AddBIFCreator("close", NEW2(File, "close"));
@@ -1221,5 +1251,8 @@ namespace Builtin
 	AddBIFCreator("gettimestamp", NEW(GetTimeStamp));
 	AddBIFCreator("time", NEW(Time));
 	AddBIFCreator("date", NEW(Date));
+	AddBIFCreator("unbind", NEW2(File, "unbind"));
+	AddBIFCreator("binding", NEW2(Binding, "binding"));
+	AddBIFCreator("bind", NEW2(Bind, "bind"));
     }
 } // namespace Builtin

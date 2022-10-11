@@ -566,7 +566,7 @@ namespace Builtin
 
 	llvm::Value* retVal = builder.CreateCall(f, { MakeIntegerConstant(size) }, "new");
 
-	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
 	// TODO: Fix this to be a proper TypeCast...
 	retVal = builder.CreateBitCast(retVal, pd->LlvmType(), "cast");
 	llvm::Value* pA = var->Address();
@@ -576,7 +576,7 @@ namespace Builtin
     bool FunctionNew::Semantics()
     {
 	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type()) &&
-	       llvm::isa<VariableExprAST>(args[0]);
+	       llvm::isa<AddressableAST>(args[0]);
     }
 
     llvm::Value* FunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
@@ -608,12 +608,12 @@ namespace Builtin
 
     bool FunctionInc::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->IsIntegral() && llvm::isa<VariableExprAST>(args[0]);
+	return args.size() == 1 && args[0]->Type()->IsIntegral() && llvm::isa<AddressableAST>(args[0]);
     }
 
     llvm::Value* FunctionInc::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Value* a = builder.CreateLoad(pA, "inc");
@@ -623,7 +623,7 @@ namespace Builtin
 
     llvm::Value* FunctionDec::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* var = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Value* a = builder.CreateLoad(pA, "dec");
@@ -753,7 +753,7 @@ namespace Builtin
 
     llvm::Value* FunctionFile::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value*         faddr = fvar->Address();
 	llvm::FunctionCallee f = GetFunction(Type()->LlvmType(), { faddr->getType() }, "__" + funcname);
@@ -763,20 +763,13 @@ namespace Builtin
 
     bool FunctionFile::Semantics()
     {
-	if (args.size() != 1 || !llvm::isa<Types::FileDecl>(args[0]->Type()))
-	{
-	    return false;
-	}
-	if (!llvm::isa<VariableExprAST>(args[0]))
-	{
-	    return false;
-	}
-	return true;
+	return (args.size() == 1 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
+	        llvm::isa<AddressableAST>(args[0]));
     }
 
     llvm::Value* FunctionFileInfo::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value*             faddr = fvar->Address();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), Types::GetIntegerType()->LlvmType(),
@@ -824,7 +817,7 @@ namespace Builtin
 	// that we make up here, and a fourth for the "isText" argument.
 
 	// Arg1: address of the filestruct.
-	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto             fvar = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value*     faddr = fvar->Address();
 
 	llvm::Value*             filename = args[1]->CodeGen();
@@ -839,7 +832,7 @@ namespace Builtin
 
     bool FunctionAssign::Semantics()
     {
-	if (args.size() != 2 || !llvm::isa<VariableExprAST>(args[0]))
+	if (args.size() != 2 || !llvm::isa<AddressableAST>(args[0]))
 	{
 	    return false;
 	}
@@ -1080,12 +1073,12 @@ namespace Builtin
     bool FunctionGetTimeStamp::Semantics()
     {
 	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<VariableExprAST>(args[0]);
+	       llvm::isa<AddressableAST>(args[0]);
     }
 
     llvm::Value* FunctionGetTimeStamp::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value*     tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(), { tsaddr->getType() },
@@ -1102,7 +1095,7 @@ namespace Builtin
     bool FunctionTime::Semantics()
     {
 	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<VariableExprAST>(args[0]);
+	       llvm::isa<AddressableAST>(args[0]);
     }
 
     Types::TypeDecl* FunctionTime::Type() const { return arrayType; }
@@ -1110,7 +1103,7 @@ namespace Builtin
     llvm::Value* FunctionTime::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value*     storage = CreateTempAlloca(arrayType);
-	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value*     tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
@@ -1131,7 +1124,7 @@ namespace Builtin
     bool FunctionDate::Semantics()
     {
 	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<VariableExprAST>(args[0]);
+	       llvm::isa<AddressableAST>(args[0]);
     }
 
     Types::TypeDecl* FunctionDate::Type() const { return arrayType; }
@@ -1139,7 +1132,7 @@ namespace Builtin
     llvm::Value* FunctionDate::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value*     storage = CreateTempAlloca(arrayType);
-	VariableExprAST* ts = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value*     tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
@@ -1153,12 +1146,13 @@ namespace Builtin
 
     bool FunctionBind::Semantics()
     {
-	return (args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) && args[1]->Type() == Types::GetBindingType() && llvm::isa<VariableExprAST>(args[0]));
+	return (args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
+	        args[1]->Type() == Types::GetBindingType() && llvm::isa<AddressableAST>(args[0]));
     }
 
     llvm::Value* FunctionBind::CodeGen(llvm::IRBuilder<>& builder)
     {
-	VariableExprAST* fvar = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value*             faddr = fvar->Address();
 	llvm::Value*  binding = args[1]->CodeGen();

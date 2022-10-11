@@ -535,7 +535,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
-	    if (parg[idx].IsRef() && !(llvm::isa<VariableExprAST>(a) || llvm::isa<ClosureAST>(a)))
+	    if (parg[idx].IsRef() && !(llvm::isa<AddressableAST>(a) || llvm::isa<ClosureAST>(a)))
 	    {
 		Error(a, "Expect variable for 'var' parameter");
 	    }
@@ -640,7 +640,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
     {
 	for (auto arg : r->args)
 	{
-	    if (!llvm::isa<VariableExprAST>(arg))
+	    if (!llvm::isa<AddressableAST>(arg))
 	    {
 		Error(arg, "Invalid argument for read/readln - must be a variable-expression");
 	    }

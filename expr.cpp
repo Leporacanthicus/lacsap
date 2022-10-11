@@ -449,9 +449,9 @@ llvm::Value* VariableExprAST::Address()
     return ErrorV(this, "Unknown variable name '" + name + "'");
 }
 
-ArrayExprAST::ArrayExprAST(const Location& loc, VariableExprAST* v, const std::vector<ExprAST*>& inds,
+ArrayExprAST::ArrayExprAST(const Location& loc, ExprAST* v, const std::vector<ExprAST*>& inds,
                            const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty)
-    : VariableExprAST(loc, EK_ArrayExpr, v, ty), expr(v), indices(inds), ranges(r)
+    : AddressableAST(loc, EK_ArrayExpr, ty), expr(v), indices(inds), ranges(r)
 {
     size_t mul = 1;
     for (auto j = ranges.end() - 1; j >= ranges.begin(); j--)
@@ -464,7 +464,8 @@ ArrayExprAST::ArrayExprAST(const Location& loc, VariableExprAST* v, const std::v
 
 void ArrayExprAST::DoDump(std::ostream& out) const
 {
-    out << "Array: " << name;
+    out << "Array: ";
+    expr->dump();
     out << "[";
     bool first = true;
     for (auto i : indices)
@@ -481,7 +482,7 @@ void ArrayExprAST::DoDump(std::ostream& out) const
 llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
-    llvm::Value* v = expr->Address();
+    llvm::Value* v = MakeAddressable(expr);
     assert(v && "Expected variable to have an address");
     EnsureSized();
     llvm::Value* totalIndex = 0;
@@ -528,7 +529,7 @@ llvm::Value* FieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    if (llvm::Value* v = expr->Address())
+    if (llvm::Value* v = MakeAddressable(expr))
     {
 	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(element) };
 	return builder.CreateGEP(v, ind, "valueindex");
@@ -552,7 +553,7 @@ llvm::Value* VariantFieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    llvm::Value*              v = expr->Address();
+    llvm::Value*              v = MakeAddressable(expr);
     std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(element) };
     v = builder.CreateGEP(v, ind, "valueindex");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
@@ -1346,7 +1347,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	}
 	else
 	{
-	    VariableExprAST* vi = llvm::dyn_cast<VariableExprAST>(i);
+	    AddressableAST* vi = llvm::dyn_cast<AddressableAST>(i);
 	    if (vdef[index].IsRef())
 	    {
 		if (vi)
@@ -1962,7 +1963,7 @@ void AssignExprAST::DoDump(std::ostream& out) const
 llvm::Value* AssignExprAST::AssignStr()
 {
     TRACE();
-    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+    auto lhsv = llvm::dyn_cast<AddressableAST>(lhs);
     assert(lhsv && "Expect variable in lhs");
     assert(llvm::isa<Types::StringDecl>(lhsv->Type()) && "Expect string type in lhsv->Type()");
 
@@ -1980,7 +1981,7 @@ llvm::Value* AssignExprAST::AssignSet()
 {
     if (llvm::Value* v = rhs->CodeGen())
     {
-	VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+	auto             lhsv = llvm::dyn_cast<AddressableAST>(lhs);
 	llvm::Value*     dest = lhsv->Address();
 	if (*lhs->Type() == *rhs->Type())
 	{
@@ -1998,7 +1999,7 @@ llvm::Value* AssignExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    VariableExprAST* lhsv = llvm::dyn_cast<VariableExprAST>(lhs);
+    AddressableAST* lhsv = llvm::dyn_cast<AddressableAST>(lhs);
     if (!lhsv)
     {
 	return ErrorV(this, "Left hand side of assignment must be a variable");
@@ -2034,7 +2035,7 @@ llvm::Value* AssignExprAST::CodeGen()
     }
 
     // If rhs is a simple variable, and "large", then use memcpy on it!
-    if (VariableExprAST* rhsv = llvm::dyn_cast<VariableExprAST>(rhs))
+    if (auto rhsv = llvm::dyn_cast<AddressableAST>(rhs))
     {
 	if (rhsv->Type() == lhsv->Type())
 	{
@@ -2774,7 +2775,7 @@ llvm::Value* ReadAST::CodeGen()
     for (auto arg : args)
     {
 	std::vector<llvm::Value*> argsV = { f };
-	VariableExprAST*          vexpr = llvm::dyn_cast<VariableExprAST>(arg);
+	AddressableAST*           vexpr = llvm::dyn_cast<AddressableAST>(arg);
 	assert(vexpr && "Argument for read/readln should be a variable");
 
 	Types::TypeDecl* ty = vexpr->Type();
@@ -3695,7 +3696,7 @@ void VTableAST::Fixup()
     vtable->setInitializer(init);
 }
 
-VirtFunctionAST::VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty)
+VirtFunctionAST::VirtFunctionAST(const Location& w, ExprAST* slf, int idx, Types::TypeDecl* ty)
     : AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf)
 {
     assert(index >= 0 && "Index should not be negative!");
@@ -3708,7 +3709,7 @@ void VirtFunctionAST::DoDump(std::ostream& out) const
 
 llvm::Value* VirtFunctionAST::Address()
 {
-    llvm::Value*              v = self->Address();
+    llvm::Value*              v = MakeAddressable(self);
     std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
     v = builder.CreateGEP(v, ind, "vptr");
     ind[1] = MakeIntegerConstant(index);

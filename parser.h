@@ -41,6 +41,7 @@ public:
     // Simple expression parsing
     ExprAST* ParseExpression();
     ExprAST* ParseExprElement();
+    ExprAST* ParseCallOrVariableExpr(Token token);
     ExprAST* ParseIdentifierExpr(Token token);
     ExprAST* ParseVariableExpr(const NamedObject* def);
     ExprAST* ParseIntegerExpr(Token token);
@@ -53,11 +54,11 @@ public:
     ExprAST* ParseSizeOfExpr();
     bool     ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);
 
-    VariableExprAST* ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type);
-    VariableExprAST* ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type);
-    VariableExprAST* FindVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc, Types::VariantDecl* v,
+    ExprAST*         ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type);
+    ExprAST*         ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type);
+    ExprAST*         FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Types::VariantDecl* v,
                                  const std::string& name);
-    ExprAST*         ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type);
+    ExprAST*         ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type);
     VariableExprAST* ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type);
 
     // Control flow functionality
@@ -125,7 +126,7 @@ public:
     unsigned ParseStringSize();
 
     // General helper functions
-    void ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount);
+    void ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, int parentCount);
 
     // Error functions - all the same except for the return type
     ExprAST*              Error(Token t, const std::string& msg);
@@ -141,7 +142,7 @@ public:
     bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(const NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args);
     ExprAST* MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args);
-    ExprAST* MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
+    ExprAST* MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
                           std::vector<ExprAST*>& args);
 
     // Helper functions for identifier access/checking

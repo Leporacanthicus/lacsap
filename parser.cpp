@@ -1633,7 +1633,7 @@ private:
     std::vector<ExprAST*> exprs;
 };
 
-VariableExprAST* Parser::ParseArrayExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
     TRACE();
 
@@ -1739,7 +1739,7 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
     return MakeSimpleCall(expr, proto, args);
 }
 
-ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
+ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
                               std::vector<ExprAST*>& args)
 {
     ExprAST*            expr = 0;
@@ -1764,10 +1764,10 @@ ExprAST* Parser::MakeSelfCall(VariableExprAST* self, Types::MemberFuncDecl* mf, 
     return MakeSimpleCall(expr, proto, args);
 }
 
-VariableExprAST* Parser::FindVariant(VariableExprAST* expr, Types::TypeDecl*& type, int fc,
-                                     Types::VariantDecl* v, const std::string& name)
+ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Types::VariantDecl* v,
+                             const std::string& name)
 {
-    VariableExprAST* e = 0;
+    ExprAST*         e = 0;
     int              elem = v->Element(name);
     if (elem >= 0)
     {
@@ -1813,14 +1813,14 @@ VariableExprAST* Parser::FindVariant(VariableExprAST* expr, Types::TypeDecl*& ty
     return 0;
 }
 
-ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
     AssertToken(Token::Period);
     if (Expect(Token::Identifier, false))
     {
 	std::string         typedesc;
 	std::string         name = CurrentToken().GetIdentName();
-	VariableExprAST*    e = 0;
+	ExprAST*            e = 0;
 	Types::VariantDecl* v = 0;
 	unsigned            fc = 0;
 	if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(type))
@@ -1900,7 +1900,7 @@ ExprAST* Parser::ParseFieldExpr(VariableExprAST* expr, Types::TypeDecl*& type)
     return 0;
 }
 
-VariableExprAST* Parser::ParsePointerExpr(VariableExprAST* expr, Types::TypeDecl*& type)
+ExprAST* Parser::ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
     assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) &&
            "Expected @ or ^ token...");
@@ -2051,13 +2051,13 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 {
     TRACE();
 
-    VariableExprAST* expr = 0;
+    AddressableAST*  expr = 0;
     Types::TypeDecl* type = def->Type();
     assert(type && "Expect type here...");
 
     if (const WithDef* w = llvm::dyn_cast<WithDef>(def))
     {
-	expr = llvm::dyn_cast<VariableExprAST>(w->Actual());
+	expr = llvm::dyn_cast<AddressableAST>(w->Actual());
     }
     else
     {
@@ -2087,54 +2087,10 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
     assert(expr && "Expected expression here");
     assert(type && "Type is supposed to be set here");
 
-    Token::TokenType tt = CurrentToken().GetToken();
-    while (tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::At || tt == Token::Period)
-    {
-	assert(type && "Expect to have a type here...");
-	switch (tt)
-	{
-	case Token::LeftSquare:
-	    if (!(expr = ParseArrayExpr(expr, type)))
-	    {
-		return 0;
-	    }
-	    break;
-
-	case Token::Uparrow:
-	case Token::At:
-	    if (!(expr = ParsePointerExpr(expr, type)))
-	    {
-		return 0;
-	    }
-	    break;
-
-	case Token::Period:
-	    if (ExprAST* tmp = ParseFieldExpr(expr, type))
-	    {
-		if (VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(tmp))
-		{
-		    expr = v;
-		}
-		else
-		{
-		    return tmp;
-		}
-	    }
-	    else
-	    {
-		return Error(CurrentToken(), "Failed to parse token");
-	    }
-	    break;
-
-	default:
-	    assert(0);
-	}
-	tt = CurrentToken().GetToken();
-    }
     return expr;
 }
 
-ExprAST* Parser::ParseIdentifierExpr(Token token)
+ExprAST* Parser::ParseCallOrVariableExpr(Token token)
 {
     TRACE();
 
@@ -2182,6 +2138,61 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
 
     assert(0 && "Should not get here");
     return 0;
+}
+
+ExprAST* Parser::ParseIdentifierExpr(Token token)
+{
+    TRACE();
+
+    ExprAST*         expr = ParseCallOrVariableExpr(token);
+    Types::TypeDecl* type = expr->Type();
+
+    Token::TokenType tt = CurrentToken().GetToken();
+    while (tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::At || tt == Token::Period)
+    {
+	assert(type && "Expect to have a type here...");
+	switch (tt)
+	{
+	case Token::LeftSquare:
+	    if (!(expr = ParseArrayExpr(expr, type)))
+	    {
+		return 0;
+	    }
+	    break;
+
+	case Token::Uparrow:
+	case Token::At:
+	    if (!(expr = ParsePointerExpr(expr, type)))
+	    {
+		return 0;
+	    }
+	    break;
+
+	case Token::Period:
+	    if (ExprAST* tmp = ParseFieldExpr(expr, type))
+	    {
+		if (auto v = llvm::dyn_cast<AddressableAST>(tmp))
+		{
+		    expr = v;
+		}
+		else
+		{
+		    return tmp;
+		}
+	    }
+	    else
+	    {
+		return Error(CurrentToken(), "Failed to parse token");
+	    }
+	    break;
+
+	default:
+	    assert(0);
+	}
+	tt = CurrentToken().GetToken();
+    }
+
+    return expr;
 }
 
 ExprAST* Parser::ParseParenExpr()
@@ -2935,7 +2946,7 @@ ExprAST* Parser::ParseCaseExpr()
     return new CaseExprAST(loc, expr, labels, otherwise);
 }
 
-void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprAST* v, int parentCount)
+void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, int parentCount)
 {
     TRACE();
     int vtableoffset = 0;
@@ -2951,7 +2962,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, VariableExprA
 	{
 	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
 	    assert(rd && "Expected record declarataion here!");
-	    VariableExprAST* vv = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
+	    ExprAST* vv = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    ExpandWithNames(rd, vv, 0);
 	    if (rd->Variant())
 	    {
@@ -2995,7 +3006,7 @@ public:
 	if (parser.Expect(Token::Identifier, false))
 	{
 	    ExprAST* e = parser.ParseIdentifierExpr(parser.CurrentToken());
-	    if (VariableExprAST* v = llvm::dyn_cast_or_null<VariableExprAST>(e))
+	    if (auto v = llvm::dyn_cast_or_null<AddressableAST>(e))
 	    {
 		if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
 		{
@@ -3066,7 +3077,7 @@ public:
 	{
 	    if (args.size() == 0)
 	    {
-		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(wa.expr))
+		if (auto vexpr = llvm::dyn_cast<AddressableAST>(wa.expr))
 		{
 		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
 		    {
@@ -3104,11 +3115,11 @@ public:
 	return false;
     }
     std::vector<WriteAST::WriteArg>& Args() { return args; }
-    VariableExprAST*                 File() { return file; }
+    AddressableAST*                  File() { return file; }
 
 private:
     std::vector<WriteAST::WriteArg> args;
-    VariableExprAST*                file;
+    AddressableAST*                 file;
 };
 
 ExprAST* Parser::ParseWrite()
@@ -3120,7 +3131,7 @@ ExprAST* Parser::ParseWrite()
     NextToken();
 
     Location                        loc = CurrentToken().Loc();
-    VariableExprAST*                file;
+    AddressableAST*                 file;
     std::vector<WriteAST::WriteArg> args;
     if (IsSemicolonOrEnd())
     {
@@ -3157,7 +3168,7 @@ public:
 	{
 	    if (args.size() == 0)
 	    {
-		if (VariableExprAST* vexpr = llvm::dyn_cast<VariableExprAST>(expr))
+		if (auto vexpr = llvm::dyn_cast<AddressableAST>(expr))
 		{
 		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
 		    {
@@ -3179,11 +3190,11 @@ public:
 	return false;
     }
     std::vector<ExprAST*>& Args() { return args; }
-    VariableExprAST*       File() { return file; }
+    AddressableAST*        File() { return file; }
 
 private:
     std::vector<ExprAST*> args;
-    VariableExprAST*      file;
+    AddressableAST*       file;
 };
 
 ExprAST* Parser::ParseRead()
@@ -3196,7 +3207,7 @@ ExprAST* Parser::ParseRead()
     NextToken();
 
     std::vector<ExprAST*> args;
-    VariableExprAST*      file = 0;
+    AddressableAST*       file = 0;
     if (IsSemicolonOrEnd())
     {
 	if (!isReadln)

@@ -225,21 +225,18 @@ public:
     void              DoDump(std::ostream& out) const override;
     const std::string Name() const override { return name; }
     llvm::Value*      Address() override;
-    static bool       classof(const ExprAST* e)
-    {
-	return e->getKind() >= EK_VariableExpr && e->getKind() <= EK_LastAddressable;
-    }
+    static bool       classof(const ExprAST* e) { return e->getKind() == EK_VariableExpr; }
 
 protected:
     std::string name;
 };
 
-class ArrayExprAST : public VariableExprAST
+class ArrayExprAST : public AddressableAST
 {
     friend class TypeCheckVisitor;
 
 public:
-    ArrayExprAST(const Location& w, VariableExprAST* v, const std::vector<ExprAST*>& inds,
+    ArrayExprAST(const Location& w, ExprAST* v, const std::vector<ExprAST*>& inds,
                  const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty);
     void DoDump(std::ostream& out) const override;
     // Don't need CodeGen, just calculate address and use parent CodeGen
@@ -248,17 +245,17 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    VariableExprAST*               expr;
+    ExprAST*                       expr;
     std::vector<ExprAST*>          indices;
     std::vector<Types::RangeDecl*> ranges;
     std::vector<size_t>            indexmul;
 };
 
-class PointerExprAST : public VariableExprAST
+class PointerExprAST : public AddressableAST
 {
 public:
-    PointerExprAST(const Location& w, VariableExprAST* p, Types::TypeDecl* ty)
-        : VariableExprAST(w, EK_PointerExpr, p, ty), pointer(p)
+    PointerExprAST(const Location& w, ExprAST* p, Types::TypeDecl* ty)
+        : AddressableAST(w, EK_PointerExpr, ty), pointer(p)
     {
     }
     void         DoDump(std::ostream& out) const override;
@@ -270,11 +267,11 @@ private:
     ExprAST* pointer;
 };
 
-class FilePointerExprAST : public VariableExprAST
+class FilePointerExprAST : public AddressableAST
 {
 public:
-    FilePointerExprAST(const Location& w, VariableExprAST* p, Types::TypeDecl* ty)
-        : VariableExprAST(w, EK_FilePointerExpr, p, ty), pointer(p)
+    FilePointerExprAST(const Location& w, ExprAST* p, Types::TypeDecl* ty)
+        : AddressableAST(w, EK_FilePointerExpr, ty), pointer(p)
     {
     }
     void         DoDump(std::ostream& out) const override;
@@ -286,11 +283,11 @@ private:
     ExprAST* pointer;
 };
 
-class FieldExprAST : public VariableExprAST
+class FieldExprAST : public AddressableAST
 {
 public:
-    FieldExprAST(const Location& w, VariableExprAST* base, int elem, Types::TypeDecl* ty)
-        : VariableExprAST(w, EK_FieldExpr, base, ty), expr(base), element(elem)
+    FieldExprAST(const Location& w, ExprAST* base, int elem, Types::TypeDecl* ty)
+        : AddressableAST(w, EK_FieldExpr, ty), expr(base), element(elem)
     {
     }
     void         DoDump(std::ostream& out) const override;
@@ -299,15 +296,15 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    VariableExprAST* expr;
+    ExprAST*         expr;
     int              element;
 };
 
-class VariantFieldExprAST : public VariableExprAST
+class VariantFieldExprAST : public AddressableAST
 {
 public:
-    VariantFieldExprAST(const Location& w, VariableExprAST* base, int elem, Types::TypeDecl* ty)
-        : VariableExprAST(w, EK_VariantFieldExpr, base, ty), expr(base), element(elem)
+    VariantFieldExprAST(const Location& w, ExprAST* base, int elem, Types::TypeDecl* ty)
+        : AddressableAST(w, EK_VariantFieldExpr, ty), expr(base), element(elem)
     {
     }
     void         DoDump(std::ostream& out) const override;
@@ -315,7 +312,7 @@ public:
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_VariantFieldExpr; }
 
 private:
-    VariableExprAST* expr;
+    ExprAST*         expr;
     int              element;
 };
 
@@ -686,7 +683,7 @@ public:
 	ExprAST* precision;
     };
 
-    WriteAST(const Location& w, VariableExprAST* f, const std::vector<WriteArg>& a, bool isLn)
+    WriteAST(const Location& w, AddressableAST* f, const std::vector<WriteArg>& a, bool isLn)
         : ExprAST(w, EK_Write), file(f), args(a), isWriteln(isLn)
     {
     }
@@ -696,7 +693,7 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    VariableExprAST*      file;
+    AddressableAST*       file;
     std::vector<WriteArg> args;
     bool                  isWriteln;
 };
@@ -706,7 +703,7 @@ class ReadAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    ReadAST(const Location& w, VariableExprAST* fi, const std::vector<ExprAST*>& a, bool isLn)
+    ReadAST(const Location& w, AddressableAST* fi, const std::vector<ExprAST*>& a, bool isLn)
         : ExprAST(w, EK_Read), file(fi), args(a), isReadln(isLn)
     {
     }
@@ -716,7 +713,7 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    VariableExprAST*      file;
+    AddressableAST*       file;
     std::vector<ExprAST*> args;
     bool                  isReadln;
 };
@@ -867,16 +864,16 @@ private:
 class VirtFunctionAST : public AddressableAST
 {
 public:
-    VirtFunctionAST(const Location& w, VariableExprAST* slf, int idx, Types::TypeDecl* ty);
+    VirtFunctionAST(const Location& w, ExprAST* slf, int idx, Types::TypeDecl* ty);
     void             DoDump(std::ostream& out) const override;
     llvm::Value*     Address() override;
     int              Index() const { return index; }
-    VariableExprAST* Self() { return self; }
+    ExprAST*         Self() { return self; }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_VirtFunction; }
 
 private:
     int              index;
-    VariableExprAST* self;
+    ExprAST*         self;
 };
 
 class GotoAST : public ExprAST

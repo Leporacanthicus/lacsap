@@ -2145,6 +2145,10 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
     TRACE();
 
     ExprAST*         expr = ParseCallOrVariableExpr(token);
+    if (!expr)
+    {
+	return 0;
+    }
     Types::TypeDecl* type = expr->Type();
 
     Token::TokenType tt = CurrentToken().GetToken();

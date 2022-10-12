@@ -1347,6 +1347,8 @@ namespace Types
 		new FieldDecl("Name", GetStringType(), false),
 	    };
 	    bindingType = new RecordDecl(fields, nullptr);
+	    assert(sizeof(BindingType) == bindingType->Size() &&
+	           "Runtime and Pascal type should match in size");
 	}
 	return bindingType;
     }

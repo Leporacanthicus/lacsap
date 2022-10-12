@@ -56,6 +56,12 @@ struct TimeStamp
     int  MicroSecond;
 };
 
+struct BindingType
+{
+    bool   Bound;
+    String Name;
+};
+
 /*******************************************
  * Local variables
  *******************************************

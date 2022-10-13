@@ -2517,15 +2517,10 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	break;
 
     case Types::TypeDecl::TK_Integer:
-	argTypes.push_back(intTy);
-	argTypes.push_back(intTy);
-	suffix = "int";
-	break;
-
     case Types::TypeDecl::TK_LongInt:
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
-	suffix = "int64";
+	suffix = "int" + std::to_string(ty->Bits());
 	break;
 
     case Types::TypeDecl::TK_Real:
@@ -2731,8 +2726,9 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
 	suffix = "chr";
 	break;
 
+    case Types::TypeDecl::TK_LongInt:
     case Types::TypeDecl::TK_Integer:
-	suffix = "int";
+	suffix = "int" + std::to_string(ty->Bits());
 	break;
 
     case Types::TypeDecl::TK_Real:

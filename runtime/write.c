@@ -8,7 +8,7 @@
  * Write Functionality
  *******************************************
  */
-void __write_int(File* file, int v, int width)
+void __write_int32(File* file, int v, int width)
 {
     FILE* f = getFile(file);
     fprintf(f, "%*d", width, v);

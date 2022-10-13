@@ -10,6 +10,8 @@ class PrototypeAST;
 class ExprAST;
 class InitializerAST;
 
+extern llvm::LLVMContext theContext;
+
 namespace Types
 {
     class TypeDecl;
@@ -40,7 +42,7 @@ namespace Types
     public:
 	int64_t Start() const { return start; }
 	int64_t End() const { return end; }
-	size_t  Size() const { return (size_t)(end - start) + 1; }
+	uint64_t Size() const { return (uint64_t)(end - start) + 1; }
 	void    dump() const;
 	void    DoDump(std::ostream& out) const;
 
@@ -168,39 +170,30 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
-    class IntegerDecl : public BasicTypeDecl
+    template<int bits, TypeDecl::TypeKind tk>
+    class IntegerXDecl : public BasicTypeDecl
     {
     public:
-	IntegerDecl() : BasicTypeDecl(TK_Integer) {}
+	IntegerXDecl() : BasicTypeDecl(tk) {}
 	bool            IsIntegral() const override { return true; }
-	unsigned        Bits() const override { return 32; }
+	unsigned        Bits() const override { return bits; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool            HasLlvmType() const override { return true; }
-	void            DoDump(std::ostream& out) const override;
-	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Integer; }
+	void            DoDump(std::ostream& out) const override { out << "Type: Integer<" << bits << ">"; }
+	static bool     classof(const TypeDecl* e) { return e->getKind() == tk; }
 
     protected:
-	llvm::Type*   GetLlvmType() const override;
-	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
+	llvm::Type*   GetLlvmType() const override { return llvm::Type::getIntNTy(theContext, bits); }
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
+	{
+	    return builder->createBasicType("INTEGER" + std::to_string(bits), bits,
+	                                    llvm::dwarf::DW_ATE_signed);
+	}
     };
 
-    class Int64Decl : public BasicTypeDecl
-    {
-    public:
-	Int64Decl() : BasicTypeDecl(TK_LongInt) {}
-	bool            IsIntegral() const override { return true; }
-	unsigned        Bits() const override { return 64; }
-	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
-	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
-	bool            HasLlvmType() const override { return true; }
-	void            DoDump(std::ostream& out) const override;
-	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_LongInt; }
-
-    protected:
-	llvm::Type*   GetLlvmType() const override;
-	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
-    };
+    using IntegerDecl = IntegerXDecl<32, TypeDecl::TK_Integer>;
+    using Int64Decl = IntegerXDecl<64, TypeDecl::TK_LongInt>;
 
     class RealDecl : public BasicTypeDecl
     {
@@ -252,10 +245,10 @@ namespace Types
 	TypeDecl* baseType;
     };
 
-    class RangeDecl : public CompoundDecl
+    class RangeDecl : public TypeDecl
     {
     public:
-	RangeDecl(Range* r, TypeDecl* base) : CompoundDecl(TK_Range, base), range(r)
+	RangeDecl(Range* r, TypeDecl* base) : TypeDecl(TK_Range), range(r), baseType(base)
 	{
 	    assert(r && "Range should be specified");
 	}
@@ -266,7 +259,7 @@ namespace Types
 	bool            SameAs(const TypeDecl* ty) const override;
 	int             Start() const { return range->Start(); }
 	int             End() const { return range->End(); }
-	TypeKind        Type() const override { return SubType()->Type(); }
+	TypeKind        Type() const override { return baseType->Type(); }
 	bool            IsCompound() const override { return false; }
 	bool            IsIntegral() const override { return true; }
 	bool            IsUnsigned() const override { return Start() >= 0; }
@@ -274,12 +267,18 @@ namespace Types
 	Range*          GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
+	bool            HasLlvmType() const override { return baseType->HasLlvmType(); }
 
     protected:
 	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
+	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
+	{
+	    return baseType->DebugType(builder);
+	}
 
     private:
 	Range* range;
+	TypeDecl* baseType;
     };
 
     class ArrayDecl : public CompoundDecl

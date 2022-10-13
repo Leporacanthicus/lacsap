@@ -99,15 +99,7 @@ namespace Types
 	return 0;
     }
 
-    void IntegerDecl::DoDump(std::ostream& out) const { out << "Type: Integer"; }
-
-    llvm::Type* IntegerDecl::GetLlvmType() const { return llvm::Type::getInt32Ty(theContext); }
-
-    llvm::DIType* IntegerDecl::GetDIType(llvm::DIBuilder* builder) const
-    {
-	return builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_signed);
-    }
-
+    template<>
     const TypeDecl* IntegerDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (ty->Type() == TK_Integer)
@@ -121,6 +113,7 @@ namespace Types
 	return 0;
     }
 
+    template<>
     const TypeDecl* IntegerDecl::AssignableType(const TypeDecl* ty) const
     {
 	if (SameAs(ty))
@@ -130,15 +123,7 @@ namespace Types
 	return 0;
     }
 
-    void Int64Decl::DoDump(std::ostream& out) const { out << "Type: Int64"; }
-
-    llvm::Type* Int64Decl::GetLlvmType() const { return llvm::Type::getInt64Ty(theContext); }
-
-    llvm::DIType* Int64Decl::GetDIType(llvm::DIBuilder* builder) const
-    {
-	return builder->createBasicType("LONGINT", 64, llvm::dwarf::DW_ATE_signed);
-    }
-
+    template<>
     const TypeDecl* Int64Decl::CompatibleType(const TypeDecl* ty) const
     {
 	if (ty->Type() == TK_LongInt || ty->Type() == TK_Integer)
@@ -152,6 +137,7 @@ namespace Types
 	return 0;
     }
 
+    template<>
     const TypeDecl* Int64Decl::AssignableType(const TypeDecl* ty) const
     {
 	if (SameAs(ty) || ty->Type() == TK_Integer)
@@ -390,16 +376,19 @@ namespace Types
 	return 0;
     }
 
-    unsigned RangeDecl::Bits() const
+    static unsigned BitsNeeded(uint64_t s)
     {
-	unsigned s = range->Size();
 	unsigned b = 1;
-	while (s < (1u << b))
+	uint64_t x = 1;
+	while (s > x)
 	{
+	    x <<= 1;
 	    b++;
 	}
 	return b;
     }
+
+    unsigned RangeDecl::Bits() const { return baseType->Bits(); }
 
     void EnumDecl::SetValues(const std::vector<std::string>& nmv)
     {
@@ -443,16 +432,7 @@ namespace Types
 	return true;
     }
 
-    unsigned EnumDecl::Bits() const
-    {
-	unsigned s = values.size();
-	unsigned b = 1;
-	while (s < (1u << b))
-	{
-	    b++;
-	}
-	return b;
-    }
+    unsigned EnumDecl::Bits() const { return BitsNeeded(values.size()); }
 
     llvm::DIType* EnumDecl::GetDIType(llvm::DIBuilder* builder) const
     {

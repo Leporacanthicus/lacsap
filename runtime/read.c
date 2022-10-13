@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 static int read_chunk_text(struct FileEntry* f)
 {
@@ -138,9 +139,9 @@ static double exponent_to_multi(int exponent)
     return m;
 }
 
-void __read_int(File* file, int* v)
+void __read_int64(File* file, int64_t* v)
 {
-    int n = 0;
+    int64_t n = 0;
     int sign;
 
     if (file->handle >= MaxPascalFiles)
@@ -164,6 +165,16 @@ void __read_int(File* file, int* v)
     }
     *v = n * sign;
 }
+
+void __read_int32(File* file, int* v)
+{
+    int64_t n;
+    __read_int64(file, &n);
+    // We probably should check range?
+    *v = (int)n;
+}
+
+
 
 void __read_chr(File* file, char* v)
 {

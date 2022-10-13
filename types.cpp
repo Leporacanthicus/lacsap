@@ -1188,89 +1188,25 @@ namespace Types
 	return llvm::PointerType::getUnqual(base);
     }
 
-    // Static variables in Types.
-    static TypeDecl* voidType = 0;
-    static TypeDecl* textType = 0;
-    static TypeDecl* strType = 0;
-    static TypeDecl* integerType = 0;
-    static TypeDecl* longIntType = 0;
-    static TypeDecl* realType = 0;
-    static TypeDecl* charType = 0;
-    static TypeDecl* booleanType = 0;
-    static TypeDecl* timeStampType = 0;
-    static TypeDecl* bindingType = 0;
-
-    TypeDecl* GetVoidType()
+    template<typename T, typename... Args>
+    TypeDecl* Get(Args... args)
     {
-	if (!voidType)
+	static TypeDecl* typePtr;
+	if (!typePtr)
 	{
-	    voidType = new VoidDecl;
+	    typePtr = new T(std::forward<Args>(args)...);
 	}
-	return voidType;
+	return typePtr;
     }
 
-    TypeDecl* GetStringType()
-    {
-	if (!strType)
-	{
-	    strType = new StringDecl(255);
-	}
-	return strType;
-    }
-
-    TypeDecl* GetTextType()
-    {
-	if (!textType)
-	{
-	    textType = new TextDecl;
-	}
-	return textType;
-    }
-
-    TypeDecl* GetIntegerType()
-    {
-	if (!integerType)
-	{
-	    integerType = new IntegerDecl;
-	}
-	return integerType;
-    }
-
-    TypeDecl* GetLongIntType()
-    {
-	if (!longIntType)
-	{
-	    longIntType = new Int64Decl;
-	}
-	return longIntType;
-    }
-
-    TypeDecl* GetCharType()
-    {
-	if (!charType)
-	{
-	    charType = new CharDecl;
-	}
-	return charType;
-    }
-
-    TypeDecl* GetRealType()
-    {
-	if (!realType)
-	{
-	    realType = new RealDecl;
-	}
-	return realType;
-    }
-
-    TypeDecl* GetBooleanType()
-    {
-	if (!booleanType)
-	{
-	    booleanType = new BoolDecl;
-	}
-	return booleanType;
-    }
+    TypeDecl* GetVoidType() { return Get<VoidDecl>(); }
+    TypeDecl* GetStringType() { return Get<StringDecl>(255); }
+    TypeDecl* GetTextType() { return Get<TextDecl>(); }
+    TypeDecl* GetIntegerType() { return Get<IntegerDecl>(); }
+    TypeDecl* GetLongIntType() { return Get<Int64Decl>(); }
+    TypeDecl* GetCharType() { return Get<CharDecl>(); }
+    TypeDecl* GetRealType() { return Get<RealDecl>(); }
+    TypeDecl* GetBooleanType() { return Get<BoolDecl>(); }
 
     bool IsNumeric(const TypeDecl* t)
     {
@@ -1297,6 +1233,7 @@ namespace Types
 
     TypeDecl* GetTimeStampType()
     {
+	static TypeDecl* timeStampType;
 	if (!timeStampType)
 	{
 	    // DateValid, TimeValid, Year, Month, Day, Hour, Minute, Second
@@ -1320,6 +1257,7 @@ namespace Types
 
     TypeDecl* GetBindingType()
     {
+	static TypeDecl* bindingType;
 	if (!bindingType)
 	{
 	    std::vector<FieldDecl*> fields = {

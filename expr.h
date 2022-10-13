@@ -296,8 +296,8 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    ExprAST*         expr;
-    int              element;
+    ExprAST* expr;
+    int      element;
 };
 
 class VariantFieldExprAST : public AddressableAST
@@ -312,8 +312,8 @@ public:
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_VariantFieldExpr; }
 
 private:
-    ExprAST*         expr;
-    int              element;
+    ExprAST* expr;
+    int      element;
 };
 
 class BinaryExprAST : public ExprAST
@@ -727,16 +727,16 @@ public:
         : ExprAST(w, EK_LabelExpr), labelValues(lab), stmt(st)
     {
     }
-    void         DoDump(std::ostream& out) const override;
-    llvm::Value* CodeGen() override;
+    void                                    DoDump(std::ostream& out) const override;
+    llvm::Value*                            CodeGen() override;
     llvm::Value*                            CodeGen(llvm::BasicBlock* caseBB, llvm::BasicBlock* afterBB);
-    static bool  classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
-    void         accept(ASTVisitor& v) override;
+    static bool                             classof(const ExprAST* e) { return e->getKind() == EK_LabelExpr; }
+    void                                    accept(ASTVisitor& v) override;
     const std::vector<std::pair<int, int>>& LabelValues() { return labelValues; }
 
 private:
     std::vector<std::pair<int, int>> labelValues;
-    ExprAST*         stmt;
+    ExprAST*                         stmt;
 };
 
 class CaseExprAST : public ExprAST
@@ -865,15 +865,15 @@ class VirtFunctionAST : public AddressableAST
 {
 public:
     VirtFunctionAST(const Location& w, ExprAST* slf, int idx, Types::TypeDecl* ty);
-    void             DoDump(std::ostream& out) const override;
-    llvm::Value*     Address() override;
-    int              Index() const { return index; }
-    ExprAST*         Self() { return self; }
-    static bool      classof(const ExprAST* e) { return e->getKind() == EK_VirtFunction; }
+    void         DoDump(std::ostream& out) const override;
+    llvm::Value* Address() override;
+    int          Index() const { return index; }
+    ExprAST*     Self() { return self; }
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_VirtFunction; }
 
 private:
-    int              index;
-    ExprAST*         self;
+    int      index;
+    ExprAST* self;
 };
 
 class GotoAST : public ExprAST

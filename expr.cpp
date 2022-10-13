@@ -1981,8 +1981,8 @@ llvm::Value* AssignExprAST::AssignSet()
 {
     if (llvm::Value* v = rhs->CodeGen())
     {
-	auto             lhsv = llvm::dyn_cast<AddressableAST>(lhs);
-	llvm::Value*     dest = lhsv->Address();
+	auto         lhsv = llvm::dyn_cast<AddressableAST>(lhs);
+	llvm::Value* dest = lhsv->Address();
 	if (*lhs->Type() == *rhs->Type())
 	{
 	    assert(dest && "Expected address from lhsv!");

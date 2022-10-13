@@ -150,7 +150,7 @@ public:
     Types::TypeDecl*            GetTypeDecl(const std::string& name);
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type, bool restricted = false);
-    bool                        AddConst(const std::string& name, const Constants::ConstDecl* cd);
+    bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
 
     std::vector<VarDef> CalculateUsedVars(FunctionAST* fn, const std::vector<const NamedObject*>& varsUsed,
                                           const Stack<const NamedObject*>& nameStack);

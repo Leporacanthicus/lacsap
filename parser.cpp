@@ -1767,8 +1767,8 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
 ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Types::VariantDecl* v,
                              const std::string& name)
 {
-    ExprAST*         e = 0;
-    int              elem = v->Element(name);
+    ExprAST* e = 0;
+    int      elem = v->Element(name);
     if (elem >= 0)
     {
 	const Types::FieldDecl* fd = v->GetElement(elem);
@@ -2144,7 +2144,7 @@ ExprAST* Parser::ParseIdentifierExpr(Token token)
 {
     TRACE();
 
-    ExprAST*         expr = ParseCallOrVariableExpr(token);
+    ExprAST* expr = ParseCallOrVariableExpr(token);
     if (!expr)
     {
 	return 0;

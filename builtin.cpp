@@ -25,7 +25,7 @@ namespace Builtin
     using ArgList = const std::vector<ExprAST*>;
     using CreateBIFObject = std::function<FunctionBase*(const std::vector<ExprAST*>&)>;
 
-    std::map<std::string, CreateBIFObject>                                    BIFMap;
+    std::map<std::string, CreateBIFObject> BIFMap;
 
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, const std::string& func,
                                           const std::vector<ExprAST*>& args)
@@ -426,10 +426,10 @@ namespace Builtin
     class FunctionBind : public FunctionFile
     {
 	using FunctionFile::FunctionFile;
-	bool             Semantics() override;
+	bool         Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
-    
+
     void FunctionBase::accept(ASTVisitor& v)
     {
 	for (auto a : args)
@@ -817,8 +817,8 @@ namespace Builtin
 	// that we make up here, and a fourth for the "isText" argument.
 
 	// Arg1: address of the filestruct.
-	auto             fvar = llvm::dyn_cast<AddressableAST>(args[0]);
-	llvm::Value*     faddr = fvar->Address();
+	auto         fvar = llvm::dyn_cast<AddressableAST>(args[0]);
+	llvm::Value* faddr = fvar->Address();
 
 	llvm::Value*             filename = args[1]->CodeGen();
 	llvm::Type*              ty = filename->getType();
@@ -1078,8 +1078,8 @@ namespace Builtin
 
     llvm::Value* FunctionGetTimeStamp::CodeGen(llvm::IRBuilder<>& builder)
     {
-	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
-	llvm::Value*     tsaddr = ts->Address();
+	auto         ts = llvm::dyn_cast<AddressableAST>(args[0]);
+	llvm::Value* tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(), { tsaddr->getType() },
 	                                     "__gettimestamp");
@@ -1102,9 +1102,9 @@ namespace Builtin
 
     llvm::Value* FunctionTime::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Value*     storage = CreateTempAlloca(arrayType);
-	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
-	llvm::Value*     tsaddr = ts->Address();
+	llvm::Value* storage = CreateTempAlloca(arrayType);
+	auto         ts = llvm::dyn_cast<AddressableAST>(args[0]);
+	llvm::Value* tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
 	                                     { tsaddr->getType(), storage->getType() }, "__Time");
@@ -1131,9 +1131,9 @@ namespace Builtin
 
     llvm::Value* FunctionDate::CodeGen(llvm::IRBuilder<>& builder)
     {
-	llvm::Value*     storage = CreateTempAlloca(arrayType);
-	auto             ts = llvm::dyn_cast<AddressableAST>(args[0]);
-	llvm::Value*     tsaddr = ts->Address();
+	llvm::Value* storage = CreateTempAlloca(arrayType);
+	auto         ts = llvm::dyn_cast<AddressableAST>(args[0]);
+	llvm::Value* tsaddr = ts->Address();
 
 	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
 	                                     { tsaddr->getType(), storage->getType() }, "__Date");
@@ -1155,13 +1155,13 @@ namespace Builtin
 	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(fvar && "Should be a variable here");
 	llvm::Value*             faddr = fvar->Address();
-	llvm::Value*  binding = args[1]->CodeGen();
+	llvm::Value*             binding = args[1]->CodeGen();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), Types::GetBindingType()->LlvmType() };
 	llvm::FunctionCallee     f = GetFunction(Type()->LlvmType(), argTypes, "__" + funcname);
 
 	return builder.CreateCall(f, { faddr, binding });
     }
-    
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");

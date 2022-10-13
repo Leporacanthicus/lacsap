@@ -40,11 +40,11 @@ namespace Types
 	}
 
     public:
-	int64_t Start() const { return start; }
-	int64_t End() const { return end; }
+	int64_t  Start() const { return start; }
+	int64_t  End() const { return end; }
 	uint64_t Size() const { return (uint64_t)(end - start) + 1; }
-	void    dump() const;
-	void    DoDump(std::ostream& out) const;
+	void     dump() const;
+	void     DoDump(std::ostream& out) const;
 
     private:
 	int64_t start;
@@ -270,14 +270,14 @@ namespace Types
 	bool            HasLlvmType() const override { return baseType->HasLlvmType(); }
 
     protected:
-	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
+	llvm::Type*   GetLlvmType() const override { return baseType->LlvmType(); }
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
 	{
 	    return baseType->DebugType(builder);
 	}
 
     private:
-	Range* range;
+	Range*    range;
 	TypeDecl* baseType;
     };
 

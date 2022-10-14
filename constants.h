@@ -4,9 +4,8 @@
 #include "token.h"
 #include "types.h"
 
-class Constants
+namespace Constants
 {
-public:
     enum ConstKind
     {
 	CK_ConstDecl,
@@ -130,12 +129,13 @@ public:
     private:
 	std::string value;
     };
-};
 
-Constants::ConstDecl* ErrorConst(const std::string& msg);
-Constants::ConstDecl* operator+(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs);
-Constants::ConstDecl* operator-(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs);
-Constants::ConstDecl* operator*(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs);
-Constants::ConstDecl* operator/(const Constants::ConstDecl& lhs, const Constants::ConstDecl& rhs);
+    ConstDecl* ErrorConst(const std::string& msg);
+    ConstDecl* operator+(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator-(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
+
+}; // namespace Constants
 
 #endif

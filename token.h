@@ -35,6 +35,7 @@ public:
 	String,
 	Nil,
 	Bindable,
+	Value,
 
 	// Symbols and such
 	LeftParen,

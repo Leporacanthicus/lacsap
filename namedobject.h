@@ -8,6 +8,7 @@
 
 class ExprAST;
 class PrototypeAST;
+class InitValueAST;
 
 class NamedObject
 {
@@ -51,17 +52,20 @@ public:
     };
 
     VarDef(const std::string& nm, Types::TypeDecl* ty, Flags f = Flags::None)
-        : NamedObject(NK_Var, nm, ty), flags(f)
+        : NamedObject(NK_Var, nm, ty), flags(f), init(0)
     {
     }
     bool        IsRef() const;
     bool        IsExternal() const;
     bool        IsProtected() const;
     bool        IsClosure() const;
+    InitValueAST* Init() { return init; }
+    void SetInit(InitValueAST* i) { init = i; }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 
 private:
     Flags flags;
+    InitValueAST* init;
 };
 
 constexpr VarDef::Flags operator&(const VarDef::Flags a, const VarDef::Flags b)

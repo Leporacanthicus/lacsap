@@ -86,6 +86,8 @@ public:
     ExprAST*      ParseUnit(ParserType type);
     bool          ParseInterface(InterfaceList& iList);
 
+    InitValueAST* ParseInitValue(Types::TypeDecl* ty);
+
     // Type declarations and defintitions
     void  ParseTypeDef();
     void  ParseConstDef();

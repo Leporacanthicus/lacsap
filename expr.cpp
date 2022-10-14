@@ -2854,6 +2854,11 @@ llvm::Value* VarDeclAST::CodeGen()
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
 	    }
+	    else if (InitValueAST* iv = var.Init())
+	    {
+		const std::vector<const Constants::ConstDecl*> vals = iv->Values();
+		init = Constants::ConstDeclToLLVMConst(vals[0]);
+	    }
 	    else
 	    {
 		init = nullValue;

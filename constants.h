@@ -4,6 +4,11 @@
 #include "token.h"
 #include "types.h"
 
+namespace llvm
+{
+    class Constant;
+};
+
 namespace Constants
 {
     enum ConstKind
@@ -135,6 +140,8 @@ namespace Constants
     ConstDecl* operator-(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
+
+    llvm::Constant* ConstDeclToLLVMConst(const ConstDecl* cd);
 
 }; // namespace Constants
 

@@ -2259,6 +2259,17 @@ ExprAST* Parser::ParseSetExpr()
     return 0;
 }
 
+
+InitValueAST* Parser::ParseInitValue(Types::TypeDecl* ty)
+{
+    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
+    if (!cd)
+    {
+	return 0;
+    }
+    return new InitValueAST(CurrentToken().Loc(), { cd });
+}
+
 VarDeclAST* Parser::ParseVarDecls()
 {
     TRACE();
@@ -2282,6 +2293,15 @@ VarDeclAST* Parser::ParseVarDecls()
 			return reinterpret_cast<VarDeclAST*>(
 			    Error(CurrentToken(), "Name '" + n + "' is already defined"));
 		    }
+		}
+		if (AcceptToken(Token::Value))
+		{
+		    InitValueAST* init = ParseInitValue(type);
+		    if (!init)
+		    {
+			return 0;
+		    }
+		    varList.back().SetInit(init);
 		}
 		good = Expect(Token::Semicolon, true);
 	    }

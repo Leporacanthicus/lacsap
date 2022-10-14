@@ -212,4 +212,18 @@ namespace Constants
 	return ErrorConst(errMsg);
     }
 
+    llvm::Constant* ConstDeclToLLVMConst(const ConstDecl* cd)
+    {
+	if (auto i = llvm::dyn_cast<IntConstDecl>(cd))
+	{
+	    return llvm::ConstantInt::get(i->Type()->LlvmType(), i->Value());
+	}
+	if (auto r = llvm::dyn_cast<RealConstDecl>(cd))
+	{
+	    return llvm::ConstantFP::get(r->Type()->LlvmType(), r->Value());
+	}
+	assert(0 && "Unsupported constant conversion");
+	return 0;
+    }
+
 } // namespace Constants

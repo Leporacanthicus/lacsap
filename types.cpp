@@ -1188,17 +1188,6 @@ namespace Types
 	return llvm::PointerType::getUnqual(base);
     }
 
-    template<typename T, typename... Args>
-    TypeDecl* Get(Args... args)
-    {
-	static TypeDecl* typePtr;
-	if (!typePtr)
-	{
-	    typePtr = new T(std::forward<Args>(args)...);
-	}
-	return typePtr;
-    }
-
     TypeDecl* GetVoidType() { return Get<VoidDecl>(); }
     TypeDecl* GetStringType() { return Get<StringDecl>(255); }
     TypeDecl* GetTextType() { return Get<TextDecl>(); }

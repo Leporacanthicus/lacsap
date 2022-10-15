@@ -16,6 +16,17 @@ namespace Types
 {
     class TypeDecl;
 
+    template<typename T, typename... Args>
+    TypeDecl* Get(Args... args)
+    {
+	static TypeDecl* typePtr;
+	if (!typePtr)
+	{
+	    typePtr = new T(std::forward<Args>(args)...);
+	}
+	return typePtr;
+    }
+
     TypeDecl* GetIntegerType();
     TypeDecl* GetLongIntType();
     TypeDecl* GetCharType();

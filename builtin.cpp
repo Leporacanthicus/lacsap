@@ -36,6 +36,20 @@ namespace Builtin
 	return builder.CreateCall(f, a, "calltmp");
     }
 
+    template<typename TY>
+    class FunctionType : public FunctionBase
+    {
+    public:
+	using FunctionBase::FunctionBase;
+	Types::TypeDecl* Type() const override { return Types::Get<TY>(); }
+    };
+
+    using FunctionInt = FunctionType<Types::IntegerDecl>;
+    using FunctionLongInt = FunctionType<Types::Int64Decl>;
+    using FunctionBool = FunctionType<Types::BoolDecl>;
+    using FunctionReal = FunctionType<Types::RealDecl>;
+    using FunctionVoid = FunctionType<Types::VoidDecl>;
+
     class FunctionSameAsArg : public FunctionBase
     {
     public:
@@ -50,13 +64,6 @@ namespace Builtin
 	using FunctionBase::FunctionBase;
 	Types::TypeDecl* Type() const override { return args[0]->Type(); }
 	bool             Semantics() override;
-    };
-
-    class FunctionInt : public FunctionBase
-    {
-    public:
-	using FunctionBase::FunctionBase;
-	Types::TypeDecl* Type() const override { return Types::GetIntegerType(); }
     };
 
     class FunctionAbs : public FunctionSameAsArg
@@ -74,13 +81,12 @@ namespace Builtin
 	bool         Semantics() override;
     };
 
-    class FunctionOdd : public FunctionBase
+    class FunctionOdd : public FunctionBool
     {
     public:
-	using FunctionBase::FunctionBase;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetBooleanType(); }
-	bool             Semantics() override;
+	using FunctionBool::FunctionBool;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionRound : public FunctionInt
@@ -98,13 +104,12 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    class FunctionRandom : public FunctionBase
+    class FunctionRandom : public FunctionReal
     {
     public:
-	using FunctionBase::FunctionBase;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
-	bool             Semantics() override;
+	using FunctionReal::FunctionReal;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionChr : public FunctionBase
@@ -155,15 +160,14 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    class FunctionFloat : public FunctionBase
+    class FunctionFloat : public FunctionReal
     {
     public:
-	FunctionFloat(const std::string& fn, const std::vector<ExprAST*>& a) : FunctionBase(a), funcname(fn)
+	FunctionFloat(const std::string& fn, const std::vector<ExprAST*>& a) : FunctionReal(a), funcname(fn)
 	{
 	}
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
-	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
 
     protected:
 	std::string funcname;
@@ -173,9 +177,8 @@ namespace Builtin
     {
     public:
 	using FunctionFloat::FunctionFloat;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::GetRealType(); }
-	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionFloatIntrinsic : public FunctionFloat
@@ -185,13 +188,6 @@ namespace Builtin
 	    : FunctionFloat("llvm." + fn + ".f64", a)
 	{
 	}
-    };
-
-    class FunctionVoid : public FunctionBase
-    {
-    public:
-	using FunctionBase::FunctionBase;
-	Types::TypeDecl* Type() const override { return Types::GetVoidType(); }
     };
 
     class FunctionNew : public FunctionVoid
@@ -298,13 +294,6 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    class FunctionLongInt : public FunctionBase
-    {
-    public:
-	using FunctionBase::FunctionBase;
-	Types::TypeDecl* Type() const override { return Types::GetLongIntType(); }
-    };
-
     class FunctionClock : public FunctionLongInt
     {
     public:
@@ -399,7 +388,7 @@ namespace Builtin
 	FunctionTime(const std::vector<ExprAST*>& a);
 	bool             Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override;
+	Types::TypeDecl* Type() const override { return arrayType; }
 
     private:
 	Types::TypeDecl* arrayType;
@@ -411,7 +400,7 @@ namespace Builtin
 	FunctionDate(const std::vector<ExprAST*>& a);
 	bool             Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override;
+	Types::TypeDecl* Type() const override { return arrayType; }
 
     private:
 	Types::TypeDecl* arrayType;
@@ -1098,8 +1087,6 @@ namespace Builtin
 	       llvm::isa<AddressableAST>(args[0]);
     }
 
-    Types::TypeDecl* FunctionTime::Type() const { return arrayType; }
-
     llvm::Value* FunctionTime::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* storage = CreateTempAlloca(arrayType);
@@ -1126,8 +1113,6 @@ namespace Builtin
 	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
 	       llvm::isa<AddressableAST>(args[0]);
     }
-
-    Types::TypeDecl* FunctionDate::Type() const { return arrayType; }
 
     llvm::Value* FunctionDate::CodeGen(llvm::IRBuilder<>& builder)
     {

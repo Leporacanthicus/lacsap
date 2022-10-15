@@ -2905,6 +2905,12 @@ llvm::Value* VarDeclAST::CodeGen()
 		llvm::Value*              dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
 	    }
+	    else if (InitValueAST* iv = var.Init())
+	    {
+		const std::vector<const Constants::ConstDecl*> vals = iv->Values();
+		llvm::Constant *init = Constants::ConstDeclToLLVMConst(vals[0]);
+		builder.CreateStore(init, v);
+	    }
 	    if (debugInfo)
 	    {
 		DebugInfo& di = GetDebugInfo();

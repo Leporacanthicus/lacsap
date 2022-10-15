@@ -218,6 +218,10 @@ namespace Constants
 	{
 	    return llvm::ConstantInt::get(i->Type()->LlvmType(), i->Value());
 	}
+	if (auto e = llvm::dyn_cast<EnumConstDecl>(cd))
+	{
+	    return llvm::ConstantInt::get(e->Type()->LlvmType(), e->Value());
+	}
 	if (auto r = llvm::dyn_cast<RealConstDecl>(cd))
 	{
 	    return llvm::ConstantFP::get(r->Type()->LlvmType(), r->Value());

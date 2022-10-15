@@ -2259,7 +2259,6 @@ ExprAST* Parser::ParseSetExpr()
     return 0;
 }
 
-
 InitValueAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
     const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });

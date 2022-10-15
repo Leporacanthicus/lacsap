@@ -943,7 +943,10 @@ private:
 class InitValueAST : public ExprAST
 {
 public:
-    InitValueAST(const Location& w, const std::vector<const Constants::ConstDecl*>& v) : ExprAST(w, EK_InitValue), values(v) {}
+    InitValueAST(const Location& w, const std::vector<const Constants::ConstDecl*>& v)
+        : ExprAST(w, EK_InitValue), values(v)
+    {
+    }
     const std::vector<const Constants::ConstDecl*> Values() const { return values; };
 
 private:

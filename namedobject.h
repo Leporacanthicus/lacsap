@@ -55,16 +55,16 @@ public:
         : NamedObject(NK_Var, nm, ty), flags(f), init(0)
     {
     }
-    bool        IsRef() const;
-    bool        IsExternal() const;
-    bool        IsProtected() const;
-    bool        IsClosure() const;
+    bool          IsRef() const;
+    bool          IsExternal() const;
+    bool          IsProtected() const;
+    bool          IsClosure() const;
     InitValueAST* Init() { return init; }
-    void SetInit(InitValueAST* i) { init = i; }
-    static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
+    void          SetInit(InitValueAST* i) { init = i; }
+    static bool   classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 
 private:
-    Flags flags;
+    Flags         flags;
     InitValueAST* init;
 };
 

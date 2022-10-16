@@ -419,6 +419,17 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class FunctionStrCompOp : public FunctionBool
+    {
+    public:
+	FunctionStrCompOp(Token::TokenType o, const std::vector<ExprAST*>& a) : FunctionBool(a), op(o) {}
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+
+    private:
+	Token::TokenType op;
+    };
+
     void FunctionBase::accept(ASTVisitor& v)
     {
 	for (auto a : args)
@@ -1147,6 +1158,17 @@ namespace Builtin
 	return builder.CreateCall(f, { faddr, binding });
     }
 
+    bool FunctionStrCompOp::Semantics()
+    {
+	return args.size() == 2 && args[0]->Type()->IsStringLike() && args[1]->Type()->IsStringLike();
+    }
+
+    llvm::Value* FunctionStrCompOp::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* v = CallStrFunc("Compare", args[0], args[1], Types::GetIntegerType(), "cmp");
+	return MakeStrCompare(op, v);
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1233,5 +1255,11 @@ namespace Builtin
 	AddBIFCreator("unbind", NEW2(File, "unbind"));
 	AddBIFCreator("binding", NEW2(Binding, "binding"));
 	AddBIFCreator("bind", NEW2(Bind, "bind"));
+	AddBIFCreator("eq", NEW2(StrCompOp, Token::Equal));
+	AddBIFCreator("ne", NEW2(StrCompOp, Token::NotEqual));
+	AddBIFCreator("le", NEW2(StrCompOp, Token::LessOrEqual));
+	AddBIFCreator("ge", NEW2(StrCompOp, Token::GreaterOrEqual));
+	AddBIFCreator("lt", NEW2(StrCompOp, Token::LessThan));
+	AddBIFCreator("gt", NEW2(StrCompOp, Token::GreaterThan));
     }
 } // namespace Builtin

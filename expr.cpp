@@ -754,8 +754,8 @@ llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
     return MakeAddressable(e);
 }
 
-static llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, Types::TypeDecl* resTy,
-                                const std::string& twine)
+llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, Types::TypeDecl* resTy,
+                         const std::string& twine)
 {
     TRACE();
     llvm::Value* rV = MakeStringFromExpr(rhs, rhs->Type());
@@ -929,27 +929,28 @@ llvm::Value* BinaryExprAST::SetCodeGen()
     return ErrorV(this, "Invalid arguments in set operation");
 }
 
-static llvm::Value* MakeStrCompare(const Token& oper, llvm::Value* v)
+llvm::Value* MakeStrCompare(Token::TokenType oper, llvm::Value* v)
 {
-    switch (oper.GetToken())
+    llvm::Constant* zero = MakeIntegerConstant(0);
+    switch (oper)
     {
     case Token::Equal:
-	return builder.CreateICmpEQ(v, MakeIntegerConstant(0), "eq");
+	return builder.CreateICmpEQ(v, zero, "eq");
 
     case Token::NotEqual:
-	return builder.CreateICmpNE(v, MakeIntegerConstant(0), "ne");
+	return builder.CreateICmpNE(v, zero, "ne");
 
     case Token::GreaterOrEqual:
-	return builder.CreateICmpSGE(v, MakeIntegerConstant(0), "ge");
+	return builder.CreateICmpSGE(v, zero, "ge");
 
     case Token::LessOrEqual:
-	return builder.CreateICmpSLE(v, MakeIntegerConstant(0), "le");
+	return builder.CreateICmpSLE(v, zero, "le");
 
     case Token::GreaterThan:
-	return builder.CreateICmpSGT(v, MakeIntegerConstant(0), "gt");
+	return builder.CreateICmpSGT(v, zero, "gt");
 
     case Token::LessThan:
-	return builder.CreateICmpSLT(v, MakeIntegerConstant(0), "lt");
+	return builder.CreateICmpSLT(v, zero, "lt");
 
     default:
 	return ErrorV(0, "Invalid operand for char arrays");
@@ -1121,7 +1122,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	if (lhs->Type()->Type() != Types::TypeDecl::TK_Char ||
 	    rhs->Type()->Type() != Types::TypeDecl::TK_Char)
 	{
-	    return MakeStrCompare(oper, CallStrFunc("Compare"));
+	    return MakeStrCompare(oper.GetToken(), CallStrFunc("Compare"));
 	}
     }
 
@@ -1140,7 +1141,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
 	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
-		return MakeStrCompare(oper, CallArrFunc("Compare", rr[0]->Size()));
+		return MakeStrCompare(oper.GetToken(), CallArrFunc("Compare", rr[0]->Size()));
 	    }
 	}
     }

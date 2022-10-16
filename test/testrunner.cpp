@@ -430,6 +430,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Caserange2", "caserange2.pas", "" },
     { 0, "Basic", "Bindable file", "bindable.pas", "" },
     { 0, "Basic", "Value initialization", "values.pas", "" },
+    { 0, "Basic", "String Compare", "strcomp.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

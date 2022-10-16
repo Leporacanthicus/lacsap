@@ -966,5 +966,8 @@ std::string          ShortName(const std::string& name);
 ExprAST*             Recast(ExprAST* a, const Types::TypeDecl* ty);
 size_t               AlignOfType(llvm::Type* ty);
 llvm::AllocaInst*    CreateTempAlloca(Types::TypeDecl* ty);
+llvm::Value*         MakeStrCompare(Token::TokenType oper, llvm::Value* v);
+llvm::Value*         CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, Types::TypeDecl* resTy,
+                                 const std::string& twine);
 
 #endif

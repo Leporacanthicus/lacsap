@@ -2259,14 +2259,44 @@ ExprAST* Parser::ParseSetExpr()
     return 0;
 }
 
+ExprAST* Parser::ConstDeclToExpr(Location loc, const Constants::ConstDecl* c)
+{
+    if (c->Type()->IsIntegral())
+    {
+	return new IntegerExprAST(loc, ConstDeclToInt(c), c->Type());
+    }
+    if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(c))
+    {
+	return new RealExprAST(loc, rc->Value(), rc->Type());
+    }
+    return Error(CurrentToken(), "Expected integer value");
+}
+
 InitValueAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
-    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
+    Token::TokenType end = Token::Semicolon;
+    if (AcceptToken(Token::LeftSquare))
+    {
+	CCSetList ccs;
+	Location  loc = CurrentToken().Loc();
+	if (!ParseCommaList(ccs, Token::RightSquare, true))
+	{
+	    return 0;
+	}
+	if (llvm::isa<Types::SetDecl>(ty))
+	{
+	    return new InitValueAST(loc, { new SetExprAST(loc, ccs.Values(), ty) });
+	}
+	return new InitValueAST(loc, ccs.Values());
+    }
+
+    const Constants::ConstDecl* cd = ParseConstExpr({ end });
     if (!cd)
     {
 	return 0;
     }
-    return new InitValueAST(CurrentToken().Loc(), { cd });
+    ExprAST* e = ConstDeclToExpr(CurrentToken().Loc(), cd);
+    return new InitValueAST(CurrentToken().Loc(), { e });
 }
 
 VarDeclAST* Parser::ParseVarDecls()

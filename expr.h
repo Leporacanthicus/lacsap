@@ -202,7 +202,8 @@ public:
     }
     void         DoDump(std::ostream& out) const override;
     llvm::Value* Address() override;
-    llvm::Value* MakeConstantSet(Types::TypeDecl* type);
+    llvm::Constant* MakeConstantSetArray();
+    llvm::Value*    MakeConstantSet();
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }
 
 private:
@@ -943,14 +944,11 @@ private:
 class InitValueAST : public ExprAST
 {
 public:
-    InitValueAST(const Location& w, const std::vector<const Constants::ConstDecl*>& v)
-        : ExprAST(w, EK_InitValue), values(v)
-    {
-    }
-    const std::vector<const Constants::ConstDecl*> Values() const { return values; };
+    InitValueAST(const Location& w, const std::vector<ExprAST*>& v) : ExprAST(w, EK_InitValue), values(v) {}
+    llvm::Value* CodeGen() override;
 
 private:
-    std::vector<const Constants::ConstDecl*> values;
+    std::vector<ExprAST*> values;
 };
 
 // Useful global functions

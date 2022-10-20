@@ -2857,8 +2857,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    }
 	    else if (InitValueAST* iv = var.Init())
 	    {
-		const std::vector<const Constants::ConstDecl*> vals = iv->Values();
-		init = Constants::ConstDeclToLLVMConst(vals[0]);
+		init = llvm::dyn_cast<llvm::Constant>(iv->CodeGen());
 	    }
 	    else
 	    {
@@ -2908,8 +2907,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    }
 	    else if (InitValueAST* iv = var.Init())
 	    {
-		const std::vector<const Constants::ConstDecl*> vals = iv->Values();
-		llvm::Constant* init = Constants::ConstDeclToLLVMConst(vals[0]);
+		llvm::Value* init = iv->CodeGen();
 		builder.CreateStore(init, v);
 	    }
 	    if (debugInfo)
@@ -3150,11 +3148,9 @@ void SetExprAST::DoDump(std::ostream& out) const
     out << "]";
 }
 
-llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
+llvm::Constant* SetExprAST::MakeConstantSetArray()
 {
-    static int  index = 1;
     llvm::Type* ty = type->LlvmType();
-    assert(ty && "Expect type for set to work");
 
     Types::SetDecl::ElemType elems[Types::SetDecl::MaxSetWords] = {};
     for (auto v : values)
@@ -3187,7 +3183,7 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
 
     Types::SetDecl*  setType = llvm::dyn_cast<Types::SetDecl>(type);
     size_t           size = setType->SetWords();
-    llvm::Constant** initArr = new llvm::Constant*[size];
+    llvm::Constant*  initArr[Types::SetDecl::MaxSetWords];
     llvm::ArrayType* aty = llvm::dyn_cast<llvm::ArrayType>(ty);
     llvm::Type*      eltTy = aty->getElementType();
 
@@ -3197,12 +3193,20 @@ llvm::Value* SetExprAST::MakeConstantSet(Types::TypeDecl* type)
     }
 
     llvm::Constant* init = llvm::ConstantArray::get(aty, llvm::ArrayRef<llvm::Constant*>(initArr, size));
+    return init;
+}
+
+llvm::Value* SetExprAST::MakeConstantSet()
+{
+    static int  index = 1;
+    llvm::Type* ty = type->LlvmType();
+    assert(ty && "Expect type for set to work");
+
+    llvm::Constant* init = MakeConstantSetArray();
+
     llvm::GlobalValue::LinkageTypes linkage = llvm::Function::InternalLinkage;
     std::string                     name("P" + std::to_string(index) + ".set");
     llvm::GlobalVariable*           gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init, name);
-
-    delete[] initArr;
-
     return gv;
 }
 
@@ -3238,7 +3242,7 @@ llvm::Value* SetExprAST::Address()
 
     if (allConstants)
     {
-	return MakeConstantSet(type);
+	return MakeConstantSet();
     }
 
     llvm::Value* setV = CreateTempAlloca(type);
@@ -3866,6 +3870,15 @@ llvm::Value* TrampolineAST::CodeGen()
 void TrampolineAST::accept(ASTVisitor& v)
 {
     func->accept(v);
+}
+
+llvm::Value* InitValueAST::CodeGen()
+{
+    if (auto set = llvm::dyn_cast<SetExprAST>(values[0]))
+    {
+	return set->MakeConstantSetArray();
+    }
+    return values[0]->CodeGen();
 }
 
 static void BuildUnitInitList()

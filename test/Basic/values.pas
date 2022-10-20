@@ -11,9 +11,14 @@ procedure p;
 
 var
    v : colour value blue;
+   s : set of char value ['a'..'d', 'x', 'A'];
+   c : char;
 
 begin
    writeln("v=", ord(v));
+   for c in s do
+      write(c, " ");
+   writeln;
 end;
 
 begin

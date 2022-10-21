@@ -10,7 +10,7 @@ This is a list of "things to improve in general".
    * dispose of NIL.
    * range check of pack/unpack.
    * Overflow check of sqr, trunc, round, succ, pred using llvm.*.with.overflow.iNN
-   * Invalid argument for log, ln,sqrt, etc
+   * Invalid argument for log, ln, sqrt, etc
    * chr needs range-check.
    * Check for zero divisor on mod, div and /.
    * Unknown 'case' label?
@@ -18,3 +18,5 @@ This is a list of "things to improve in general".
    * Range check for set assignment.
 
 - Print source with errors.
+
+- Allow string length expressions, e.g. var s: string[12+34];

@@ -494,7 +494,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	Types::RangeDecl* r = a->ranges[i];
 	if (llvm::isa<RangeReduceAST>(e))
 	    continue;
-	if (r->Type() != e->Type()->Type() && !r->CompatibleType(e->Type()))
+	if (r->Type() != e->Type()->Type() && !e->Type()->CompatibleType(r))
 	{
 	    Error(a, "Incorrect index type");
 	}

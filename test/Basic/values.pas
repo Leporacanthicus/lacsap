@@ -5,7 +5,8 @@ type
 
 var
    i : integer value 42;
-   r :  real value 4.2 * 10;
+   r : real value 4.2 * 10;
+   b :  boolean value true;
 
 procedure p;
 
@@ -25,5 +26,6 @@ begin
    p;
    writeln("i=", i);
    writeln("r=", r);
+   writeln("b=", b);
 end.
 

@@ -1252,15 +1252,17 @@ Types::SetDecl* Parser::ParseSetDecl()
     return 0;
 }
 
-unsigned Parser::ParseStringSize()
+unsigned Parser::ParseStringSize(Token::TokenType end)
 {
-    Token token = TranslateToken(CurrentToken());
-    if (token.GetToken() != Token::Integer)
+    if (const Constants::ConstDecl* size = ParseConstExpr({ end }))
     {
-	return ErrorI(token, "Expected integer value!");
+	if (auto is = llvm::dyn_cast<Constants::IntConstDecl>(size))
+	{
+	    return is->Value();
+	}
     }
-    NextToken();
-    return token.GetIntVal();
+    Error(CurrentToken(), "Invalid string size");
+    return 0;
 }
 
 Types::StringDecl* Parser::ParseStringDecl()
@@ -1271,7 +1273,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 
     if (AcceptToken(Token::LeftSquare))
     {
-	size = ParseStringSize();
+	size = ParseStringSize(Token::RightSquare);
 	if (!Expect(Token::RightSquare, true))
 	{
 	    return 0;
@@ -1279,7 +1281,7 @@ Types::StringDecl* Parser::ParseStringDecl()
     }
     else if (AcceptToken(Token::LeftParen))
     {
-	size = ParseStringSize();
+	size = ParseStringSize(Token::RightParen);
 	if (!Expect(Token::RightParen, true))
 	{
 	    return 0;

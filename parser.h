@@ -126,7 +126,7 @@ public:
     bool     AcceptToken(Token::TokenType type, const char* file, int line);
     bool     IsSemicolonOrEnd();
     bool     ExpectSemicolonOrEnd(const char* file, int line);
-    unsigned ParseStringSize();
+    unsigned ParseStringSize(Token::TokenType end);
 
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, int parentCount);

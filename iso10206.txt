@@ -18,12 +18,6 @@ Variables:
 Functions
    { string functions }
    substr(s, i)
-   EQ(s1, s2)
-   LT(s1, s2)
-   GT(s1, s2)
-   NE(s1, s2)
-   LE(s1, s2)
-   GE(s1, s2)
 
    writestr(s, p1, ..., pn)   { kinda like sprintf }
    readstr(e, v1, ..., vn)  { kinda like sscanf }

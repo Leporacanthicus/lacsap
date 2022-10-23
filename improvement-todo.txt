@@ -20,3 +20,6 @@ This is a list of "things to improve in general".
 - Print source with errors.
 
 - Allow string length expressions, e.g. var s: string[12+34];
+
+- Better error messages from built-in functions.
+   * Return an enum { OK, WrongArgCount, TypeMismatch }

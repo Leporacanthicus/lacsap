@@ -12,7 +12,6 @@ Type differences:
      integer. FPC has them as 16- and 32-bit values.
      `real` is a 64-bit double precisio float in Lacsap, 32-bit single
      precision float in FPC.
-     
 
 
 Builtin function differences:

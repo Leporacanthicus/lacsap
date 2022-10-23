@@ -1162,7 +1162,7 @@ namespace Types
 	}
 	if (ty->Type() == TK_String)
 	{
-	    if (llvm::dyn_cast<StringDecl>(ty)->Ranges()[0]->End() > Ranges()[0]->End())
+	    if (llvm::dyn_cast<StringDecl>(ty)->Capacity() > Capacity())
 	    {
 		return ty;
 	    }

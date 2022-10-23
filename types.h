@@ -689,6 +689,7 @@ namespace Types
 	void            DoDump(std::ostream& out) const override;
 	bool            HasLlvmType() const override { return true; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	int             Capacity() const { return Ranges()[0]->GetRange()->Size() - 1; }
     };
 
     llvm::Type* GetVoidPtrType();

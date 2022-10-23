@@ -1825,7 +1825,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 	ExprAST*            e = 0;
 	Types::VariantDecl* v = 0;
 	unsigned            fc = 0;
-	if (Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(type))
+	if (auto cd = llvm::dyn_cast<Types::ClassDecl>(type))
 	{
 	    int elem = cd->Element(name);
 	    typedesc = "object";
@@ -1869,7 +1869,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 		}
 	    }
 	}
-	else if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(type))
+	else if (auto rd = llvm::dyn_cast<Types::RecordDecl>(type))
 	{
 	    typedesc = "record";
 	    int elem = rd->Element(name);
@@ -1886,7 +1886,19 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 	}
 	else
 	{
-	    return ErrorV(CurrentToken(), "Attempt to use field of variable that hasn't got fields");
+	    if (auto sd = llvm::dyn_cast<Types::StringDecl>(type))
+	    {
+		strlower(name);
+		if (name == "capacity")
+		{
+		    int cap = sd->Capacity();
+		    e = new IntegerExprAST(CurrentToken().Loc(), cap, Types::GetIntegerType());
+		}
+	    }
+	    if (!e)
+	    {
+		return ErrorV(CurrentToken(), "Attempt to use field of variable that hasn't got fields");
+	    }
 	}
 	if (!e && v)
 	{

@@ -2855,7 +2855,7 @@ llvm::Value* VarDeclAST::CodeGen()
 		}
 		init = llvm::ConstantStruct::get(sty, vtable);
 	    }
-	    else if (InitValueAST* iv = var.Init())
+	    else if (ExprAST* iv = var.Init())
 	    {
 		init = llvm::dyn_cast<llvm::Constant>(iv->CodeGen());
 	    }
@@ -2905,7 +2905,7 @@ llvm::Value* VarDeclAST::CodeGen()
 		llvm::Value*              dest = builder.CreateGEP(v, ind, "vtable");
 		builder.CreateStore(gv, dest);
 	    }
-	    else if (InitValueAST* iv = var.Init())
+	    else if (ExprAST* iv = var.Init())
 	    {
 		llvm::Value* init = iv->CodeGen();
 		builder.CreateStore(init, v);
@@ -3879,6 +3879,15 @@ llvm::Value* InitValueAST::CodeGen()
 	return set->MakeConstantSetArray();
     }
     return values[0]->CodeGen();
+}
+
+void InitValueAST::DoDump(std::ostream& out) const
+{
+    out << "Init: ";
+    for (auto v : values)
+    {
+	v->dump();
+    }
 }
 
 static void BuildUnitInitList()

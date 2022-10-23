@@ -215,6 +215,40 @@ ExprAST* Parser::ParseSizeOfExpr()
     return expr;
 }
 
+ExprAST* Parser::ParseDefaultExpr()
+{
+    AssertToken(Token::Default);
+    if (!Expect(Token::LeftParen, true))
+    {
+	return 0;
+    }
+    ExprAST*         expr = 0;
+    Types::TypeDecl* ty = 0;
+    if (CurrentToken().GetToken() == Token::Identifier)
+    {
+	if ((ty = GetTypeDecl(CurrentToken().GetIdentName())))
+	{
+	    AssertToken(Token::Identifier);
+	}
+    }
+    if (!ty)
+    {
+	if (ExprAST* e = ParseExpression())
+	{
+	    ty = e->Type();
+	}
+    }
+    if (ty)
+    {
+	expr = ty->Init();
+    }
+    if (!Expect(Token::RightParen, true))
+    {
+	return 0;
+    }
+    return expr;
+}
+
 bool Parser::ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty)
 {
     // We completely ignore "file" specifications on the program.
@@ -729,6 +763,16 @@ void Parser::ParseTypeDef()
 	bool restricted = AcceptToken(Token::Restricted);
 	if (Types::TypeDecl* ty = ParseType(nm, true))
 	{
+	    ExprAST* init = 0;
+	    if (AcceptToken(Token::Value))
+	    {
+		init = ParseInitValue(ty);
+		if (!init)
+		{
+		    return;
+		}
+		ty = Types::CloneWithInit(ty, init);
+	    }
 	    if (!AddType(nm, ty, restricted))
 	    {
 		Error(token, "Name " + nm + " is already in use.");
@@ -1512,6 +1556,9 @@ ExprAST* Parser::ParseExprElement()
     Token token = TranslateToken(CurrentToken());
     switch (token.GetToken())
     {
+    case Token::Default:
+	return ParseDefaultExpr();
+
     case Token::Nil:
 	AssertToken(Token::Nil);
 	return new NilExprAST(CurrentToken().Loc());
@@ -2337,15 +2384,20 @@ VarDeclAST* Parser::ParseVarDecls()
 			    Error(CurrentToken(), "Name '" + n + "' is already defined"));
 		    }
 		}
+		ExprAST* init = 0;
 		if (AcceptToken(Token::Value))
 		{
-		    InitValueAST* init = ParseInitValue(type);
+		    init = ParseInitValue(type);
 		    if (!init)
 		    {
 			return 0;
 		    }
-		    varList.back().SetInit(init);
 		}
+		else
+		{
+		    init = type->Init();
+		}
+		varList.back().SetInit(init);
 		good = Expect(Token::Semicolon, true);
 	    }
 	}

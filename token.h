@@ -120,6 +120,7 @@ public:
 	Goto,
 	Uses,
 	At,
+	Default,
 
 	// Specials
 	LineNumber,

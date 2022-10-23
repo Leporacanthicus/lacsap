@@ -93,7 +93,7 @@ namespace Types
 	    TK_Forward,
 	};
 
-	TypeDecl(TypeKind k) : kind(k), lType(0), diType(0), name("") {}
+	TypeDecl(TypeKind k) : kind(k), lType(0), diType(0), name(""), init(0) {}
 
 	virtual TypeKind Type() const { return kind; }
 	virtual ~TypeDecl() {}
@@ -123,6 +123,13 @@ namespace Types
 	size_t                  AlignSize() const;
 	std::string             Name() const { return name; }
 	void                    Name(const std::string& nm) { name = nm; }
+	ExprAST*                Init() { return init; }
+	void                    SetInit(ExprAST* i)
+	{
+	    assert(!init && "Don't set init twice");
+	    init = i;
+	};
+	virtual TypeDecl* Clone() const { return 0; }
 
     protected:
 	virtual llvm::Type*   GetLlvmType() const = 0;
@@ -133,6 +140,7 @@ namespace Types
 	mutable llvm::Type*   lType;
 	mutable llvm::DIType* diType;
 	std::string           name;
+	ExprAST*              init;
     };
 
     class ForwardDecl : public TypeDecl
@@ -191,6 +199,11 @@ namespace Types
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	void            DoDump(std::ostream& out) const override { out << "Type: Integer<" << bits << ">"; }
 	static bool     classof(const TypeDecl* e) { return e->getKind() == tk; }
+	TypeDecl*       Clone() const override
+	{
+	    IntegerXDecl* p = new IntegerXDecl<bits, tk>();
+	    return p;
+	}
 
     protected:
 	llvm::Type*   GetLlvmType() const override { return llvm::Type::getIntNTy(theContext, bits); }
@@ -687,6 +700,8 @@ namespace Types
     llvm::Type* GetVoidPtrType();
 
     void Finalize(llvm::DIBuilder* builder);
+
+    TypeDecl* CloneWithInit(const TypeDecl* ty, ExprAST* init);
 } // Namespace Types
 
 bool        operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty);

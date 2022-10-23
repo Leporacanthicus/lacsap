@@ -1272,6 +1272,13 @@ namespace Types
 	    builder->replaceTemporary(llvm::TempDIType(ty), newTy);
 	}
     }
+
+    TypeDecl* CloneWithInit(const TypeDecl* ty, ExprAST* init)
+    {
+	TypeDecl* newTy = ty->Clone();
+	newTy->SetInit(init);
+	return newTy;
+    }
 } // namespace Types
 
 bool operator==(const Types::TypeDecl& lty, const Types::TypeDecl& rty)

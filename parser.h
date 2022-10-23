@@ -52,6 +52,7 @@ public:
     ExprAST* ParseUnaryOp();
     ExprAST* ParseSetExpr();
     ExprAST* ParseSizeOfExpr();
+    ExprAST* ParseDefaultExpr();
     bool     ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);
 
     ExprAST*         ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type);

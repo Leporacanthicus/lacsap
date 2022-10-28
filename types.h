@@ -129,7 +129,11 @@ namespace Types
 	    assert(!init && "Don't set init twice");
 	    init = i;
 	};
-	virtual TypeDecl* Clone() const { return 0; }
+	virtual TypeDecl* Clone() const
+	{
+	    assert(0 && "Unimplemented clone");
+	    return 0;
+	}
 
     protected:
 	virtual llvm::Type*   GetLlvmType() const = 0;
@@ -182,6 +186,7 @@ namespace Types
 	unsigned        Bits() const override { return 8; }
 	void            DoDump(std::ostream& out) const override;
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Char; }
+	TypeDecl*       Clone() const override { return new CharDecl(); }
 
     protected:
 	llvm::Type*   GetLlvmType() const override;
@@ -199,11 +204,7 @@ namespace Types
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	void            DoDump(std::ostream& out) const override { out << "Type: Integer<" << bits << ">"; }
 	static bool     classof(const TypeDecl* e) { return e->getKind() == tk; }
-	TypeDecl*       Clone() const override
-	{
-	    IntegerXDecl* p = new IntegerXDecl<bits, tk>();
-	    return p;
-	}
+	TypeDecl*       Clone() const override { return new IntegerXDecl<bits, tk>(); }
 
     protected:
 	llvm::Type*   GetLlvmType() const override { return llvm::Type::getIntNTy(theContext, bits); }
@@ -226,6 +227,7 @@ namespace Types
 	unsigned        Bits() const override { return 64; }
 	void            DoDump(std::ostream& out) const override;
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Real; }
+	TypeDecl*       Clone() const override { return new RealDecl(); }
 
     protected:
 	llvm::Type*   GetLlvmType() const override;
@@ -339,7 +341,7 @@ namespace Types
 	int         value;
     };
 
-    typedef std::vector<EnumValue> EnumValues;
+    using EnumValues = std::vector<EnumValue>;
 
     class EnumDecl : public CompoundDecl
     {
@@ -350,6 +352,7 @@ namespace Types
 	    SetValues(nmv);
 	}
 	EnumDecl(const std::vector<std::string>& nmv, TypeDecl* ty) : EnumDecl(TK_Enum, nmv, ty) {}
+	EnumDecl(TypeKind tk, const EnumValues& vals, TypeDecl* ty) : CompoundDecl(tk, ty), values(vals) {}
 
     private:
 	void SetValues(const std::vector<std::string>& nmv);
@@ -364,6 +367,7 @@ namespace Types
 	unsigned          Bits() const override;
 	static bool       classof(const TypeDecl* e) { return e->getKind() == TK_Enum; }
 	bool              SameAs(const TypeDecl* ty) const override;
+	TypeDecl*         Clone() const override { return new EnumDecl(kind, values, SubType()); }
 
     protected:
 	llvm::Type*   GetLlvmType() const override { return baseType->LlvmType(); }

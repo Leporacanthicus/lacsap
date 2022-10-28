@@ -23,3 +23,7 @@ This is a list of "things to improve in general".
 
 - Better error messages from built-in functions.
    * Return an enum { OK, WrongArgCount, TypeMismatch }
+
+- Implement a function pass load/store -> memcpy for large load/stores.
+
+- Move to a newer LLVM and use new passmanager.

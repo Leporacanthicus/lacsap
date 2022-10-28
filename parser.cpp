@@ -1581,7 +1581,7 @@ ExprAST* Parser::ParseExprElement()
 	return ParseParenExpr();
 
     case Token::LeftSquare:
-	return ParseSetExpr();
+	return ParseSetExpr(0);
 
     case Token::Minus:
     case Token::Plus:
@@ -2294,7 +2294,7 @@ private:
     std::vector<ExprAST*> values;
 };
 
-ExprAST* Parser::ParseSetExpr()
+ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
 {
     TRACE();
     AssertToken(Token::LeftSquare);
@@ -2315,7 +2315,11 @@ ExprAST* Parser::ParseSetExpr()
 		}
 	    }
 	}
-	return new SetExprAST(loc, ccs.Values(), new Types::SetDecl(0, type));
+	if (!setType)
+	{
+	    setType = new Types::SetDecl(0, type);
+	}
+	return new SetExprAST(loc, ccs.Values(), setType);
     }
     return 0;
 }
@@ -2336,19 +2340,14 @@ ExprAST* Parser::ConstDeclToExpr(Location loc, const Constants::ConstDecl* c)
 InitValueAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
     Token::TokenType end = Token::Semicolon;
-    if (AcceptToken(Token::LeftSquare))
+    Location         loc = CurrentToken().Loc();
+    if (llvm::isa<Types::SetDecl>(ty))
     {
-	CCSetList ccs;
-	Location  loc = CurrentToken().Loc();
-	if (!ParseCommaList(ccs, Token::RightSquare, true))
+	if (ExprAST* e = ParseSetExpr(ty))
 	{
-	    return 0;
+	    return new InitValueAST(loc, { e });
 	}
-	if (llvm::isa<Types::SetDecl>(ty))
-	{
-	    return new InitValueAST(loc, { new SetExprAST(loc, ccs.Values(), ty) });
-	}
-	return new InitValueAST(loc, ccs.Values());
+	return 0;
     }
 
     const Constants::ConstDecl* cd = ParseConstExpr({ end });

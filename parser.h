@@ -50,7 +50,7 @@ public:
     ExprAST* ParsePrimary();
     ExprAST* ParseBinOpRHS(int exprPrec, ExprAST* lhs);
     ExprAST* ParseUnaryOp();
-    ExprAST* ParseSetExpr();
+    ExprAST* ParseSetExpr(Types::TypeDecl* setType);
     ExprAST* ParseSizeOfExpr();
     ExprAST* ParseDefaultExpr();
     bool     ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);

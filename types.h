@@ -324,6 +324,7 @@ namespace Types
 	{
 	    return e->getKind() >= TK_Array && e->getKind() <= TK_LastArray;
 	}
+	TypeDecl* Clone() const override;
 
     protected:
 	llvm::Type*   GetLlvmType() const override;

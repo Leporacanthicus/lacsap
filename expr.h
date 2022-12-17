@@ -18,6 +18,24 @@
 
 extern llvm::LLVMContext theContext;
 
+class ArrayInit
+{
+public:
+    ArrayInit(int s, int e, ExprAST* v) : start{ s }, end{ e }, value{ v }, isRange{ true } {}
+    ArrayInit(int s, ExprAST* v) : start{ s }, end{ 0 }, value{ v }, isRange{ false } {}
+
+    bool     IsRange() const { return isRange; }
+    ExprAST* Value() const { return value; }
+    int      Start() const { return start; }
+    int      End() const { return end; }
+
+private:
+    int      start;
+    int      end;
+    ExprAST* value;
+    bool     isRange;
+};
+
 const size_t MIN_ALIGN = 4;
 
 class ExprAST : public Visitable<ExprAST>
@@ -77,6 +95,7 @@ public:
 	EK_Trampoline,
 
 	EK_InitValue,
+	EK_InitArray,
     };
     ExprAST(const Location& w, ExprKind k) : loc(w), kind(k), type(0) {}
     ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}
@@ -951,6 +970,20 @@ public:
 
 private:
     std::vector<ExprAST*> values;
+};
+
+class InitArrayAST : public ExprAST
+{
+public:
+    InitArrayAST(const Location& w, Types::TypeDecl* ty, const std::vector<ArrayInit>& v)
+        : ExprAST(w, EK_InitValue, ty), values(v)
+    {
+    }
+    llvm::Value* CodeGen() override;
+    void         DoDump(std::ostream& out) const override;
+
+private:
+    std::vector<ArrayInit> values;
 };
 
 // Useful global functions

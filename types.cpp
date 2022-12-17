@@ -333,6 +333,8 @@ namespace Types
 	return this;
     }
 
+    TypeDecl* ArrayDecl::Clone() const { return new Types::ArrayDecl(baseType, ranges); }
+
     void Range::dump() const { DoDump(std::cerr); }
 
     void Range::DoDump(std::ostream& out) const { out << "[" << start << ".." << end << "]"; }

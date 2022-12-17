@@ -20,13 +20,6 @@ public:
 	Unit
     };
 
-    class CommaConsumer
-    {
-    public:
-	virtual bool Consume(Parser& parser) = 0;
-	virtual ~CommaConsumer() {}
-    };
-
 public:
     Parser(Source& source);
     ExprAST* Parse(ParserType type);
@@ -53,7 +46,6 @@ public:
     ExprAST* ParseSetExpr(Types::TypeDecl* setType);
     ExprAST* ParseSizeOfExpr();
     ExprAST* ParseDefaultExpr();
-    bool     ParseCommaList(CommaConsumer& cc, Token::TokenType end, bool allowEmpty);
 
     ExprAST*         ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type);
     ExprAST*         ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type);
@@ -88,7 +80,7 @@ public:
     bool          ParseInterface(InterfaceList& iList);
 
     ExprAST*      ConstDeclToExpr(Location loc, const Constants::ConstDecl* c);
-    InitValueAST* ParseInitValue(Types::TypeDecl* ty);
+    ExprAST*      ParseInitValue(Types::TypeDecl* ty);
 
     // Type declarations and defintitions
     void  ParseTypeDef();

@@ -1941,7 +1941,7 @@ llvm::Value* StringExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    return builder.CreateGlobalStringPtr(val, "_string");
+    return builder.CreateGlobalStringPtr(val, "_string", 0, theModule);
 }
 
 llvm::Value* StringExprAST::Address()
@@ -3887,6 +3887,47 @@ void InitValueAST::DoDump(std::ostream& out) const
     for (auto v : values)
     {
 	v->dump();
+    }
+}
+
+llvm::Value* InitArrayAST::CodeGen()
+{
+    auto aty = llvm::dyn_cast<Types::ArrayDecl>(type);
+    assert(aty && "Expected array type here");
+    assert(aty->Ranges().size() == 1 && "Expect only 1D arrays right now");
+    Types::Range*                range = aty->Ranges()[0]->GetRange();
+    size_t                       size = range->Size();
+    std::vector<llvm::Constant*> initArr(size);
+
+    for (auto v : values)
+    {
+	llvm::Constant* c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
+	if (v.IsRange())
+	{
+	    for (int i = v.Start(); i <= v.End(); i++)
+	    {
+		initArr[i - range->Start()] = c;
+	    }
+	}
+	else
+	{
+	    initArr[v.Start() - range->Start()] = c;
+	}
+    }
+    llvm::ArrayType* arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
+
+    llvm::Constant* init = llvm::ConstantArray::get(arrty,
+                                                    llvm::ArrayRef<llvm::Constant*>(initArr.data(), size));
+    return init;
+}
+
+void InitArrayAST::DoDump(std::ostream& out) const
+{
+    out << "InitArray: ";
+    for (auto v : values)
+    {
+	out << v.Start() << ".." << v.End() << ":";
+	v.Value()->dump();
     }
 }
 

@@ -963,9 +963,11 @@ private:
 class InitValueAST : public ExprAST
 {
 public:
-    InitValueAST(const Location& w, const std::vector<ExprAST*>& v) : ExprAST(w, EK_InitValue), values(v) {}
+    InitValueAST(const Location& w, Types::TypeDecl* ty, const std::vector<ExprAST*>& v)
+        : ExprAST(w, EK_InitValue, ty), values(v)
+    {
+    }
     llvm::Value* CodeGen() override;
-    Types::TypeDecl* Type() const override { return values[0]->Type(); }
     void             DoDump(std::ostream& out) const override;
 
 private:

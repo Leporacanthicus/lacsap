@@ -2405,7 +2405,7 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
     {
 	if (ExprAST* e = ParseSetExpr(ty))
 	{
-	    return new InitValueAST(loc, { e });
+	    return new InitValueAST(loc, ty, { e });
 	}
 	return 0;
     }
@@ -2420,12 +2420,15 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	    }
 	    return 0;
 	}
-	return 0;
+	else if (!ty->IsStringLike())
+	{
+	    return 0;
+	}
     }
     if (const Constants::ConstDecl* cd = ParseConstExpr(
             { Token::Semicolon, Token::Colon, Token::RightSquare }))
     {
-	return new InitValueAST(loc, { ConstDeclToExpr(loc, cd) });
+	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, cd) });
     }
     return 0;
 }

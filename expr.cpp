@@ -3878,6 +3878,23 @@ llvm::Value* InitValueAST::CodeGen()
     {
 	return set->MakeConstantSetArray();
     }
+    if (type->IsStringLike() && llvm::isa<Types::ArrayDecl>(type))
+    {
+	llvm::ArrayType*             arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
+	llvm::Type*                  ty = type->SubType()->LlvmType();
+	size_t                       size = type->Size();
+	std::vector<llvm::Constant*> initArr(size);
+
+	initArr[0] = llvm::dyn_cast<llvm::Constant>(values[0]->CodeGen());
+	for (size_t i = 1; i < size; i++)
+	{
+	    initArr[i] = llvm::Constant::getNullValue(ty);
+	}
+
+	llvm::Constant* init = llvm::ConstantArray::get(
+	    arrty, llvm::ArrayRef<llvm::Constant*>(initArr.data(), size));
+	return init;
+    }
     return values[0]->CodeGen();
 }
 

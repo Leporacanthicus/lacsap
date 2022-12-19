@@ -105,7 +105,7 @@ namespace Types
 	virtual Range*          GetRange() const;
 	virtual TypeDecl*       SubType() const { return 0; }
 	virtual unsigned        Bits() const { return 0; }
-	virtual bool            SameAs(const TypeDecl* ty) const = 0;
+	virtual bool            SameAs(const TypeDecl* ty) const { return kind == ty->Type(); }
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
 	virtual const TypeDecl* AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 	llvm::Type*             LlvmType() const;
@@ -167,17 +167,10 @@ namespace Types
 	}
     };
 
-    class BasicTypeDecl : public TypeDecl
+    class CharDecl : public TypeDecl
     {
     public:
-	using TypeDecl::TypeDecl;
-	bool SameAs(const TypeDecl* ty) const override { return kind == ty->Type(); }
-    };
-
-    class CharDecl : public BasicTypeDecl
-    {
-    public:
-	CharDecl() : BasicTypeDecl(TK_Char) {}
+	CharDecl() : TypeDecl(TK_Char) {}
 	bool            IsIntegral() const override { return true; }
 	bool            IsUnsigned() const override { return true; }
 	bool            IsStringLike() const override { return true; }
@@ -194,10 +187,10 @@ namespace Types
     };
 
     template<int bits, TypeDecl::TypeKind tk>
-    class IntegerXDecl : public BasicTypeDecl
+    class IntegerXDecl : public TypeDecl
     {
     public:
-	IntegerXDecl() : BasicTypeDecl(tk) {}
+	IntegerXDecl() : TypeDecl(tk) {}
 	bool            IsIntegral() const override { return true; }
 	unsigned        Bits() const override { return bits; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
@@ -218,10 +211,10 @@ namespace Types
     using IntegerDecl = IntegerXDecl<32, TypeDecl::TK_Integer>;
     using Int64Decl = IntegerXDecl<64, TypeDecl::TK_LongInt>;
 
-    class RealDecl : public BasicTypeDecl
+    class RealDecl : public TypeDecl
     {
     public:
-	RealDecl() : BasicTypeDecl(TK_Real) {}
+	RealDecl() : TypeDecl(TK_Real) {}
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	unsigned        Bits() const override { return 64; }
@@ -234,10 +227,10 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
 
-    class VoidDecl : public BasicTypeDecl
+    class VoidDecl : public TypeDecl
     {
     public:
-	VoidDecl() : BasicTypeDecl(TK_Void) {}
+	VoidDecl() : TypeDecl(TK_Void) {}
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override { return 0; }
 	void            DoDump(std::ostream& out) const override;
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Void; }

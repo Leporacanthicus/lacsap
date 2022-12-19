@@ -3615,6 +3615,15 @@ bool Parser::ParseInterface(InterfaceList& iList)
     return true;
 }
 
+void Parser::ParseImports()
+{
+    AssertToken(Token::Import);
+    while (AcceptToken(Token::Identifier))
+    {
+	Expect(Token::Semicolon, true);
+    }
+}
+
 ExprAST* Parser::ParseUnit(ParserType type)
 {
     Location unitloc = CurrentToken().Loc();
@@ -3644,6 +3653,10 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	case Token::Uses:
 	    curAst = ParseUses();
+	    break;
+
+	case Token::Import:
+	    ParseImports();
 	    break;
 
 	case Token::Label:

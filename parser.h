@@ -78,6 +78,7 @@ public:
     ExprAST*      ParseUses();
     ExprAST*      ParseUnit(ParserType type);
     bool          ParseInterface(InterfaceList& iList);
+    void          ParseImports();
 
     ExprAST*      ConstDeclToExpr(Location loc, const Constants::ConstDecl* c);
     ExprAST*      ParseInitValue(Types::TypeDecl* ty);

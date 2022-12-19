@@ -3878,9 +3878,25 @@ llvm::Value* InitValueAST::CodeGen()
     {
 	return set->MakeConstantSetArray();
     }
+    if (llvm::isa<Types::StringDecl>(type))
+    {
+	size_t      size = type->Size();
+	auto        se = llvm::dyn_cast<StringExprAST>(values[0]);
+	std::string str;
+	str.resize(size);
+	assert(se && "Expected this to be a string expression");
+	const std::string& val = se->Str();
+	str[0] = val.size();
+	for (size_t i = 1; i <= val.size(); i++)
+	{
+	    str[i] = val[i - 1];
+	}
+
+	return llvm::ConstantDataArray::getRaw(str, size, type->SubType()->LlvmType());
+    }
     if (type->IsStringLike() && llvm::isa<Types::ArrayDecl>(type))
     {
-	llvm::ArrayType*             arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
+	auto                         arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
 	llvm::Type*                  ty = type->SubType()->LlvmType();
 	size_t                       size = type->Size();
 	std::vector<llvm::Constant*> initArr(size);

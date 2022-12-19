@@ -187,6 +187,7 @@ const TokenEntry tokenTable[] = {
     { Token::Bindable, true, -1, "bindable" },
     { Token::Default, true, -1, "default" },
     { Token::Value, true, -1, "value" },
+    { Token::Import, true, -1, "import" },
     { Token::LineNumber, true, -1, "__LINE__" },
     { Token::FileName, true, -1, "__FILE__" },
     { Token::SizeOf, true, -1, "sizeof" },

@@ -121,6 +121,7 @@ public:
 	Uses,
 	At,
 	Default,
+	Import,
 
 	// Specials
 	LineNumber,

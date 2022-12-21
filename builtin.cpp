@@ -278,6 +278,13 @@ namespace Builtin
 	Types::TypeDecl* Type() const override { return Types::GetBooleanType(); }
     };
 
+    class FunctionFileLong : public FunctionFile
+    {
+    public:
+	using FunctionFile::FunctionFile;
+	Types::TypeDecl* Type() const override { return Types::GetLongIntType(); }
+    };
+
     class FunctionAssign : public FunctionVoid
     {
     public:
@@ -428,6 +435,13 @@ namespace Builtin
 
     private:
 	Token::TokenType op;
+    };
+
+    class FunctionSeek : public FunctionFile
+    {
+	using FunctionFile::FunctionFile;
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
     void FunctionBase::accept(ASTVisitor& v)
@@ -1169,6 +1183,25 @@ namespace Builtin
 	return MakeStrCompare(op, v);
     }
 
+    bool FunctionSeek::Semantics()
+    {
+	return args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
+	       args[1]->Type()->IsIntegral();
+    }
+
+    llvm::Value* FunctionSeek::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
+	assert(fvar && "Should be a variable here");
+	llvm::Value* faddr = fvar->Address();
+	llvm::Value* pos = Recast(args[1], Types::GetLongIntType())->CodeGen();
+
+	llvm::FunctionCallee f = GetFunction(Types::GetVoidType()->LlvmType(),
+	                                     { faddr->getType(), Types::GetLongIntType()->LlvmType() },
+	                                     "__" + funcname);
+	return builder.CreateCall(f, { faddr, pos });
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1255,6 +1288,12 @@ namespace Builtin
 	AddBIFCreator("unbind", NEW2(File, "unbind"));
 	AddBIFCreator("binding", NEW2(Binding, "binding"));
 	AddBIFCreator("bind", NEW2(Bind, "bind"));
+	AddBIFCreator("seekwrite", NEW2(Seek, "seekwrite"));
+	AddBIFCreator("seekread", NEW2(Seek, "seekread"));
+	AddBIFCreator("seekupdate", NEW2(Seek, "seekupdate"));
+	AddBIFCreator("empty", NEW2(FileBool, "empty"));
+	AddBIFCreator("position", NEW2(FileLong, "position"));
+	AddBIFCreator("lastposition", NEW2(FileLong, "lastposition"));
 	AddBIFCreator("eq", NEW2(StrCompOp, Token::Equal));
 	AddBIFCreator("ne", NEW2(StrCompOp, Token::NotEqual));
 	AddBIFCreator("le", NEW2(StrCompOp, Token::LessOrEqual));

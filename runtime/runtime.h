@@ -81,6 +81,7 @@ extern File output;
  */
 void InitFiles();
 void SetupFile(File* f, int recSize, int isText);
+void FileError(const char* op);
 
 /*******************************************
  * File Basics, low level I/O.

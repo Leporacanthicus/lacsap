@@ -7,7 +7,7 @@
  *******************************************
  */
 
-static void FileError(const char* op)
+void FileError(const char* op)
 {
     fprintf(stderr, "Attempt to %s file failed\n", op);
     exit(1);

@@ -23,12 +23,11 @@ namespace Builtin
     }
 
     using ArgList = const std::vector<ExprAST*>;
-    using CreateBIFObject = std::function<FunctionBase*(const std::vector<ExprAST*>&)>;
+    using CreateBIFObject = std::function<FunctionBase*(ArgList&)>;
 
     std::map<std::string, CreateBIFObject> BIFMap;
 
-    static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, const std::string& func,
-                                          const std::vector<ExprAST*>& args)
+    static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, const std::string& func, ArgList& args)
     {
 	llvm::Value*         a = args[0]->CodeGen();
 	llvm::Type*          ty = Types::GetRealType()->LlvmType();
@@ -49,6 +48,7 @@ namespace Builtin
     using FunctionBool = FunctionType<Types::BoolDecl>;
     using FunctionReal = FunctionType<Types::RealDecl>;
     using FunctionVoid = FunctionType<Types::VoidDecl>;
+    using FunctionCplx = FunctionType<Types::ComplexDecl>;
 
     class FunctionSameAsArg : public FunctionBase
     {
@@ -163,9 +163,7 @@ namespace Builtin
     class FunctionFloat : public FunctionReal
     {
     public:
-	FunctionFloat(const std::string& fn, const std::vector<ExprAST*>& a) : FunctionReal(a), funcname(fn)
-	{
-	}
+	FunctionFloat(const std::string& fn, ArgList& a) : FunctionReal(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	bool         Semantics() override;
 
@@ -184,10 +182,7 @@ namespace Builtin
     class FunctionFloatIntrinsic : public FunctionFloat
     {
     public:
-	FunctionFloatIntrinsic(const std::string& fn, const std::vector<ExprAST*>& a)
-	    : FunctionFloat("llvm." + fn + ".f64", a)
-	{
-	}
+	FunctionFloatIntrinsic(const std::string& fn, ArgList& a) : FunctionFloat("llvm." + fn + ".f64", a) {}
     };
 
     class FunctionNew : public FunctionVoid
@@ -255,7 +250,7 @@ namespace Builtin
     class FunctionFile : public FunctionVoid
     {
     public:
-	FunctionFile(const std::string& fn, const std::vector<ExprAST*>& a) : FunctionVoid(a), funcname(fn) {}
+	FunctionFile(const std::string& fn, ArgList& a) : FunctionVoid(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	bool         Semantics() override;
 
@@ -392,7 +387,7 @@ namespace Builtin
     class FunctionTime : public FunctionBase
     {
     public:
-	FunctionTime(const std::vector<ExprAST*>& a);
+	FunctionTime(ArgList& a);
 	bool             Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return arrayType; }
@@ -404,7 +399,7 @@ namespace Builtin
     class FunctionDate : public FunctionBase
     {
     public:
-	FunctionDate(const std::vector<ExprAST*>& a);
+	FunctionDate(ArgList& a);
 	bool             Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return arrayType; }
@@ -415,12 +410,14 @@ namespace Builtin
 
     class FunctionBinding : public FunctionFile
     {
+    public:
 	using FunctionFile::FunctionFile;
 	Types::TypeDecl* Type() const override { return Types::GetBindingType(); }
     };
 
     class FunctionBind : public FunctionFile
     {
+    public:
 	using FunctionFile::FunctionFile;
 	bool         Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
@@ -429,7 +426,7 @@ namespace Builtin
     class FunctionStrCompOp : public FunctionBool
     {
     public:
-	FunctionStrCompOp(Token::TokenType o, const std::vector<ExprAST*>& a) : FunctionBool(a), op(o) {}
+	FunctionStrCompOp(Token::TokenType o, ArgList& a) : FunctionBool(a), op(o) {}
 	bool         Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 
@@ -439,9 +436,29 @@ namespace Builtin
 
     class FunctionSeek : public FunctionFile
     {
+    public:
 	using FunctionFile::FunctionFile;
 	bool         Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class FunctionComplex : public FunctionCplx
+    {
+    public:
+	using FunctionCplx::FunctionCplx;
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
+    class FunctionReIm : public FunctionReal
+    {
+    public:
+	FunctionReIm(int idx, ArgList& a) : FunctionReal(a), index(idx) {}
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+
+    private:
+	int index;
     };
 
     void FunctionBase::accept(ASTVisitor& v)
@@ -1100,7 +1117,7 @@ namespace Builtin
 	return builder.CreateCall(f, { tsaddr });
     }
 
-    FunctionTime::FunctionTime(const std::vector<ExprAST*>& a) : FunctionBase(a)
+    FunctionTime::FunctionTime(ArgList& a) : FunctionBase(a)
     {
 	arrayType = new Types::ArrayDecl(
 	    Types::GetCharType(), { new Types::RangeDecl(new Types::Range(1, 9), Types::GetIntegerType()) });
@@ -1127,7 +1144,7 @@ namespace Builtin
 	return addr;
     }
 
-    FunctionDate::FunctionDate(const std::vector<ExprAST*>& a) : FunctionBase(a)
+    FunctionDate::FunctionDate(ArgList& a) : FunctionBase(a)
     {
 	arrayType = new Types::ArrayDecl(
 	    Types::GetCharType(), { new Types::RangeDecl(new Types::Range(1, 11), Types::GetIntegerType()) });
@@ -1202,6 +1219,38 @@ namespace Builtin
 	return builder.CreateCall(f, { faddr, pos });
     }
 
+    bool FunctionComplex::Semantics()
+    {
+	return args.size() == 2 && CastIntegerToReal(args[0]) && CastIntegerToReal(args[1]);
+    }
+
+    llvm::Value* FunctionComplex::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value*              storage = CreateTempAlloca(Types::GetComplexType());
+	llvm::Value*              re = args[0]->CodeGen();
+	llvm::Value*              im = args[1]->CodeGen();
+	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
+
+	builder.CreateStore(re, builder.CreateGEP(storage, ind, "re"));
+	ind[1] = MakeIntegerConstant(1);
+	builder.CreateStore(im, builder.CreateGEP(storage, ind, "im"));
+
+	return builder.CreateLoad(storage, "cmplx");
+    }
+
+    bool FunctionReIm::Semantics()
+    {
+	return args.size() == 1 && llvm::isa<Types::ComplexDecl>(args[0]->Type());
+    }
+
+    llvm::Value* FunctionReIm::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	auto                      cmplx = llvm::dyn_cast<AddressableAST>(args[0]);
+	llvm::Value*              caddr = cmplx->Address();
+	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(index) };
+	return builder.CreateLoad(builder.CreateGEP(caddr, ind, "reim"));
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1214,7 +1263,7 @@ namespace Builtin
 	return BIFMap.find(name) != BIFMap.end();
     }
 
-    FunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args)
+    FunctionBase* CreateBuiltinFunction(std::string name, ArgList& args)
     {
 	strlower(name);
 	auto it = BIFMap.find(name);
@@ -1300,5 +1349,8 @@ namespace Builtin
 	AddBIFCreator("ge", NEW2(StrCompOp, Token::GreaterOrEqual));
 	AddBIFCreator("lt", NEW2(StrCompOp, Token::LessThan));
 	AddBIFCreator("gt", NEW2(StrCompOp, Token::GreaterThan));
+	AddBIFCreator("cmplx", NEW(Complex));
+	AddBIFCreator("re", NEW2(ReIm, 0));
+	AddBIFCreator("im", NEW2(ReIm, 1));
     }
 } // namespace Builtin

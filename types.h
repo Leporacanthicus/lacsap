@@ -37,6 +37,7 @@ namespace Types
     TypeDecl* GetStringType();
     TypeDecl* GetTimeStampType();
     TypeDecl* GetBindingType();
+    TypeDecl* GetComplexType();
 
     bool IsNumeric(const TypeDecl* t);
     bool IsCharArray(const TypeDecl* t);
@@ -91,6 +92,7 @@ namespace Types
 	    TK_Class,
 	    TK_MemberFunc,
 	    TK_Forward,
+	    TK_Complex,
 	};
 
 	TypeDecl(TypeKind k) : kind(k), lType(0), diType(0), name(""), init(0) {}
@@ -693,6 +695,17 @@ namespace Types
 	void            DoDump(std::ostream& out) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	int             Capacity() const { return Ranges()[0]->GetRange()->Size() - 1; }
+    };
+
+    class ComplexDecl : public RecordDecl
+    {
+    public:
+	ComplexDecl()
+	    : RecordDecl(
+	          { new FieldDecl("r", GetRealType(), false), new FieldDecl("i", GetRealType(), false) },
+	          nullptr)
+	{
+	}
     };
 
     llvm::Type* GetVoidPtrType();

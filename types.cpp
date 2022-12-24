@@ -1198,6 +1198,7 @@ namespace Types
     TypeDecl* GetCharType() { return Get<CharDecl>(); }
     TypeDecl* GetRealType() { return Get<RealDecl>(); }
     TypeDecl* GetBooleanType() { return Get<BoolDecl>(); }
+    TypeDecl* GetComplexType() { return Get<ComplexDecl>(); }
 
     bool IsNumeric(const TypeDecl* t)
     {

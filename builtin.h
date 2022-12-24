@@ -29,7 +29,7 @@ namespace Builtin
 
     bool          IsBuiltin(std::string funcname);
     void          InitBuiltins();
-    FunctionBase* CreateBuiltinFunction(std::string name, std::vector<ExprAST*>& args);
+    FunctionBase* CreateBuiltinFunction(std::string name, const std::vector<ExprAST*>& args);
 } // namespace Builtin
 
 #endif

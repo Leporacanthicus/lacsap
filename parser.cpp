@@ -3775,7 +3775,7 @@ Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
           AddType("int64", Types::GetLongIntType()) && AddType("real", Types::GetRealType()) &&
           AddType("char", Types::GetCharType()) && AddType("text", Types::GetTextType()) &&
           AddType("boolean", Types::GetBooleanType()) && AddType("timestamp", Types::GetTimeStampType()) &&
-          AddType("bindingtype", Types::GetBindingType()) &&
+          AddType("bindingtype", Types::GetBindingType()) && AddType("complex", Types::GetComplexType()) &&
           nameStack.Add("false", new EnumDef("false", 0, Types::GetBooleanType())) &&
           nameStack.Add("true", new EnumDef("true", 1, Types::GetBooleanType())) &&
           AddConst("maxint", new Constants::IntConstDecl(unknownLoc, INT_MAX)) &&

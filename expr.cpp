@@ -1089,6 +1089,105 @@ static llvm::Value* PowerInt(llvm::Value* base, llvm::Value* exp, Types::TypeDec
     return phi;
 }
 
+static llvm::Value* IntegerBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper, Types::TypeDecl* ty,
+                                   bool isUnsigned)
+{
+    switch (oper.GetToken())
+    {
+    case Token::Plus:
+	return builder.CreateAdd(l, r, "addtmp");
+    case Token::Minus:
+	return builder.CreateSub(l, r, "subtmp");
+    case Token::Multiply:
+	return builder.CreateMul(l, r, "multmp");
+    case Token::Div:
+	return builder.CreateSDiv(l, r, "divtmp");
+    case Token::Mod:
+	return builder.CreateSRem(l, r, "modtmp");
+    case Token::Shr:
+	return builder.CreateLShr(l, r, "shrtmp");
+    case Token::Shl:
+	return builder.CreateShl(l, r, "shltmp");
+    case Token::Xor:
+	return builder.CreateXor(l, r, "xortmp");
+    case Token::And:
+	return builder.CreateAnd(l, r, "and");
+    case Token::Or:
+	return builder.CreateOr(l, r, "or");
+    case Token::Pow:
+	assert(ty && "Execpted to have a type here");
+	return PowerInt(l, r, ty);
+
+    case Token::LessThan:
+	if (isUnsigned)
+	{
+	    return builder.CreateICmpULT(l, r, "lt");
+	}
+	return builder.CreateICmpSLT(l, r, "lt");
+    case Token::LessOrEqual:
+	if (isUnsigned)
+	{
+	    return builder.CreateICmpULE(l, r, "le");
+	}
+	return builder.CreateICmpSLE(l, r, "le");
+    case Token::GreaterThan:
+	if (isUnsigned)
+	{
+	    return builder.CreateICmpUGT(l, r, "gt");
+	}
+	return builder.CreateICmpSGT(l, r, "gt");
+    case Token::GreaterOrEqual:
+	if (isUnsigned)
+	{
+	    return builder.CreateICmpUGE(l, r, "ge");
+	}
+	return builder.CreateICmpSGE(l, r, "ge");
+    default:
+	break;
+    }
+    return 0;
+}
+
+static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper, Types::TypeDecl* type)
+{
+    switch (oper.GetToken())
+    {
+    case Token::Plus:
+	return builder.CreateFAdd(l, r, "addtmp");
+    case Token::Minus:
+	return builder.CreateFSub(l, r, "subtmp");
+    case Token::Multiply:
+	return builder.CreateFMul(l, r, "multmp");
+    case Token::Divide:
+	return builder.CreateFDiv(l, r, "divtmp");
+    case Token::Power:
+    {
+	llvm::Type*               ty = type->LlvmType();
+	llvm::FunctionCallee      f = GetFunction(ty, { ty, ty }, "llvm.pow.f64");
+	std::vector<llvm::Value*> args = { l, r };
+
+	return builder.CreateCall(f, args, "powtmp");
+    }
+
+    case Token::Equal:
+	return builder.CreateFCmpOEQ(l, r, "eq");
+    case Token::NotEqual:
+	return builder.CreateFCmpONE(l, r, "ne");
+    case Token::LessThan:
+	return builder.CreateFCmpOLT(l, r, "lt");
+    case Token::LessOrEqual:
+	return builder.CreateFCmpOLE(l, r, "le");
+    case Token::GreaterThan:
+	return builder.CreateFCmpOGT(l, r, "gt");
+    case Token::GreaterOrEqual:
+	return builder.CreateFCmpOGE(l, r, "ge");
+
+    default:
+	break;
+    }
+    return 0;
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -1182,99 +1281,20 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (rty->isIntegerTy())
     {
-	bool IsUnsigned = rhs->Type()->IsUnsigned();
-	switch (oper.GetToken())
+	bool isUnsigned = rhs->Type()->IsUnsigned();
+	if (auto v = IntegerBinExpr(l, r, oper, Type(), isUnsigned))
 	{
-	case Token::Plus:
-	    return builder.CreateAdd(l, r, "addtmp");
-	case Token::Minus:
-	    return builder.CreateSub(l, r, "subtmp");
-	case Token::Multiply:
-	    return builder.CreateMul(l, r, "multmp");
-	case Token::Div:
-	    return builder.CreateSDiv(l, r, "divtmp");
-	case Token::Mod:
-	    return builder.CreateSRem(l, r, "modtmp");
-	case Token::Shr:
-	    return builder.CreateLShr(l, r, "shrtmp");
-	case Token::Shl:
-	    return builder.CreateShl(l, r, "shltmp");
-	case Token::Xor:
-	    return builder.CreateXor(l, r, "xortmp");
-	case Token::And:
-	    return builder.CreateAnd(l, r, "and");
-	case Token::Or:
-	    return builder.CreateOr(l, r, "or");
-	case Token::Pow:
-	    assert(Type() && "Execpted to have a type here");
-	    return PowerInt(l, r, Type());
-
-	case Token::LessThan:
-	    if (IsUnsigned)
-	    {
-		return builder.CreateICmpULT(l, r, "lt");
-	    }
-	    return builder.CreateICmpSLT(l, r, "lt");
-	case Token::LessOrEqual:
-	    if (IsUnsigned)
-	    {
-		return builder.CreateICmpULE(l, r, "le");
-	    }
-	    return builder.CreateICmpSLE(l, r, "le");
-	case Token::GreaterThan:
-	    if (IsUnsigned)
-	    {
-		return builder.CreateICmpUGT(l, r, "gt");
-	    }
-	    return builder.CreateICmpSGT(l, r, "gt");
-	case Token::GreaterOrEqual:
-	    if (IsUnsigned)
-	    {
-		return builder.CreateICmpUGE(l, r, "ge");
-	    }
-	    return builder.CreateICmpSGE(l, r, "ge");
-
-	default:
-	    return ErrorV(this, "Unknown token: " + oper.ToString());
+	    return v;
 	}
+	return ErrorV(this, "Unknown token: " + oper.ToString());
     }
     if (rty->isDoubleTy())
     {
-	switch (oper.GetToken())
+	if (auto v = DoubleBinExpr(l, r, oper, Type()))
 	{
-	case Token::Plus:
-	    return builder.CreateFAdd(l, r, "addtmp");
-	case Token::Minus:
-	    return builder.CreateFSub(l, r, "subtmp");
-	case Token::Multiply:
-	    return builder.CreateFMul(l, r, "multmp");
-	case Token::Divide:
-	    return builder.CreateFDiv(l, r, "divtmp");
-	case Token::Power:
-	{
-	    llvm::Type*               ty = Type()->LlvmType();
-	    llvm::FunctionCallee      f = GetFunction(ty, { ty, ty }, "llvm.pow.f64");
-	    std::vector<llvm::Value*> args = { l, r };
-
-	    return builder.CreateCall(f, args, "powtmp");
+	    return v;
 	}
-
-	case Token::Equal:
-	    return builder.CreateFCmpOEQ(l, r, "eq");
-	case Token::NotEqual:
-	    return builder.CreateFCmpONE(l, r, "ne");
-	case Token::LessThan:
-	    return builder.CreateFCmpOLT(l, r, "lt");
-	case Token::LessOrEqual:
-	    return builder.CreateFCmpOLE(l, r, "le");
-	case Token::GreaterThan:
-	    return builder.CreateFCmpOGT(l, r, "gt");
-	case Token::GreaterOrEqual:
-	    return builder.CreateFCmpOGE(l, r, "ge");
-
-	default:
-	    return ErrorV(this, "Unknown token: " + oper.ToString());
-	}
+	return ErrorV(this, "Unknown token: " + oper.ToString());
     }
 
 #if !NDEBUG

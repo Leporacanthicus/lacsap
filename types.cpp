@@ -1207,6 +1207,7 @@ namespace Types
 	case TypeDecl::TK_Integer:
 	case TypeDecl::TK_LongInt:
 	case TypeDecl::TK_Real:
+	case TypeDecl::TK_Complex:
 	    return true;
 	default:
 	    return false;

@@ -330,12 +330,21 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    Error(b, "Invalid (non-numeric) type for divide");
 	}
 
-	ty = Types::GetRealType();
+	if (llvm::isa<Types::ComplexDecl>(lty))
+	{
+	    ty = Types::GetComplexType();
+	}
+	else
+	{
+	    ty = Types::GetRealType();
+	}
+
 	if (lty->IsIntegral())
 	{
 	    b->lhs = Recast(b->lhs, ty);
 	    lty = ty;
 	}
+	// TODO: Add support for complex / real and real / complex.
 	if (rty->IsIntegral())
 	{
 	    b->rhs = Recast(b->rhs, ty);

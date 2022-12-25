@@ -1188,6 +1188,93 @@ static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& o
     return 0;
 }
 
+llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
+{
+    llvm::Constant* zero = MakeIntegerConstant(0);
+    llvm::Constant* one = MakeIntegerConstant(1);
+    switch (oper.GetToken())
+    {
+    case Token::Plus:
+    {
+	llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* resr = builder.CreateFAdd(lr, rr, "addr");
+	llvm::Value* resi = builder.CreateFAdd(li, ri, "addi");
+	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+
+	return builder.CreateLoad(res);
+    }
+    case Token::Minus:
+    {
+	llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* resr = builder.CreateFSub(lr, rr, "subr");
+	llvm::Value* resi = builder.CreateFSub(li, ri, "subi");
+	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+
+	return builder.CreateLoad(res);
+    }
+    case Token::Multiply:
+    {
+	// res = l * r = (l.r*r.r - l.i*r.i) + (l.r*r.i + l.i*r.r)i
+	llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
+	llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
+	llvm::Value* resr = builder.CreateFSub(lrxrr, lixri, "subr");
+	llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
+	llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
+	llvm::Value* resi = builder.CreateFAdd(lrxri, lixrr, "addi");
+	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+
+	return builder.CreateLoad(res);
+    }
+    case Token::Divide:
+    {
+	// res = l * r = (l.r*r.r + l.i*r.i) + (l.i*r.r - l.r*r.i)i / (r.r^2 + r.i^2)
+	llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* rr2 = builder.CreateFMul(rr, rr, "rr2");
+	llvm::Value* ri2 = builder.CreateFMul(ri, ri, "ri2");
+	llvm::Value* rr2ri2 = builder.CreateFAdd(rr2, ri2, "rr2ri2");
+
+	llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
+	llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
+	llvm::Value* resr = builder.CreateFAdd(lrxrr, lixri, "subr");
+	resr = builder.CreateFDiv(resr, rr2ri2, "resi");
+
+	llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
+	llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
+	llvm::Value* resi = builder.CreateFSub(lixrr, lrxri, "subi");
+	resi = builder.CreateFDiv(resi, rr2ri2, "resi");
+
+	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+
+	return builder.CreateLoad(res);
+    }
+
+    default:
+	break;
+    }
+    return 0;
+}
+
 llvm::Value* BinaryExprAST::CodeGen()
 {
     TRACE();
@@ -1253,6 +1340,20 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return ShortCtOr(lhs, rhs);
     default:
 	break;
+    }
+
+    if (llvm::isa<Types::ComplexDecl>(rhs->Type()))
+    {
+	auto lhsa = llvm::dyn_cast<AddressableAST>(lhs);
+	auto rhsa = llvm::dyn_cast<AddressableAST>(rhs);
+	assert(lhsa && rhsa && "Expect to find these values addressable");
+	llvm::Value* la = lhsa->Address();
+	llvm::Value* ra = rhsa->Address();
+	if (auto v = ComplexBinExpr(la, ra, oper))
+	{
+	    return v;
+	}
+	return ErrorV(this, "Unknown token: " + oper.ToString());
     }
 
     llvm::Value* l = lhs->CodeGen();
@@ -1400,7 +1501,8 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 			else
 			{
 			    v = CreateTempAlloca(i->Type());
-			    builder.CreateStore(i->CodeGen(), v);
+			    llvm::Value* x = i->CodeGen();
+			    builder.CreateStore(x, v);
 			}
 		    }
 		    else

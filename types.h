@@ -518,6 +518,8 @@ namespace Types
     class RecordDecl : public FieldCollection
     {
     public:
+	RecordDecl(TypeKind type, const std::vector<FieldDecl*>& flds)
+	    : FieldCollection(type, flds), variant(nullptr){};
 	RecordDecl(const std::vector<FieldDecl*>& flds, VariantDecl* v)
 	    : FieldCollection(TK_Record, flds), variant(v){};
 	void         DoDump(std::ostream& out) const override;
@@ -701,11 +703,12 @@ namespace Types
     {
     public:
 	ComplexDecl()
-	    : RecordDecl(
-	          { new FieldDecl("r", GetRealType(), false), new FieldDecl("i", GetRealType(), false) },
-	          nullptr)
+	    : RecordDecl(TK_Complex, { new FieldDecl("r", GetRealType(), false),
+	                               new FieldDecl("i", GetRealType(), false) })
 	{
 	}
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Complex; }
+	bool        IsCompound() const override { return false; }
     };
 
     llvm::Type* GetVoidPtrType();

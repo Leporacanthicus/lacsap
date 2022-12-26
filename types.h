@@ -370,6 +370,7 @@ namespace Types
 	BoolDecl() : EnumDecl(TK_Boolean, std::vector<std::string>{ "false", "true" }, this) {}
 	void DoDump(std::ostream& out) const override;
 	bool SameAs(const TypeDecl* ty) const override { return ty == this; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Boolean; }
 
     protected:
 	llvm::Type*   GetLlvmType() const override;

@@ -62,6 +62,12 @@ struct BindingType
     String Name;
 };
 
+struct Complex
+{
+    double r;
+    double i;
+};
+
 /*******************************************
  * Local variables
  *******************************************

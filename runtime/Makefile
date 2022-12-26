@@ -1,8 +1,8 @@
-CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O2
-#CFLAGS    = -g -Wall -Werror -Wextra -std=c99 -O0
+CFLAGS    = -g -Wall -Werror -Wextra -std=c11 -O2
+#CFLAGS    = -g -Wall -Werror -Wextra -std=c11 -O0
 
 OBJECTS = main.o math.o fileio.o write.o read.o readbin.o writebin.o alloc.o set.o string.o array.o panic.o \
-          clock.o rangeerror.o assign.o getput.o params.o val.o gettimestamp.o bind.o seek.o
+          clock.o rangeerror.o assign.o getput.o params.o val.o gettimestamp.o bind.o seek.o cmath.o
 OBJECTS32 = $(patsubst %.o,%.o32,${OBJECTS})
 SOURCES = $(patsubst %.o,%.c,${OBJECTS})
 

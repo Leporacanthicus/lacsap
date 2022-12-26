@@ -30,7 +30,7 @@ namespace Builtin
     static llvm::Value* CallRuntimeFPFunc(llvm::IRBuilder<>& builder, const std::string& func, ArgList& args)
     {
 	llvm::Value*         a = args[0]->CodeGen();
-	llvm::Type*          ty = Types::GetRealType()->LlvmType();
+	llvm::Type*          ty = args[0]->Type()->LlvmType();
 	llvm::FunctionCallee f = GetFunction(ty, { ty }, func);
 	return builder.CreateCall(f, a, "calltmp");
     }
@@ -160,11 +160,12 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
-    class FunctionFloat : public FunctionReal
+    class FunctionFloat : public FunctionBase
     {
     public:
-	FunctionFloat(const std::string& fn, ArgList& a) : FunctionReal(a), funcname(fn) {}
+	FunctionFloat(const std::string& fn, ArgList& a) : FunctionBase(a), funcname(fn) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
 	bool         Semantics() override;
 
     protected:
@@ -182,7 +183,8 @@ namespace Builtin
     class FunctionFloatIntrinsic : public FunctionFloat
     {
     public:
-	FunctionFloatIntrinsic(const std::string& fn, ArgList& a) : FunctionFloat("llvm." + fn + ".f64", a) {}
+	FunctionFloatIntrinsic(const std::string& fn, ArgList& a) : FunctionFloat(fn, a) {}
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
     class FunctionNew : public FunctionVoid
@@ -478,6 +480,30 @@ namespace Builtin
 
     llvm::Value* FunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
     {
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    llvm::Constant* zero = MakeIntegerConstant(0);
+	    llvm::Constant* one = MakeIntegerConstant(1);
+	    auto            v = llvm::dyn_cast<AddressableAST>(args[0]);
+	    llvm::Value*    a = v->Address();
+
+	    llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	    llvm::Value* re = builder.CreateLoad(builder.CreateGEP(a, { zero, zero }, "re"));
+	    llvm::Value* im = builder.CreateLoad(builder.CreateGEP(a, { zero, one }, "im"));
+	    llvm::Value* rexre = builder.CreateFMul(re, re, "rexre");
+	    llvm::Value* imxim = builder.CreateFMul(im, im, "imxim");
+	    llvm::Value* sum = builder.CreateFAdd(rexre, imxim, "addi");
+
+	    llvm::Type*          ty = Types::Get<Types::RealDecl>()->LlvmType();
+	    llvm::FunctionCallee f = GetFunction(ty, { ty }, "llvm.sqrt.f64");
+	    llvm::Value*         resr = builder.CreateCall(f, sum, "sqrt");
+
+	    llvm::Value* fzero = llvm::ConstantFP::get(theContext, llvm::APFloat(0.0));
+	    builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	    builder.CreateStore(fzero, builder.CreateGEP(res, { zero, one }));
+	    return builder.CreateLoad(res);
+	}
+
 	llvm::Value* a = args[0]->CodeGen();
 	if (args[0]->Type()->IsUnsigned())
 	{
@@ -504,6 +530,25 @@ namespace Builtin
 
     llvm::Value* FunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
     {
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    llvm::Constant* zero = MakeIntegerConstant(0);
+	    llvm::Constant* one = MakeIntegerConstant(1);
+	    auto            v = llvm::dyn_cast<AddressableAST>(args[0]);
+	    llvm::Value*    a = v->Address();
+
+	    llvm::Value* res = CreateTempAlloca(Types::GetComplexType());
+	    llvm::Value* re = builder.CreateLoad(builder.CreateGEP(a, { zero, zero }, "re"));
+	    llvm::Value* im = builder.CreateLoad(builder.CreateGEP(a, { zero, one }, "im"));
+	    llvm::Value* rexre = builder.CreateFMul(re, re, "rexre");
+	    llvm::Value* imxim = builder.CreateFMul(im, im, "imxim");
+	    llvm::Value* resr = builder.CreateFSub(rexre, imxim, "subr");
+	    llvm::Value* rexim = builder.CreateFMul(re, im, "rexim");
+	    llvm::Value* resi = builder.CreateFAdd(rexim, rexim, "addi");
+	    builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
+	    builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+	    return builder.CreateLoad(res);
+	}
 	llvm::Value* a = args[0]->CodeGen();
 	if (args[0]->Type()->IsIntegral())
 	{
@@ -519,7 +564,34 @@ namespace Builtin
 	return CallRuntimeFPFunc(builder, funcname, args);
     }
 
-    bool FunctionFloat::Semantics() { return args.size() == 1 && CastIntegerToReal(args[0]); }
+    Types::TypeDecl* FunctionFloat::Type() const
+    {
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    return Types::Get<Types::ComplexDecl>();
+	}
+	return Types::Get<Types::RealDecl>();
+    }
+
+    bool FunctionFloat::Semantics()
+    {
+	return args.size() == 1 &&
+	       (llvm::isa<Types::ComplexDecl>(args[0]->Type()) || CastIntegerToReal(args[0]));
+    }
+
+    llvm::Value* FunctionFloatIntrinsic::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	std::string name;
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    name = "__c" + funcname;
+	}
+	else
+	{
+	    name = "llvm." + funcname + ".f64";
+	}
+	return CallRuntimeFPFunc(builder, name, args);
+    }
 
     llvm::Value* FunctionRound::CodeGen(llvm::IRBuilder<>& builder)
     {

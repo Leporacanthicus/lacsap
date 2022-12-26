@@ -8,8 +8,8 @@
  */
 static unsigned rand_seed = 12341193U;
 
-const static unsigned rand_mul = 1103515245U;
-const static unsigned rand_add = 12345;
+static const unsigned rand_mul = 1103515245U;
+static const unsigned rand_add = 12345;
 
 static unsigned urand()
 {

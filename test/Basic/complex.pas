@@ -17,4 +17,8 @@ begin
    print_complex("c-d", c-d);
    print_complex("c*d", c*d);
    print_complex("c/d", c/d);
+   WriteLn;
+   print_complex("Abs", Abs(c));
+   print_complex("Sqr", Sqr(c));
+   print_complex("Sqrt", Sqrt(c));
 end.

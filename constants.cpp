@@ -57,9 +57,14 @@ namespace Constants
 
     void StringConstDecl::dump() const { std::cerr << "StringConstDecl: " << Value() << std::endl; }
 
-    static bool GetAsReal(double& lValue, double& rValue, const RealConstDecl* lhsR,
-                          const RealConstDecl* rhsR, const IntConstDecl* lhsI, const IntConstDecl* rhsI)
+    static bool GetAsReal(double& lValue, double& rValue, const ConstDecl& lhs, const ConstDecl& rhs)
     {
+
+	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
+	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
+	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
+	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
+
 	bool ok = rhsR && lhsR;
 	if (lhsR)
 	{
@@ -123,116 +128,90 @@ namespace Constants
 	return 0;
     }
 
-    ConstDecl* operator+(const ConstDecl& lhs, const ConstDecl& rhs)
+    template<typename FN>
+    ConstDecl* DoRealMath(const ConstDecl& lhs, const ConstDecl& rhs, FN fn)
     {
-	const std::string    errMsg = "Invalid operand for +";
-	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
-	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
-	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
-
-	if (lhsR || rhsR)
+	double rValue;
+	double lValue;
+	if (!GetAsReal(lValue, rValue, lhs, rhs))
 	{
-	    double rValue;
-	    double lValue;
-	    if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
-	    {
-		return ErrorConst(errMsg);
-	    }
-	    return new RealConstDecl(Location("", 0, 0), lValue + rValue);
+	    return 0;
 	}
+	return new RealConstDecl(Location("", 0, 0), fn(lValue, rValue));
+    }
 
+    template<typename FN>
+    ConstDecl* DoIntegerMath(const ConstDecl& lhs, const ConstDecl& rhs, FN fn)
+    {
+	const IntConstDecl* lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
+	const IntConstDecl* rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
 	if (lhsI && rhsI)
 	{
-	    return new IntConstDecl(Location("", 0, 0), lhsI->Value() + rhsI->Value());
+	    return new IntConstDecl(Location("", 0, 0), fn(lhsI->Value(), rhsI->Value()));
 	}
+	return 0;
+    }
 
-	std::string rValue;
-	std::string lValue;
-	if (GetAsString(lValue, rValue, &lhs, &rhs))
+    ConstDecl* operator+(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	ConstDecl* v = DoRealMath(rhs, lhs, [](double lv, double rv) { return lv + rv; });
+	if (!v)
 	{
-	    return new StringConstDecl(Location("", 0, 0), lValue + rValue);
+	    v = DoIntegerMath(rhs, lhs, [](uint64_t lv, uint64_t rv) { return lv + rv; });
 	}
-
-	return ErrorConst("Invalid operand for +");
+	if (!v)
+	{
+	    std::string rValue;
+	    std::string lValue;
+	    if (GetAsString(lValue, rValue, &lhs, &rhs))
+	    {
+		return new StringConstDecl(Location("", 0, 0), lValue + rValue);
+	    }
+	    return ErrorConst("Invalid operand for +");
+	}
+	return v;
     }
 
     ConstDecl* operator-(const ConstDecl& lhs, const ConstDecl& rhs)
     {
-	const std::string    errMsg = "Invalid operand for -";
-	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
-	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
-	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
-	if (lhsR || rhsR)
+	ConstDecl* v = DoRealMath(lhs, rhs, [](double lv, double rv) { return lv - rv; });
+	if (!v)
 	{
-	    double rValue;
-	    double lValue;
-	    if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
-	    {
-		return ErrorConst(errMsg);
-	    }
-	    return new RealConstDecl(Location("", 0, 0), lValue - rValue);
+	    v = DoIntegerMath(lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv - rv; });
 	}
-
-	if (lhsI && rhsI)
+	if (!v)
 	{
-	    return new IntConstDecl(Location("", 0, 0), lhsI->Value() - rhsI->Value());
+	    return ErrorConst("Invalid operand for -");
 	}
-
-	return ErrorConst(errMsg);
+	return v;
     }
 
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs)
     {
-	const std::string    errMsg = "Invalid operand for *";
-	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
-	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
-	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
-	if (lhsR || rhsR)
+	ConstDecl* v = DoRealMath(lhs, rhs, [](double lv, double rv) { return lv * rv; });
+	if (!v)
 	{
-	    double rValue;
-	    double lValue;
-	    if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
-	    {
-		return ErrorConst(errMsg);
-	    }
-	    return new RealConstDecl(Location("", 0, 0), lValue * rValue);
+	    v = DoIntegerMath(lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv * rv; });
 	}
-
-	if (lhsI && rhsI)
+	if (!v)
 	{
-	    return new IntConstDecl(Location("", 0, 0), lhsI->Value() * rhsI->Value());
+	    return ErrorConst("Invalid operand for *");
 	}
-
-	return ErrorConst(errMsg);
+	return v;
     }
 
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs)
     {
-	const std::string    errMsg = "Invalid operand for /";
-	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
-	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
-	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
-	if (lhsR || rhsR)
+	ConstDecl* v = DoRealMath(lhs, rhs, [](double lv, double rv) { return lv / rv; });
+	if (!v)
 	{
-	    double rValue;
-	    double lValue;
-	    if (!GetAsReal(lValue, rValue, lhsR, rhsR, lhsI, rhsI))
-	    {
-		return ErrorConst(errMsg);
-	    }
-	    return new RealConstDecl(Location("", 0, 0), lValue / rValue);
+	    v = DoIntegerMath(lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv / rv; });
 	}
-
-	if (lhsI && rhsI)
+	if (!v)
 	{
-	    return new IntConstDecl(Location("", 0, 0), lhsI->Value() / rhsI->Value());
+	    return ErrorConst("Invalid operand for /");
 	}
-
-	return ErrorConst(errMsg);
+	return v;
     }
 
     llvm::Constant* ConstDeclToLLVMConst(const ConstDecl* cd)

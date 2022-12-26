@@ -39,21 +39,24 @@ namespace Constants
 	Location         loc;
     };
 
-    class IntConstDecl : public ConstDecl
+    template<typename T, typename TD, ConstKind ck>
+    class ConstDeclBase : public ConstDecl
     {
     public:
-	IntConstDecl(const Location& w, uint64_t v)
-	    : ConstDecl(Types::Get<Types::IntegerDecl>(), CK_IntConstDecl, w), value(v)
-	{
-	}
+	ConstDeclBase(const Location& w, T v) : ConstDecl(Types::Get<TD>(), ck, w), value(v) {}
 	Token       Translate() const override;
-	uint64_t    Value() const { return value; }
-	static bool classof(const ConstDecl* e) { return e->getKind() == CK_IntConstDecl; }
+	static bool classof(const ConstDecl* e) { return e->getKind() == ck; }
+	T           Value() const { return value; }
 	void        dump() const override;
 
-    private:
-	uint64_t value;
+    protected:
+	T value;
     };
+
+    using IntConstDecl = ConstDeclBase<uint64_t, Types::IntegerDecl, CK_IntConstDecl>;
+    using RealConstDecl = ConstDeclBase<double, Types::RealDecl, CK_RealConstDecl>;
+    using CharConstDecl = ConstDeclBase<char, Types::CharDecl, CK_CharConstDecl>;
+    using BoolConstDecl = ConstDeclBase<char, Types::BoolDecl, CK_BoolConstDecl>;
 
     class EnumConstDecl : public ConstDecl
     {
@@ -69,54 +72,6 @@ namespace Constants
 
     private:
 	uint64_t value;
-    };
-
-    class RealConstDecl : public ConstDecl
-    {
-    public:
-	RealConstDecl(const Location& w, double v)
-	    : ConstDecl(Types::Get<Types::RealDecl>(), CK_RealConstDecl, w), value(v)
-	{
-	}
-	Token       Translate() const override;
-	double      Value() const { return value; }
-	static bool classof(const ConstDecl* e) { return e->getKind() == CK_RealConstDecl; }
-	void        dump() const override;
-
-    private:
-	double value;
-    };
-
-    class CharConstDecl : public ConstDecl
-    {
-    public:
-	CharConstDecl(const Location& w, char v)
-	    : ConstDecl(Types::Get<Types::CharDecl>(), CK_CharConstDecl, w), value(v)
-	{
-	}
-	Token       Translate() const override;
-	char        Value() const { return value; }
-	static bool classof(const ConstDecl* e) { return e->getKind() == CK_CharConstDecl; }
-	void        dump() const override;
-
-    private:
-	char value;
-    };
-
-    class BoolConstDecl : public ConstDecl
-    {
-    public:
-	BoolConstDecl(const Location& w, bool v)
-	    : ConstDecl(Types::Get<Types::BoolDecl>(), CK_BoolConstDecl, w), value(v)
-	{
-	}
-	Token       Translate() const override;
-	bool        Value() const { return value; }
-	static bool classof(const ConstDecl* e) { return e->getKind() == CK_BoolConstDecl; }
-	void        dump() const override;
-
-    private:
-	bool value;
     };
 
     class StringConstDecl : public ConstDecl

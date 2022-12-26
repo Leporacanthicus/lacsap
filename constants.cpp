@@ -6,29 +6,52 @@
 namespace Constants
 {
 
-    Token IntConstDecl::Translate() const { return Token(Token::Integer, loc, value); }
-
-    void IntConstDecl::dump() const { std::cerr << "IntConstDecl: " << Value() << std::endl; }
+    template<>
+    Token IntConstDecl::Translate() const
+    {
+	return Token(Token::Integer, loc, value);
+    }
+    template<>
+    void IntConstDecl::dump() const
+    {
+	std::cerr << "IntConstDecl: " << Value() << std::endl;
+    }
 
     Token EnumConstDecl::Translate() const { return Token(Token::Integer, loc, value); }
 
     void EnumConstDecl::dump() const { std::cerr << "EnumConstDecl: " << Value() << std::endl; }
-
-    Token RealConstDecl::Translate() const { return Token(Token::Real, loc, value); }
-
-    void RealConstDecl::dump() const { std::cerr << "RealConstDelc: " << Value() << std::endl; }
-
-    Token CharConstDecl::Translate() const { return Token(Token::Char, loc, static_cast<uint64_t>(value)); }
-
-    void CharConstDecl::dump() const { std::cerr << "CharConstDecl: " << Value() << std::endl; }
-
+    template<>
+    Token RealConstDecl::Translate() const
+    {
+	return Token(Token::Real, loc, value);
+    }
+    template<>
+    void RealConstDecl::dump() const
+    {
+	std::cerr << "RealConstDelc: " << Value() << std::endl;
+    }
+    template<>
+    Token CharConstDecl::Translate() const
+    {
+	return Token(Token::Char, loc, static_cast<uint64_t>(value));
+    }
+    template<>
+    void CharConstDecl::dump() const
+    {
+	std::cerr << "CharConstDecl: " << Value() << std::endl;
+    }
+    template<>
     Token BoolConstDecl::Translate() const
     {
 	std::string s = (value) ? "true" : "false";
 	return Token(Token::Identifier, loc, s);
     }
 
-    void BoolConstDecl::dump() const { std::cerr << "BoolConstDecl: " << Value() << std::endl; }
+    template<>
+    void BoolConstDecl::dump() const
+    {
+	std::cerr << "BoolConstDecl: " << Value() << std::endl;
+    }
 
     Token StringConstDecl::Translate() const { return Token(Token::StringLiteral, loc, value); }
 

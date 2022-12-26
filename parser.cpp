@@ -381,12 +381,12 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     switch (tt)
     {
     case Token::Integer:
-	type = Types::GetIntegerType();
+	type = Types::Get<Types::IntegerDecl>();
 	result = token.GetIntVal();
 	break;
 
     case Token::Char:
-	type = Types::GetCharType();
+	type = Types::Get<Types::CharDecl>();
 	result = token.GetIntVal();
 	break;
 
@@ -900,7 +900,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 
     if (ParseSeparatedList(*this, ccv))
     {
-	Types::EnumDecl* ty = new Types::EnumDecl(ccv.Names(), Types::GetIntegerType());
+	Types::EnumDecl* ty = new Types::EnumDecl(ccv.Names(), Types::Get<Types::IntegerDecl>());
 	for (auto v : ty->Values())
 	{
 	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
@@ -1527,11 +1527,11 @@ ExprAST* Parser::ParseIntegerExpr(Token token)
 {
     int64_t          val = token.GetIntVal();
     Location         loc = token.Loc();
-    Types::TypeDecl* type = Types::GetIntegerType();
+    Types::TypeDecl* type = Types::Get<Types::IntegerDecl>();
 
     if (val > std::numeric_limits<unsigned int>::max())
     {
-	type = Types::GetLongIntType();
+	type = Types::Get<Types::Int64Decl>();
     }
     NextToken();
     return new IntegerExprAST(loc, val, type);
@@ -1541,8 +1541,8 @@ ExprAST* Parser::ParseStringExpr(Token token)
 {
     int                            len = std::max(1, (int)(token.GetStrVal().length() - 1));
     std::vector<Types::RangeDecl*> rv = { new Types::RangeDecl(new Types::Range(0, len),
-	                                                       Types::GetIntegerType()) };
-    Types::ArrayDecl*              ty = new Types::ArrayDecl(Types::GetCharType(), rv);
+	                                                       Types::Get<Types::IntegerDecl>()) };
+    Types::ArrayDecl*              ty = new Types::ArrayDecl(Types::Get<Types::CharDecl>(), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);
 }
@@ -1578,14 +1578,14 @@ ExprAST* Parser::ParseExprElement()
 
     case Token::Real:
 	NextToken();
-	return new RealExprAST(token.Loc(), token.GetRealVal(), Types::GetRealType());
+	return new RealExprAST(token.Loc(), token.GetRealVal(), Types::Get<Types::RealDecl>());
 
     case Token::Integer:
 	return ParseIntegerExpr(token);
 
     case Token::Char:
 	NextToken();
-	return new CharExprAST(token.Loc(), token.GetIntVal(), GetTypeDecl("char"));
+	return new CharExprAST(token.Loc(), token.GetIntVal(), Types::Get<Types::CharDecl>());
 
     case Token::StringLiteral:
 	return ParseStringExpr(token);
@@ -1953,7 +1953,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 		if (name == "capacity")
 		{
 		    int cap = sd->Capacity();
-		    e = new IntegerExprAST(CurrentToken().Loc(), cap, Types::GetIntegerType());
+		    e = new IntegerExprAST(CurrentToken().Loc(), cap, Types::Get<Types::IntegerDecl>());
 		}
 	    }
 	    if (!e)
@@ -2649,7 +2649,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     }
     else
     {
-	resultType = Types::GetVoidType();
+	resultType = Types::Get<Types::VoidDecl>();
     }
 
     if (fwdProto)
@@ -3282,7 +3282,8 @@ public:
 		}
 		if (file == 0)
 		{
-		    file = new VariableExprAST(parser.CurrentToken().Loc(), "output", Types::GetTextType());
+		    file = new VariableExprAST(parser.CurrentToken().Loc(), "output",
+		                               Types::Get<Types::TextDecl>());
 		}
 	    }
 	    if (wa.expr)
@@ -3334,7 +3335,7 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return Error(CurrentToken(), "Write must have arguments.");
 	}
-	file = new VariableExprAST(loc, "output", Types::GetTextType());
+	file = new VariableExprAST(loc, "output", Types::Get<Types::TextDecl>());
     }
     else
     {
@@ -3373,7 +3374,8 @@ public:
 		}
 		if (file == 0)
 		{
-		    file = new VariableExprAST(parser.CurrentToken().Loc(), "input", Types::GetTextType());
+		    file = new VariableExprAST(parser.CurrentToken().Loc(), "input",
+		                               Types::Get<Types::TextDecl>());
 		}
 	    }
 	    if (expr)
@@ -3409,7 +3411,7 @@ ExprAST* Parser::ParseRead()
 	{
 	    return Error(CurrentToken(), "Read must have arguments.");
 	}
-	file = new VariableExprAST(loc, "input", Types::GetTextType());
+	file = new VariableExprAST(loc, "input", Types::Get<Types::TextDecl>());
     }
     else
     {
@@ -3708,8 +3710,8 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    {
 		return 0;
 	    }
-	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(), Types::GetVoidType(),
-	                                           0);
+	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
+	                                           Types::Get<Types::VoidDecl>(), 0);
 	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
 	    initFunction->EndLoc(endLoc);
 	    if (!Expect(Token::Period, true))
@@ -3754,8 +3756,8 @@ ExprAST* Parser::Parse(ParserType type)
     NextToken();
     if (type == Program)
     {
-	VarDef input("input", Types::GetTextType(), VarDef::Flags::External);
-	VarDef output("output", Types::GetTextType(), VarDef::Flags::External);
+	VarDef input("input", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
+	VarDef output("output", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
 	nameStack.Add("input", new VarDef(input));
 	nameStack.Add("output", new VarDef(output));
 	std::vector<VarDef> varList{ input, output };
@@ -3771,13 +3773,17 @@ Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
     double                    maxReal = llvm::APFloat::getLargest(sem).convertToDouble();
     double                    minReal = llvm::APFloat::getLargest(sem, /*Negative=*/true).convertToDouble();
     Location                  unknownLoc = Location("", 0, 0);
-    if (!(AddType("integer", Types::GetIntegerType()) && AddType("longint", Types::GetLongIntType()) &&
-          AddType("int64", Types::GetLongIntType()) && AddType("real", Types::GetRealType()) &&
-          AddType("char", Types::GetCharType()) && AddType("text", Types::GetTextType()) &&
-          AddType("boolean", Types::GetBooleanType()) && AddType("timestamp", Types::GetTimeStampType()) &&
-          AddType("bindingtype", Types::GetBindingType()) && AddType("complex", Types::GetComplexType()) &&
-          nameStack.Add("false", new EnumDef("false", 0, Types::GetBooleanType())) &&
-          nameStack.Add("true", new EnumDef("true", 1, Types::GetBooleanType())) &&
+    if (!(AddType("integer", Types::Get<Types::IntegerDecl>()) &&
+          AddType("longint", Types::Get<Types::Int64Decl>()) &&
+          AddType("int64", Types::Get<Types::Int64Decl>()) &&
+          AddType("real", Types::Get<Types::RealDecl>()) && AddType("char", Types::Get<Types::CharDecl>()) &&
+          AddType("text", Types::Get<Types::TextDecl>()) &&
+          AddType("boolean", Types::Get<Types::BoolDecl>()) &&
+          AddType("timestamp", Types::GetTimeStampType()) &&
+          AddType("bindingtype", Types::GetBindingType()) &&
+          AddType("complex", Types::Get<Types::ComplexDecl>()) &&
+          nameStack.Add("false", new EnumDef("false", 0, Types::Get<Types::BoolDecl>())) &&
+          nameStack.Add("true", new EnumDef("true", 1, Types::Get<Types::BoolDecl>())) &&
           AddConst("maxint", new Constants::IntConstDecl(unknownLoc, INT_MAX)) &&
           AddConst("maxchar", new Constants::IntConstDecl(unknownLoc, UCHAR_MAX)) &&
           AddConst("pi", new Constants::RealConstDecl(unknownLoc, llvm::numbers::pi)) &&

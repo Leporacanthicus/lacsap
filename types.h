@@ -27,17 +27,8 @@ namespace Types
 	return typePtr;
     }
 
-    TypeDecl* GetIntegerType();
-    TypeDecl* GetLongIntType();
-    TypeDecl* GetCharType();
-    TypeDecl* GetBooleanType();
-    TypeDecl* GetRealType();
-    TypeDecl* GetVoidType();
-    TypeDecl* GetTextType();
-    TypeDecl* GetStringType();
     TypeDecl* GetTimeStampType();
     TypeDecl* GetBindingType();
-    TypeDecl* GetComplexType();
 
     bool IsNumeric(const TypeDecl* t);
     bool IsCharArray(const TypeDecl* t);
@@ -687,8 +678,9 @@ namespace Types
     {
     public:
 	StringDecl(unsigned size)
-	    : ArrayDecl(TK_String, new CharDecl,
-	                std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), GetIntegerType())))
+	    : ArrayDecl(
+	          TK_String, new CharDecl,
+	          std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), Get<Types::IntegerDecl>())))
 	{
 	    assert(size > 0 && "Zero size not allowed");
 	}
@@ -703,8 +695,8 @@ namespace Types
     {
     public:
 	ComplexDecl()
-	    : RecordDecl(TK_Complex, { new FieldDecl("r", GetRealType(), false),
-	                               new FieldDecl("i", GetRealType(), false) })
+	    : RecordDecl(TK_Complex, { new FieldDecl("r", Get<RealDecl>(), false),
+	                               new FieldDecl("i", Get<RealDecl>(), false) })
 	{
 	}
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Complex; }

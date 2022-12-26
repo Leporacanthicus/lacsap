@@ -43,7 +43,7 @@ namespace Constants
     {
     public:
 	IntConstDecl(const Location& w, uint64_t v)
-	    : ConstDecl(Types::GetIntegerType(), CK_IntConstDecl, w), value(v)
+	    : ConstDecl(Types::Get<Types::IntegerDecl>(), CK_IntConstDecl, w), value(v)
 	{
 	}
 	Token       Translate() const override;
@@ -75,7 +75,7 @@ namespace Constants
     {
     public:
 	RealConstDecl(const Location& w, double v)
-	    : ConstDecl(Types::GetRealType(), CK_RealConstDecl, w), value(v)
+	    : ConstDecl(Types::Get<Types::RealDecl>(), CK_RealConstDecl, w), value(v)
 	{
 	}
 	Token       Translate() const override;
@@ -91,7 +91,7 @@ namespace Constants
     {
     public:
 	CharConstDecl(const Location& w, char v)
-	    : ConstDecl(Types::GetCharType(), CK_CharConstDecl, w), value(v)
+	    : ConstDecl(Types::Get<Types::CharDecl>(), CK_CharConstDecl, w), value(v)
 	{
 	}
 	Token       Translate() const override;
@@ -107,7 +107,7 @@ namespace Constants
     {
     public:
 	BoolConstDecl(const Location& w, bool v)
-	    : ConstDecl(Types::GetBooleanType(), CK_BoolConstDecl, w), value(v)
+	    : ConstDecl(Types::Get<Types::BoolDecl>(), CK_BoolConstDecl, w), value(v)
 	{
 	}
 	Token       Translate() const override;
@@ -123,7 +123,7 @@ namespace Constants
     {
     public:
 	StringConstDecl(const Location& w, const std::string& v)
-	    : ConstDecl(Types::GetStringType(), CK_StringConstDecl, w), value(v)
+	    : ConstDecl(Types::Get<Types::StringDecl>(255), CK_StringConstDecl, w), value(v)
 	{
 	}
 	Token              Translate() const override;

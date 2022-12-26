@@ -514,7 +514,7 @@ namespace Types
 	if (maxAlignElt != maxSizeElt)
 	{
 	    size_t      nelems = maxSize - maxAlignSize;
-	    llvm::Type* ty = llvm::ArrayType::get(GetCharType()->LlvmType(), nelems);
+	    llvm::Type* ty = llvm::ArrayType::get(Get<CharDecl>()->LlvmType(), nelems);
 	    fv.push_back(ty);
 	}
 	return llvm::StructType::create(fv, name);
@@ -1048,7 +1048,7 @@ namespace Types
     llvm::Type* FileDecl::GetLlvmType() const
     {
 	llvm::Type*              ty = llvm::PointerType::getUnqual(baseType->LlvmType());
-	llvm::Type*              intTy = GetIntegerType()->LlvmType();
+	llvm::Type*              intTy = Get<IntegerDecl>()->LlvmType();
 	std::vector<llvm::Type*> fv = { intTy, ty, intTy, intTy };
 	return llvm::StructType::create(fv, Type() == TK_Text ? "text" : "file");
     }
@@ -1082,7 +1082,7 @@ namespace Types
     {
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(GetIntegerType()->LlvmType());
+	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
 	llvm::Type*        ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
@@ -1190,16 +1190,6 @@ namespace Types
 	return llvm::PointerType::getUnqual(base);
     }
 
-    TypeDecl* GetVoidType() { return Get<VoidDecl>(); }
-    TypeDecl* GetStringType() { return Get<StringDecl>(255); }
-    TypeDecl* GetTextType() { return Get<TextDecl>(); }
-    TypeDecl* GetIntegerType() { return Get<IntegerDecl>(); }
-    TypeDecl* GetLongIntType() { return Get<Int64Decl>(); }
-    TypeDecl* GetCharType() { return Get<CharDecl>(); }
-    TypeDecl* GetRealType() { return Get<RealDecl>(); }
-    TypeDecl* GetBooleanType() { return Get<BoolDecl>(); }
-    TypeDecl* GetComplexType() { return Get<ComplexDecl>(); }
-
     bool IsNumeric(const TypeDecl* t)
     {
 	switch (t->Type())
@@ -1221,7 +1211,7 @@ namespace Types
 
     static RangeDecl* MakeRange(int64_t s, int64_t e)
     {
-	return new RangeDecl(new Range(s, e), GetIntegerType());
+	return new RangeDecl(new Range(s, e), Get<IntegerDecl>());
     }
 
     TypeDecl* GetTimeStampType()
@@ -1231,9 +1221,9 @@ namespace Types
 	{
 	    // DateValid, TimeValid, Year, Month, Day, Hour, Minute, Second
 	    std::vector<FieldDecl*> fields = {
-		new FieldDecl("DateValid", GetBooleanType(), false),
-		new FieldDecl("TimeValid", GetBooleanType(), false),
-		new FieldDecl("Year", GetIntegerType(), false),
+		new FieldDecl("DateValid", Get<BoolDecl>(), false),
+		new FieldDecl("TimeValid", Get<BoolDecl>(), false),
+		new FieldDecl("Year", Get<IntegerDecl>(), false),
 		new FieldDecl("Month", MakeRange(1, 12), false),
 		new FieldDecl("Day", MakeRange(1, 31), false),
 		new FieldDecl("Hour", MakeRange(0, 23), false),
@@ -1254,8 +1244,8 @@ namespace Types
 	if (!bindingType)
 	{
 	    std::vector<FieldDecl*> fields = {
-		new FieldDecl("Bound", GetBooleanType(), false),
-		new FieldDecl("Name", GetStringType(), false),
+		new FieldDecl("Bound", Get<BoolDecl>(), false),
+		new FieldDecl("Name", Get<StringDecl>(255), false),
 	    };
 	    bindingType = new RecordDecl(fields, nullptr);
 	    assert(sizeof(BindingType) == bindingType->Size() &&

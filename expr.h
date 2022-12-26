@@ -170,7 +170,10 @@ public:
 class NilExprAST : public ExprAST
 {
 public:
-    NilExprAST(const Location& w) : ExprAST(w, EK_NilExpr, new Types::PointerDecl(Types::GetVoidType())) {}
+    NilExprAST(const Location& w)
+        : ExprAST(w, EK_NilExpr, new Types::PointerDecl(Types::Get<Types::VoidDecl>()))
+    {
+    }
     void         DoDump(std::ostream& out) const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_NilExpr; }
@@ -861,7 +864,7 @@ public:
     SizeOfExprAST(const Location& w, Types::TypeDecl* t) : ExprAST(w, EK_SizeOfExpr, t) {}
     void             DoDump(std::ostream& out) const override;
     llvm::Value*     CodeGen() override;
-    Types::TypeDecl* Type() const override { return Types::GetIntegerType(); }
+    Types::TypeDecl* Type() const override { return Types::Get<Types::IntegerDecl>(); }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_SizeOfExpr; }
 };
 

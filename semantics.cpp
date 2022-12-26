@@ -181,7 +181,7 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
     }
     if (!lty->GetRange() && !rty->GetRange())
     {
-	Types::RangeDecl* r = GetRangeDecl(Types::GetIntegerType());
+	Types::RangeDecl* r = GetRangeDecl(Types::Get<Types::IntegerDecl>());
 	Types::SetDecl*   rs = llvm::dyn_cast<Types::SetDecl>(rty);
 	Types::SetDecl*   ls = llvm::dyn_cast<Types::SetDecl>(lty);
 
@@ -271,16 +271,16 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	{
 	    Error(b, "Right hand of 'in' expression should be a set.");
 	}
-	ty = Types::GetBooleanType();
+	ty = Types::Get<Types::BoolDecl>();
     }
 
     if (!ty && b->oper.IsCompare() &&
         (lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
     {
-	ty = Types::GetStringType();
+	ty = Types::Get<Types::StringDecl>(255);
 	b->rhs = Recast(b->rhs, ty);
 	b->lhs = Recast(b->lhs, ty);
-	ty = Types::GetBooleanType();
+	ty = Types::Get<Types::BoolDecl>();
     }
 
     if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
@@ -290,7 +290,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::And_Then || op == Token::Or_Else))
     {
-	ty = Types::GetBooleanType();
+	ty = Types::Get<Types::BoolDecl>();
 	if (ty->Type() != lty->Type() || ty->Type() != rty->Type())
 	{
 	    Error(b, "Types for And_Then and Or_Else should be boolean");
@@ -310,7 +310,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     {
 	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
 	{
-	    ty = Types::GetStringType();
+	    ty = Types::Get<Types::StringDecl>(255);
 	}
     }
 
@@ -332,11 +332,11 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
 	if (llvm::isa<Types::ComplexDecl>(lty))
 	{
-	    ty = Types::GetComplexType();
+	    ty = Types::Get<Types::ComplexDecl>();
 	}
 	else
 	{
-	    ty = Types::GetRealType();
+	    ty = Types::Get<Types::RealDecl>();
 	}
 
 	if (lty->IsIntegral())

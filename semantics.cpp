@@ -275,7 +275,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     }
 
     if (!ty && b->oper.IsCompare() &&
-        (lty->Type() == Types::TypeDecl::TK_String || rty->Type() == Types::TypeDecl::TK_String))
+        (llvm::isa<Types::StringDecl>(lty) || llvm::isa<Types::StringDecl>(rty)))
     {
 	ty = Types::Get<Types::StringDecl>(255);
 	b->rhs = Recast(b->rhs, ty);
@@ -283,7 +283,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	ty = Types::Get<Types::BoolDecl>();
     }
 
-    if (!ty && lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
+    if (!ty && llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
     {
 	ty = BinarySetUpdate(b);
     }
@@ -291,7 +291,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     if (!ty && (op == Token::And_Then || op == Token::Or_Else))
     {
 	ty = Types::Get<Types::BoolDecl>();
-	if (ty->Type() != lty->Type() || ty->Type() != rty->Type())
+	if (!llvm::isa<Types::BoolDecl>(lty) || !llvm::isa<Types::BoolDecl>(rty))
 	{
 	    Error(b, "Types for And_Then and Or_Else should be boolean");
 	}
@@ -299,8 +299,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::Div || op == Token::Mod || op == Token::Pow))
     {
-	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char ||
-	    !lty->IsIntegral() || !rty->IsIntegral())
+	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !lty->IsIntegral() ||
+	    !rty->IsIntegral())
 	{
 	    Error(b, "Types for DIV, MOD and POW should be integer");
 	}
@@ -308,7 +308,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 
     if (!ty && (op == Token::Plus))
     {
-	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
+	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
 	{
 	    ty = Types::Get<Types::StringDecl>(255);
 	}
@@ -317,7 +317,7 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     if (!ty && (op == Token::Minus || op == Token::Multiply || op == Token::And || op == Token::Xor ||
                 op == Token::Or))
     {
-	if (lty->Type() == Types::TypeDecl::TK_Char || rty->Type() == Types::TypeDecl::TK_Char)
+	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
 	{
 	    Error(b, "Types for binary operation should not be CHARACTER");
 	}
@@ -408,7 +408,7 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     Types::TypeDecl* lty = a->lhs->Type();
     Types::TypeDecl* rty = a->rhs->Type();
 
-    if (lty->Type() == Types::TypeDecl::TK_Set && rty->Type() == Types::TypeDecl::TK_Set)
+    if (llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
     {
 	assert(lty->GetRange() && lty->SubType() && "Expected left type to be well defined.");
 

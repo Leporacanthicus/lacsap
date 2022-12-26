@@ -10,7 +10,7 @@ namespace Builtin
 {
     static bool CastIntegerToReal(ExprAST*& arg)
     {
-	if (arg->Type()->Type() != Types::TypeDecl::TK_Real)
+	if (!llvm::isa<Types::RealDecl>(arg->Type()))
 	{
 	    // Implicit typecast.
 	    if (!arg->Type()->IsIntegral())
@@ -49,6 +49,13 @@ namespace Builtin
     using FunctionReal = FunctionType<Types::RealDecl>;
     using FunctionVoid = FunctionType<Types::VoidDecl>;
     using FunctionCplx = FunctionType<Types::ComplexDecl>;
+
+    class FunctionString : public FunctionBase
+    {
+    public:
+	using FunctionBase::FunctionBase;
+	Types::TypeDecl* Type() const override { return Types::Get<Types::StringDecl>(255); }
+    };
 
     class FunctionSameAsArg : public FunctionBase
     {
@@ -321,30 +328,27 @@ namespace Builtin
 	bool         Semantics() override;
     };
 
-    class FunctionParamstr : public FunctionBase
+    class FunctionParamstr : public FunctionString
     {
     public:
-	using FunctionBase::FunctionBase;
+	using FunctionString::FunctionString;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::Get<Types::StringDecl>(255); }
 	bool             Semantics() override;
     };
 
-    class FunctionCopy : public FunctionBase
+    class FunctionCopy : public FunctionString
     {
     public:
-	using FunctionBase::FunctionBase;
+	using FunctionString::FunctionString;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::Get<Types::StringDecl>(255); }
 	bool             Semantics() override;
     };
 
-    class FunctionTrim : public FunctionBase
+    class FunctionTrim : public FunctionString
     {
     public:
-	using FunctionBase::FunctionBase;
+	using FunctionString::FunctionString;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	Types::TypeDecl* Type() const override { return Types::Get<Types::StringDecl>(255); }
 	bool             Semantics() override;
     };
 
@@ -601,7 +605,7 @@ namespace Builtin
 
     bool FunctionRound::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->Type() == Types::TypeDecl::TK_Real;
+	return args.size() == 1 && llvm::isa<Types::RealDecl>(args[0]->Type());
     }
 
     llvm::Value* FunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
@@ -825,8 +829,8 @@ namespace Builtin
     bool FunctionVal::Semantics()
     {
 	return args.size() == 2 && args[0]->Type()->IsStringLike() && llvm::isa<VariableExprAST>(args[1]) &&
-	       (args[1]->Type()->Type() == Types::TypeDecl::TK_Integer ||
-	        args[1]->Type()->Type() == Types::TypeDecl::TK_LongInt);
+	       (llvm::isa<Types::IntegerDecl>(args[1]->Type()) ||
+	        llvm::isa<Types::Int64Decl>(args[1]->Type()));
     }
 
     llvm::Value* FunctionVal::CodeGen(llvm::IRBuilder<>& builder)
@@ -834,15 +838,16 @@ namespace Builtin
 	llvm::Value*     str = MakeStringFromExpr(args[0], args[0]->Type());
 	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 	std::string      name = "__Val_";
-	switch (var1->Type()->Type())
+	if (llvm::isa<Types::IntegerDecl>(var1->Type()))
 	{
-	case Types::TypeDecl::TK_Integer:
 	    name += "int";
-	    break;
-	case Types::TypeDecl::TK_LongInt:
+	}
+	else if (llvm::isa<Types::Int64Decl>(var1->Type()))
+	{
 	    name += "long";
-	    break;
-	default:
+	}
+	else
+	{
 	    assert(0 && "What happened here?");
 	    return 0;
 	}
@@ -881,7 +886,7 @@ namespace Builtin
 
 	Types::FileDecl* fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
 	llvm::Value*     sz = MakeIntegerConstant(fd->SubType()->Size());
-	llvm::Value*     isText = MakeBooleanConstant(fd->Type() == Types::TypeDecl::TK_Text);
+	llvm::Value*     isText = MakeBooleanConstant(llvm::isa<Types::TextDecl>(fd));
 
 	std::vector<llvm::Value*> argList = { faddr, sz, isText };
 
@@ -911,7 +916,7 @@ namespace Builtin
 
     bool FunctionLength::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->Type() == Types::TypeDecl::TK_String;
+	return args.size() == 1 && llvm::isa<Types::StringDecl>(args[0]->Type());
     }
 
     llvm::Value* FunctionAssign::CodeGen(llvm::IRBuilder<>& builder)
@@ -953,7 +958,7 @@ namespace Builtin
 	llvm::Value* len = args[2]->CodeGen();
 
 	std::vector<llvm::Type*> argTypes = { str->getType(), start->getType(), len->getType() };
-	llvm::Type*              strTy = Types::Get<Types::StringDecl>(255)->LlvmType();
+	llvm::Type*              strTy = Type()->LlvmType();
 	llvm::FunctionCallee     f = GetFunction(strTy, argTypes, "__StrCopy");
 
 	std::vector<llvm::Value*> argsV = { str, start, len };
@@ -964,15 +969,15 @@ namespace Builtin
     bool FunctionCopy::Semantics()
     {
 	return args.size() == 3 && args[0]->Type()->IsStringLike() &&
-	       args[1]->Type()->Type() == Types::TypeDecl::TK_Integer &&
-	       args[2]->Type()->Type() == Types::TypeDecl::TK_Integer;
+	       llvm::isa<Types::IntegerDecl>(args[1]->Type()) &&
+	       llvm::isa<Types::IntegerDecl>(args[2]->Type());
     }
 
     llvm::Value* FunctionTrim::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
 
-	llvm::Type*          strTy = Types::Get<Types::StringDecl>(255)->LlvmType();
+	llvm::Type*          strTy = Type()->LlvmType();
 	llvm::FunctionCallee f = GetFunction(strTy, { str->getType() }, "__StrTrim");
 
 	return builder.CreateCall(f, { str }, "trim");
@@ -1085,8 +1090,7 @@ namespace Builtin
 
 	std::vector<llvm::Type*> argTypes = { n->getType() };
 
-	llvm::FunctionType*  ft = llvm::FunctionType::get(Types::Get<Types::StringDecl>(255)->LlvmType(),
-                                                         argTypes, false);
+	llvm::FunctionType*  ft = llvm::FunctionType::get(Type()->LlvmType(), argTypes, false);
 	llvm::FunctionCallee f = theModule->getOrInsertFunction("__ParamStr", ft);
 
 	return builder.CreateCall(f, n, "paramstr");
@@ -1105,8 +1109,7 @@ namespace Builtin
 
     llvm::Value* FunctionMax::CodeGen(llvm::IRBuilder<>& builder)
     {
-	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real ||
-	    args[1]->Type()->Type() == Types::TypeDecl::TK_Real)
+	if (llvm::isa<Types::RealDecl>(args[0]->Type()) || llvm::isa<Types::RealDecl>(args[1]->Type()))
 	{
 	    FunctionFloat2Arg max("llvm.maxnum.f64", args);
 	    return max.CodeGen(builder);
@@ -1128,8 +1131,7 @@ namespace Builtin
 
     llvm::Value* FunctionMin::CodeGen(llvm::IRBuilder<>& builder)
     {
-	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real ||
-	    args[1]->Type()->Type() == Types::TypeDecl::TK_Real)
+	if (llvm::isa<Types::RealDecl>(args[0]->Type()) || llvm::isa<Types::RealDecl>(args[1]->Type()))
 	{
 	    FunctionFloat2Arg min("llvm.minnum.f64", args);
 	    return min.CodeGen(builder);
@@ -1156,7 +1158,7 @@ namespace Builtin
 	llvm::Value* zero = MakeIntegerConstant(0);
 	llvm::Value* one = MakeIntegerConstant(1);
 	llvm::Value* mone = MakeIntegerConstant(-1);
-	if (args[0]->Type()->Type() == Types::TypeDecl::TK_Real)
+	if (llvm::isa<Types::RealDecl>(args[0]->Type()))
 	{
 	    llvm::Value* fzero = llvm::ConstantFP::get(theContext, llvm::APFloat(0.0));
 	    llvm::Value* sel1 = builder.CreateFCmpOGT(v, fzero, "gt");

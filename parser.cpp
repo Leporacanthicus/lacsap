@@ -592,7 +592,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
     case Token::Identifier:
 	if (const EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
 	{
-	    if (ed->Type()->Type() == Types::TypeDecl::TK_Boolean)
+	    if (llvm::isa<Types::BoolDecl>(ed->Type()))
 	    {
 		uint64_t v = ed->Value();
 		if (unaryToken == Token::Not)
@@ -789,8 +789,7 @@ void Parser::ParseTypeDef()
 		Error(token, "Name " + nm + " is already in use.");
 		return;
 	    }
-	    if (ty->Type() == Types::TypeDecl::TK_Pointer &&
-	        llvm::dyn_cast<Types::PointerDecl>(ty)->IsIncomplete())
+	    if (llvm::isa<Types::PointerDecl>(ty) && llvm::dyn_cast<Types::PointerDecl>(ty)->IsIncomplete())
 	    {
 		incomplete.push_back(llvm::dyn_cast<Types::PointerDecl>(ty));
 	    }
@@ -1998,19 +1997,18 @@ bool Parser::IsCall(const NamedObject* def)
     assert(def && "Expected def to be non-NULL");
 
     Types::TypeDecl*          type = def->Type();
-    Types::TypeDecl::TypeKind ty = type->Type();
-    if (ty == Types::TypeDecl::TK_FuncPtr)
+    if (llvm::isa<Types::FuncPtrDecl>(type))
     {
 	return true;
     }
-    if (ty == Types::TypeDecl::TK_Class && llvm::isa<MembFuncDef>(def))
+    if (llvm::isa<Types::ClassDecl>(type) && llvm::isa<MembFuncDef>(def))
     {
 	if (CurrentToken().GetToken() != Token::Assign)
 	{
 	    return true;
 	}
     }
-    if ((ty == Types::TypeDecl::TK_Function || ty == Types::TypeDecl::TK_MemberFunc) &&
+    if ((llvm::isa<Types::FunctionDecl>(type) || llvm::isa<Types::MemberFuncDecl>(type)) &&
         CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -2065,7 +2063,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 			}
 			else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
 			{
-			    if (vd->Type()->Type() == Types::TypeDecl::TK_FuncPtr)
+			    if (llvm::isa<Types::FuncPtrDecl>(vd->Type()))
 			    {
 				arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
 			    }
@@ -2144,7 +2142,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	}
 	else if (const TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
 	{
-	    if ((ty->Type()->Type() == Types::TypeDecl::TK_Class))
+	    if (llvm::isa<Types::ClassDecl>(ty->Type()))
 	    {
 		expr = ParseStaticMember(ty, type);
 	    }

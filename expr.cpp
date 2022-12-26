@@ -320,7 +320,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
-    assert(rhs->Type()->Type() == Types::TypeDecl::TK_Char && "Expected char value");
+    assert(llvm::isa<Types::CharDecl>(rhs->Type()) && "Expected char value");
     std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
     llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
 
@@ -616,7 +616,7 @@ llvm::Value* FunctionExprAST::CodeGen()
 
 static int StringishScore(ExprAST* e)
 {
-    if (llvm::isa<CharExprAST>(e) || e->Type()->Type() == Types::TypeDecl::TK_Char)
+    if (llvm::isa<CharExprAST>(e) || llvm::isa<Types::CharDecl>(e->Type()))
     {
 	return 1;
     }
@@ -738,7 +738,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 {
     TRACE();
-    if (e->Type()->Type() == Types::TypeDecl::TK_Char)
+    if (llvm::isa<Types::CharDecl>(e->Type()))
     {
 	llvm::Value* v = CreateTempAlloca(Types::Get<Types::StringDecl>(255));
 	TempStringFromChar(v, e);
@@ -1305,8 +1305,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	}
 
 	// We don't need to do this of both sides are char - then it's just a simple comparison
-	if (lhs->Type()->Type() != Types::TypeDecl::TK_Char ||
-	    rhs->Type()->Type() != Types::TypeDecl::TK_Char)
+	if (!llvm::isa<Types::CharDecl>(lhs->Type()) || !llvm::isa<Types::CharDecl>(rhs->Type()))
 	{
 	    return MakeStrCompare(oper.GetToken(), CallStrFunc("Compare"));
 	}
@@ -1316,8 +1315,8 @@ llvm::Value* BinaryExprAST::CodeGen()
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
 	// But only if they are the same size.
-	if (lhs->Type()->SubType()->Type() == Types::TypeDecl::TK_Char &&
-	    rhs->Type()->SubType()->Type() == Types::TypeDecl::TK_Char)
+	if (llvm::isa<Types::CharDecl>(lhs->Type()->SubType()) &&
+	    llvm::isa<Types::CharDecl>(rhs->Type()->SubType()))
 	{
 	    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
 	    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
@@ -1588,7 +1587,7 @@ llvm::Value* CallExprAST::CodeGen()
 
     const char*      res = "";
     Types::TypeDecl* resType = proto->Type();
-    if (resType->Type() != Types::TypeDecl::TK_Void)
+    if (!llvm::isa<Types::VoidDecl>(resType))
     {
 	res = "calltmp";
     }
@@ -1781,7 +1780,7 @@ void PrototypeAST::CreateArgumentAlloca()
 	    }
 	}
     }
-    if (type->Type() != Types::TypeDecl::TK_Void)
+    if (!llvm::isa<Types::VoidDecl>(type))
     {
 	std::string       shortname = ShortName(name);
 	llvm::AllocaInst* a = CreateAlloca(llvmFunc, VarDef(shortname, type));
@@ -1998,7 +1997,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	DebugInfo& di = GetDebugInfo();
 	di.EmitLocation(endLoc);
     }
-    if (proto->Type()->Type() == Types::TypeDecl::TK_Void)
+    if (llvm::isa<Types::VoidDecl>(proto->Type()))
     {
 	builder.CreateRetVoid();
     }
@@ -2667,7 +2666,7 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 #if !NDEBUG
 	Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
 	assert(ad && "Expect array declaration to expand!");
-	assert(ad->SubType()->Type() == Types::TypeDecl::TK_Char && "Expected char type");
+	assert(llvm::isa<Types::CharDecl>(ad->SubType()) && "Expected char type");
 #endif
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::Get<Types::CharDecl>()->LlvmType());
 	argTypes.push_back(pty);
@@ -2719,7 +2718,7 @@ llvm::Value* WriteAST::CodeGen()
 	    {
 		return 0;
 	    }
-	    if (type->Type() == Types::TypeDecl::TK_String)
+	    if (llvm::isa<Types::StringDecl>(type))
 	    {
 		if (AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr))
 		{
@@ -2771,7 +2770,7 @@ llvm::Value* WriteAST::CodeGen()
 		return ErrorV(this, "Expected width to be integer value");
 	    }
 	    argsV.push_back(w);
-	    if (type->Type() == Types::TypeDecl::TK_Real)
+	    if (llvm::isa<Types::RealDecl>(type))
 	    {
 		llvm::Value* p;
 		if (arg.precision)
@@ -3661,7 +3660,7 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 
 llvm::Value* TypeCastAST::CodeGen()
 {
-    if (type->Type() == Types::TypeDecl::TK_Real)
+    if (llvm::isa<Types::RealDecl>(type))
     {
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
@@ -3679,22 +3678,22 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateBitCast(expr->CodeGen(), type->LlvmType());
     }
-    if ((Types::IsCharArray(current) || current->Type() == Types::TypeDecl::TK_Char) &&
-        type->Type() == Types::TypeDecl::TK_String)
+    if ((Types::IsCharArray(current) || llvm::isa<Types::CharDecl>(current)) &&
+        llvm::isa<Types::StringDecl>(type))
     {
 	return MakeStringFromExpr(expr, type);
     }
-    if (type->Type() == Types::TypeDecl::TK_Class && current->Type() == Types::TypeDecl::TK_Class)
+    if (llvm::isa<Types::ClassDecl>(type) && llvm::isa<Types::ClassDecl>(current))
     {
 	llvm::Type* ty = llvm::PointerType::getUnqual(type->LlvmType());
 	return builder.CreateLoad(builder.CreateBitCast(Address(), ty));
     }
-    if (type->Type() == Types::TypeDecl::TK_Char && current->Type() == Types::TypeDecl::TK_String)
+    if (llvm::isa<Types::CharDecl>(type) && llvm::isa<Types::CharDecl>(current))
     {
 	return builder.CreateLoad(Address(), "char");
     }
     // Sets are compatible anyway...
-    if (current->Type() == Types::TypeDecl::TK_Set)
+    if (llvm::isa<Types::SetDecl>(current))
     {
 	return builder.CreateLoad(Address(), "set");
     }
@@ -3707,16 +3706,17 @@ llvm::Value* TypeCastAST::Address()
 {
     llvm::Value*     v = 0;
     Types::TypeDecl* current = expr->Type();
-    switch (current->Type())
+    if (llvm::isa<Types::StringDecl>(current))
     {
-    case Types::TypeDecl::TK_String:
 	v = MakeAddressable(expr);
-	break;
-    case Types::TypeDecl::TK_Set:
+    }
+    else if (llvm::isa<Types::SetDecl>(current))
+    {
 	v = ConvertSet(expr, type);
-	break;
-    default:
-	if (type->Type() == Types::TypeDecl::TK_String)
+    }
+    else
+    {
+	if (llvm::isa<Types::StringDecl>(type))
 	{
 	    v = MakeStringFromExpr(expr, type);
 	}
@@ -3727,7 +3727,7 @@ llvm::Value* TypeCastAST::Address()
     }
 
     assert(v && "Expected to get a value here...");
-    if (type->Type() == Types::TypeDecl::TK_Char)
+    if (llvm::isa<Types::CharDecl>(type))
     {
 	llvm::Value* ind[2] = { MakeIntegerConstant(0), MakeIntegerConstant(1) };
 	return builder.CreateGEP(v, ind);

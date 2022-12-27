@@ -34,3 +34,13 @@ struct Complex __ccos(struct Complex a)
     struct Complex res = { re, im };
     return res;
 }
+
+struct Complex __ctan(struct Complex a)
+{
+    // tan(x + iy) = sin(2x)/(cos(2x)+cosh(2y)) + i sinh(2y)/(cos(2x)+cosh(2y))
+    double         div = cos(2 * a.r) + cosh(2 * a.i);
+    double         re = sin(2 * a.r) / div;
+    double         im = sinh(2 * a.i) / div;
+    struct Complex res = { re, im };
+    return res;
+}

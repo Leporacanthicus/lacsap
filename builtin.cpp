@@ -581,7 +581,16 @@ namespace Builtin
 
     llvm::Value* FunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
-	return CallRuntimeFPFunc(builder, funcname, args);
+	std::string name;
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    name = "__c" + funcname;
+	}
+	else
+	{
+	    name = funcname;
+	}
+	return CallRuntimeFPFunc(builder, name, args);
     }
 
     Types::TypeDecl* FunctionFloat::Type() const

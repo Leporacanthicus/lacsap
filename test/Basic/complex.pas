@@ -29,4 +29,5 @@ begin
    print_complex("Sin", Sin(c)); 
    print_complex("Sqr", Sqr(c));
    print_complex("Sqrt", Sqrt(c));
+   print_complex("Tan", Tan(c)); 
 end.

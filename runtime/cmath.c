@@ -11,3 +11,8 @@ struct Complex __csqrt(struct Complex a)
     struct Complex res = { re, im };
     return res;
 }
+
+double __carg(struct Complex a)
+{
+    return atan2(a.i, a.r);
+}

@@ -77,6 +77,7 @@ namespace Builtin
     {
     public:
 	using FunctionSameAsArg::FunctionSameAsArg;
+	Types::TypeDecl* Type() const override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -467,6 +468,17 @@ namespace Builtin
 	int index;
     };
 
+    class FunctionCmplxToReal : public FunctionReal
+    {
+    public:
+	FunctionCmplxToReal(const std::string& fn, ArgList& a) : FunctionReal(a), funcname(fn) {}
+	bool         Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+
+    private:
+	std::string funcname;
+    };
+
     void FunctionBase::accept(ASTVisitor& v)
     {
 	for (auto a : args)
@@ -482,6 +494,16 @@ namespace Builtin
 	return (args.size() == 2) && Types::IsNumeric(args[0]->Type()) && Types::IsNumeric(args[1]->Type());
     }
 
+    /* Note that abs returnes "real" for complex, otherwise int or real depending on input type */
+    Types::TypeDecl* FunctionAbs::Type() const
+    {
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    return Types::Get<Types::RealDecl>();
+	}
+	return args[0]->Type();
+    }
+
     llvm::Value* FunctionAbs::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
@@ -491,7 +513,6 @@ namespace Builtin
 	    auto            v = llvm::dyn_cast<AddressableAST>(args[0]);
 	    llvm::Value*    a = v->Address();
 
-	    llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
 	    llvm::Value* re = builder.CreateLoad(builder.CreateGEP(a, { zero, zero }, "re"));
 	    llvm::Value* im = builder.CreateLoad(builder.CreateGEP(a, { zero, one }, "im"));
 	    llvm::Value* rexre = builder.CreateFMul(re, re, "rexre");
@@ -500,12 +521,7 @@ namespace Builtin
 
 	    llvm::Type*          ty = Types::Get<Types::RealDecl>()->LlvmType();
 	    llvm::FunctionCallee f = GetFunction(ty, { ty }, "llvm.sqrt.f64");
-	    llvm::Value*         resr = builder.CreateCall(f, sum, "sqrt");
-
-	    llvm::Value* fzero = llvm::ConstantFP::get(theContext, llvm::APFloat(0.0));
-	    builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	    builder.CreateStore(fzero, builder.CreateGEP(res, { zero, one }));
-	    return builder.CreateLoad(res);
+	    return builder.CreateCall(f, sum, "sqrt");
 	}
 
 	llvm::Value* a = args[0]->CodeGen();
@@ -1329,6 +1345,19 @@ namespace Builtin
 	return builder.CreateLoad(builder.CreateGEP(caddr, ind, "reim"));
     }
 
+    bool FunctionCmplxToReal::Semantics()
+    {
+	return args.size() == 1 && llvm::isa<Types::ComplexDecl>(args[0]->Type());
+    }
+
+    llvm::Value* FunctionCmplxToReal::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value*         c = args[0]->CodeGen();
+	llvm::FunctionCallee f = GetFunction(
+	    Type()->LlvmType(), { Types::Get<Types::ComplexDecl>()->LlvmType() }, "__c" + funcname);
+	return builder.CreateCall(f, { c });
+    }
+
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
 	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
@@ -1430,5 +1459,6 @@ namespace Builtin
 	AddBIFCreator("cmplx", NEW(Complex));
 	AddBIFCreator("re", NEW2(ReIm, 0));
 	AddBIFCreator("im", NEW2(ReIm, 1));
+	AddBIFCreator("arg", NEW2(CmplxToReal, "arg"));
     }
 } // namespace Builtin

@@ -9,6 +9,11 @@ begin
    WriteLn(s:5, ": ", Re(x):8:4, ' + ', Im(x):8:4, 'i');
 end;
 
+procedure print_real(s : string; x: real);
+begin
+   WriteLn(s:5, ": ", x:8:4);
+end;
+
 begin
    c := Cmplx(2, 3);
    d := Cmplx(1.5, 2.5);
@@ -18,7 +23,8 @@ begin
    print_complex("c*d", c*d);
    print_complex("c/d", c/d);
    WriteLn;
-   print_complex("Abs", Abs(c));
+   print_real("Abs", Abs(c));
+   print_Real("Arg", Arg(c));
    print_complex("Sqr", Sqr(c));
    print_complex("Sqrt", Sqrt(c));
 end.

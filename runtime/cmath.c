@@ -44,3 +44,23 @@ struct Complex __ctan(struct Complex a)
     struct Complex res = { re, im };
     return res;
 }
+
+struct Complex __cexp(struct Complex a)
+{
+    // exp(x + iy) = exp(x) * cos(y) + i exp(x) * sin(y)
+    double         ex = exp(a.r);
+    double         re = ex * cos(a.i);
+    double         im = ex * sin(a.i);
+    struct Complex res = { re, im };
+    return res;
+}
+
+// Note: clog, becuase the ln function in C library is log.
+struct Complex __clog(struct Complex a)
+{
+    // ln = 0.5 * ln(x^2 + y^2) + i atan2(y, x)
+    double         re = 0.5 * log(a.r * a.r + a.i * a.i);
+    double         im = atan2(a.i, a.r);
+    struct Complex res = { re, im };
+    return res;
+}

@@ -457,6 +457,13 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class FunctionPolar : public FunctionComplex
+    {
+    public:
+	using FunctionComplex::FunctionComplex;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class FunctionReIm : public FunctionReal
     {
     public:
@@ -1341,6 +1348,18 @@ namespace Builtin
 	return builder.CreateLoad(storage, "cmplx");
     }
 
+    llvm::Value* FunctionPolar::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value* re = args[0]->CodeGen();
+	llvm::Value* im = args[1]->CodeGen();
+	llvm::Type*  realTy = Types::Get<Types::RealDecl>()->LlvmType();
+
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::ComplexDecl>()->LlvmType(), { realTy, realTy },
+	                                     "__cpolar");
+
+	return builder.CreateCall(f, { re, im });
+    }
+
     bool FunctionReIm::Semantics()
     {
 	return args.size() == 1 && llvm::isa<Types::ComplexDecl>(args[0]->Type());
@@ -1469,5 +1488,6 @@ namespace Builtin
 	AddBIFCreator("re", NEW2(ReIm, 0));
 	AddBIFCreator("im", NEW2(ReIm, 1));
 	AddBIFCreator("arg", NEW2(CmplxToReal, "arg"));
+	AddBIFCreator("polar", NEW(Polar));
     }
 } // namespace Builtin

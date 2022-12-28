@@ -64,3 +64,12 @@ struct Complex __clog(struct Complex a)
     struct Complex res = { re, im };
     return res;
 }
+
+struct Complex __cpolar(double r, double t)
+{
+    double re = r * cos(t);
+    double im = r * sin(t);
+
+    struct Complex res = { re, im };
+    return res;
+}

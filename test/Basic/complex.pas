@@ -25,6 +25,8 @@ begin
    WriteLn;
    print_real("Abs", Abs(c));
    print_Real("Arg", Arg(c));
+   WriteLn;
+   print_complex("Atan", Arctan(c)); 
    print_complex("Cos", Cos(c));
    print_complex("Exp", Exp(c));
    print_complex("Ln", Ln(c));

@@ -73,3 +73,12 @@ struct Complex __cpolar(double r, double t)
     struct Complex res = { re, im };
     return res;
 }
+
+struct Complex __catan(struct Complex a)
+{
+    // atan(x + iy) = atan2(2.0*x, 1-x*x-y*y) / 2 + i * ln((x*x + (y+1)*(y+1)) / (x*x + (y-1)*(y-1))) / 4
+    double re = 0.5 * atan2(2*a.r, 1-a.r*a.r-a.i*a.i);
+    double im = 0.25 * log((a.r*a.r + (a.i+1)*(a.i+1)) / (a.r * a.r + (a.i - 1)*(a.i - 1)));
+    struct Complex res = {re, im};
+    return res;
+}

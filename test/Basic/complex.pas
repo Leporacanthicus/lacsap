@@ -14,6 +14,11 @@ begin
    WriteLn(s:5, ": ", x:8:4);
 end;
 
+procedure print_bool(s : string; x: boolean);
+begin
+   WriteLn(s:5, ": ", x:7);
+end;
+
 begin
    c := Cmplx(2, 3);
    d := Cmplx(1.5, 2.5);
@@ -22,6 +27,11 @@ begin
    print_complex("c-d", c-d);
    print_complex("c*d", c*d);
    print_complex("c/d", c/d);
+   WriteLn;
+   print_bool("c=d", c=d);
+   print_bool("c=c", c=c);
+   print_bool("c!=d", c=d);
+   print_bool("c!=c", c=c);
    WriteLn;
    print_real("Abs", Abs(c));
    print_Real("Arg", Arg(c));

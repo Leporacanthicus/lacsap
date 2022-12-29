@@ -1269,6 +1269,28 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 	return builder.CreateLoad(res);
     }
 
+    case Token::Equal:
+    {
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* re = builder.CreateFCmpOEQ(lr, rr, "eqr");
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* ie = builder.CreateFCmpOEQ(li, ri, "eqi");
+	return builder.CreateAnd(re, ie, "res");
+    }
+
+    case Token::NotEqual:
+    {
+	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* re = builder.CreateFCmpONE(lr, rr, "eqr");
+	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* ie = builder.CreateFCmpONE(li, ri, "eqi");
+	return builder.CreateOr(re, ie, "res");
+    }
+
     default:
 	break;
     }

@@ -4,6 +4,11 @@ c-d:   0.5000 +   0.5000i
 c*d:  -4.5000 +   9.5000i
 c/d:   1.2353 +  -0.0588i
 
+c=d:   FALSE
+c=c:    TRUE
+c!=d:   FALSE
+c!=c:    TRUE
+
 Abs:   3.6056
 Arg:   0.9828
 

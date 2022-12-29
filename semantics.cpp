@@ -283,6 +283,16 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	ty = Types::Get<Types::BoolDecl>();
     }
 
+    if (!ty && b->oper.IsCompare() &&
+        (llvm::isa<Types::ComplexDecl>(lty) && llvm::isa<Types::ComplexDecl>(rty)))
+    {
+	if (b->oper.GetToken() != Token::Equal && b->oper.GetToken() != Token::NotEqual)
+	{
+	    Error(b, "Only = and <> comparison allowed for complex types");
+	}
+	ty = Types::Get<Types::BoolDecl>();
+    }
+
     if (!ty && llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
     {
 	ty = BinarySetUpdate(b);

@@ -355,14 +355,33 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	    lty = ty;
 	}
 	// TODO: Add support for complex / real and real / complex.
-	if (rty->IsIntegral())
+	if (op == Token::Power)
 	{
-	    b->rhs = Recast(b->rhs, ty);
-	    rty = ty;
+	    if (rty->IsIntegral())
+	    {
+		b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
+		rty = Types::Get<Types::RealDecl>();
+	    }
+	    if (llvm::isa<Types::ComplexDecl>(rty))
+	    {
+		Error(b, "Exponent for ** operator should not be a complex value");
+	    }
+	    if (!llvm::isa<Types::RealDecl>(lty) && !llvm::isa<Types::ComplexDecl>(lty))
+	    {
+		Error(b, "Left hand side is wrong type (not possible to convert to real or complex)");
+	    }
 	}
-	if (!lty->CompatibleType(rty))
+	else
 	{
-	    Error(b, "Incompatible type for divide");
+	    if (rty->IsIntegral())
+	    {
+		b->rhs = Recast(b->rhs, ty);
+		rty = ty;
+	    }
+	    if (!lty->CompatibleType(rty))
+	    {
+		Error(b, "Incompatible type for divide");
+	    }
 	}
     }
 

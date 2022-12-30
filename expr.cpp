@@ -1269,6 +1269,17 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 	return builder.CreateLoad(res);
     }
 
+    case Token::Power:
+    {
+	llvm::Type*               cty = Types::Get<Types::ComplexDecl>()->LlvmType();
+	llvm::Type*               rty = Types::Get<Types::RealDecl>()->LlvmType();
+	
+	llvm::FunctionCallee      f = GetFunction(cty, { cty, rty }, "__cpow");
+	std::vector<llvm::Value*> args = { builder.CreateLoad(l, "lh"), r };
+
+	return builder.CreateCall(f, args, "powtmp");
+    }
+
     case Token::Equal:
     {
 	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
@@ -1363,13 +1374,22 @@ llvm::Value* BinaryExprAST::CodeGen()
 	break;
     }
 
-    if (llvm::isa<Types::ComplexDecl>(rhs->Type()))
+    if (llvm::isa<Types::ComplexDecl>(lhs->Type()))
     {
 	auto lhsa = llvm::dyn_cast<AddressableAST>(lhs);
-	auto rhsa = llvm::dyn_cast<AddressableAST>(rhs);
-	assert(lhsa && rhsa && "Expect to find these values addressable");
 	llvm::Value* la = lhsa->Address();
-	llvm::Value* ra = rhsa->Address();
+	llvm::Value* ra;
+	assert(lhsa && "Expect to complex values addressable");
+	if (llvm::isa<Types::ComplexDecl>(rhs->Type()))	{
+	    auto rhsa = llvm::dyn_cast<AddressableAST>(rhs);
+	    assert(rhsa && "Expect to complex values addressable");
+	    ra = rhsa->Address();
+	}
+	else
+	{
+	    ra = rhs->CodeGen();
+	}    
+	
 	if (auto v = ComplexBinExpr(la, ra, oper))
 	{
 	    return v;

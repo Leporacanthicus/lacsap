@@ -82,3 +82,28 @@ struct Complex __catan(struct Complex a)
     struct Complex res = {re, im};
     return res;
 }
+
+struct Complex __cpow(struct Complex a, double b)
+{
+    // a^b = exp(b * ln(a))
+    // a = 0 -> 0
+    // b = 0 -> 1
+    struct Complex res = { 0.0, 0.0 };
+    if (!a.r && !a.i)
+    {
+	return res;
+    }
+    if (!b)
+    {
+	res.r = 1.0;
+	return res;
+    }
+    double         re = 0.5 * log(a.r * a.r + a.i * a.i) * b;
+    double         im = atan2(a.i, a.r) * b;
+    
+    struct Complex tmp = { re, im };
+
+    res = __cexp(tmp);
+
+    return res;
+}

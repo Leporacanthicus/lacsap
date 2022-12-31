@@ -510,15 +510,28 @@ namespace Types
     class RecordDecl : public FieldCollection
     {
     public:
-	RecordDecl(TypeKind type, const std::vector<FieldDecl*>& flds)
-	    : FieldCollection(type, flds), variant(nullptr){};
+	RecordDecl(TypeKind type, const std::vector<FieldDecl*>& flds, VariantDecl* v)
+	    : FieldCollection(type, flds), variant(v), clonedFrom(nullptr){};
 	RecordDecl(const std::vector<FieldDecl*>& flds, VariantDecl* v)
-	    : FieldCollection(TK_Record, flds), variant(v){};
+	    : FieldCollection(TK_Record, flds), variant(v), clonedFrom(nullptr){};
 	void         DoDump(std::ostream& out) const override;
 	size_t       Size() const override;
 	VariantDecl* Variant() const { return variant; }
-	bool         SameAs(const TypeDecl* ty) const override { return this == ty; }
+	bool         SameAs(const TypeDecl* ty) const override;
 	static bool  classof(const TypeDecl* e) { return e->getKind() == TK_Record; }
+	TypeDecl*    Clone() const override
+	{
+	    RecordDecl* rd = new RecordDecl(getKind(), fields, variant);
+	    if (this->clonedFrom)
+	    {
+		rd->clonedFrom = this->clonedFrom;
+	    }
+	    else
+	    {
+		rd->clonedFrom = this;
+	    }
+	    return rd;
+	}
 
     protected:
 	llvm::Type*   GetLlvmType() const override;
@@ -526,6 +539,7 @@ namespace Types
 
     private:
 	VariantDecl* variant;
+	const RecordDecl* clonedFrom;
     };
 
     // Objects can have member functions/procedures
@@ -696,8 +710,10 @@ namespace Types
     {
     public:
 	ComplexDecl()
-	    : RecordDecl(TK_Complex, { new FieldDecl("r", Get<RealDecl>(), false),
-	                               new FieldDecl("i", Get<RealDecl>(), false) })
+	    : RecordDecl(
+	          TK_Complex,
+	          { new FieldDecl("r", Get<RealDecl>(), false), new FieldDecl("i", Get<RealDecl>(), false) },
+	          nullptr)
 	{
 	}
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Complex; }

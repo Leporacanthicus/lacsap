@@ -4129,6 +4129,35 @@ void InitArrayAST::DoDump(std::ostream& out) const
     }
 }
 
+llvm::Value* InitRecordAST::CodeGen()
+{
+    auto aty = llvm::dyn_cast<Types::FieldCollection>(type);
+    assert(aty && "Expected field collection type here");
+    std::vector<llvm::Constant*> initArr(values.size());
+
+    int index = 0;
+    for (auto v : values)
+    {
+	llvm::Constant* c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
+	initArr[index] = c;
+	index++;
+    }
+    llvm::StructType* ty = llvm::dyn_cast<llvm::StructType>(type->LlvmType());
+
+    llvm::Constant* init = llvm::ConstantStruct::get(ty, initArr);
+    return init;
+}
+
+void InitRecordAST::DoDump(std::ostream& out) const
+{
+    out << "InitArray: ";
+    for (auto v : values)
+    {
+	out << v.Element() << ":";
+	v.Value()->dump();
+    }
+}
+
 static void BuildUnitInitList()
 {
     std::vector<llvm::Constant*> unitList(unitInit.size() + 1);

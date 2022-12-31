@@ -2396,6 +2396,43 @@ private:
     Types::TypeDecl*       type;
 };
 
+class CCRecordInitList : public ListConsumer
+{
+public:
+    CCRecordInitList(Types::TypeDecl* ty)
+        : ListConsumer{ Token::Semicolon, Token::RightSquare, true }
+        , type(llvm::dyn_cast<Types::FieldCollection>(ty))
+    {
+    }
+
+    bool Consume(Parser& parser) override
+    {
+	if (!parser.Expect(Token::Identifier, false))
+	{
+	    return false;
+	}
+	std::string fieldName = parser.CurrentToken().GetIdentName();
+	parser.NextToken();
+	int elem = type->Element(fieldName);
+	if (elem >= 0)
+	{
+	    const Types::FieldDecl* fty = type->GetElement(elem);
+	    parser.Expect(Token::Colon, true);
+	    if (ExprAST* e = parser.ParseInitValue(fty->FieldType()))
+	    {
+		list.push_back({ elem, e });
+		return true;
+	    }
+	}
+	return false;
+    }
+    const std::vector<RecordInit>& Values() { return list; }
+
+private:
+    std::vector<RecordInit> list;
+    Types::FieldCollection* type;
+};
+
 ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
     Location loc = CurrentToken().Loc();
@@ -2420,6 +2457,18 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	}
 	else if (!ty->IsStringLike())
 	{
+	    return 0;
+	}
+    }
+    if (llvm::isa<Types::RecordDecl>(ty))
+    {
+	if (AcceptToken(Token::LeftSquare))
+	{
+	    CCRecordInitList ccr(ty);
+	    if (ParseSeparatedList(*this, ccr))
+	    {
+		return new InitRecordAST(loc, ty, ccr.Values());
+	    }
 	    return 0;
 	}
     }

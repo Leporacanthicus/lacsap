@@ -610,6 +610,10 @@ namespace Types
 
     llvm::Type* RecordDecl::GetLlvmType() const
     {
+	if (clonedFrom)
+	{
+	    return clonedFrom->LlvmType();
+	}
 	std::vector<llvm::Type*> fv;
 	for (auto f : fields)
 	{
@@ -718,6 +722,22 @@ namespace Types
 	llvm::DIType* derivedFrom = 0;
 	return builder->createStructType(scope, name, unit, lineNo, size, align, llvm::DINode::FlagZero,
 	                                 derivedFrom, elements);
+    }
+
+    bool RecordDecl::SameAs(const TypeDecl* ty) const
+    {
+	if (this == ty || this->clonedFrom == ty)
+	{
+	    return true;
+	}
+	if (auto rd = llvm::dyn_cast<RecordDecl>(ty))
+	{
+	    if (rd->clonedFrom == this)
+	    {
+		return true;
+	    }
+	}
+	return false;
     }
 
     ClassDecl::ClassDecl(const std::string& nm, const std::vector<FieldDecl*>& flds,

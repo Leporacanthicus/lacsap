@@ -435,6 +435,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "String Capacity", "cap.pas", "" },
     { 0, "Basic", "Type Value", "inittype.pas", "" },
     { 0, "Basic", "Complex Maths", "complex.pas", "" },
+    { 0, "Basic", "Init Record", "initrecord.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

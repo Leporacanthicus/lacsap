@@ -36,6 +36,18 @@ private:
     bool     isRange;
 };
 
+class RecordInit
+{
+public:
+    RecordInit(int el, ExprAST* v) : element(el), value(v) {}
+    ExprAST* Value() const { return value; }
+    int      Element() const { return element; }
+
+private:
+    int      element;
+    ExprAST* value;
+};
+
 const size_t MIN_ALIGN = 4;
 
 class ExprAST : public Visitable<ExprAST>
@@ -96,6 +108,7 @@ public:
 
 	EK_InitValue,
 	EK_InitArray,
+	EK_InitRecord,
     };
     ExprAST(const Location& w, ExprKind k) : loc(w), kind(k), type(0) {}
     ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}
@@ -981,7 +994,7 @@ class InitArrayAST : public ExprAST
 {
 public:
     InitArrayAST(const Location& w, Types::TypeDecl* ty, const std::vector<ArrayInit>& v)
-        : ExprAST(w, EK_InitValue, ty), values(v)
+        : ExprAST(w, EK_InitArray, ty), values(v)
     {
     }
     llvm::Value* CodeGen() override;
@@ -989,6 +1002,20 @@ public:
 
 private:
     std::vector<ArrayInit> values;
+};
+
+class InitRecordAST : public ExprAST
+{
+public:
+    InitRecordAST(const Location& w, Types::TypeDecl* ty, const std::vector<RecordInit>& v)
+        : ExprAST(w, EK_InitRecord, ty), values(v)
+    {
+    }
+    llvm::Value* CodeGen() override;
+    void         DoDump(std::ostream& out) const override;
+
+private:
+    std::vector<RecordInit> values;
 };
 
 // Useful global functions

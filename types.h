@@ -450,7 +450,6 @@ namespace Types
 	}
 
     public:
-	TypeDecl*   FieldType() const { return baseType; }
 	void        DoDump(std::ostream& out) const override;
 	bool        IsIntegral() const override { return baseType->IsIntegral(); }
 	bool        IsCompound() const override { return baseType->IsCompound(); }

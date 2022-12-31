@@ -1387,7 +1387,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
     bool                                needVtable = false;
     for (auto f = fields.begin(); f != fields.end();)
     {
-	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->FieldType()))
+	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->SubType()))
 	{
 	    mf.push_back(m);
 	    if (m->IsVirtual() || m->IsOverride())
@@ -1401,7 +1401,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
 	    if ((*f)->IsStatic())
 	    {
 		std::string vname = name + "$" + (*f)->Name();
-		vars.push_back(VarDef(vname, (*f)->FieldType()));
+		vars.push_back(VarDef(vname, (*f)->SubType()));
 	    }
 	    f++;
 	}
@@ -1834,17 +1834,17 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
     if (elem >= 0)
     {
 	const Types::FieldDecl* fd = v->GetElement(elem);
-	type = fd->FieldType();
+	type = fd->SubType();
 	e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
 	// If name is empty, we have a made up struct. Dig another level down.
 	if (fd->Name() == "")
 	{
-	    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
+	    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
 	    assert(r && "Expect record declarataion");
 	    elem = r->Element(name);
 	    if (elem >= 0)
 	    {
-		type = r->GetElement(elem)->FieldType();
+		type = r->GetElement(elem)->SubType();
 		e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
 	    }
 	}
@@ -1857,7 +1857,7 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 	if (fd->Name() == "")
 	{
 	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
-	    const Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->FieldType());
+	    const Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
 	    assert(r && "Expect record declarataion");
 	    if ((elem = r->Element(name)) >= 0)
 	    {
@@ -1894,7 +1894,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 		std::string             objname;
 		const Types::FieldDecl* fd = cd->GetElement(elem, objname);
 
-		type = fd->FieldType();
+		type = fd->SubType();
 		if (fd->IsStatic())
 		{
 		    std::string vname = objname + "$" + fd->Name();
@@ -1935,7 +1935,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 	    int elem = rd->Element(name);
 	    if (elem >= 0)
 	    {
-		type = rd->GetElement(elem)->FieldType();
+		type = rd->GetElement(elem)->SubType();
 		e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
 	    }
 	    else
@@ -2109,7 +2109,7 @@ VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*&
 	    const Types::FieldDecl* fd = od->GetElement(elem, objname);
 	    if (fd->IsStatic())
 	    {
-		type = fd->FieldType();
+		type = fd->SubType();
 		std::string name = objname + "$" + field;
 		return new VariableExprAST(CurrentToken().Loc(), name, type);
 	    }
@@ -2418,7 +2418,7 @@ public:
 	{
 	    const Types::FieldDecl* fty = type->GetElement(elem);
 	    parser.Expect(Token::Colon, true);
-	    if (ExprAST* e = parser.ParseInitValue(fty->FieldType()))
+	    if (ExprAST* e = parser.ParseInitValue(fty->SubType()))
 	    {
 		list.push_back({ elem, e });
 		return true;
@@ -3196,7 +3196,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
     for (int i = 0; i < fields->FieldCount(); i++)
     {
 	const Types::FieldDecl* f = fields->GetElement(i);
-	Types::TypeDecl*        ty = f->FieldType();
+	Types::TypeDecl*        ty = f->SubType();
 	if (f->Name() == "")
 	{
 	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
@@ -3219,7 +3219,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	    {
 		e = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    }
-	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->FieldType()));
+	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->SubType()));
 	}
     }
     if (Types::ClassDecl* od = const_cast<Types::ClassDecl*>(llvm::dyn_cast<Types::ClassDecl>(fields)))

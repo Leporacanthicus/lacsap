@@ -482,7 +482,7 @@ namespace Types
 	for (auto f : fields)
 	{
 	    llvm::Type* ty = f->LlvmType();
-	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
+	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsIncomplete())
 		{
@@ -547,7 +547,7 @@ namespace Types
 	    // Check for special record type
 	    if (f->Name() == "")
 	    {
-		RecordDecl* rd = llvm::dyn_cast<RecordDecl>(f->FieldType());
+		RecordDecl* rd = llvm::dyn_cast<RecordDecl>(f->SubType());
 		assert(rd && "Expected record declarataion here!");
 		if (rd->Element(name) >= 0)
 		{
@@ -617,7 +617,7 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 	for (auto f : fields)
 	{
-	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->FieldType()))
+	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsIncomplete() || !f->HasLlvmType())
 		{
@@ -670,7 +670,7 @@ namespace Types
 	    llvm::DIType* d = 0;
 	    size_t        size = 0;
 	    size_t        align = 0;
-	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->FieldType()))
+	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsForward() && !pf->DiType())
 		{
@@ -956,11 +956,11 @@ namespace Types
 	{
 	    const FieldDecl* f = GetElement(i);
 
-	    assert(!llvm::isa<MemberFuncDecl>(f->FieldType()) && "Should not have member functions now");
+	    assert(!llvm::isa<MemberFuncDecl>(f->SubType()) && "Should not have member functions now");
 
 	    if (!f->IsStatic())
 	    {
-		if (PointerDecl* pd = llvm::dyn_cast<PointerDecl>(f->FieldType()))
+		if (PointerDecl* pd = llvm::dyn_cast<PointerDecl>(f->SubType()))
 		{
 		    if (pd->IsIncomplete() && !pd->HasLlvmType())
 		    {

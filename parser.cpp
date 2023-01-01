@@ -1223,6 +1223,16 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		assert(!ccv.Names().empty() && "Should have some names here...");
 		if (Types::TypeDecl* ty = ParseType("", false))
 		{
+		    ExprAST* init = 0;
+		    if (AcceptToken(Token::Value))
+		    {
+			init = ParseInitValue(ty);
+			if (!init)
+			{
+			    return 0;
+			}
+			ty = Types::CloneWithInit(ty, init);
+		    }
 		    for (auto n : ccv.Names())
 		    {
 			for (auto f : fields)
@@ -1270,7 +1280,25 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	    return reinterpret_cast<Types::RecordDecl*>(
 	        Error(CurrentToken(), "No elements in record declaration"));
 	}
-	return new Types::RecordDecl(fields, variant);
+
+	std::vector<RecordInit> init;
+
+	int index = 0;
+	for (auto field : fields)
+	{
+	    index++;
+	    if (field->SubType()->Init())
+	    {
+		init.push_back({ index, field->SubType()->Init() });
+	    }
+	}
+	auto rd = new Types::RecordDecl(fields, variant);
+	if (init.size())
+	{
+	    auto ir = new InitRecordAST(Location("", 0, 0), rd, init);
+	    rd = llvm::dyn_cast<Types::RecordDecl>(Types::CloneWithInit(rd, ir));
+	}
+	return rd;
     }
     return 0;
 }

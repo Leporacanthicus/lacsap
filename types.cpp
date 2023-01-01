@@ -50,7 +50,7 @@ namespace Types
 
     void TypeDecl::dump() const
     {
-	DoDump(std::cerr);
+	DoDump();
 	std::cerr << std::endl;
     }
 
@@ -72,7 +72,7 @@ namespace Types
 	return diType;
     }
 
-    void CharDecl::DoDump(std::ostream& out) const { out << "Type: Char"; }
+    void CharDecl::DoDump() const { std::cerr << "Type: Char"; }
 
     llvm::Type* CharDecl::GetLlvmType() const { return llvm::Type::getInt8Ty(theContext); }
 
@@ -147,7 +147,7 @@ namespace Types
 	return 0;
     }
 
-    void RealDecl::DoDump(std::ostream& out) const { out << "Type: Real"; }
+    void RealDecl::DoDump() const { std::cerr << "Type: Real"; }
 
     llvm::Type* RealDecl::GetLlvmType() const { return llvm::Type::getDoubleTy(theContext); }
 
@@ -167,11 +167,11 @@ namespace Types
 
     const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
 
-    void VoidDecl::DoDump(std::ostream& out) const { out << "Void"; }
+    void VoidDecl::DoDump() const { std::cerr << "Void"; }
 
     llvm::Type* VoidDecl::GetLlvmType() const { return llvm::Type::getVoidTy(theContext); }
 
-    void BoolDecl::DoDump(std::ostream& out) const { out << "Type: Bool"; }
+    void BoolDecl::DoDump() const { std::cerr << "Type: Bool"; }
 
     llvm::Type* BoolDecl::GetLlvmType() const { return llvm::Type::getInt1Ty(theContext); }
 
@@ -180,16 +180,16 @@ namespace Types
 	return builder->createBasicType("BOOLEAN", 1, llvm::dwarf::DW_ATE_boolean);
     }
 
-    void PointerDecl::DoDump(std::ostream& out) const
+    void PointerDecl::DoDump() const
     {
-	out << "Pointer to: " << name;
+	std::cerr << "Pointer to: " << name;
 	if (baseType)
 	{
-	    out << " type " << baseType;
+	    std::cerr << " type " << baseType;
 	}
 	else
 	{
-	    out << " (forward declared)";
+	    std::cerr << " (forward declared)";
 	}
     }
 
@@ -244,15 +244,15 @@ namespace Types
 	return builder->createPointerType(pointeeType, size, align);
     }
 
-    void ArrayDecl::DoDump(std::ostream& out) const
+    void ArrayDecl::DoDump() const
     {
-	out << "Array ";
+	std::cerr << "Array ";
 	for (auto r : ranges)
 	{
-	    r->DoDump(out);
+	    r->DoDump();
 	}
-	out << " of ";
-	baseType->DoDump(out);
+	std::cerr << " of ";
+	baseType->DoDump();
     }
 
     llvm::Type* ArrayDecl::GetLlvmType() const
@@ -335,16 +335,14 @@ namespace Types
 
     TypeDecl* ArrayDecl::Clone() const { return new Types::ArrayDecl(baseType, ranges); }
 
-    void Range::dump() const { DoDump(std::cerr); }
+    void Range::dump() const { std::cerr << "[" << start << ".." << end << "]"; }
 
-    void Range::DoDump(std::ostream& out) const { out << "[" << start << ".." << end << "]"; }
-
-    void RangeDecl::DoDump(std::ostream& out) const
+    void RangeDecl::DoDump() const
     {
-	out << "RangeDecl: ";
-	baseType->DoDump(out);
-	out << " ";
-	range->DoDump(out);
+	std::cerr << "RangeDecl: ";
+	baseType->DoDump();
+	std::cerr << " ";
+	range->dump();
     }
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const
@@ -402,12 +400,12 @@ namespace Types
 	}
     }
 
-    void EnumDecl::DoDump(std::ostream& out) const
+    void EnumDecl::DoDump() const
     {
-	out << "EnumDecl:";
+	std::cerr << "EnumDecl:";
 	for (auto v : values)
 	{
-	    out << "   " << v.name << ": " << v.value;
+	    std::cerr << "   " << v.name << ": " << v.value;
 	}
     }
 
@@ -452,20 +450,20 @@ namespace Types
 
     FunctionDecl::FunctionDecl(PrototypeAST* p) : CompoundDecl(TK_Function, p->Type()), proto(p) {}
 
-    void FunctionDecl::DoDump(std::ostream& out) const { out << "Function " << baseType; }
+    void FunctionDecl::DoDump() const { std::cerr << "Function " << baseType; }
 
-    void FieldDecl::DoDump(std::ostream& out) const
+    void FieldDecl::DoDump() const
     {
-	out << "Field " << name << ": ";
-	baseType->DoDump(out);
+	std::cerr << "Field " << name << ": ";
+	baseType->DoDump();
     }
 
-    void VariantDecl::DoDump(std::ostream& out) const
+    void VariantDecl::DoDump() const
     {
-	out << "Variant ";
+	std::cerr << "Variant ";
 	for (auto f : fields)
 	{
-	    f->DoDump(out);
+	    f->DoDump();
 	    std::cerr << std::endl;
 	}
     }
@@ -594,17 +592,17 @@ namespace Types
 	return TypeDecl::Size();
     }
 
-    void RecordDecl::DoDump(std::ostream& out) const
+    void RecordDecl::DoDump() const
     {
-	out << "Record ";
+	std::cerr << "Record ";
 	for (auto f : fields)
 	{
-	    f->DoDump(out);
-	    out << std::endl;
+	    f->DoDump();
+	    std::cerr << std::endl;
 	}
 	if (variant)
 	{
-	    variant->DoDump(out);
+	    variant->DoDump();
 	}
     }
 
@@ -783,17 +781,17 @@ namespace Types
 	return TypeDecl::Size();
     }
 
-    void ClassDecl::DoDump(std::ostream& out) const
+    void ClassDecl::DoDump() const
     {
-	out << "Object: " << Name() << " ";
+	std::cerr << "Object: " << Name() << " ";
 	for (auto f : fields)
 	{
-	    f->DoDump(out);
-	    out << std::endl;
+	    f->DoDump();
+	    std::cerr << std::endl;
 	}
 	if (variant)
 	{
-	    variant->DoDump(out);
+	    variant->DoDump();
 	}
     }
 
@@ -998,13 +996,13 @@ namespace Types
 	return 0;
     }
 
-    void MemberFuncDecl::DoDump(std::ostream& out) const
+    void MemberFuncDecl::DoDump() const
     {
-	out << "Member function ";
-	proto->dump(out);
+	std::cerr << "Member function ";
+	proto->dump();
     }
 
-    void FuncPtrDecl::DoDump(std::ostream& out) const { out << "FunctionPtr "; }
+    void FuncPtrDecl::DoDump() const { std::cerr << "FunctionPtr "; }
 
     llvm::Type* FuncPtrDecl::GetLlvmType() const
     {
@@ -1079,13 +1077,13 @@ namespace Types
 	return 0;
     }
 
-    void FileDecl::DoDump(std::ostream& out) const
+    void FileDecl::DoDump() const
     {
-	out << "File of ";
-	baseType->DoDump(out);
+	std::cerr << "File of ";
+	baseType->DoDump();
     }
 
-    void TextDecl::DoDump(std::ostream& out) const { out << "Text "; }
+    void TextDecl::DoDump() const { std::cerr << "Text "; }
 
     SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty) : CompoundDecl(TK_Set, ty), range(r)
     {
@@ -1117,16 +1115,16 @@ namespace Types
 	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), bd, subsArray);
     }
 
-    void SetDecl::DoDump(std::ostream& out) const
+    void SetDecl::DoDump() const
     {
-	out << "Set of ";
+	std::cerr << "Set of ";
 	if (!range)
 	{
-	    out << "[Unknown]";
+	    std::cerr << "[Unknown]";
 	}
 	else
 	{
-	    range->DoDump(out);
+	    range->DoDump();
 	}
     }
 
@@ -1145,11 +1143,11 @@ namespace Types
 	return 0;
     }
 
-    void StringDecl::DoDump(std::ostream& out) const
+    void StringDecl::DoDump() const
     {
-	out << "String[";
-	Ranges()[0]->DoDump(out);
-	out << "]";
+	std::cerr << "String[";
+	Ranges()[0]->DoDump();
+	std::cerr << "]";
     }
 
     const TypeDecl* SetDecl::CompatibleType(const TypeDecl* ty) const

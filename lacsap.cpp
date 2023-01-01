@@ -161,7 +161,7 @@ static int Compile(const std::string& fileName)
 	if (!ast->CodeGen())
 	{
 	    std::cerr << "Sorry, something went wrong here..." << std::endl;
-	    ast->dump(std::cerr);
+	    ast->dump();
 	    return 1;
 	}
 	BackPatch();

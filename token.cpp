@@ -45,12 +45,8 @@ void Token::dump() const
     dump(std::cerr);
 }
 
-void Token::dump(std::ostream& out, const char* file, int line) const
+void Token::dump(std::ostream& out) const
 {
-    if (file)
-    {
-	out << file << ":" << line << ": ";
-    }
     out << "Token { Type: " << TypeStr() << " ";
     switch (type)
     {

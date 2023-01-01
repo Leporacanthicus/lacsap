@@ -28,7 +28,7 @@ public:
     virtual ~NamedObject() {}
     Types::TypeDecl*   Type() const { return type; }
     const std::string& Name() const { return name; }
-    virtual void       dump(std::ostream& out) const;
+    virtual void       dump() const;
     NamedKind          getKind() const { return kind; }
 
 private:
@@ -142,7 +142,7 @@ public:
     {
     }
     const Constants::ConstDecl* ConstValue() const { return constVal; }
-    void                        dump(std::ostream& out) const override;
+    void                        dump() const override;
     static bool                 classof(const NamedObject* e) { return e->getKind() == NK_Const; }
 
 private:
@@ -154,7 +154,7 @@ class EnumDef : public NamedObject
 public:
     EnumDef(const std::string& nm, int v, Types::TypeDecl* ty) : NamedObject(NK_Enum, nm, ty), enumValue(v) {}
     int         Value() const { return enumValue; }
-    void        dump(std::ostream& out) const override;
+    void        dump() const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Enum; }
 
 private:
@@ -169,7 +169,7 @@ public:
     {
     }
     ExprAST*    Actual() const { return actual; }
-    void        dump(std::ostream& out) const override;
+    void        dump() const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_With; }
 
 private:
@@ -184,7 +184,7 @@ public:
     {
     }
     int         Index() const { return index; }
-    void        dump(std::ostream& out) const override;
+    void        dump() const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_MembFunc; }
 
 private:
@@ -195,7 +195,7 @@ class LabelDef : public NamedObject
 {
 public:
     LabelDef(int label) : NamedObject(NK_Label, std::to_string(label), NULL){};
-    void        dump(std::ostream& out) const override;
+    void        dump() const override;
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Label; }
 };
 

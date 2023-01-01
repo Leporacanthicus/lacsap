@@ -103,7 +103,8 @@ const Token& Parser::NextToken(const char* file, int line)
     }
     if (verbosity)
     {
-	curToken.dump(std::cerr, file, line);
+	std::cerr << file << ": " << line << ": ";
+	curToken.dump();
     }
     return curToken;
 }
@@ -121,7 +122,8 @@ const Token& Parser::PeekToken(const char* file, int line)
     if (verbosity > 1)
     {
 	std::cerr << "peeking: ";
-	nextToken.dump(std::cerr, file, line);
+	std::cerr << file << ": " << line << ": ";
+	nextToken.dump(std::cerr);
     }
     return nextToken;
 }
@@ -173,7 +175,7 @@ bool Parser::AcceptToken(Token::TokenType type, const char* file, int line)
 	if (verbosity > 0)
 	{
 	    std::cerr << "accepting: ";
-	    curToken.dump(std::cerr, file, line);
+	    curToken.dump();
 	}
 	NextToken(file, line);
 	return true;

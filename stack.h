@@ -139,8 +139,7 @@ public:
 	return 0;
     }
 
-    void dump(std::ostream& out) const;
-    void dump() const { dump(std::cerr); }
+    void dump() const;
 
 private:
     StackType stack;
@@ -159,18 +158,18 @@ private:
 
 #if !NDEBUG
 template<typename T>
-void Stack<T>::dump(std::ostream& out) const
+void Stack<T>::dump() const
 {
     int n = 0;
     for (auto s : stack)
     {
-	out << "Level " << n << std::endl;
+	std::cerr << "Level " << n << std::endl;
 	n++;
 	for (auto v : s)
 	{
-	    out << v.first << ": ";
-	    v.second->dump(out);
-	    out << std::endl;
+	    std::cerr << v.first << ": ";
+	    v.second->dump();
+	    std::cerr << std::endl;
 	}
     }
 }

@@ -1,40 +1,40 @@
 #include "namedobject.h"
 #include "expr.h"
 
-void NamedObject::dump(std::ostream& out) const
+void NamedObject::dump() const
 {
-    out << Name() << " Type: ";
-    Type()->dump(out);
+    std::cerr << Name() << " Type: ";
+    Type()->dump();
     std::cerr << std::endl;
 }
 
-void ConstDef::dump(std::ostream& out) const
+void ConstDef::dump() const
 {
-    out << "Const: " << Name() << " Value: " << constVal->Translate().ToString() << std::endl;
+    std::cerr << "Const: " << Name() << " Value: " << constVal->Translate().ToString() << std::endl;
 }
 
-void EnumDef::dump(std::ostream& out) const
+void EnumDef::dump() const
 {
-    out << "Enum: " << Name() << " Value: " << enumValue << std::endl;
+    std::cerr << "Enum: " << Name() << " Value: " << enumValue << std::endl;
 }
 
-void WithDef::dump(std::ostream& out) const
+void WithDef::dump() const
 {
-    out << "With: " << Name() << " Actual: ";
-    actual->dump(out);
-    out << " Type: ";
-    Type()->dump(out);
-    out << std::endl;
+    std::cerr << "With: " << Name() << " Actual: ";
+    actual->dump();
+    std::cerr << " Type: ";
+    Type()->dump();
+    std::cerr << std::endl;
 }
 
-void MembFuncDef::dump(std::ostream& out) const
+void MembFuncDef::dump() const
 {
-    out << "Membfunc: " << Name() << " Index:" << Index();
-    Type()->dump(out);
-    out << std::endl;
+    std::cerr << "Membfunc: " << Name() << " Index:" << Index();
+    Type()->dump();
+    std::cerr << std::endl;
 }
 
-void LabelDef::dump(std::ostream& out) const
+void LabelDef::dump() const
 {
-    out << "Label: " << Name() << std::endl;
+    std::cerr << "Label: " << Name() << std::endl;
 }

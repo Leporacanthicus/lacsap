@@ -1286,11 +1286,11 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	int index = 0;
 	for (auto field : fields)
 	{
-	    index++;
 	    if (field->SubType()->Init())
 	    {
-		init.push_back({ index, field->SubType()->Init() });
+		init.push_back({ { index }, field->SubType()->Init() });
 	    }
+	    index++;
 	}
 	auto rd = new Types::RecordDecl(fields, variant);
 	if (init.size())
@@ -2435,24 +2435,43 @@ public:
 
     bool Consume(Parser& parser) override
     {
-	if (!parser.Expect(Token::Identifier, false))
+	std::vector<int> elems;
+	do
 	{
-	    return false;
-	}
-	std::string fieldName = parser.CurrentToken().GetIdentName();
-	parser.NextToken();
-	int elem = type->Element(fieldName);
-	if (elem >= 0)
-	{
-	    const Types::FieldDecl* fty = type->GetElement(elem);
-	    parser.Expect(Token::Colon, true);
-	    if (ExprAST* e = parser.ParseInitValue(fty->SubType()))
+	    if (!parser.Expect(Token::Identifier, false))
 	    {
-		list.push_back({ elem, e });
-		return true;
+		return false;
 	    }
-	}
-	return false;
+	    std::string fieldName = parser.CurrentToken().GetIdentName();
+	    parser.NextToken();
+	    int                     elem = type->Element(fieldName);
+	    const Types::FieldDecl* fty = nullptr;
+	    if (elem >= 0)
+	    {
+		if (fty)
+		{
+		    if (fty != type->GetElement(elem))
+		    {
+			return parser.Error(parser.CurrentToken(),
+			                    "Should be same types for field initializers");
+		    }
+		}
+		else
+		{
+		    fty = type->GetElement(elem);
+		}
+		elems.push_back(elem);
+	    }
+	    if (!parser.AcceptToken(Token::Comma))
+	    {
+		parser.Expect(Token::Colon, true);
+		if (ExprAST* e = parser.ParseInitValue(fty->SubType()))
+		{
+		    list.push_back({ elems, e });
+		    return true;
+		}
+	    }
+	} while (true);
     }
     const std::vector<RecordInit>& Values() { return list; }
 

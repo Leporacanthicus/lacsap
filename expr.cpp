@@ -4131,16 +4131,17 @@ void InitArrayAST::DoDump(std::ostream& out) const
 
 llvm::Value* InitRecordAST::CodeGen()
 {
-    auto aty = llvm::dyn_cast<Types::FieldCollection>(type);
-    assert(aty && "Expected field collection type here");
-    std::vector<llvm::Constant*> initArr(values.size());
+    auto fty = llvm::dyn_cast<Types::FieldCollection>(type);
+    assert(fty && "Expected field collection type here");
+    std::vector<llvm::Constant*> initArr(fty->FieldCount());
 
-    int index = 0;
     for (auto v : values)
     {
 	llvm::Constant* c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
-	initArr[index] = c;
-	index++;
+	for (auto e : v.Elements())
+	{
+	    initArr[e] = c;
+	}
     }
     llvm::StructType* ty = llvm::dyn_cast<llvm::StructType>(type->LlvmType());
 
@@ -4150,10 +4151,16 @@ llvm::Value* InitRecordAST::CodeGen()
 
 void InitRecordAST::DoDump(std::ostream& out) const
 {
-    out << "InitArray: ";
+    out << "InitRecord: ";
     for (auto v : values)
     {
-	out << v.Element() << ":";
+	char sep = ' ';
+	for (auto e : v.Elements())
+	{
+	    out << sep << e;
+	    sep = ',';
+	}
+	out << ":";
 	v.Value()->dump();
     }
 }

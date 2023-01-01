@@ -12,11 +12,18 @@ type
 	     y : real value 42.7;
 	  end;
 
+   rec3 = record
+	     x : integer;
+	     y : integer;
+	     z : integer;
+	  end value [x, y: 4; z:9];
+
 var
    a : initRec;
    b : rec;
    c : initRec2;
    d : rec2;
+   e : rec3;
    
 begin
    writeln("a:", a.x, a.y:8:4);
@@ -28,4 +35,5 @@ begin
    c := b;
    writeln("c:", c.x, c.y:8:4);
    writeln("d:", d.x, d.y:8:4);
+   writeln("e:", e.x:2, e.y:2, e.z:2);
 end.

@@ -39,12 +39,12 @@ private:
 class RecordInit
 {
 public:
-    RecordInit(int el, ExprAST* v) : element(el), value(v) {}
+    RecordInit(const std::vector<int>& el, ExprAST* v) : elements(el), value(v) {}
     ExprAST* Value() const { return value; }
-    int      Element() const { return element; }
+    const std::vector<int>& Elements() const { return elements; }
 
 private:
-    int      element;
+    std::vector<int> elements;
     ExprAST* value;
 };
 

@@ -117,8 +117,6 @@ namespace Constants
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
 
-    llvm::Constant* ConstDeclToLLVMConst(const ConstDecl* cd);
-
 }; // namespace Constants
 
 #endif

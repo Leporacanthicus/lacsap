@@ -20,6 +20,7 @@ namespace Constants
 	CK_CharConstDecl,
 	CK_BoolConstDecl,
 	CK_StringConstDecl,
+	CK_CompoundConstDecl,
     };
 
     class ConstDecl
@@ -88,6 +89,26 @@ namespace Constants
 
     private:
 	std::string value;
+    };
+
+    class CompoundConstDecl : public ConstDecl
+    {
+    public:
+	CompoundConstDecl(const Location& w, Types::TypeDecl* ty, ExprAST* e)
+	    : ConstDecl(ty, CK_CompoundConstDecl, w), expr(e)
+	{
+	}
+	Token Translate() const override
+	{
+	    assert(0 && "Should not call this");
+	    return Token(Token::Unknown, loc);
+	}
+	ExprAST*    Value() const { return expr; }
+	static bool classof(const ConstDecl* e) { return e->getKind() == CK_CompoundConstDecl; }
+	void        dump() const override;
+
+    private:
+	ExprAST* expr;
     };
 
     ConstDecl* ErrorConst(const std::string& msg);

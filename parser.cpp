@@ -356,7 +356,10 @@ Token Parser::TranslateToken(const Token& token)
     {
 	if (const Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
 	{
-	    return cd->Translate();
+	    if (!llvm::isa<Constants::CompoundConstDecl>(cd))
+	    {
+		return cd->Translate();
+	    }
 	}
     }
     return token;
@@ -735,6 +738,24 @@ void Parser::ParseConstDef()
 	if (!Expect(Token::Equal, true))
 	{
 	    return;
+	}
+	if (CurrentToken().GetToken() == Token::Identifier)
+	{
+	    if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
+	    {
+		NextToken();
+		auto init = ParseInitValue(ty);
+
+		if (!AddConst(nm, new Constants::CompoundConstDecl(CurrentToken().Loc(), ty, init)))
+		{
+		    return;
+		}
+		if (!Expect(Token::Semicolon, true))
+		{
+		    return;
+		}
+		continue;
+	    }
 	}
 	const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
 	if (!cd)
@@ -2152,7 +2173,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 {
     TRACE();
 
-    AddressableAST*  expr = 0;
+    ExprAST*         expr = 0;
     Types::TypeDecl* type = def->Type();
     assert(type && "Expect type here...");
 
@@ -2181,7 +2202,17 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	    {
 		type = fd->Proto()->Type();
 	    }
-	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
+	    if (auto cd = llvm::dyn_cast<ConstDef>(def))
+	    {
+		if (auto cc = llvm::dyn_cast<Constants::CompoundConstDecl>(cd->ConstValue()))
+		{
+		    expr = cc->Value();
+		}
+	    }
+	    if (!expr)
+	    {
+		expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
+	    }
 	}
     }
 
@@ -2442,7 +2473,8 @@ public:
 	    {
 		return false;
 	    }
-	    std::string fieldName = parser.CurrentToken().GetIdentName();
+	    Token       token = parser.CurrentToken();
+	    std::string fieldName = token.GetIdentName();
 	    parser.NextToken();
 	    int                     elem = type->Element(fieldName);
 	    const Types::FieldDecl* fty = nullptr;
@@ -2461,6 +2493,10 @@ public:
 		    fty = type->GetElement(elem);
 		}
 		elems.push_back(elem);
+	    }
+	    else
+	    {
+		return parser.Error(token, "Unknown record field: " + fieldName);
 	    }
 	    if (!parser.AcceptToken(Token::Comma))
 	    {

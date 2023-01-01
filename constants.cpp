@@ -1,4 +1,5 @@
 #include "constants.h"
+#include "expr.h"
 #include "token.h"
 #include <iostream>
 #include <llvm/Support/Casting.h>
@@ -56,6 +57,13 @@ namespace Constants
     Token StringConstDecl::Translate() const { return Token(Token::StringLiteral, loc, value); }
 
     void StringConstDecl::dump() const { std::cerr << "StringConstDecl: " << Value() << std::endl; }
+
+    void CompoundConstDecl::dump() const
+    {
+	std::cerr << "CompoundConstDecl: ";
+	expr->dump();
+	std::cerr << std::endl;
+    }
 
     static bool GetAsReal(double& lValue, double& rValue, const ConstDecl& lhs, const ConstDecl& rhs)
     {

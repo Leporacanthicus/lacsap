@@ -138,7 +138,7 @@ class ConstDef : public NamedObject
 {
 public:
     ConstDef(const std::string& nm, const Constants::ConstDecl* cv)
-        : NamedObject(NK_Const, nm, 0), constVal(cv)
+        : NamedObject(NK_Const, nm, cv->Type()), constVal(cv)
     {
     }
     const Constants::ConstDecl* ConstValue() const { return constVal; }

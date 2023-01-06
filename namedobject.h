@@ -53,6 +53,7 @@ public:
     VarDef(const std::string& nm, Types::TypeDecl* ty, Flags f = Flags::None)
         : NamedObject(NK_Var, nm, ty), flags(f), init(0)
     {
+	assert(ty && "Expect a type!");
     }
     bool          IsRef() const;
     bool          IsExternal() const;

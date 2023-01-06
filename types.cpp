@@ -257,15 +257,29 @@ namespace Types
 
     llvm::Type* ArrayDecl::GetLlvmType() const
     {
+	bool hasDynamicRange = false;
 	assert(ranges.size() && "Expect ranges to contain something");
 	size_t nelems = 1;
 	for (auto r : ranges)
 	{
+	    if (r->IsDynamic())
+	    {
+		hasDynamicRange = true;
+		break;
+	    }
 	    assert(r->GetRange()->Size() && "Expectig range to have a non-zero size!");
 	    nelems *= r->GetRange()->Size();
 	}
-	assert(nelems && "Expect number of elements to be non-zero!");
+
 	llvm::Type* ty = baseType->LlvmType();
+	if (hasDynamicRange)
+	{
+	    assert(ranges.size() == 1 && "Would expect one dimension for now");
+	    llvm::Type* ptrTy = llvm::PointerType::getUnqual(ty);
+	    llvm::Type* intTy = Get<IntegerDecl>()->LlvmType();
+	    return llvm::StructType::create({ ptrTy, intTy, intTy }, "confArray");
+	}
+	assert(nelems && "Expect number of elements to be non-zero!");
 	assert(ty && "Expected to get a type back!");
 	return llvm::ArrayType::get(ty, nelems);
     }
@@ -299,7 +313,7 @@ namespace Types
 		}
 		for (size_t i = 0; i < ranges.size(); i++)
 		{
-		    if (*ranges[i] != *aty->Ranges()[i])
+		    if (!ranges[i]->IsDynamic() && *ranges[i] != *aty->Ranges()[i])
 		    {
 			return false;
 		    }
@@ -342,7 +356,14 @@ namespace Types
 	std::cerr << "RangeDecl: ";
 	baseType->DoDump();
 	std::cerr << " ";
-	range->dump();
+	if (!range)
+	{
+	    std::cerr << "[" << lowName << ".." << highName << "]";
+	}
+	else
+	{
+	    range->dump();
+	}
     }
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const

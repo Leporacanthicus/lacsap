@@ -826,6 +826,7 @@ public:
     }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
+    bool         IsDynamic() { return range->IsDynamic(); };
     void         accept(ASTVisitor& v) override
     {
 	expr->accept(v);

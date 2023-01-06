@@ -166,7 +166,7 @@ void Parser::AssertToken(Token::TokenType type, const char* file, int line)
     NextToken(file, line);
 }
 
-// Check if the current token is a particule one.
+// Check if the current token is a particular one.
 // Return true and eat token if it is, return false if if it's not (and leave token in place)..
 bool Parser::AcceptToken(Token::TokenType type, const char* file, int line)
 {
@@ -460,10 +460,33 @@ static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
 Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken)
 {
+    TRACE();
     const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
+    if (!startC && Expect(Token::Identifier, false) && PeekToken().GetToken() == Token::DotDot)
+    {
+	std::string lowName = CurrentToken().GetIdentName();
+	NextToken();
+	AcceptToken(Token::DotDot);
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
+	std::string highName = CurrentToken().GetIdentName();
+	NextToken();
+	AcceptToken(Token::Colon);
+	if (!Expect(Token::Identifier, false))
+	{
+	    return 0;
+	}
+	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
+	{
+	    NextToken();
+	    return new Types::RangeDecl(lowName, highName, type);
+	}
+    }
     if (!(startC && Expect(Token::DotDot, true)))
     {
-	return 0;
+	return ErrorR(CurrentToken(), "Expected constant name");
     }
 
     const Constants::ConstDecl* endC = ParseConstExpr({ endToken, altToken });
@@ -489,7 +512,8 @@ Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::T
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
-	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
+	std::string name = CurrentToken().GetIdentName();
+	if ((type = GetTypeDecl(name)))
 	{
 	    if (!type->IsIntegral())
 	    {
@@ -623,8 +647,9 @@ const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
 	{
 	    if (!(cd = GetConstDecl(CurrentToken().GetIdentName())))
 	    {
-		NextToken();
-		return ErrorC(CurrentToken(), "Expected constant name");
+		//		NextToken();
+		//		return ErrorC(CurrentToken(), "Expected constant name");
+		return 0;
 	    }
 	    if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 	    {
@@ -2963,6 +2988,23 @@ FunctionAST* Parser::ParseDefinition(int level)
 	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
 	{
 	    return ErrorF(CurrentToken(), "Duplicate name '" + v.Name() + "'.");
+	}
+	if (auto aty = llvm::dyn_cast<Types::ArrayDecl>(v.Type()))
+	{
+	    for (Types::RangeDecl* r : aty->Ranges())
+	    {
+		if (r->IsDynamic())
+		{
+		    if (!nameStack.Add(r->LowName(), new VarDef(r->LowName(), r->SubType())))
+		    {
+			return ErrorF(CurrentToken(), "Duplicate name '" + r->LowName() + "'.");
+		    }
+		    if (!nameStack.Add(r->HighName(), new VarDef(r->HighName(), r->SubType())))
+		    {
+			return ErrorF(CurrentToken(), "Duplicate name '" + r->HighName() + "'.");
+		    }
+		}
+	    }
 	}
     }
 

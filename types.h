@@ -260,6 +260,10 @@ namespace Types
 	{
 	    assert(r && "Range should be specified");
 	}
+	RangeDecl(const std::string& lName, const std::string& hName, TypeDecl* base)
+	    : TypeDecl(TK_Range), range(0), lowName(lName), highName(hName), baseType(base)
+	{
+	}
 
     public:
 	void            DoDump() const override;
@@ -268,14 +272,18 @@ namespace Types
 	int             Start() const { return range->Start(); }
 	int             End() const { return range->End(); }
 	TypeKind        Type() const override { return baseType->Type(); }
+	TypeDecl*          SubType() const override { return baseType; }
 	bool            IsCompound() const override { return false; }
 	bool            IsIntegral() const override { return true; }
 	bool            IsUnsigned() const override { return Start() >= 0; }
+	bool               IsDynamic() const { return range == 0; }
 	unsigned        Bits() const override;
 	Range*          GetRange() const override { return range; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	bool            HasLlvmType() const override { return baseType->HasLlvmType(); }
+	const std::string& LowName() { return lowName; }
+	const std::string& HighName() { return highName; }
 
     protected:
 	llvm::Type*   GetLlvmType() const override { return baseType->LlvmType(); }
@@ -286,6 +294,8 @@ namespace Types
 
     private:
 	Range*    range;
+	std::string lowName;
+	std::string highName;
 	TypeDecl* baseType;
     };
 

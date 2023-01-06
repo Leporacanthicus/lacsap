@@ -26,6 +26,17 @@
 
 static llvm::codegen::RegisterCodeGenFlags CGF;
 
+std::string GetFeatureString()
+{
+    std::vector<std::string> mattrs = llvm::codegen::getMAttrs();
+    llvm::SubtargetFeatures  Features;
+    for (auto m : mattrs)
+    {
+	Features.AddFeature(m);
+    }
+    return Features.getString();
+}
+
 static llvm::ToolOutputFile* GetOutputStream(const std::string& filename)
 {
     // Open the file.
@@ -66,19 +77,8 @@ static void CreateObject(llvm::Module* module, const std::string& objname)
 	mcpu = llvm::sys::getHostCPUName().str();
     }
 
-    std::string              FeaturesStr;
-    std::vector<std::string> mattrs = llvm::codegen::getMAttrs();
-    if (mattrs.size())
-    {
-	llvm::SubtargetFeatures Features;
-	for (unsigned i = 0; i != mattrs.size(); ++i)
-	{
-	    Features.AddFeature(mattrs[i]);
-	}
-	FeaturesStr = Features.getString();
-    }
-
     llvm::TargetOptions                  options;
+    std::string                          FeaturesStr = GetFeatureString();
     std::unique_ptr<llvm::TargetMachine> tm(
         target->createTargetMachine(triple.getTriple(), mcpu, FeaturesStr, options, llvm::Reloc::Static));
 
@@ -202,18 +202,7 @@ llvm::Module* CreateModule()
 	return 0;
     }
 
-    std::string              FeaturesStr;
-    std::vector<std::string> mattrs = llvm::codegen::getMAttrs();
-    if (mattrs.size())
-    {
-	llvm::SubtargetFeatures Features;
-	for (unsigned i = 0; i != mattrs.size(); ++i)
-	{
-	    Features.AddFeature(mattrs[i]);
-	}
-	FeaturesStr = Features.getString();
-    }
-
+    std::string                          FeaturesStr = GetFeatureString();
     llvm::TargetOptions                  options;
     std::string                          mcpu = llvm::codegen::getMCPU();
     std::unique_ptr<llvm::TargetMachine> tm(

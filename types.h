@@ -144,10 +144,12 @@ namespace Types
     {
     public:
 	ForwardDecl(const std::string& nm) : TypeDecl(TK_Forward) { Name(nm); }
-	bool        IsIncomplete() const override { return true; }
-	bool        HasLlvmType() const override { return false; }
-	bool        SameAs(const TypeDecl* ty) const override { return false; }
-	void        DoDump() const override { std::cerr << std::string("Forward ") << Name(); }
+	bool IsIncomplete() const override { return true; }
+	bool HasLlvmType() const override { return false; }
+	bool SameAs(const TypeDecl* ty) const override { return false; }
+	void DoDump() const override { std::cerr << std::string("Forward ") << Name(); }
+
+    protected:
 	llvm::Type* GetLlvmType() const override
 	{
 	    assert(0 && "No llvm type for forward decls");
@@ -248,20 +250,21 @@ namespace Types
 	{
 	    return baseType->DebugType(builder);
 	}
+	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
 
     protected:
 	TypeDecl* baseType;
     };
 
-    class RangeDecl : public TypeDecl
+    class RangeDecl : public CompoundDecl
     {
     public:
-	RangeDecl(Range* r, TypeDecl* base) : TypeDecl(TK_Range), range(r), baseType(base)
+	RangeDecl(Range* r, TypeDecl* base) : CompoundDecl(TK_Range, base), range(r)
 	{
 	    assert(r && "Range should be specified");
 	}
 	RangeDecl(const std::string& lName, const std::string& hName, TypeDecl* base)
-	    : TypeDecl(TK_Range), range(0), lowName(lName), highName(hName), baseType(base)
+	    : CompoundDecl(TK_Range, base), range(0), lowName(lName), highName(hName)
 	{
 	}
 
@@ -272,7 +275,6 @@ namespace Types
 	int                Start() const { return range->Start(); }
 	int                End() const { return range->End(); }
 	TypeKind           Type() const override { return baseType->Type(); }
-	TypeDecl*          SubType() const override { return baseType; }
 	bool               IsCompound() const override { return false; }
 	bool               IsIntegral() const override { return true; }
 	bool               IsUnsigned() const override { return Start() >= 0; }
@@ -281,22 +283,13 @@ namespace Types
 	Range*             GetRange() const override { return range; }
 	const TypeDecl*    CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl*    AssignableType(const TypeDecl* ty) const override;
-	bool               HasLlvmType() const override { return baseType->HasLlvmType(); }
 	const std::string& LowName() { return lowName; }
 	const std::string& HighName() { return highName; }
-
-    protected:
-	llvm::Type*   GetLlvmType() const override { return baseType->LlvmType(); }
-	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
-	{
-	    return baseType->DebugType(builder);
-	}
 
     private:
 	Range*      range;
 	std::string lowName;
 	std::string highName;
-	TypeDecl*   baseType;
     };
 
     class ArrayDecl : public CompoundDecl
@@ -367,7 +360,6 @@ namespace Types
 	TypeDecl*         Clone() const override { return new EnumDecl(kind, values, SubType()); }
 
     protected:
-	llvm::Type*   GetLlvmType() const override { return baseType->LlvmType(); }
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
 
     private:
@@ -408,7 +400,6 @@ namespace Types
 	bool        IsCompound() const override { return false; }
 	void        DoDump() const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
-	bool        HasLlvmType() const override { return baseType->HasLlvmType(); }
 
     protected:
 	llvm::Type*   GetLlvmType() const override;
@@ -467,9 +458,6 @@ namespace Types
 	bool        SameAs(const TypeDecl* ty) const override { return baseType->SameAs(ty); }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
 	            operator Access() { return access; }
-
-    protected:
-	llvm::Type* GetLlvmType() const override { return baseType->LlvmType(); }
 
     private:
 	bool   isStatic;
@@ -690,7 +678,7 @@ namespace Types
 	bool            SameAs(const TypeDecl* ty) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 
-    private:
+    protected:
 	llvm::Type*   GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
 

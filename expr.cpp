@@ -3355,6 +3355,11 @@ void RangeExprAST::DoDump() const
     high->dump();
 }
 
+bool RangeExprAST::IsConstant()
+{
+    return llvm::isa<IntegerExprAST>(low) && llvm::isa<IntegerExprAST>(high);
+}
+
 void SetExprAST::DoDump() const
 {
     std::cerr << "Set :[";
@@ -4239,6 +4244,24 @@ void InitRecordAST::DoDump() const
 	std::cerr << ":";
 	v.Value()->dump();
     }
+}
+
+llvm::Value *ArraySliceAST::Address()
+{
+    auto         aty = llvm::dyn_cast<Types::ArrayDecl>(origType);
+    llvm::Value* v = MakeAddressable(expr);
+    llvm::Value* low = range->Low();
+    int start = aty->Ranges()[0]->Start();
+    llvm::Value *index = builder.CreateSub(low, MakeIntegerConstant(start));
+    llvm::Value* ptr = builder.CreateGEP(v, { MakeIntegerConstant(0), index });
+
+    return builder.CreateBitCast(ptr, llvm::PointerType::getUnqual(type->LlvmType()));
+}
+
+void ArraySliceAST::DoDump() const
+{
+    expr->dump();
+    range->dump();
 }
 
 static void BuildUnitInitList()

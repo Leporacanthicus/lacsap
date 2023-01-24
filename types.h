@@ -9,7 +9,6 @@
 
 class PrototypeAST;
 class ExprAST;
-class InitializerAST;
 
 extern llvm::LLVMContext theContext;
 

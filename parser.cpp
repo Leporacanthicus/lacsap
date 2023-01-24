@@ -1775,6 +1775,13 @@ public:
     {
 	if (ExprAST* e = parser.ParseExpression())
 	{
+	    if (parser.AcceptToken(Token::DotDot))
+	    {
+		if (ExprAST* ee = parser.ParseExpression())
+		{
+		    e = new RangeExprAST(e->Loc(), e, ee);
+		}
+	    }
 	    exprs.push_back(e);
 	    return true;
 	}
@@ -1821,7 +1828,20 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 	    {
 		return ErrorV(CurrentToken(), "Expected variable of array type when using index");
 	    }
-	    if (indices.size() >= adecl->Ranges().size())
+	    if ((range = llvm::dyn_cast<RangeExprAST>(indices[0])) && (indices.size() == 1))
+	    {
+		if (adecl->Ranges().size() == 1)
+		{
+		    expr = new ArraySliceAST(CurrentToken().Loc(), expr, range, adecl);
+		}
+		else
+		{
+		    return ErrorV(CurrentToken(),
+		                  "Invalid slice expression, doesn't match size array dimensions");
+		}
+		indices.erase(indices.begin(), indices.begin() + 1);
+	    }
+	    else if (indices.size() >= adecl->Ranges().size())
 	    {
 		taken += adecl->Ranges().size();
 		indices.resize(adecl->Ranges().size());
@@ -2097,7 +2117,7 @@ bool Parser::IsCall(const NamedObject* def)
 {
     assert(def && "Expected def to be non-NULL");
 
-    Types::TypeDecl*          type = def->Type();
+    Types::TypeDecl* type = def->Type();
     if (llvm::isa<Types::FuncPtrDecl>(type))
     {
 	return true;

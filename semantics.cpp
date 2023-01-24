@@ -530,7 +530,7 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
     for (size_t i = 0; i < a->indices.size(); i++)
     {
 	ExprAST* e = a->indices[i];
-	if (!e->Type()->IsIntegral())
+	if (!e->Type()->IsIntegral() || llvm::isa<RangeExprAST>(e))
 	{
 	    Error(e, "Index should be an integral type");
 	}

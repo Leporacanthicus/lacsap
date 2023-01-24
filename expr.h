@@ -433,12 +433,16 @@ class RangeExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    RangeExprAST(const Location& w, ExprAST* l, ExprAST* h) : ExprAST(w, EK_RangeExpr), low(l), high(h) {}
+    RangeExprAST(const Location& w, ExprAST* l, ExprAST* h) : ExprAST(w, EK_RangeExpr), low(l), high(h)
+    {
+	assert(l->Type() == h->Type() && "Expect same type here");
+    }
     void             DoDump() const override;
     llvm::Value*     Low() { return low->CodeGen(); }
     llvm::Value*     High() { return high->CodeGen(); }
     ExprAST*         LowExpr() { return low; }
     ExprAST*         HighExpr() { return high; }
+    bool             IsConstant();
     Types::TypeDecl* Type() const override { return low->Type(); }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
     void             accept(ASTVisitor& v) override
@@ -1035,6 +1039,39 @@ public:
 
 private:
     std::vector<RecordInit> values;
+};
+
+class ArraySliceAST : public AddressableAST
+{
+public:
+    ArraySliceAST(const Location& w, ExprAST* e, RangeExprAST* r, Types::ArrayDecl* ty)
+	: AddressableAST(w, EK_ArraySlice, ty), expr(e), range(r)
+    {
+	Types::TypeDecl* t = nullptr;
+	if (range->IsConstant())
+	{
+	    auto r = new Types::RangeDecl(
+	        new Types::Range(llvm::dyn_cast<IntegerExprAST>(range->LowExpr())->Int(),
+	                         llvm::dyn_cast<IntegerExprAST>(range->HighExpr())->Int()),
+	        range->Type());
+	    t = new Types::ArrayDecl(ty->SubType(), { r });
+	}
+	else
+	{
+	    auto r = new Types::DynRangeDecl("", "", Types::Get<Types::IntegerDecl>());
+	    t = new Types::DynArrayDecl(ty->SubType(), r);
+	}
+	origType = ty;
+	SetType(t);
+    }
+
+    llvm::Value* Address() override;
+    void DoDump() const override;
+
+private:
+    ExprAST* expr;
+    RangeExprAST* range;
+    Types::TypeDecl* origType;
 };
 
 // Useful global functions

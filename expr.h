@@ -69,6 +69,7 @@ public:
 	EK_SetExpr,
 	EK_VariableExpr,
 	EK_ArrayExpr,
+	EK_DynArrayExpr,
 	EK_PointerExpr,
 	EK_FilePointerExpr,
 	EK_FieldExpr,
@@ -109,6 +110,8 @@ public:
 	EK_InitValue,
 	EK_InitArray,
 	EK_InitRecord,
+
+	EK_ArraySlice,
     };
     ExprAST(const Location& w, ExprKind k) : loc(w), kind(k), type(0) {}
     ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}
@@ -286,6 +289,23 @@ private:
     std::vector<ExprAST*>          indices;
     std::vector<Types::RangeDecl*> ranges;
     std::vector<size_t>            indexmul;
+};
+
+class DynArrayExprAST : public AddressableAST
+{
+    friend class TypeCheckVisitor;
+
+public:
+    DynArrayExprAST(const Location& w, ExprAST* v, ExprAST* index, Types::DynRangeDecl* r,
+                    Types::TypeDecl* ty);
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_DynArrayExpr; }
+    llvm::Value* Address() override;
+    void         accept(ASTVisitor& v) override;
+
+private:
+    ExprAST*             expr;
+    ExprAST*             index;
+    Types::DynRangeDecl* range;
 };
 
 class PointerExprAST : public AddressableAST
@@ -816,17 +836,16 @@ private:
 class RangeReduceAST : public ExprAST
 {
 public:
-    RangeReduceAST(ExprAST* e, Types::RangeDecl* r)
+    RangeReduceAST(ExprAST* e, Types::RangeBaseDecl* r)
         : ExprAST(e->Loc(), EK_RangeReduceExpr, e->Type()), expr(e), range(r)
     {
     }
-    RangeReduceAST(ExprKind k, ExprAST* e, Types::RangeDecl* r)
+    RangeReduceAST(ExprKind k, ExprAST* e, Types::RangeBaseDecl* r)
         : ExprAST(e->Loc(), k, e->Type()), expr(e), range(r)
     {
     }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
-    bool         IsDynamic() { return range->IsDynamic(); };
     void         accept(ASTVisitor& v) override
     {
 	expr->accept(v);
@@ -839,13 +858,13 @@ public:
 
 protected:
     ExprAST*          expr;
-    Types::RangeDecl* range;
+    Types::RangeBaseDecl* range;
 };
 
 class RangeCheckAST : public RangeReduceAST
 {
 public:
-    RangeCheckAST(ExprAST* e, Types::RangeDecl* r) : RangeReduceAST(EK_RangeCheckExpr, e, r) {}
+    RangeCheckAST(ExprAST* e, Types::RangeBaseDecl* r) : RangeReduceAST(EK_RangeCheckExpr, e, r) {}
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_RangeCheckExpr; }

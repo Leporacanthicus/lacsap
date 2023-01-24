@@ -94,16 +94,17 @@ public:
                                                const Constants::ConstDecl* rhs);
     const Constants::ConstDecl* ParseConstTerm(Location loc);
 
-    Types::RangeDecl*   ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                   Token::TokenType altToken);
-    Types::RangeDecl*   ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                              Token::TokenType altToken);
+    Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
+                                     Token::TokenType altToken);
+    Types::RangeBaseDecl* ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
+                                                Token::TokenType altToken);
+
     Types::TypeDecl*    ParseSimpleType();
     Types::ClassDecl*   ParseClassDecl(const std::string& name);
     Types::TypeDecl*    ParseType(const std::string& name, bool maybeForwarded);
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType(bool maybeForwarded);
-    Types::ArrayDecl*   ParseArrayDecl();
+    Types::TypeDecl*    ParseArrayDecl();
     bool                ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
                                     Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();

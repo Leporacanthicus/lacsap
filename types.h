@@ -69,7 +69,9 @@ namespace Types
 	    TK_Array,
 	    TK_String,
 	    TK_LastArray,
+	    TK_DynArray,
 	    TK_Range,
+	    TK_DynRange,
 	    TK_Enum,
 	    TK_Boolean,
 	    TK_Pointer,
@@ -256,16 +258,17 @@ namespace Types
 	TypeDecl* baseType;
     };
 
-    class RangeDecl : public CompoundDecl
+    class RangeBaseDecl : public CompoundDecl
+    {
+	using CompoundDecl::CompoundDecl;
+    };
+
+    class RangeDecl : public RangeBaseDecl
     {
     public:
-	RangeDecl(Range* r, TypeDecl* base) : CompoundDecl(TK_Range, base), range(r)
+	RangeDecl(Range* r, TypeDecl* base) : RangeBaseDecl(TK_Range, base), range(r)
 	{
 	    assert(r && "Range should be specified");
-	}
-	RangeDecl(const std::string& lName, const std::string& hName, TypeDecl* base)
-	    : CompoundDecl(TK_Range, base), range(0), lowName(lName), highName(hName)
-	{
 	}
 
     public:
@@ -278,16 +281,29 @@ namespace Types
 	bool               IsCompound() const override { return false; }
 	bool               IsIntegral() const override { return true; }
 	bool               IsUnsigned() const override { return Start() >= 0; }
-	bool               IsDynamic() const { return range == 0; }
 	unsigned           Bits() const override;
 	Range*             GetRange() const override { return range; }
 	const TypeDecl*    CompatibleType(const TypeDecl* ty) const override;
 	const TypeDecl*    AssignableType(const TypeDecl* ty) const override;
-	const std::string& LowName() { return lowName; }
-	const std::string& HighName() { return highName; }
 
     private:
 	Range*      range;
+    };
+
+    class DynRangeDecl : public RangeBaseDecl
+    {
+    public:
+	DynRangeDecl(const std::string& lName, const std::string& hName, TypeDecl* base)
+	    : RangeBaseDecl(TK_DynRange, base), lowName(lName), highName(hName)
+	{
+	}
+	static bool        classof(const TypeDecl* e) { return e->getKind() == TK_DynRange; }
+	const std::string& LowName() { return lowName; }
+	const std::string& HighName() { return highName; }
+	void               DoDump() const override;
+	TypeKind           Type() const override { return baseType->Type(); }
+
+    private:
 	std::string lowName;
 	std::string highName;
     };
@@ -321,6 +337,22 @@ namespace Types
 
     private:
 	std::vector<RangeDecl*> ranges;
+    };
+
+    class DynArrayDecl : public CompoundDecl
+    {
+    public:
+	DynArrayDecl(TypeDecl* b, DynRangeDecl* r) : CompoundDecl(TK_DynArray, b), range(r) {}
+	void            DoDump() const override;
+	DynRangeDecl*   Range() { return range; }
+	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_DynArray; }
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+
+    protected:
+	llvm::Type* GetLlvmType() const override;
+
+    private:
+	DynRangeDecl* range;
     };
 
     struct EnumValue

@@ -452,10 +452,6 @@ ArrayExprAST::ArrayExprAST(const Location& loc, ExprAST* v, const std::vector<Ex
     for (auto j = ranges.end() - 1; j >= ranges.begin(); j--)
     {
 	indexmul.push_back(mul);
-	if ((*j)->IsDynamic())
-	{
-	    break;
-	}
 	mul *= (*j)->GetRange()->Size();
     }
     std::reverse(indexmul.begin(), indexmul.end());
@@ -485,18 +481,12 @@ llvm::Value* ArrayExprAST::Address()
     assert(v && "Expected variable to have an address");
     EnsureSized();
     llvm::Value* totalIndex = 0;
-    bool         hasDynamicRange = false;
     for (size_t i = 0; i < indices.size(); i++)
     {
 	auto range = llvm::dyn_cast<RangeReduceAST>(indices[i]);
 	assert(range && "Expected a range here");
 	llvm::Value* index = range->CodeGen();
 	assert(index && "Expression failed for index");
-	if (range->IsDynamic())
-	{
-	    // TODO: We need to update multipliers.
-	    hasDynamicRange = true;
-	}
 	if (indexmul[i] != 1)
 	{
 	    index = builder.CreateMul(index, MakeConstant(indexmul[i], range->Type()));
@@ -510,12 +500,6 @@ llvm::Value* ArrayExprAST::Address()
 	    totalIndex = builder.CreateAdd(totalIndex, index);
 	}
     }
-    if (hasDynamicRange)
-    {
-	v = builder.CreateGEP(v, { MakeIntegerConstant(0), MakeIntegerConstant(0) }, "ptr");
-	v = builder.CreateLoad(v, "ptrLoad");
-	return builder.CreateGEP(v, totalIndex, "valueIndex");
-    }
     std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), totalIndex };
     v = builder.CreateGEP(v, ind, "valueindex");
     return v;
@@ -527,6 +511,31 @@ void ArrayExprAST::accept(ASTVisitor& v)
     {
 	i->accept(v);
     }
+    expr->accept(v);
+    v.visit(this);
+}
+
+DynArrayExprAST::DynArrayExprAST(const Location& loc, ExprAST* v, ExprAST* idx, Types::DynRangeDecl* r,
+                                 Types::TypeDecl* ty)
+    : AddressableAST(loc, EK_DynArrayExpr, ty), expr(v), index(idx), range(r)
+{
+}
+
+llvm::Value* DynArrayExprAST::Address()
+{
+    llvm::Value* v = MakeAddressable(expr);
+    assert(v && "Expected variable to have an address");
+    EnsureSized();
+    llvm::Value* idx = index->CodeGen();
+
+    v = builder.CreateGEP(v, { MakeIntegerConstant(0), MakeIntegerConstant(0) }, "ptr");
+    v = builder.CreateLoad(v, "ptrLoad");
+    return builder.CreateGEP(v, idx, "valueIndex");
+}
+
+void DynArrayExprAST::accept(ASTVisitor& v)
+{
+    index->accept(v);
     expr->accept(v);
     v.visit(this);
 }
@@ -1542,6 +1551,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 		if (llvm::isa<Types::FuncPtrDecl>(vdef[index].Type()))
 		{
 		    v = i->CodeGen();
+		    assert(v && "Expected CodeGen to work");
 		}
 		if (!v)
 		{
@@ -1555,6 +1565,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 			{
 			    v = CreateTempAlloca(i->Type());
 			    llvm::Value* x = i->CodeGen();
+			    assert(x && "Expected CodeGen to work");
 			    builder.CreateStore(x, v);
 			}
 		    }
@@ -1566,27 +1577,24 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	    }
 	}
 	assert(v && "Expect argument here");
-	if (auto aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type()))
+	if (llvm::isa<Types::DynArrayDecl>(vdef[index].Type()))
 	{
-	    // StructType -> convert to
-	    if (auto sty = llvm::dyn_cast<llvm::StructType>(vdef[index].Type()->LlvmType()))
-	    {
-		assert(aty->Ranges().size() == 1 && "For now, only 1D conformant arrays supported");
-		llvm::Constant* zero = MakeIntegerConstant(0);
-		llvm::Constant* one = MakeIntegerConstant(1);
-		llvm::Constant* two = MakeIntegerConstant(2);
-		llvm::Value*    x = CreateTempAlloca(vdef[index].Type());
-		llvm::Value*    arrPtr = builder.CreateGEP(x, { zero, zero });
-		llvm::Value*    arrStart = builder.CreateGEP(v, { zero, zero });
-		builder.CreateStore(arrStart, arrPtr);
-		llvm::Value* low = MakeIntegerConstant(aty->Ranges()[0]->Start());
-		llvm::Value* high = MakeIntegerConstant(aty->Ranges()[0]->End());
-		llvm::Value* lPtr = builder.CreateGEP(x, { zero, one });
-		llvm::Value* hPtr = builder.CreateGEP(x, { zero, two });
-		builder.CreateStore(low, lPtr);
-		builder.CreateStore(high, hPtr);
-		v = x;
-	    }
+	    auto aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type());
+	    assert(aty && "This should be an array declaration");
+	    llvm::Constant* zero = MakeIntegerConstant(0);
+	    llvm::Constant* one = MakeIntegerConstant(1);
+	    llvm::Constant* two = MakeIntegerConstant(2);
+	    llvm::Value*    x = CreateTempAlloca(vdef[index].Type());
+	    llvm::Value*    arrPtr = builder.CreateGEP(x, { zero, zero });
+	    llvm::Value*    arrStart = builder.CreateGEP(v, { zero, zero });
+	    builder.CreateStore(arrStart, arrPtr);
+	    llvm::Value* low = MakeIntegerConstant(aty->Ranges()[0]->Start());
+	    llvm::Value* high = MakeIntegerConstant(aty->Ranges()[0]->End());
+	    llvm::Value* lPtr = builder.CreateGEP(x, { zero, one });
+	    llvm::Value* hPtr = builder.CreateGEP(x, { zero, two });
+	    builder.CreateStore(low, lPtr);
+	    builder.CreateStore(high, hPtr);
+	    v = x;
 	}
 	argsV.push_back(v);
 	index++;
@@ -1820,30 +1828,22 @@ void PrototypeAST::CreateArgumentAlloca()
 	if (args[idx].IsRef() || args[idx].Type()->IsCompound())
 	{
 	    a = &*ai;
-	    if (auto aty = llvm::dyn_cast<Types::ArrayDecl>(args[idx].Type()))
+	    if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(args[idx].Type()))
 	    {
-		int index = 1;
-		for (auto r : aty->Ranges())
-		{
-		    if (r->IsDynamic())
-		    {
-			llvm::Value* low = builder.CreateGEP(
-			    &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(index) }, r->LowName());
-			//			low = builder.CreateLoad(low, r->LowName());
-			llvm::Value* high = builder.CreateGEP(
-			    &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(index + 1) }, r->HighName());
-			//			high = builder.CreateLoad(high, r->LowName());
+		Types::DynRangeDecl* dr = dty->Range();
+		llvm::Value* low = builder.CreateGEP(&*ai, { MakeIntegerConstant(0), MakeIntegerConstant(1) },
+		                                     dr->LowName());
 
-			if (!variables.Add(r->LowName(), low))
-			{
-			    ErrorF(this, "Duplicate Variable name");
-			}
-			if (!variables.Add(r->HighName(), high))
-			{
-			    ErrorF(this, "Duplicate Variable name");
-			}
-			index += 2;
-		    }
+		llvm::Value* high = builder.CreateGEP(
+		    &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(2) }, dr->HighName());
+
+		if (!variables.Add(dr->LowName(), low))
+		{
+		    ErrorF(this, "Duplicate Variable name");
+		}
+		if (!variables.Add(dr->HighName(), high))
+		{
+		    ErrorF(this, "Duplicate Variable name");
 		}
 	    }
 	}
@@ -3608,17 +3608,19 @@ llvm::Value* RangeReduceAST::CodeGen()
     llvm::Value* index = expr->CodeGen();
 
     llvm::Type* ty = index->getType();
-    if (range->IsDynamic())
+    if (auto dr = llvm::dyn_cast<Types::DynRangeDecl>(range))
     {
 	size_t       level;
-	llvm::Value* low = variables.Find(range->LowName(), level);
+	llvm::Value* low = variables.Find(dr->LowName(), level);
 	assert(level == variables.MaxLevel() && "Expect local variable");
 	low = builder.CreateLoad(low, "low");
 	index = builder.CreateSub(index, low);
     }
     else
     {
-	if (int start = range->Start())
+	auto rr = llvm::dyn_cast<Types::RangeDecl>(range);
+	assert(rr && "This should be a RangeDecl");
+	if (int start = rr->Start())
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, expr->Type()));
 	}
@@ -3658,7 +3660,9 @@ llvm::Value* RangeCheckAST::CodeGen()
     llvm::Value* orig_index = index;
     llvm::Type*  intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 
-    int start = range->Start();
+    auto rr = llvm::dyn_cast<Types::RangeDecl>(range);
+    assert(rr && "Expect a rangedecl here");
+    int start = rr->Start();
     if (start)
     {
 	index = builder.CreateSub(index, MakeConstant(start, expr->Type()));
@@ -3676,7 +3680,7 @@ llvm::Value* RangeCheckAST::CodeGen()
 	    orig_index = builder.CreateSExt(orig_index, intTy, "sext");
 	}
     }
-    int               end = range->GetRange()->Size();
+    int               end = rr->GetRange()->Size();
     llvm::Value*      cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");
     llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(theContext, "out_of_range");

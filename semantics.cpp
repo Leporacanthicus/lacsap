@@ -18,6 +18,7 @@ private:
     void             CheckRangeExpr(RangeExprAST* r);
     void             CheckSetExpr(SetExprAST* s);
     void             CheckArrayExpr(ArrayExprAST* a);
+    void             CheckDynArrayExpr(DynArrayExprAST* d);
     void             CheckBuiltinExpr(BuiltinExprAST* b);
     void             CheckCallExpr(CallExprAST* c);
     void             CheckForExpr(ForExprAST* f);
@@ -122,6 +123,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     else if (ArrayExprAST* a = llvm::dyn_cast<ArrayExprAST>(expr))
     {
 	CheckArrayExpr(a);
+    }
+    else if (DynArrayExprAST* d = llvm::dyn_cast<DynArrayExprAST>(expr))
+    {
+	CheckDynArrayExpr(d);
     }
     else if (BuiltinExprAST* b = llvm::dyn_cast<BuiltinExprAST>(expr))
     {
@@ -544,6 +549,32 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
 	{
 	    a->indices[i] = new RangeReduceAST(e, r);
 	}
+    }
+}
+
+void TypeCheckVisitor::CheckDynArrayExpr(DynArrayExprAST* d)
+{
+    TRACE();
+
+    ExprAST* e = d->index;
+    if (!e->Type()->IsIntegral() || llvm::isa<RangeExprAST>(e))
+    {
+	Error(e, "Index should be an integral type");
+    }
+    Types::DynRangeDecl* r = d->range;
+    if (llvm::isa<RangeReduceAST>(e))
+	return;
+    if (r->Type() != e->Type()->Type() && !e->Type()->CompatibleType(r))
+    {
+	Error(d, "Incorrect index type");
+    }
+    if (rangeCheck)
+    {
+	d->index = new RangeCheckAST(e, r);
+    }
+    else
+    {
+	d->index = new RangeReduceAST(e, r);
     }
 }
 

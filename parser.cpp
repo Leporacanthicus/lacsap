@@ -457,8 +457,8 @@ static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
     return -1;
 }
 
-Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                     Token::TokenType altToken)
+Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
+                                         Token::TokenType altToken)
 {
     TRACE();
     const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
@@ -481,7 +481,7 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType en
 	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
 	{
 	    NextToken();
-	    return new Types::RangeDecl(lowName, highName, type);
+	    return new Types::DynRangeDecl(lowName, highName, type);
 	}
     }
     if (!(startC && Expect(Token::DotDot, true)))
@@ -507,8 +507,8 @@ Types::RangeDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType en
     return new Types::RangeDecl(new Types::Range(start, end), type);
 }
 
-Types::RangeDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                                Token::TokenType altToken)
+Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
+                                                    Token::TokenType altToken)
 {
     if (CurrentToken().GetToken() == Token::Identifier)
     {
@@ -997,19 +997,29 @@ Types::PointerDecl* Parser::ParsePointerType(bool maybeForwarded)
     return 0;
 }
 
-Types::ArrayDecl* Parser::ParseArrayDecl()
+Types::TypeDecl* Parser::ParseArrayDecl()
 {
     AssertToken(Token::Array);
     if (Expect(Token::LeftSquare, true))
     {
 	std::vector<Types::RangeDecl*> rv;
+	Types::DynRangeDecl*           dr = nullptr;
 	Types::TypeDecl*               type = 0;
 	while (!AcceptToken(Token::RightSquare))
 	{
-	    if (Types::RangeDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
+	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
 	    {
-		assert(type && "Uh? Type is supposed to be set now");
-		rv.push_back(r);
+		if (Types::RangeDecl* rr = llvm::dyn_cast<Types::RangeDecl>(r))
+		{
+		    assert(type && "Uh? Type is supposed to be set now");
+		    rv.push_back(rr);
+		}
+		else
+		{
+		    assert(!dr && "Expect only one dynamic range at this point");
+		    dr = llvm::dyn_cast<Types::DynRangeDecl>(r);
+		    assert(dr && "Expect to have a dynrange here");
+		}
 	    }
 	    else
 	    {
@@ -1017,7 +1027,7 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	    }
 	    AcceptToken(Token::Comma);
 	}
-	if (rv.empty())
+	if (rv.empty() && !dr)
 	{
 	    Error(CurrentToken(), "Expected array size to be declared");
 	    return 0;
@@ -1026,6 +1036,10 @@ Types::ArrayDecl* Parser::ParseArrayDecl()
 	{
 	    if (Types::TypeDecl* ty = ParseType("", false))
 	    {
+		if (dr)
+		{
+		    return new Types::DynArrayDecl(ty, dr);
+		}
 		return new Types::ArrayDecl(ty, rv);
 	    }
 	}
@@ -1370,15 +1384,16 @@ Types::SetDecl* Parser::ParseSetDecl()
     AssertToken(Token::Set);
     if (Expect(Token::Of, true))
     {
-	Types::TypeDecl* type;
-	if (Types::RangeDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown))
+	Types::TypeDecl* type = 0;
+	if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown))
 	{
-	    if (r->GetRange()->Size() > Types::SetDecl::MaxSetSize)
+	    auto rd = llvm::dyn_cast<Types::RangeDecl>(r);
+	    if (rd->GetRange()->Size() > Types::SetDecl::MaxSetSize)
 	    {
 		return reinterpret_cast<Types::SetDecl*>(ErrorT(CurrentToken(), "Set too large"));
 	    }
 	    assert(type && "Uh? Type is supposed to be set");
-	    return new Types::SetDecl(r, type);
+	    return new Types::SetDecl(rd, type);
 	}
     }
     return 0;
@@ -1554,7 +1569,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     case Token::Minus:
     {
 	Types::TypeDecl* type = 0;
-	if (Types::RangeDecl* r = ParseRange(type, Token::Semicolon, Token::Of))
+	if (Types::RangeBaseDecl* r = ParseRange(type, Token::Semicolon, Token::Of))
 	{
 	    return r;
 	}
@@ -1775,25 +1790,12 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
     TRACE();
 
-    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
-    if (!adecl)
-    {
-	return ErrorV(CurrentToken(), "Expected variable of array type when using index");
-    }
     AssertToken(Token::LeftSquare);
     CCExpressions cce;
     size_t        taken = 0;
     bool          ok;
-    while ((ok = ParseSeparatedList(*this, cce)))
+    while ((ok = ParseSeparatedList(*this, cce)) && AcceptToken(Token::LeftSquare))
     {
-	if (CurrentToken().GetToken() == Token::LeftSquare)
-	{
-	    AssertToken(Token::LeftSquare);
-	}
-	else
-	{
-	    break;
-	}
     }
     if (!ok)
     {
@@ -1802,22 +1804,45 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
     std::vector<ExprAST*> indices = cce.Exprs();
     while (!indices.empty())
     {
-	if (indices.size() >= adecl->Ranges().size())
+	RangeExprAST* range;
+	if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(type))
 	{
-	    taken += adecl->Ranges().size();
-	    indices.resize(adecl->Ranges().size());
-	    expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(), adecl->SubType());
-	    type = adecl->SubType();
-	    assert(type && "Expected a type here!");
-	    indices = cce.Exprs();
-	    indices.erase(indices.begin(), indices.begin() + taken);
-	    if (!(adecl = llvm::dyn_cast<Types::ArrayDecl>(type)))
+	    if (indices.size() != 1)
 	    {
-		if (!indices.empty())
+		return ErrorV(CurrentToken(), "Too many indices");
+	    }
+
+	    return new DynArrayExprAST(CurrentToken().Loc(), expr, indices[0], dty->Range(), dty->SubType());
+	}
+	else
+	{
+	    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
+	    if (!adecl)
+	    {
+		return ErrorV(CurrentToken(), "Expected variable of array type when using index");
+	    }
+	    if (indices.size() >= adecl->Ranges().size())
+	    {
+		taken += adecl->Ranges().size();
+		indices.resize(adecl->Ranges().size());
+		expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(),
+		                        adecl->SubType());
+		type = adecl->SubType();
+		assert(type && "Expected a type here!");
+		indices = cce.Exprs();
+		indices.erase(indices.begin(), indices.begin() + taken);
+		if (!(adecl = llvm::dyn_cast<Types::ArrayDecl>(type)))
 		{
-		    return ErrorV(CurrentToken(), "Too many indices");
+		    if (!indices.empty())
+		    {
+			return ErrorV(CurrentToken(), "Too many indices");
+		    }
+		    return expr;
 		}
-		return expr;
+	    }
+	    else
+	    {
+		return ErrorV(CurrentToken(), "Not enough indices");
 	    }
 	}
     }
@@ -2989,21 +3014,16 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    return ErrorF(CurrentToken(), "Duplicate name '" + v.Name() + "'.");
 	}
-	if (auto aty = llvm::dyn_cast<Types::ArrayDecl>(v.Type()))
+	if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(v.Type()))
 	{
-	    for (Types::RangeDecl* r : aty->Ranges())
+	    Types::DynRangeDecl* dr = dty->Range();
+	    if (!nameStack.Add(dr->LowName(), new VarDef(dr->LowName(), dr->SubType())))
 	    {
-		if (r->IsDynamic())
-		{
-		    if (!nameStack.Add(r->LowName(), new VarDef(r->LowName(), r->SubType())))
-		    {
-			return ErrorF(CurrentToken(), "Duplicate name '" + r->LowName() + "'.");
-		    }
-		    if (!nameStack.Add(r->HighName(), new VarDef(r->HighName(), r->SubType())))
-		    {
-			return ErrorF(CurrentToken(), "Duplicate name '" + r->HighName() + "'.");
-		    }
-		}
+		return ErrorF(CurrentToken(), "Duplicate name '" + dr->LowName() + "'.");
+	    }
+	    if (!nameStack.Add(dr->HighName(), new VarDef(dr->HighName(), dr->SubType())))
+	    {
+		return ErrorF(CurrentToken(), "Duplicate name '" + dr->HighName() + "'.");
 	    }
 	}
     }

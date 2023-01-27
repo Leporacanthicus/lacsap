@@ -40,12 +40,12 @@ class RecordInit
 {
 public:
     RecordInit(const std::vector<int>& el, ExprAST* v) : elements(el), value(v) {}
-    ExprAST* Value() const { return value; }
+    ExprAST*                Value() const { return value; }
     const std::vector<int>& Elements() const { return elements; }
 
 private:
     std::vector<int> elements;
-    ExprAST* value;
+    ExprAST*         value;
 };
 
 const size_t MIN_ALIGN = 4;
@@ -238,10 +238,10 @@ public:
     {
     }
     void            DoDump() const override;
-    llvm::Value* Address() override;
+    llvm::Value*    Address() override;
     llvm::Constant* MakeConstantSetArray();
     llvm::Value*    MakeConstantSet();
-    static bool  classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }
+    static bool     classof(const ExprAST* e) { return e->getKind() == EK_SetExpr; }
 
 private:
     std::vector<ExprAST*> values;
@@ -414,10 +414,10 @@ class UnaryExprAST : public ExprAST
 public:
     UnaryExprAST(const Location& w, Token op, ExprAST* r)
         : ExprAST(w, EK_UnaryExpr, r->Type()), oper(op), rhs(r){};
-    void             DoDump() const override;
-    llvm::Value*     CodeGen() override;
-    static bool      classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
-    void             accept(ASTVisitor& v) override
+    void         DoDump() const override;
+    llvm::Value* CodeGen() override;
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
+    void         accept(ASTVisitor& v) override
     {
 	rhs->accept(v);
 	v.visit(this);
@@ -438,14 +438,14 @@ public:
     {
 	assert(l->Type() == h->Type() && "Expect same type here");
     }
-    void             DoDump() const override;
-    llvm::Value*     Low() { return low->CodeGen(); }
-    llvm::Value*     High() { return high->CodeGen(); }
-    ExprAST*         LowExpr() { return low; }
-    ExprAST*         HighExpr() { return high; }
-    bool             IsConstant();
-    static bool      classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
-    void             accept(ASTVisitor& v) override
+    void         DoDump() const override;
+    llvm::Value* Low() { return low->CodeGen(); }
+    llvm::Value* High() { return high->CodeGen(); }
+    ExprAST*     LowExpr() { return low; }
+    ExprAST*     HighExpr() { return high; }
+    bool         IsConstant();
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
+    void         accept(ASTVisitor& v) override
     {
 	low->accept(v);
 	high->accept(v);
@@ -564,7 +564,7 @@ class FunctionAST : public ExprAST
 {
 public:
     FunctionAST(const Location& w, PrototypeAST* prot, const std::vector<VarDeclAST*>& v, BlockAST* b);
-    void                            DoDump() const override;
+    void                DoDump() const override;
     llvm::Function*     CodeGen() override;
     llvm::Function*     CodeGen(const std::string& namePrefix);
     const PrototypeAST* Proto() const { return proto; }
@@ -861,7 +861,7 @@ public:
     }
 
 protected:
-    ExprAST*          expr;
+    ExprAST*              expr;
     Types::RangeBaseDecl* range;
 };
 
@@ -1045,7 +1045,7 @@ class ArraySliceAST : public AddressableAST
 {
 public:
     ArraySliceAST(const Location& w, ExprAST* e, RangeExprAST* r, Types::ArrayDecl* ty)
-	: AddressableAST(w, EK_ArraySlice, ty), expr(e), range(r)
+        : AddressableAST(w, EK_ArraySlice, ty), expr(e), range(r)
     {
 	Types::TypeDecl* t = nullptr;
 	if (range->IsConstant())
@@ -1066,11 +1066,11 @@ public:
     }
 
     llvm::Value* Address() override;
-    void DoDump() const override;
+    void         DoDump() const override;
 
 private:
-    ExprAST* expr;
-    RangeExprAST* range;
+    ExprAST*         expr;
+    RangeExprAST*    range;
     Types::TypeDecl* origType;
 };
 

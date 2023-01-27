@@ -55,13 +55,13 @@ public:
     {
 	assert(ty && "Expect a type!");
     }
-    bool          IsRef() const;
-    bool          IsExternal() const;
-    bool          IsProtected() const;
-    bool          IsClosure() const;
-    ExprAST*      Init() { return init; }
-    void          SetInit(ExprAST* i) { init = i; }
-    static bool   classof(const NamedObject* e) { return e->getKind() == NK_Var; }
+    bool        IsRef() const;
+    bool        IsExternal() const;
+    bool        IsProtected() const;
+    bool        IsClosure() const;
+    ExprAST*    Init() { return init; }
+    void        SetInit(ExprAST* i) { init = i; }
+    static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }
 
 private:
     Flags    flags;

@@ -80,8 +80,8 @@ public:
     bool          ParseInterface(InterfaceList& iList);
     void          ParseImports();
 
-    ExprAST*      ConstDeclToExpr(Location loc, const Constants::ConstDecl* c);
-    ExprAST*      ParseInitValue(Types::TypeDecl* ty);
+    ExprAST* ConstDeclToExpr(Location loc, const Constants::ConstDecl* c);
+    ExprAST* ParseInitValue(Types::TypeDecl* ty);
 
     // Type declarations and defintitions
     void  ParseTypeDef();

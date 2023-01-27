@@ -1292,9 +1292,9 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 
     case Token::Power:
     {
-	llvm::Type*               cty = Types::Get<Types::ComplexDecl>()->LlvmType();
-	llvm::Type*               rty = Types::Get<Types::RealDecl>()->LlvmType();
-	
+	llvm::Type* cty = Types::Get<Types::ComplexDecl>()->LlvmType();
+	llvm::Type* rty = Types::Get<Types::RealDecl>()->LlvmType();
+
 	llvm::FunctionCallee      f = GetFunction(cty, { cty, rty }, "__cpow");
 	std::vector<llvm::Value*> args = { builder.CreateLoad(l, "lh"), r };
 
@@ -1396,11 +1396,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (llvm::isa<Types::ComplexDecl>(lhs->Type()))
     {
-	auto lhsa = llvm::dyn_cast<AddressableAST>(lhs);
+	auto         lhsa = llvm::dyn_cast<AddressableAST>(lhs);
 	llvm::Value* la = lhsa->Address();
 	llvm::Value* ra;
 	assert(lhsa && "Expect to complex values addressable");
-	if (llvm::isa<Types::ComplexDecl>(rhs->Type()))	{
+	if (llvm::isa<Types::ComplexDecl>(rhs->Type()))
+	{
 	    auto rhsa = llvm::dyn_cast<AddressableAST>(rhs);
 	    assert(rhsa && "Expect to complex values addressable");
 	    ra = rhsa->Address();
@@ -1408,8 +1409,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	else
 	{
 	    ra = rhs->CodeGen();
-	}    
-	
+	}
+
 	if (auto v = ComplexBinExpr(la, ra, oper))
 	{
 	    return v;
@@ -4242,13 +4243,13 @@ void InitRecordAST::DoDump() const
     }
 }
 
-llvm::Value *ArraySliceAST::Address()
+llvm::Value* ArraySliceAST::Address()
 {
     auto         aty = llvm::dyn_cast<Types::ArrayDecl>(origType);
     llvm::Value* v = MakeAddressable(expr);
     llvm::Value* low = range->Low();
-    int start = aty->Ranges()[0]->Start();
-    llvm::Value *index = builder.CreateSub(low, MakeIntegerConstant(start));
+    int          start = aty->Ranges()[0]->Start();
+    llvm::Value* index = builder.CreateSub(low, MakeIntegerConstant(start));
     llvm::Value* ptr = builder.CreateGEP(v, { MakeIntegerConstant(0), index });
 
     return builder.CreateBitCast(ptr, llvm::PointerType::getUnqual(type->LlvmType()));

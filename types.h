@@ -268,22 +268,22 @@ namespace Types
 	}
 
     public:
-	void               DoDump() const override;
-	static bool        classof(const TypeDecl* e) { return e->getKind() == TK_Range; }
-	bool               SameAs(const TypeDecl* ty) const override;
-	int                Start() const { return range->Start(); }
-	int                End() const { return range->End(); }
-	TypeKind           Type() const override { return baseType->Type(); }
-	bool               IsCompound() const override { return false; }
-	bool               IsIntegral() const override { return true; }
-	bool               IsUnsigned() const override { return Start() >= 0; }
-	unsigned           Bits() const override;
-	Range*             GetRange() const override { return range; }
-	const TypeDecl*    CompatibleType(const TypeDecl* ty) const override;
-	const TypeDecl*    AssignableType(const TypeDecl* ty) const override;
+	void            DoDump() const override;
+	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Range; }
+	bool            SameAs(const TypeDecl* ty) const override;
+	int             Start() const { return range->Start(); }
+	int             End() const { return range->End(); }
+	TypeKind        Type() const override { return baseType->Type(); }
+	bool            IsCompound() const override { return false; }
+	bool            IsIntegral() const override { return true; }
+	bool            IsUnsigned() const override { return Start() >= 0; }
+	unsigned        Bits() const override;
+	Range*          GetRange() const override { return range; }
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 
     private:
-	Range*      range;
+	Range* range;
     };
 
     class DynRangeDecl : public RangeBaseDecl

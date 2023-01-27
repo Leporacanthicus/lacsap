@@ -78,7 +78,7 @@ namespace Builtin
     public:
 	using FunctionSameAsArg::FunctionSameAsArg;
 	Types::TypeDecl* Type() const override;
-	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
     class FunctionSqr : public FunctionSameAsArg
@@ -172,9 +172,9 @@ namespace Builtin
     {
     public:
 	FunctionFloat(const std::string& fn, ArgList& a) : FunctionBase(a), funcname(fn) {}
-	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override;
-	bool         Semantics() override;
+	bool             Semantics() override;
 
     protected:
 	std::string funcname;
@@ -333,24 +333,24 @@ namespace Builtin
     {
     public:
 	using FunctionString::FunctionString;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionCopy : public FunctionString
     {
     public:
 	using FunctionString::FunctionString;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionTrim : public FunctionString
     {
     public:
 	using FunctionString::FunctionString;
-	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
-	bool             Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	bool         Semantics() override;
     };
 
     class FunctionIndex : public FunctionInt

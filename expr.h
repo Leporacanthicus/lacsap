@@ -76,6 +76,7 @@ public:
 	EK_VariantFieldExpr,
 	EK_FunctionExpr,
 	EK_TypeCastExpr,
+	EK_ArraySlice,
 	EK_LastAddressable,
 
 	EK_BinaryExpr,
@@ -110,8 +111,6 @@ public:
 	EK_InitValue,
 	EK_InitArray,
 	EK_InitRecord,
-
-	EK_ArraySlice,
     };
     ExprAST(const Location& w, ExprKind k) : loc(w), kind(k), type(0) {}
     ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}

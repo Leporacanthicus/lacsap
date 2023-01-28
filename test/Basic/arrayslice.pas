@@ -18,4 +18,7 @@ begin
    proc(a);
    proc(a[2..4]);
    proc(a[1..2]);
+
+   a[2..3] := "no";
+   proc(a);
 end.

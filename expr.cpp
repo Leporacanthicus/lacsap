@@ -1423,9 +1423,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     assert(l && r && "Should have a value for both sides");
 
-    llvm::Type* lty = l->getType();
+    [[maybe_unused]] llvm::Type* lty = l->getType();
     llvm::Type* rty = r->getType();
-    (void)lty;
     assert(rty == lty && "Expect same types");
 
     // Can compare for (in)equality with pointers and integers
@@ -4276,9 +4275,8 @@ static void BuildUnitInitList()
     unitList[unitInit.size()] = llvm::Constant::getNullValue(vp);
     llvm::ArrayType* arr = llvm::ArrayType::get(vp, unitInit.size() + 1);
     llvm::Constant*  init = llvm::ConstantArray::get(arr, unitList);
-    llvm::Value*     unitInitList = new llvm::GlobalVariable(
+    [[maybe_unused]] llvm::Value* unitInitList = new llvm::GlobalVariable(
         *theModule, arr, true, llvm::GlobalValue::ExternalLinkage, init, "UnitIniList");
-    (void)unitInitList;
     assert(unitInitList && "Unit Initializer List not built correctly?");
 }
 

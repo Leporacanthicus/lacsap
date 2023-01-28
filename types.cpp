@@ -569,8 +569,7 @@ namespace Types
     {
 	if (opaqueType && opaqueType->isOpaque())
 	{
-	    llvm::Type* ty = GetLlvmType();
-	    (void)ty;
+	    [[maybe_unused]] llvm::Type* ty = GetLlvmType();
 	    assert(ty == opaqueType && "Expect opaqueType to be returned");
 	    assert(!opaqueType->isOpaque() && "Expect opaqueness to have gone away");
 	}

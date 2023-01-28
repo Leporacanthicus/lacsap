@@ -412,10 +412,10 @@ class UnaryExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    UnaryExprAST(const Location& w, Token op, ExprAST* r) : ExprAST(w, EK_UnaryExpr), oper(op), rhs(r){};
+    UnaryExprAST(const Location& w, Token op, ExprAST* r)
+        : ExprAST(w, EK_UnaryExpr, r->Type()), oper(op), rhs(r){};
     void             DoDump() const override;
     llvm::Value*     CodeGen() override;
-    Types::TypeDecl* Type() const override { return rhs->Type(); }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
     void             accept(ASTVisitor& v) override
     {
@@ -433,7 +433,8 @@ class RangeExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    RangeExprAST(const Location& w, ExprAST* l, ExprAST* h) : ExprAST(w, EK_RangeExpr), low(l), high(h)
+    RangeExprAST(const Location& w, ExprAST* l, ExprAST* h)
+        : ExprAST(w, EK_RangeExpr, l->Type()), low(l), high(h)
     {
 	assert(l->Type() == h->Type() && "Expect same type here");
     }
@@ -443,7 +444,6 @@ public:
     ExprAST*         LowExpr() { return low; }
     ExprAST*         HighExpr() { return high; }
     bool             IsConstant();
-    Types::TypeDecl* Type() const override { return low->Type(); }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_RangeExpr; }
     void             accept(ASTVisitor& v) override
     {

@@ -59,7 +59,6 @@ namespace Types
     public:
 	enum TypeKind
 	{
-	    TK_Type,
 	    TK_Char,
 	    TK_Integer,
 	    TK_LongInt,
@@ -98,7 +97,6 @@ namespace Types
 	virtual bool            IsStringLike() const { return false; }
 	virtual bool            IsUnsigned() const { return false; }
 	virtual Range*          GetRange() const;
-	virtual TypeDecl*       SubType() const { return 0; }
 	virtual unsigned        Bits() const { return 0; }
 	virtual bool            SameAs(const TypeDecl* ty) const { return kind == ty->Type(); }
 	virtual const TypeDecl* CompatibleType(const TypeDecl* ty) const;
@@ -112,7 +110,6 @@ namespace Types
 	void                    dump() const;
 	virtual void            DoDump() const = 0;
 	TypeKind                getKind() const { return kind; }
-	static bool             classof(const TypeDecl* e) { return e->getKind() == TK_Type; }
 	virtual size_t          Size() const;
 	size_t                  AlignSize() const;
 	std::string             Name() const { return name; }
@@ -242,7 +239,7 @@ namespace Types
 	CompoundDecl(TypeKind tk, TypeDecl* b) : TypeDecl(tk), baseType(b) {}
 	bool        SameAs(const TypeDecl* ty) const override;
 	bool        IsCompound() const override { return true; }
-	TypeDecl*   SubType() const override { return baseType; }
+	TypeDecl*   SubType() const { return baseType; }
 	bool        HasLlvmType() const override { return baseType->HasLlvmType(); }
 	static bool classof(const TypeDecl* e);
 

@@ -2100,17 +2100,17 @@ ExprAST* Parser::ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type)
     assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) &&
            "Expected @ or ^ token...");
     NextToken();
-    if (llvm::isa<Types::FileDecl>(type))
+    if (auto fd = llvm::dyn_cast<Types::FileDecl>(type))
     {
-	type = type->SubType();
+	type = fd->SubType();
 	return new FilePointerExprAST(CurrentToken().Loc(), expr, type);
     }
-    if (!llvm::isa<Types::PointerDecl>(type))
+    if (auto pd = llvm::dyn_cast<Types::PointerDecl>(type))
     {
-	return ErrorV(CurrentToken(), "Expected pointer expression");
+	type = pd->SubType();
+	return new PointerExprAST(CurrentToken().Loc(), expr, type);
     }
-    type = type->SubType();
-    return new PointerExprAST(CurrentToken().Loc(), expr, type);
+    return ErrorV(CurrentToken(), "Expected pointer expression");
 }
 
 bool Parser::IsCall(const NamedObject* def)
@@ -2488,7 +2488,7 @@ ExprAST* Parser::ConstDeclToExpr(Location loc, const Constants::ConstDecl* c)
 class CCArrayInitList : public ListConsumer
 {
 public:
-    CCArrayInitList(Types::TypeDecl* ty)
+    CCArrayInitList(Types::ArrayDecl* ty)
         : ListConsumer{ Token::Semicolon, Token::RightSquare, true }, type(ty)
     {
     }
@@ -2524,7 +2524,7 @@ public:
 
 private:
     std::vector<ArrayInit> list;
-    Types::TypeDecl*       type;
+    Types::ArrayDecl*      type;
 };
 
 class CCRecordInitList : public ListConsumer
@@ -2599,11 +2599,11 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	}
 	return 0;
     }
-    if (llvm::isa<Types::ArrayDecl>(ty))
+    if (auto arrTy = llvm::dyn_cast<Types::ArrayDecl>(ty))
     {
 	if (AcceptToken(Token::LeftSquare))
 	{
-	    CCArrayInitList cca(ty);
+	    CCArrayInitList cca(arrTy);
 	    if (ParseSeparatedList(*this, cca))
 	    {
 		return new InitArrayAST(loc, ty, cca.Values());

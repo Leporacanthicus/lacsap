@@ -63,13 +63,15 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 {
     Types::Range*    r = ty->GetRange();
     Types::TypeDecl* base;
+    auto             sty = llvm::dyn_cast<Types::SetDecl>(ty);
     if (!r)
     {
-	if (!ty->SubType())
+	assert(sty && "Should be a set");
+	if (!sty->SubType())
 	{
 	    return 0;
 	}
-	r = ty->SubType()->GetRange();
+	r = sty->SubType()->GetRange();
     }
 
     if (ty->IsIntegral())
@@ -78,7 +80,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
     }
     else
     {
-	base = ty->SubType();
+	base = sty->SubType();
     }
 
     if (r->Size() > Types::SetDecl::MaxSetSize)
@@ -166,8 +168,9 @@ ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty)
 
 Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
-    Types::TypeDecl* lty = b->lhs->Type();
-    Types::TypeDecl* rty = b->rhs->Type();
+    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(b->lhs->Type());
+    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(b->rhs->Type());
+    assert(lty && rty && "Expect set declarations on both side!");
     if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
     {
 	if (s->values.empty() && rty->SubType())
@@ -187,21 +190,19 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
     if (!lty->GetRange() && !rty->GetRange())
     {
 	Types::RangeDecl* r = GetRangeDecl(Types::Get<Types::IntegerDecl>());
-	Types::SetDecl*   rs = llvm::dyn_cast<Types::SetDecl>(rty);
-	Types::SetDecl*   ls = llvm::dyn_cast<Types::SetDecl>(lty);
 
-	if (!rs->SubType() && !ls->SubType())
+	if (!rty->SubType() && !lty->SubType())
 	{
-	    rs->UpdateSubtype(r->SubType());
-	    ls->UpdateSubtype(r->SubType());
+	    rty->UpdateSubtype(r->SubType());
+	    lty->UpdateSubtype(r->SubType());
 	}
 	else
 	{
-	    r = GetRangeDecl(rs->SubType());
+	    r = GetRangeDecl(rty->SubType());
 	}
 
-	ls->UpdateRange(r);
-	rs->UpdateRange(r);
+	lty->UpdateRange(r);
+	rty->UpdateRange(r);
     }
 
     if (!lty->GetRange() && rty->GetRange())
@@ -442,17 +443,19 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     Types::TypeDecl* lty = a->lhs->Type();
     Types::TypeDecl* rty = a->rhs->Type();
 
-    if (llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
+    auto lsty = llvm::dyn_cast<Types::SetDecl>(lty);
+    auto rsty = llvm::dyn_cast<Types::SetDecl>(rty);
+    if (lsty && rsty)
     {
-	assert(lty->GetRange() && lty->SubType() && "Expected left type to be well defined.");
+	assert(lsty->GetRange() && lsty->SubType() && "Expected left type to be well defined.");
 
-	if (!rty->GetRange())
+	if (!rsty->GetRange())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateRange(GetRangeDecl(lty));
+	    rsty->UpdateRange(GetRangeDecl(lsty));
 	}
-	if (!rty->SubType())
+	if (!rsty->SubType())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(lty->SubType());
+	    rsty->UpdateSubtype(lsty->SubType());
 	}
     }
 
@@ -516,7 +519,8 @@ void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
     if (!(r = s->Type()->GetRange()))
     {
 	Types::RangeDecl* rd = GetRangeDecl(s->Type());
-	if (s->Type()->SubType())
+	auto              sd = llvm::dyn_cast<Types::SetDecl>(s->Type());
+	if (sd->SubType())
 	{
 	    sema->AddFixup(new SetRangeFixup(s, rd));
 	}
@@ -742,7 +746,8 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 	    }
 	    else
 	    {
-		if (!r->file->Type()->SubType()->AssignableType(arg->Type()))
+		auto fd = llvm::dyn_cast<Types::FileDecl>(r->file->Type());
+		if (!fd->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Read argument should match elements of the file");
 		}
@@ -763,9 +768,9 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 	    if (e->Type()->IsCompound())
 	    {
 		bool bad = true;
-		if (llvm::isa<Types::ArrayDecl>(e->Type()))
+		if (IsCharArray(e->Type()))
 		{
-		    bad = !Types::IsCharArray(e->Type());
+		    bad = false;
 		}
 		else
 		{
@@ -793,7 +798,8 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 	    }
 	    else
 	    {
-		if (!w->file->Type()->SubType()->AssignableType(arg->Type()))
+		auto fd = llvm::dyn_cast<Types::FileDecl>(w->file->Type());
+		if (!fd->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Write argument should match elements of the file");
 		}

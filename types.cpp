@@ -320,7 +320,7 @@ namespace Types
 	}
 	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
 	{
-	    if (ty->SubType() == SubType() && ranges.size() == aty->Ranges().size())
+	    if (aty->SubType() == SubType() && ranges.size() == aty->Ranges().size())
 	    {
 		for (size_t i = 0; i < ranges.size(); i++)
 		{
@@ -1094,15 +1094,13 @@ namespace Types
      *    int32     handle;
      *    baseType *ptr;
      *    int32     recordSize;
-     *    baseType  isText;
+     *    int32     isText;
      * };
      *
      * The translation from handle to actual file is done inside the C runtime
      * part.
      *
      * Note that this arrangement has to agree with the runtime.c definition.
-     *
-     * The type name is used to determine if the file is a "text" or "file of TYPE" type.
      */
     llvm::Type* FileDecl::GetLlvmType() const
     {
@@ -1184,13 +1182,6 @@ namespace Types
 	return 0;
     }
 
-    void StringDecl::DoDump() const
-    {
-	std::cerr << "String[";
-	Ranges()[0]->DoDump();
-	std::cerr << "]";
-    }
-
     const TypeDecl* SetDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
@@ -1213,6 +1204,13 @@ namespace Types
 	    }
 	}
 	return false;
+    }
+
+    void StringDecl::DoDump() const
+    {
+	std::cerr << "String[";
+	Ranges()[0]->DoDump();
+	std::cerr << "]";
     }
 
     const TypeDecl* StringDecl::CompatibleType(const TypeDecl* ty) const
@@ -1265,7 +1263,8 @@ namespace Types
 
     bool IsCharArray(const TypeDecl* t)
     {
-	return (t->Type() == TypeDecl::TK_Array && t->SubType()->Type() == TypeDecl::TK_Char);
+	auto at = llvm::dyn_cast<ArrayDecl>(t);
+	return at && llvm::isa<CharDecl>(at->SubType());
     }
 
     static RangeDecl* MakeRange(int64_t s, int64_t e)

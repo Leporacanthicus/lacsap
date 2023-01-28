@@ -1365,15 +1365,14 @@ llvm::Value* BinaryExprAST::CodeGen()
 	}
     }
 
-    if (llvm::isa<Types::ArrayDecl>(rhs->Type()) && llvm::isa<Types::ArrayDecl>(lhs->Type()))
+    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
+    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
+    if (al && ar)
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
 	// But only if they are the same size.
-	if (llvm::isa<Types::CharDecl>(lhs->Type()->SubType()) &&
-	    llvm::isa<Types::CharDecl>(rhs->Type()->SubType()))
+	if (llvm::isa<Types::CharDecl>(al->SubType()) && llvm::isa<Types::CharDecl>(ar->SubType()))
 	{
-	    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
-	    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
 
 	    std::vector<Types::RangeDecl*> rr = ar->Ranges();
 	    std::vector<Types::RangeDecl*> rl = al->Ranges();
@@ -2726,58 +2725,53 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     std::string              suffix;
     llvm::Type*              intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
     std::vector<llvm::Type*> argTypes{ fty };
-    switch (ty->Type())
+    if (auto rd = llvm::dyn_cast<Types::RangeDecl>(ty))
     {
-    case Types::TypeDecl::TK_Char:
+	ty = rd->SubType();
+    }
+
+    if (llvm::isa<Types::CharDecl>(ty))
+    {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
 	suffix = "char";
-	break;
-
-    case Types::TypeDecl::TK_Boolean:
+    }
+    else if (llvm::isa<Types::BoolDecl>(ty))
+    {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
 	suffix = "bool";
-	break;
-
-    case Types::TypeDecl::TK_Integer:
-    case Types::TypeDecl::TK_LongInt:
+    }
+    else if (llvm::isa<Types::IntegerDecl>(ty) || llvm::isa<Types::Int64Decl>(ty))
+    {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
 	suffix = "int" + std::to_string(ty->Bits());
-	break;
-
-    case Types::TypeDecl::TK_Real:
-	// Args: double, int, int
+    }
+    else if (llvm::isa<Types::RealDecl>(ty))
+    {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
 	argTypes.push_back(intTy);
 	suffix = "real";
-	break;
-
-    case Types::TypeDecl::TK_String:
+    }
+    else if (llvm::isa<Types::StringDecl>(ty))
     {
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::Get<Types::CharDecl>()->LlvmType());
 	argTypes.push_back(pty);
 	argTypes.push_back(intTy);
 	suffix = "str";
-	break;
     }
-    case Types::TypeDecl::TK_Array:
+    else if (IsCharArray(ty))
     {
-#if !NDEBUG
-	Types::ArrayDecl* ad = llvm::dyn_cast<Types::ArrayDecl>(ty);
-	assert(ad && "Expect array declaration to expand!");
-	assert(llvm::isa<Types::CharDecl>(ad->SubType()) && "Expected char type");
-#endif
 	llvm::Type* pty = llvm::PointerType::getUnqual(Types::Get<Types::CharDecl>()->LlvmType());
 	argTypes.push_back(pty);
 	argTypes.push_back(intTy);
 	argTypes.push_back(intTy);
 	suffix = "chars";
-	break;
     }
-    default:
+    else
+    {
 	ty->dump();
 	assert(0);
 	return ErrorF(0, "Invalid type argument for write");
@@ -2944,30 +2938,32 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     std::string              suffix;
     llvm::Type*              lty = llvm::PointerType::getUnqual(ty->LlvmType());
     std::vector<llvm::Type*> argTypes = { fty, lty };
-    switch (ty->Type())
+    if (auto rd = llvm::dyn_cast<Types::RangeDecl>(ty))
     {
-    case Types::TypeDecl::TK_Char:
+	ty = rd->SubType();
+    }
+    if (llvm::isa<Types::CharDecl>(ty))
+    {
 	suffix = "chr";
-	break;
-
-    case Types::TypeDecl::TK_LongInt:
-    case Types::TypeDecl::TK_Integer:
+    }
+    else if (llvm::isa<Types::IntegerDecl>(ty) || llvm::isa<Types::Int64Decl>(ty))
+    {
 	suffix = "int" + std::to_string(ty->Bits());
-	break;
-
-    case Types::TypeDecl::TK_Real:
+    }
+    else if (llvm::isa<Types::RealDecl>(ty))
+    {
 	suffix = "real";
-	break;
-
-    case Types::TypeDecl::TK_String:
+    }
+    else if (llvm::isa<Types::StringDecl>(ty))
+    {
 	suffix = "str";
-	break;
-
-    case Types::TypeDecl::TK_Array:
+    }
+    else if (IsCharArray(ty))
+    {
 	suffix = "chars";
-	break;
-
-    default:
+    }
+    else
+    {
 	return ErrorF(0, "Invalid type argument for read");
     }
     return GetFunction(MakeVoidType(), argTypes, "__read_" + suffix);
@@ -4124,7 +4120,7 @@ llvm::Value* InitValueAST::CodeGen()
     {
 	return set->MakeConstantSetArray();
     }
-    if (llvm::isa<Types::StringDecl>(type))
+    if (auto sd = llvm::dyn_cast<Types::StringDecl>(type))
     {
 	size_t      size = type->Size();
 	auto        se = llvm::dyn_cast<StringExprAST>(values[0]);
@@ -4138,12 +4134,12 @@ llvm::Value* InitValueAST::CodeGen()
 	    str[i] = val[i - 1];
 	}
 
-	return llvm::ConstantDataArray::getRaw(str, size, type->SubType()->LlvmType());
+	return llvm::ConstantDataArray::getRaw(str, size, sd->SubType()->LlvmType());
     }
     if (type->IsStringLike() && llvm::isa<Types::ArrayDecl>(type))
     {
 	auto                         arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
-	llvm::Type*                  ty = type->SubType()->LlvmType();
+	llvm::Type*                  ty = arrty->getElementType();
 	size_t                       size = type->Size();
 	std::vector<llvm::Constant*> initArr(size);
 

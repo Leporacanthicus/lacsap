@@ -3611,9 +3611,7 @@ llvm::Value* RangeReduceAST::CodeGen()
     llvm::Type* ty = index->getType();
     if (auto dr = llvm::dyn_cast<Types::DynRangeDecl>(range))
     {
-	size_t       level;
-	llvm::Value* low = variables.Find(dr->LowName(), level);
-	assert(level == variables.MaxLevel() && "Expect local variable");
+	llvm::Value* low = variables.FindTopLevel(dr->LowName());
 	low = builder.CreateLoad(low, "low");
 	index = builder.CreateSub(index, low);
     }

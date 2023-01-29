@@ -126,16 +126,6 @@ public:
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, int parentCount);
 
-    // Error functions - all the same except for the return type
-    ExprAST*              Error(Token t, const std::string& msg);
-    PrototypeAST*         ErrorP(Token t, const std::string& msg);
-    FunctionAST*          ErrorF(Token t, const std::string& msg);
-    Types::TypeDecl*      ErrorT(Token t, const std::string& msg);
-    Types::RangeDecl*     ErrorR(Token t, const std::string& msg);
-    VariableExprAST*      ErrorV(Token t, const std::string& msg);
-    Constants::ConstDecl* ErrorC(Token t, const std::string& msg);
-    int                   ErrorI(Token t, const std::string& msg);
-
     // Helper functions for expression evaluation
     bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(const NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args);
@@ -152,6 +142,14 @@ public:
 
     std::vector<VarDef> CalculateUsedVars(FunctionAST* fn, const std::vector<const NamedObject*>& varsUsed,
                                           const Stack<const NamedObject*>& nameStack);
+
+    void PrintError(Token t, const std::string& msg);
+    template<typename T = std::nullptr_t>
+    T Error(Token t, const std::string& msg)
+    {
+	PrintError(t, msg);
+	return T{};
+    }
 
 private:
     Lexer                     lexer;

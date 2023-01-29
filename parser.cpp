@@ -337,7 +337,7 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
     return true;
 }
 
-Types::TypeDecl* Parser::ParseSimpleType()
+Types::TypeDecl* Parser::ParseSimpleType(bool errOnNoType)
 {
     if (Expect(Token::Identifier, false))
     {
@@ -346,8 +346,11 @@ Types::TypeDecl* Parser::ParseSimpleType()
 	    AssertToken(Token::Identifier);
 	    return ty;
 	}
-	return ErrorT(CurrentToken(),
-	              "Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
+	if (errOnNoType)
+	{
+	    return ErrorT(CurrentToken(),
+	                  "Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
+	}
     }
     return 0;
 }
@@ -466,21 +469,52 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
     {
 	std::string lowName = CurrentToken().GetIdentName();
 	NextToken();
-	AcceptToken(Token::DotDot);
-	if (!Expect(Token::Identifier, false))
+	if (!Expect(Token::DotDot, true) || !Expect(Token::Identifier, false))
 	{
 	    return 0;
 	}
 	std::string highName = CurrentToken().GetIdentName();
 	NextToken();
-	AcceptToken(Token::Colon);
-	if (!Expect(Token::Identifier, false))
+	if (endToken != Token::Semicolon)
 	{
-	    return 0;
+	    AcceptToken(Token::Colon);
+	    if (!Expect(Token::Identifier, false))
+	    {
+		return 0;
+	    }
+	    if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
+	    {
+		NextToken();
+	    }
 	}
-	if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
+	else
 	{
-	    NextToken();
+	    const VarDef* vardef = nullptr;
+	    if (const NamedObject* def = nameStack.Find(lowName))
+	    {
+		if (!(vardef = llvm::dyn_cast<VarDef>(def)))
+		{
+		    return ErrorR(CurrentToken(), "Expected variable name");
+		}
+	    }
+	    if (vardef)
+	    {
+		type = vardef->Type();
+	    }
+	    if (const NamedObject* def = nameStack.Find(highName))
+	    {
+		if (!(vardef = llvm::dyn_cast<VarDef>(def)))
+		{
+		    return ErrorR(CurrentToken(), "Expected variable name");
+		}
+	    }
+	    if (type != vardef->Type())
+	    {
+		return ErrorR(CurrentToken(), "Expected same type for both high and low variable");
+	    }
+	}
+	if (type)
+	{
 	    return new Types::DynRangeDecl(lowName, highName, type);
 	}
     }
@@ -1388,7 +1422,7 @@ Types::SetDecl* Parser::ParseSetDecl()
 	if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown))
 	{
 	    auto rd = llvm::dyn_cast<Types::RangeDecl>(r);
-	    if (rd->GetRange()->Size() > Types::SetDecl::MaxSetSize)
+	    if (rd && rd->GetRange()->Size() > Types::SetDecl::MaxSetSize)
 	    {
 		return reinterpret_cast<Types::SetDecl*>(ErrorT(CurrentToken(), "Set too large"));
 	    }
@@ -1560,7 +1594,10 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     {
 	if (!GetEnumValue(CurrentToken().GetIdentName()))
 	{
-	    return ParseSimpleType();
+	    if (Types::TypeDecl* ty = ParseSimpleType(false))
+	    {
+		return ty;
+	    }
 	}
     }
     // Fall through:
@@ -1569,11 +1606,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
     case Token::Minus:
     {
 	Types::TypeDecl* type = 0;
-	if (Types::RangeBaseDecl* r = ParseRange(type, Token::Semicolon, Token::Of))
-	{
-	    return r;
-	}
-	return 0;
+	return ParseRange(type, Token::Semicolon, Token::Of);
     }
 
     case Token::Array:
@@ -2844,7 +2877,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     // If we have a function, expect ": type".
     if (isFunction)
     {
-	if (!Expect(Token::Colon, true) || !(resultType = ParseSimpleType()))
+	if (!Expect(Token::Colon, true) || !(resultType = ParseSimpleType(true)))
 	{
 	    return 0;
 	}

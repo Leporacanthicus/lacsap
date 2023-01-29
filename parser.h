@@ -99,7 +99,7 @@ public:
     Types::RangeBaseDecl* ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                                 Token::TokenType altToken);
 
-    Types::TypeDecl*    ParseSimpleType();
+    Types::TypeDecl*    ParseSimpleType(bool errOnNoType);
     Types::ClassDecl*   ParseClassDecl(const std::string& name);
     Types::TypeDecl*    ParseType(const std::string& name, bool maybeForwarded);
     Types::EnumDecl*    ParseEnumDef();

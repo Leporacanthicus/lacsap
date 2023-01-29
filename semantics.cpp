@@ -477,6 +477,15 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 	return;
     }
 
+    if (llvm::isa<Types::DynRangeDecl>(lty) && llvm::isa<IntegerExprAST>(a->rhs))
+    {
+	if (lty->Type() != rty->Type())
+	{
+	    Error(a, "Incompatible types");
+	}
+	return;
+    }
+
     if (Types::IsCharArray(lty) && !llvm::isa<Types::StringDecl>(lty) && llvm::isa<StringExprAST>(a->rhs))
     {
 	StringExprAST*    s = llvm::dyn_cast<StringExprAST>(a->rhs);

@@ -257,6 +257,14 @@ namespace Types
     class RangeBaseDecl : public CompoundDecl
     {
 	using CompoundDecl::CompoundDecl;
+
+    public:
+	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	static bool     classof(const TypeDecl* e)
+	{
+	    return e->getKind() == TK_Range || e->getKind() == TK_DynRange;
+	}
     };
 
     class RangeDecl : public RangeBaseDecl
@@ -279,8 +287,6 @@ namespace Types
 	bool            IsUnsigned() const override { return Start() >= 0; }
 	unsigned        Bits() const override;
 	Range*          GetRange() const override { return range; }
-	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
-	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 
     private:
 	Range* range;
@@ -296,8 +302,9 @@ namespace Types
 	static bool        classof(const TypeDecl* e) { return e->getKind() == TK_DynRange; }
 	const std::string& LowName() { return lowName; }
 	const std::string& HighName() { return highName; }
-	void               DoDump() const override;
 	TypeKind           Type() const override { return baseType->Type(); }
+	bool               IsIntegral() const override { return true; }
+	void               DoDump() const override;
 
     private:
 	std::string lowName;

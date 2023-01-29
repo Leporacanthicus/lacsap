@@ -388,7 +388,7 @@ namespace Types
 	return Type() == ty->Type();
     }
 
-    const TypeDecl* RangeDecl::CompatibleType(const TypeDecl* ty) const
+    const TypeDecl* RangeBaseDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (*this == *ty)
 	{
@@ -401,7 +401,7 @@ namespace Types
 	return 0;
     }
 
-    const TypeDecl* RangeDecl::AssignableType(const TypeDecl* ty) const
+    const TypeDecl* RangeBaseDecl::AssignableType(const TypeDecl* ty) const
     {
 	if (SameAs(ty) || ty->Type() == Type())
 	{

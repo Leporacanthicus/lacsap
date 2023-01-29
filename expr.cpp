@@ -2725,7 +2725,7 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     std::string              suffix;
     llvm::Type*              intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
     std::vector<llvm::Type*> argTypes{ fty };
-    if (auto rd = llvm::dyn_cast<Types::RangeDecl>(ty))
+    if (auto rd = llvm::dyn_cast<Types::RangeBaseDecl>(ty))
     {
 	ty = rd->SubType();
     }

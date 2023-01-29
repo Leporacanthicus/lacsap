@@ -11,6 +11,8 @@
 std::string compilers[] = { "../lacsap", "fpc -Mdelphi" };
 std::string compiler = compilers[0];
 
+double totalTime;
+
 // TODO: Move this to a "utility" library?
 std::string replace_ext(const std::string& origName, const std::string& expectedExt,
                         const std::string& newExt)
@@ -24,8 +26,16 @@ std::string replace_ext(const std::string& origName, const std::string& expected
 
 int RunCmd(const std::string& cmd)
 {
-    std::cout << "Executing: " << cmd << std::endl;
-    return system(cmd.c_str());
+    std::cout << "Executing: " << std::left << std::setw(70) << cmd;
+    std::cout.flush();
+    auto   start = std::chrono::steady_clock::now();
+    int    res = system(cmd.c_str());
+    auto   end = std::chrono::steady_clock::now();
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() / 1000.0;
+    std::cout << " Time: " << std::right << std::setw(6) << std::setprecision(3) << std::fixed << elapsed
+              << std::endl;
+    totalTime += elapsed;
+    return res;
 }
 
 bool Diff(const std::string& args)
@@ -272,9 +282,10 @@ public:
 
     void Report()
     {
-	std::cout << "Cases:  " << std::setw(5) << cases << std::endl;
-	std::cout << "Pass:   " << std::setw(5) << pass << std::endl;
-	std::cout << "Fail:   " << std::setw(5) << fail << std::endl;
+	std::cout << "Cases:  " << std::setw(7) << cases << std::endl;
+	std::cout << "Pass:   " << std::setw(7) << pass << std::endl;
+	std::cout << "Fail:   " << std::setw(7) << fail << std::endl;
+	std::cout << "Time:   " << std::setw(7) << totalTime << std::endl;
 
 	for (auto f : failStageMap)
 	{
@@ -291,6 +302,7 @@ public:
 	    b = false;
 	    std::cout << std::setw(20) << t.name << " " << t.stage << std::endl;
 	}
+	totalTime = 0;
     }
 
 private:

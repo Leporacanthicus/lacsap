@@ -741,7 +741,8 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     llvm::Value* lV = MakeAddressable(lhs);
     assert(rV && lV && "Should have generated values for left and right set");
 
-    llvm::Type*  pty = llvm::PointerType::getUnqual(type->LlvmType());
+    llvm::Type*  setTy = type->LlvmType();
+    llvm::Type*  pty = llvm::PointerType::getUnqual(setTy);
     llvm::Value* setWords = MakeIntegerConstant(type->SetWords());
     llvm::Type*  intTy = setWords->getType();
     if (resTyIsSet)
@@ -751,7 +752,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	llvm::Value*              v = CreateTempAlloca(type);
 	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
 	builder.CreateCall(f, args);
-	return builder.CreateLoad(intTy, v, "set");
+	return builder.CreateLoad(setTy, v, "set");
     }
 
     llvm::FunctionCallee f = GetFunction(Types::Get<Types::BoolDecl>()->LlvmType(), { pty, pty, intTy },

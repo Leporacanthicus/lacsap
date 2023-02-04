@@ -1921,7 +1921,8 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
     if (mf->IsVirtual() || mf->IsOverride())
     {
 	int index = mf->VirtIndex();
-	expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, proto->Type());
+	Types::FuncPtrDecl* funcPtr = new Types::FuncPtrDecl(proto);
+	expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, funcPtr);
     }
     else
     {

@@ -13,12 +13,12 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/MC/SubtargetFeature.h>
+#include <llvm/MC/TargetRegistry.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/CodeGen.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/Host.h>
-#include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Target/TargetMachine.h>
@@ -41,7 +41,7 @@ static llvm::ToolOutputFile* GetOutputStream(const std::string& filename)
 {
     // Open the file.
     std::error_code          error;
-    llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::F_None;
+    llvm::sys::fs::OpenFlags OpenFlags = llvm::sys::fs::OF_None;
     llvm::ToolOutputFile*    FDOut = new llvm::ToolOutputFile(filename, error, OpenFlags);
     if (error)
     {

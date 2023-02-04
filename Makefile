@@ -22,8 +22,8 @@ else
   DEBUG ?= -DNDEBUG=1 -O2
 endif
 
-CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
 CXXFLAGS  = ${DEBUG} -Wall -Werror -Wextra -Wno-unused-parameter -std=c++17
+CXXFLAGS += $(shell ${LLVM_DIR}/bin/llvm-config --cxxflags)
 CXXFLAGS += -fno-exceptions -fno-rtti
 ifeq (${CC},clang)
   CXXFLAGS += -Qunused-arguments -fstandalone-debug
@@ -79,7 +79,7 @@ debugtests: lacsap tests
 
 .phony: llvmversion
 llvmversion:
-	./llvm_version_info.sh `${LLVM_DIR}/bin/llvm-config --src-root` > $@
+	./llvm_version_info.sh > $@
 
 clean:
 	rm -f ${OBJECTS} libruntime.a llvmversion

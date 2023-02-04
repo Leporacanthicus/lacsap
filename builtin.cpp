@@ -519,14 +519,14 @@ namespace Builtin
 	    llvm::Constant* one = MakeIntegerConstant(1);
 	    auto            v = llvm::dyn_cast<AddressableAST>(args[0]);
 	    llvm::Value*    a = v->Address();
+	    llvm::Type*     ty = Types::Get<Types::RealDecl>()->LlvmType();
 
-	    llvm::Value* re = builder.CreateLoad(builder.CreateGEP(a, { zero, zero }, "re"));
-	    llvm::Value* im = builder.CreateLoad(builder.CreateGEP(a, { zero, one }, "im"));
+	    llvm::Value* re = builder.CreateLoad(ty, builder.CreateGEP(ty, a, zero, "re"));
+	    llvm::Value* im = builder.CreateLoad(ty, builder.CreateGEP(ty, a, one, "im"));
 	    llvm::Value* rexre = builder.CreateFMul(re, re, "rexre");
 	    llvm::Value* imxim = builder.CreateFMul(im, im, "imxim");
 	    llvm::Value* sum = builder.CreateFAdd(rexre, imxim, "addi");
 
-	    llvm::Type*          ty = Types::Get<Types::RealDecl>()->LlvmType();
 	    llvm::FunctionCallee f = GetFunction(ty, { ty }, "llvm.sqrt.f64");
 	    return builder.CreateCall(f, sum, "sqrt");
 	}
@@ -563,18 +563,20 @@ namespace Builtin
 	    llvm::Constant* one = MakeIntegerConstant(1);
 	    auto            v = llvm::dyn_cast<AddressableAST>(args[0]);
 	    llvm::Value*    a = v->Address();
+	    llvm::Type*     ty = Types::Get<Types::RealDecl>()->LlvmType();
+	    llvm::Type*     cplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
 
 	    llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	    llvm::Value* re = builder.CreateLoad(builder.CreateGEP(a, { zero, zero }, "re"));
-	    llvm::Value* im = builder.CreateLoad(builder.CreateGEP(a, { zero, one }, "im"));
+	    llvm::Value* re = builder.CreateLoad(ty, builder.CreateGEP(ty, a, zero, "re"));
+	    llvm::Value* im = builder.CreateLoad(ty, builder.CreateGEP(ty, a, one, "im"));
 	    llvm::Value* rexre = builder.CreateFMul(re, re, "rexre");
 	    llvm::Value* imxim = builder.CreateFMul(im, im, "imxim");
 	    llvm::Value* resr = builder.CreateFSub(rexre, imxim, "subr");
 	    llvm::Value* rexim = builder.CreateFMul(re, im, "rexim");
 	    llvm::Value* resi = builder.CreateFAdd(rexim, rexim, "addi");
-	    builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	    builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
-	    return builder.CreateLoad(res);
+	    builder.CreateStore(resr, builder.CreateGEP(ty, res, zero));
+	    builder.CreateStore(resi, builder.CreateGEP(ty, res, one));
+	    return builder.CreateLoad(cplxTy, res);
 	}
 	llvm::Value* a = args[0]->CodeGen();
 	if (args[0]->Type()->IsIntegral())
@@ -755,7 +757,8 @@ namespace Builtin
 	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
-	llvm::Value* a = builder.CreateLoad(pA, "inc");
+	llvm::Type*  ty = var->Type()->LlvmType();
+	llvm::Value* a = builder.CreateLoad(ty, pA, "inc");
 	a = builder.CreateAdd(a, MakeConstant(1, var->Type()), "inc");
 	return builder.CreateStore(a, pA);
     }
@@ -765,7 +768,8 @@ namespace Builtin
 	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
 	assert(var && "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
-	llvm::Value* a = builder.CreateLoad(pA, "dec");
+	llvm::Type*  ty = var->Type()->LlvmType();
+	llvm::Value* a = builder.CreateLoad(ty, pA, "dec");
 	a = builder.CreateSub(a, MakeConstant(1, var->Type()), "dec");
 	return builder.CreateStore(a, pA);
     }
@@ -807,8 +811,9 @@ namespace Builtin
 	llvm::Value* pA = var0->Address();
 	llvm::Value* pB = var2->Address();
 
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
-	llvm::Value*              src = builder.CreateGEP(pA, ind, "dest");
+	llvm::Type* ptrTy = ty0->SubType()->LlvmType();
+	//	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
+	llvm::Value*              src = builder.CreateGEP(ptrTy, pA, start, "dest");
 	llvm::Align               dest_align{ std::max(AlignOfType(pB->getType()), MIN_ALIGN) };
 	llvm::Align               src_align{ std::max(AlignOfType(src->getType()), MIN_ALIGN) };
 	return builder.CreateMemCpy(pB, dest_align, src, src_align, args[2]->Type()->Size());
@@ -851,8 +856,8 @@ namespace Builtin
 	llvm::Value* pA = var0->Address();
 	llvm::Value* pB = var1->Address();
 
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
-	llvm::Value*              dest = builder.CreateGEP(pB, ind, "dest");
+	llvm::Type*               ptrTy = ty1->SubType()->LlvmType();
+	llvm::Value*              dest = builder.CreateGEP(ptrTy, pB, start, "dest");
 	llvm::Align               dest_align{ std::max(AlignOfType(dest->getType()), MIN_ALIGN) };
 	llvm::Align               src_align{ std::max(AlignOfType(pA->getType()), MIN_ALIGN) };
 	return builder.CreateMemCpy(dest, dest_align, pA, src_align, args[0]->Type()->Size());
@@ -939,9 +944,9 @@ namespace Builtin
     llvm::Value* FunctionLength::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value*              v = MakeAddressable(args[0]);
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	v = builder.CreateGEP(v, ind, "str_0");
-	v = builder.CreateLoad(v, "len");
+	llvm::Type*               charTy = Types::Get<Types::CharDecl>()->LlvmType();
+	v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_0");
+	v = builder.CreateLoad(charTy, v, "len");
 
 	return builder.CreateZExt(v, Types::Get<Types::IntegerDecl>()->LlvmType(), "extend");
     }
@@ -1066,20 +1071,19 @@ namespace Builtin
 	    return builder.CreateCall(f, a, "popcnt");
 	}
 
+	llvm::Type* intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 	name += std::to_string(Types::SetDecl::SetBits);
 	llvm::Value*              v = MakeAddressable(args[0]);
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	llvm::Value*              addr = builder.CreateGEP(v, ind, "leftSet");
-	llvm::Value*              val = builder.CreateLoad(addr);
+	llvm::Value*              addr = builder.CreateGEP(intTy, v, MakeIntegerConstant(0), "leftSet");
+	llvm::Value*              val = builder.CreateLoad(intTy, addr);
 	llvm::Type*               ty = val->getType();
 	llvm::FunctionCallee      f = GetFunction(ty, { ty }, name);
 	llvm::Value*              count = builder.CreateCall(f, val, "count");
 	Types::SetDecl*           sd = llvm::dyn_cast<Types::SetDecl>(type);
 	for (size_t i = 1; i < sd->SetWords(); i++)
 	{
-	    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(i) };
-	    addr = builder.CreateGEP(v, ind, "leftSet");
-	    val = builder.CreateLoad(addr);
+	    addr = builder.CreateGEP(intTy, v, MakeIntegerConstant(i), "leftSet");
+	    val = builder.CreateLoad(intTy, addr);
 	    llvm::Value* tmp = builder.CreateCall(f, val, "tmp");
 	    count = builder.CreateAdd(count, tmp, "count");
 	}
@@ -1243,12 +1247,12 @@ namespace Builtin
 	llvm::Value* storage = CreateTempAlloca(arrayType);
 	auto         ts = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value* tsaddr = ts->Address();
+	llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
 
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
 	                                     { tsaddr->getType(), storage->getType() }, "__Time");
 	builder.CreateCall(f, { tsaddr, storage });
-	llvm::Value* addr = builder.CreateGEP(storage, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
-	                                      "addr");
+	llvm::Value* addr = builder.CreateGEP(charTy, storage, MakeIntegerConstant(0), "addr");
 
 	return addr;
     }
@@ -1271,12 +1275,12 @@ namespace Builtin
 	llvm::Value* storage = CreateTempAlloca(arrayType);
 	auto         ts = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value* tsaddr = ts->Address();
+	llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
 
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
 	                                     { tsaddr->getType(), storage->getType() }, "__Date");
 	builder.CreateCall(f, { tsaddr, storage });
-	llvm::Value* addr = builder.CreateGEP(storage, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
-	                                      "addr");
+	llvm::Value* addr = builder.CreateGEP(charTy, storage, MakeIntegerConstant(0), "addr");
 
 	return addr;
     }
@@ -1339,13 +1343,15 @@ namespace Builtin
 	llvm::Value*              storage = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
 	llvm::Value*              re = args[0]->CodeGen();
 	llvm::Value*              im = args[1]->CodeGen();
-	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
+	llvm::Type*               cmplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
 
-	builder.CreateStore(re, builder.CreateGEP(storage, ind, "re"));
-	ind[1] = MakeIntegerConstant(1);
-	builder.CreateStore(im, builder.CreateGEP(storage, ind, "im"));
+	llvm::Value* zero = MakeIntegerConstant(0);
+	llvm::Value* one = MakeIntegerConstant(1);
 
-	return builder.CreateLoad(storage, "cmplx");
+	builder.CreateStore(re, builder.CreateGEP(cmplxTy, storage, { zero, zero }, "re"));
+	builder.CreateStore(im, builder.CreateGEP(cmplxTy, storage, { zero, one }, "im"));
+
+	return builder.CreateLoad(cmplxTy, storage, "cmplx");
     }
 
     llvm::Value* FunctionPolar::CodeGen(llvm::IRBuilder<>& builder)
@@ -1369,8 +1375,10 @@ namespace Builtin
     {
 	auto                      cmplx = llvm::dyn_cast<AddressableAST>(args[0]);
 	llvm::Value*              caddr = cmplx->Address();
-	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(index) };
-	return builder.CreateLoad(builder.CreateGEP(caddr, ind, "reim"));
+	llvm::Type*               realTy = Types::Get<Types::RealDecl>()->LlvmType();
+
+	return builder.CreateLoad(realTy,
+	                          builder.CreateGEP(realTy, caddr, MakeIntegerConstant(index), "reim"));
     }
 
     bool FunctionCmplxToReal::Semantics()

@@ -350,6 +350,7 @@ namespace Types
 	DynRangeDecl*   Range() { return range; }
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_DynArray; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	static llvm::Type* GetArrayType(TypeDecl* baseType);
 
     protected:
 	llvm::Type* GetLlvmType() const override;
@@ -647,9 +648,9 @@ namespace Types
     class FuncPtrDecl : public CompoundDecl
     {
     public:
-	FuncPtrDecl(PrototypeAST* func);
+	FuncPtrDecl(const PrototypeAST* func) : CompoundDecl(TK_FuncPtr, 0), proto(func) {}
 	void          DoDump() const override;
-	PrototypeAST* Proto() const { return proto; }
+	const PrototypeAST* Proto() const { return proto; }
 	bool          IsCompound() const override { return false; }
 	bool          SameAs(const TypeDecl* ty) const override;
 	static bool   classof(const TypeDecl* e) { return e->getKind() == TK_FuncPtr; }
@@ -659,7 +660,7 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
 
     private:
-	PrototypeAST* proto;
+	const PrototypeAST* proto;
     };
 
     class FileDecl : public CompoundDecl

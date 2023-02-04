@@ -176,7 +176,7 @@ static bool IsConstant(ExprAST* e)
 size_t AlignOfType(llvm::Type* ty)
 {
     const llvm::DataLayout dl(theModule);
-    return dl.getPrefTypeAlignment(ty);
+    return dl.getPrefTypeAlign(ty).value();
 }
 
 static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* ty, const std::string& name)
@@ -193,7 +193,7 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* 
 
     llvm::AllocaInst* a = bld.CreateAlloca(type, 0, name);
     size_t            align = std::max(ty->AlignSize(), MIN_ALIGN);
-    if (a->getAlignment() < align)
+    if (a->getAlign().value() < align)
     {
 	a->setAlignment(llvm::Align(align));
     }
@@ -293,11 +293,10 @@ static llvm::Type* MakeVoidType()
 static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
 {
     TRACE();
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-    llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
+    llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
+    llvm::Value* dest1 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(0), "str_0");
 
-    ind[1] = MakeIntegerConstant(1);
-    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
+    llvm::Value* dest2 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(1), "str_1");
 
     llvm::Value* v = rhs->CodeGen();
     builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
@@ -311,11 +310,10 @@ static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
     assert(llvm::isa<Types::CharDecl>(rhs->Type()) && "Expected char value");
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-    llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
+    llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
+    llvm::Value* dest1 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(0), "str_0");
 
-    ind[1] = MakeIntegerConstant(1);
-    llvm::Value* dest2 = builder.CreateGEP(dest, ind, "str_1");
+    llvm::Value* dest2 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(1), "str_1");
 
     builder.CreateStore(MakeCharConstant(1), dest1);
     return builder.CreateStore(rhs->CodeGen(), dest2);
@@ -333,7 +331,8 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 	return dest;
     }
 
-    llvm::Value* v = builder.CreateLoad(src, "src");
+    llvm::Type*  srcTy = ty->LlvmType();
+    llvm::Value* v = builder.CreateLoad(srcTy, src, "src");
     builder.CreateStore(v, dest);
     return dest;
 }
@@ -416,7 +415,8 @@ llvm::Value* AddressableAST::CodeGen()
 
     llvm::Value* v = Address();
     assert(v && "Expected to get an address");
-    return builder.CreateLoad(v, Name());
+    llvm::Type* ty = Type()->LlvmType();
+    return builder.CreateLoad(ty, v, Name());
 }
 
 void VariableExprAST::DoDump() const
@@ -495,8 +495,8 @@ llvm::Value* ArrayExprAST::Address()
 	    totalIndex = builder.CreateAdd(totalIndex, index);
 	}
     }
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), totalIndex };
-    v = builder.CreateGEP(v, ind, "valueindex");
+    llvm::Type* elemTy = Type()->LlvmType();
+    v = builder.CreateGEP(elemTy, v, totalIndex, "valueindex");
     return v;
 }
 
@@ -523,9 +523,12 @@ llvm::Value* DynArrayExprAST::Address()
     EnsureSized();
     llvm::Value* idx = index->CodeGen();
 
-    v = builder.CreateGEP(v, { MakeIntegerConstant(0), MakeIntegerConstant(0) }, "ptr");
-    v = builder.CreateLoad(v, "ptrLoad");
-    return builder.CreateGEP(v, idx, "valueIndex");
+    llvm::Type* dynTy = Types::DynArrayDecl::GetArrayType(Type());
+    llvm::Type* elemTy = Type()->LlvmType();
+    llvm::Type* elemPtrTy = llvm::PointerType::getUnqual(elemTy);
+    v = builder.CreateGEP(dynTy, v, MakeIntegerConstant(0), "ptr");
+    v = builder.CreateLoad(elemPtrTy, v, "ptrLoad");
+    return builder.CreateGEP(elemTy, v, idx, "valueIndex");
 }
 
 void DynArrayExprAST::accept(ASTVisitor& v)
@@ -547,8 +550,9 @@ llvm::Value* FieldExprAST::Address()
     EnsureSized();
     if (llvm::Value* v = MakeAddressable(expr))
     {
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(element) };
-	return builder.CreateGEP(v, ind, "valueindex");
+	llvm::Type* ty = expr->Type()->LlvmType();
+	return builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) },
+	                         "valueindex");
     }
     return Error(this, "Expression did not form an address");
 }
@@ -570,8 +574,8 @@ llvm::Value* VariantFieldExprAST::Address()
     TRACE();
     EnsureSized();
     llvm::Value*              v = MakeAddressable(expr);
-    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(element) };
-    v = builder.CreateGEP(v, ind, "valueindex");
+    llvm::Type*               ty = expr->Type()->LlvmType();
+    v = builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) }, "valueindex");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
 
@@ -606,9 +610,11 @@ llvm::Value* FilePointerExprAST::Address()
     VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
     assert(vptr && "Expected variable expression!");
     llvm::Value*              v = vptr->Address();
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer) };
-    v = builder.CreateGEP(v, ind, "bufptr");
-    return builder.CreateLoad(v, "buffer");
+    llvm::Type*               fileTy = pointer->Type()->LlvmType();
+    llvm::Type*               ptrTy = llvm::PointerType::getUnqual(Type()->LlvmType());
+    v = builder.CreateGEP(fileTy, v, { MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer) },
+                          "bufptr");
+    return builder.CreateLoad(ptrTy, v, "buffer");
 }
 
 void FilePointerExprAST::accept(ASTVisitor& v)
@@ -699,19 +705,21 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name)
 	size_t words = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
 	assert(rV && lV && "Should have generated values for left and right set");
 
+	llvm::Type* ty = Types::Get<Types::IntegerDecl>()->LlvmType();
+
 	llvm::Value* v = CreateTempAlloca(type);
 	for (size_t i = 0; i < words; i++)
 	{
-	    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(i) };
-	    llvm::Value*              lAddr = builder.CreateGEP(lV, ind, "leftSet");
-	    llvm::Value*              rAddr = builder.CreateGEP(rV, ind, "rightSet");
-	    llvm::Value*              vAddr = builder.CreateGEP(v, ind, "resSet");
-	    llvm::Value*              res = builder.CreateLoad(lAddr, "laddr");
-	    llvm::Value*              tmp = builder.CreateLoad(rAddr, "raddr");
+	    llvm::Value* ind = MakeIntegerConstant(i);
+	    llvm::Value* lAddr = builder.CreateGEP(ty, lV, ind, "leftSet");
+	    llvm::Value* rAddr = builder.CreateGEP(ty, rV, ind, "rightSet");
+	    llvm::Value* vAddr = builder.CreateGEP(ty, v, ind, "resSet");
+	    llvm::Value* res = builder.CreateLoad(ty, lAddr, "laddr");
+	    llvm::Value* tmp = builder.CreateLoad(ty, rAddr, "raddr");
 	    res = SetOperation(name, res, tmp);
 	    builder.CreateStore(res, vAddr);
 	}
-	return builder.CreateLoad(v, "set");
+	return builder.CreateLoad(type->LlvmType(), v, "set");
     }
     return 0;
 }
@@ -743,7 +751,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	llvm::Value*              v = CreateTempAlloca(type);
 	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
 	builder.CreateCall(f, args);
-	return builder.CreateLoad(v, "set");
+	return builder.CreateLoad(intTy, v, "set");
     }
 
     llvm::FunctionCallee f = GetFunction(Types::Get<Types::BoolDecl>()->LlvmType(), { pty, pty, intTy },
@@ -864,6 +872,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	llvm::Value*     setV = MakeAddressable(rhs);
 	Types::TypeDecl* type = rhs->Type();
 	int              start = type->GetRange()->Start();
+	llvm::Type*      intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 	l = builder.CreateZExt(l, Types::Get<Types::IntegerDecl>()->LlvmType(), "zext.l");
 	l = builder.CreateSub(l, MakeIntegerConstant(start));
 	llvm::Value* index;
@@ -876,10 +885,9 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    index = MakeIntegerConstant(0);
 	}
 	llvm::Value*              offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
-	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), index };
-	llvm::Value*              bitsetAddr = builder.CreateGEP(setV, ind, "valueindex");
+	llvm::Value*              bitsetAddr = builder.CreateGEP(intTy, setV, index, "valueindex");
 
-	llvm::Value* bitset = builder.CreateLoad(bitsetAddr, "bitsetaddr");
+	llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr, "bitsetaddr");
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
 	return builder.CreateTrunc(bit, Types::Get<Types::BoolDecl>()->LlvmType());
     }
@@ -1050,6 +1058,7 @@ static llvm::Value* PowerInt(llvm::Value* base, llvm::Value* exp, Types::TypeDec
     llvm::Constant* zero = MakeIntegerConstant(0);
     llvm::Value*    res = CreateTempAlloca(ty);
     builder.CreateStore(one, res);
+    llvm::Type* intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 
     llvm::Value* expneg = builder.CreateICmpSLT(exp, zero, "expneg");
     builder.CreateCondBr(expneg, expNegBB, loopBB);
@@ -1068,7 +1077,7 @@ static llvm::Value* PowerInt(llvm::Value* base, llvm::Value* exp, Types::TypeDec
     phiLoop->addIncoming(exp, originBlock);
     phiLoop->addIncoming(exp, oddEvenBB);
     llvm::Value* expgt0 = builder.CreateICmpSLE(phiLoop, zero, "expgt0");
-    llvm::Value* curVal = builder.CreateLoad(res);
+    llvm::Value* curVal = builder.CreateLoad(intTy, res);
     builder.CreateCondBr(expgt0, doneBB, moreBB);
 
     builder.SetInsertPoint(moreBB);
@@ -1208,63 +1217,66 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 {
     llvm::Constant* zero = MakeIntegerConstant(0);
     llvm::Constant* one = MakeIntegerConstant(1);
+    llvm::Type*     realTy = Types::Get<Types::RealDecl>()->LlvmType();
+    llvm::Type*     cmplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
+
     switch (oper.GetToken())
     {
     case Token::Plus:
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* resr = builder.CreateFAdd(lr, rr, "addr");
 	llvm::Value* resi = builder.CreateFAdd(li, ri, "addi");
-	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
 
-	return builder.CreateLoad(res);
+	return builder.CreateLoad(cmplxTy, res);
     }
     case Token::Minus:
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* resr = builder.CreateFSub(lr, rr, "subr");
 	llvm::Value* resi = builder.CreateFSub(li, ri, "subi");
-	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
 
-	return builder.CreateLoad(res);
+	return builder.CreateLoad(cmplxTy, res);
     }
     case Token::Multiply:
     {
 	// res = l * r = (l.r*r.r - l.i*r.i) + (l.r*r.i + l.i*r.r)i
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
 	llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
 	llvm::Value* resr = builder.CreateFSub(lrxrr, lixri, "subr");
 	llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
 	llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
 	llvm::Value* resi = builder.CreateFAdd(lrxri, lixrr, "addi");
-	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
 
-	return builder.CreateLoad(res);
+	return builder.CreateLoad(cmplxTy, res);
     }
     case Token::Divide:
     {
 	// res = l * r = (l.r*r.r + l.i*r.i) + (l.i*r.r - l.r*r.i)i / (r.r^2 + r.i^2)
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* rr2 = builder.CreateFMul(rr, rr, "rr2");
 	llvm::Value* ri2 = builder.CreateFMul(ri, ri, "ri2");
 	llvm::Value* rr2ri2 = builder.CreateFAdd(rr2, ri2, "rr2ri2");
@@ -1279,10 +1291,10 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 	llvm::Value* resi = builder.CreateFSub(lixrr, lrxri, "subi");
 	resi = builder.CreateFDiv(resi, rr2ri2, "resi");
 
-	builder.CreateStore(resr, builder.CreateGEP(res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(res, { zero, one }));
+	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
 
-	return builder.CreateLoad(res);
+	return builder.CreateLoad(cmplxTy, res);
     }
 
     case Token::Power:
@@ -1291,29 +1303,29 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 	llvm::Type* rty = Types::Get<Types::RealDecl>()->LlvmType();
 
 	llvm::FunctionCallee      f = GetFunction(cty, { cty, rty }, "__cpow");
-	std::vector<llvm::Value*> args = { builder.CreateLoad(l, "lh"), r };
+	std::vector<llvm::Value*> args = { builder.CreateLoad(cmplxTy, l, "lh"), r };
 
 	return builder.CreateCall(f, args, "powtmp");
     }
 
     case Token::Equal:
     {
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
 	llvm::Value* re = builder.CreateFCmpOEQ(lr, rr, "eqr");
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* ie = builder.CreateFCmpOEQ(li, ri, "eqi");
 	return builder.CreateAnd(re, ie, "res");
     }
 
     case Token::NotEqual:
     {
-	llvm::Value* lr = builder.CreateLoad(builder.CreateGEP(l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(builder.CreateGEP(r, { zero, zero }, "rr"));
+	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
 	llvm::Value* re = builder.CreateFCmpONE(lr, rr, "eqr");
-	llvm::Value* li = builder.CreateLoad(builder.CreateGEP(l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(builder.CreateGEP(r, { zero, one }, "ri"));
+	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
 	llvm::Value* ie = builder.CreateFCmpONE(li, ri, "eqi");
 	return builder.CreateOr(re, ie, "res");
     }
@@ -1574,18 +1586,23 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	if (llvm::isa<Types::DynArrayDecl>(vdef[index].Type()))
 	{
 	    auto aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type());
+	    llvm::Type* elemTy = aty->SubType()->LlvmType();
+	    llvm::Type* ptrTy = llvm::PointerType::getUnqual(elemTy);
+
+	    llvm::Type* dynTy = Types::DynArrayDecl::GetArrayType(aty->SubType());
+
 	    assert(aty && "This should be an array declaration");
 	    llvm::Constant* zero = MakeIntegerConstant(0);
 	    llvm::Constant* one = MakeIntegerConstant(1);
 	    llvm::Constant* two = MakeIntegerConstant(2);
 	    llvm::Value*    x = CreateTempAlloca(vdef[index].Type());
-	    llvm::Value*    arrPtr = builder.CreateGEP(x, { zero, zero });
-	    llvm::Value*    arrStart = builder.CreateGEP(v, { zero, zero });
+	    llvm::Value*    arrPtr = builder.CreateGEP(dynTy, x, { zero, zero });
+	    llvm::Value*    arrStart = builder.CreateGEP(ptrTy, v, zero);
 	    builder.CreateStore(arrStart, arrPtr);
 	    llvm::Value* low = MakeIntegerConstant(aty->Ranges()[0]->Start());
 	    llvm::Value* high = MakeIntegerConstant(aty->Ranges()[0]->End());
-	    llvm::Value* lPtr = builder.CreateGEP(x, { zero, one });
-	    llvm::Value* hPtr = builder.CreateGEP(x, { zero, two });
+	    llvm::Value* lPtr = builder.CreateGEP(dynTy, x, { zero, one });
+	    llvm::Value* hPtr = builder.CreateGEP(dynTy, x, { zero, two });
 	    builder.CreateStore(low, lPtr);
 	    builder.CreateStore(high, hPtr);
 	    v = x;
@@ -1602,22 +1619,21 @@ static llvm::AttributeList CreateAttrList(const std::vector<VarDef>& args)
     unsigned            index = 0;
     for (auto i : args)
     {
+	llvm::LLVMContext& ctx = theModule->getContext();
 	if (i.IsClosure())
 	{
 	    assert(index == 0 && "Expect argument index to be zero");
-	    llvm::AttrBuilder ab;
+	    llvm::AttrBuilder ab(ctx);
 	    ab.addAttribute(llvm::Attribute::Nest);
-	    attrList = attrList.addAttributes(theModule->getContext(),
-	                                      index + llvm::AttributeList::FirstArgIndex, ab);
+	    attrList = attrList.addParamAttributes(ctx, index, ab);
 	}
 	else
 	{
 	    if (!i.IsRef() && i.Type()->IsCompound())
 	    {
-		llvm::AttrBuilder ab;
+		llvm::AttrBuilder ab(ctx);
 		ab.addByValAttr(i.Type()->LlvmType());
-		attrList = attrList.addAttributes(theModule->getContext(),
-		                                  index + llvm::AttributeList::FirstArgIndex, ab);
+		attrList = attrList.addParamAttributes(ctx, index, ab);
 	    }
 	}
 	index++;
@@ -1801,13 +1817,12 @@ void PrototypeAST::CreateArgumentAlloca()
 
 	Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(closureType);
 	assert(rd && "Expected a record for closure type!");
-	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), 0 };
 	for (int i = 0; i < rd->FieldCount(); i++)
 	{
 	    const Types::FieldDecl* f = rd->GetElement(i);
-	    ind[1] = MakeIntegerConstant(i);
-	    llvm::Value* a = builder.CreateGEP(&*ai, ind, f->Name());
-	    a = builder.CreateLoad(a, f->Name());
+	    llvm::Type*             ty = f->LlvmType();
+	    llvm::Value*            a = builder.CreateGEP(ty, &*ai, MakeIntegerConstant(i), f->Name());
+	    a = builder.CreateLoad(ty, a, f->Name());
 	    if (!variables.Add(f->Name(), a))
 	    {
 		Error(this, "Duplicate variable name " + f->Name());
@@ -1825,11 +1840,12 @@ void PrototypeAST::CreateArgumentAlloca()
 	    if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(args[idx].Type()))
 	    {
 		Types::DynRangeDecl* dr = dty->Range();
-		llvm::Value* low = builder.CreateGEP(&*ai, { MakeIntegerConstant(0), MakeIntegerConstant(1) },
-		                                     dr->LowName());
+		llvm::Type*          dynTy = dty->LlvmType();
+		llvm::Value*         low = builder.CreateGEP(
+                    dynTy, &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(1) }, dr->LowName());
 
 		llvm::Value* high = builder.CreateGEP(
-		    &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(2) }, dr->HighName());
+		    dynTy, &*ai, { MakeIntegerConstant(0), MakeIntegerConstant(2) }, dr->HighName());
 
 		if (!variables.Add(dr->LowName(), low))
 		{
@@ -2102,7 +2118,8 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	std::string  shortname = ShortName(proto->Name());
 	llvm::Value* v = variables.Find(shortname);
 	assert(v && "Expect function result 'variable' to exist");
-	llvm::Value* retVal = builder.CreateLoad(v, shortname);
+	llvm::Type*  ty = proto->Type()->LlvmType();
+	llvm::Value* retVal = builder.CreateLoad(ty, v, shortname);
 	builder.CreateRet(retVal);
     }
 
@@ -2237,8 +2254,8 @@ llvm::Value* AssignExprAST::CodeGen()
 	StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
 	assert(rhs && "Expected string to convert correctly");
 	llvm::Value*              dest = lhsv->Address();
-	std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
-	llvm::Value*              dest1 = builder.CreateGEP(dest, ind, "str_0");
+	llvm::Type*               ty = Types::Get<Types::CharDecl>()->LlvmType();
+	llvm::Value*              dest1 = builder.CreateGEP(ty, dest, MakeIntegerConstant(0), "str_0");
 	llvm::Value*              v = rhs->CodeGen();
 	llvm::Align               dest_align{ std::max(AlignOfType(dest1->getType()), MIN_ALIGN) };
 	llvm::Align               src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
@@ -2321,12 +2338,12 @@ llvm::Value* IfExprAST::CodeGen()
 
     llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(theContext, "then", theFunction);
-    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "ifcont");
+    llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "ifcont", theFunction);
 
     llvm::BasicBlock* elseBB = mergeBB;
     if (other)
     {
-	elseBB = llvm::BasicBlock::Create(theContext, "else");
+	elseBB = llvm::BasicBlock::Create(theContext, "else", theFunction);
     }
 
     builder.CreateCondBr(condV, thenBB, elseBB);
@@ -2346,7 +2363,6 @@ llvm::Value* IfExprAST::CodeGen()
     if (other)
     {
 	assert(elseBB != mergeBB && "ElseBB should be different from MergeBB");
-	theFunction->getBasicBlockList().push_back(elseBB);
 	builder.SetInsertPoint(elseBB);
 
 	llvm::Value* elseV = other->CodeGen();
@@ -2356,7 +2372,6 @@ llvm::Value* IfExprAST::CodeGen()
 	}
 	builder.CreateBr(mergeBB);
     }
-    theFunction->getBasicBlockList().push_back(mergeBB);
     builder.SetInsertPoint(mergeBB);
 
     return reinterpret_cast<llvm::Value*>(1);
@@ -2442,15 +2457,15 @@ llvm::Value* ForExprAST::ForInGen()
 
     llvm::PHINode* idxPhi = builder.CreatePHI(index->getType(), 2, "idxPhi");
     idxPhi->addIncoming(index, beforeBB);
-    llvm::Value* bitsetAddr = builder.CreateGEP(setV, { zero, idxPhi }, "valueindex");
-    llvm::Value* bitset = builder.CreateLoad(bitsetAddr);
+    llvm::Type*  intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
+    llvm::Value* bitsetAddr = builder.CreateGEP(intTy, setV, idxPhi, "valueindex");
+    llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr);
 
     llvm::Value* cmp = builder.CreateICmpSLT(idxPhi, words);
     builder.CreateCondBr(cmp, preLoopBB, afterBB);
 
     builder.SetInsertPoint(preLoopBB);
-    llvm::Type*          ty = Types::Get<Types::IntegerDecl>()->LlvmType();
-    llvm::FunctionCallee cttz = GetFunction(ty, { ty, Types::Get<Types::BoolDecl>()->LlvmType() },
+    llvm::FunctionCallee cttz = GetFunction(intTy, { intTy, Types::Get<Types::BoolDecl>()->LlvmType() },
                                             "llvm.cttz.i32");
     llvm::Value*         isZero = builder.CreateICmpEQ(bitset, zero);
     builder.CreateCondBr(isZero, nextLoopBB, loopBB);
@@ -2510,7 +2525,8 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
 
-    llvm::Value* curVar = builder.CreateLoad(var, variable->Name());
+    llvm::Type*  ty = variable->Type()->LlvmType();
+    llvm::Value* curVar = builder.CreateLoad(ty, var, variable->Name());
 
     llvm::Value* endCond;
 
@@ -2543,7 +2559,7 @@ llvm::Value* ForExprAST::CodeGen()
     {
 	return 0;
     }
-    curVar = builder.CreateLoad(var, variable->Name());
+    curVar = builder.CreateLoad(ty, var, variable->Name());
 
     if (start->Type()->IsUnsigned())
     {
@@ -2804,6 +2820,7 @@ llvm::Value* WriteAST::CodeGen()
 	if (isText)
 	{
 	    Types::TypeDecl* type = arg.expr->Type();
+	    llvm::Type*      charTy = Types::Get<Types::CharDecl>()->LlvmType();
 	    assert(type && "Expected type here");
 	    if (!(fn = CreateWriteFunc(type, f->getType())))
 	    {
@@ -2820,8 +2837,7 @@ llvm::Value* WriteAST::CodeGen()
 		    v = MakeAddressable(arg.expr);
 		}
 
-		std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
-		v = builder.CreateGEP(v, ind, "str_addr");
+		v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
 	    }
 	    else if (Types::IsCharArray(type))
 	    {
@@ -2834,8 +2850,7 @@ llvm::Value* WriteAST::CodeGen()
 		    AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
 		    assert(a && "Expected addressable value");
 		    v = a->Address();
-		    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), MakeIntegerConstant(0) };
-		    v = builder.CreateGEP(v, ind, "str_addr");
+		    v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
 		}
 		argsV.push_back(v);
 		v = MakeIntegerConstant(type->Size());
@@ -3083,7 +3098,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    llvm::GlobalVariable*  gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init,
                                                                 var.Name());
 	    const llvm::DataLayout dl(theModule);
-	    size_t                 al = dl.getPrefTypeAlignment(ty);
+	    size_t                 al = dl.getPrefTypeAlign(ty).value();
 	    al = std::max(size_t(4), al);
 	    gv->setAlignment(llvm::Align(al));
 	    v = gv;
@@ -3115,8 +3130,8 @@ llvm::Value* VarDeclAST::CodeGen()
 	    if (cd && cd->VTableType(true))
 	    {
 		llvm::GlobalVariable*     gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
-		std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-		llvm::Value*              dest = builder.CreateGEP(v, ind, "vtable");
+		llvm::Type*               ty = Types::GetVoidPtrType();
+		llvm::Value*              dest = builder.CreateGEP(ty, v, MakeIntegerConstant(0), "vtable");
 		builder.CreateStore(gv, dest);
 	    }
 	    else if (ExprAST* iv = var.Init())
@@ -3473,6 +3488,8 @@ llvm::Value* SetExprAST::Address()
     builder.CreateMemSet(tmp, MakeConstant(0, Types::Get<Types::CharDecl>()),
                          (size * Types::SetDecl::SetBits / 8), llvm::Align(1));
 
+    llvm::Type* intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
+
     // TODO: For optimisation, we may want to pass through the vector and see if the values
     // are constants, and if so, be clever about it.
     // Also, we should combine stores to the same word!
@@ -3491,9 +3508,8 @@ llvm::Value* SetExprAST::Address()
 
 	    // Adjust for range:
 	    Types::Range* range = type->GetRange();
-
-	    low = builder.CreateSExt(low, Types::Get<Types::IntegerDecl>()->LlvmType(), "sext.low");
-	    high = builder.CreateSExt(high, Types::Get<Types::IntegerDecl>()->LlvmType(), "sext.high");
+	    low = builder.CreateSExt(low, intTy, "sext.low");
+	    high = builder.CreateSExt(high, intTy, "sext.high");
 
 	    llvm::Value* rangeStart = MakeIntegerConstant(range->Start());
 	    low = builder.CreateSub(low, rangeStart);
@@ -3505,7 +3521,7 @@ llvm::Value* SetExprAST::Address()
 	    builder.CreateBr(loopBB);
 	    builder.SetInsertPoint(loopBB);
 
-	    llvm::Value* loop = builder.CreateLoad(loopVar, "loopVar");
+	    llvm::Value* loop = builder.CreateLoad(intTy, loopVar, "loopVar");
 
 	    // Set bit "loop" in set.
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
@@ -3520,9 +3536,8 @@ llvm::Value* SetExprAST::Address()
 	    {
 		index = MakeIntegerConstant(0);
 	    }
-	    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), index };
-	    llvm::Value*              bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value*              bitset = builder.CreateLoad(bitsetAddr, "bitset");
+	    llvm::Value* bitsetAddr = builder.CreateGEP(intTy, setV, index, "bitsetaddr");
+	    llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr, "bitset");
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 
@@ -3542,7 +3557,7 @@ llvm::Value* SetExprAST::Address()
 	    llvm::Value*  rangeStart = MakeIntegerConstant(range->Start());
 	    llvm::Value*  x = v->CodeGen();
 	    assert(x && "Expect codegen to work!");
-	    x = builder.CreateZExt(x, Types::Get<Types::IntegerDecl>()->LlvmType(), "zext");
+	    x = builder.CreateZExt(x, intTy, "zext");
 	    x = builder.CreateSub(x, rangeStart);
 
 	    llvm::Value* mask = MakeIntegerConstant(Types::SetDecl::SetMask);
@@ -3557,9 +3572,8 @@ llvm::Value* SetExprAST::Address()
 	    {
 		index = MakeIntegerConstant(0);
 	    }
-	    std::vector<llvm::Value*> ind{ MakeIntegerConstant(0), index };
-	    llvm::Value*              bitsetAddr = builder.CreateGEP(setV, ind, "bitsetaddr");
-	    llvm::Value*              bitset = builder.CreateLoad(bitsetAddr, "bitset");
+	    llvm::Value* bitsetAddr = builder.CreateGEP(intTy, setV, index, "bitsetaddr");
+	    llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr, "bitset");
 	    bitset = builder.CreateOr(bitset, bit);
 	    builder.CreateStore(bitset, bitsetAddr);
 	}
@@ -3607,7 +3621,7 @@ llvm::Value* RangeReduceAST::CodeGen()
     if (auto dr = llvm::dyn_cast<Types::DynRangeDecl>(range))
     {
 	llvm::Value* low = variables.FindTopLevel(dr->LowName());
-	low = builder.CreateLoad(low, "low");
+	low = builder.CreateLoad(ty, low, "low");
 	index = builder.CreateSub(index, low);
     }
     else
@@ -3618,16 +3632,16 @@ llvm::Value* RangeReduceAST::CodeGen()
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, expr->Type()));
 	}
-	if (ty->getPrimitiveSizeInBits() <
-	    Types::Get<Types::IntegerDecl>()->LlvmType()->getPrimitiveSizeInBits())
+	llvm::Type* intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
+	if (ty->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
 	{
 	    if (expr->Type()->IsUnsigned())
 	    {
-		index = builder.CreateZExt(index, Types::Get<Types::IntegerDecl>()->LlvmType(), "zext");
+		index = builder.CreateZExt(index, intTy, "zext");
 	    }
 	    else
 	    {
-		index = builder.CreateSExt(index, Types::Get<Types::IntegerDecl>()->LlvmType(), "sext");
+		index = builder.CreateSExt(index, intTy, "sext");
 	    }
 	}
     }
@@ -3677,11 +3691,10 @@ llvm::Value* RangeCheckAST::CodeGen()
     int               end = rr->GetRange()->Size();
     llvm::Value*      cmp = builder.CreateICmpUGE(index, MakeIntegerConstant(end), "rangecheck");
     llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(theContext, "out_of_range");
+    llvm::BasicBlock* oorBlock = llvm::BasicBlock::Create(theContext, "out_of_range", theFunction);
     llvm::BasicBlock* contBlock = llvm::BasicBlock::Create(theContext, "continue", theFunction);
     builder.CreateCondBr(cmp, oorBlock, contBlock);
 
-    theFunction->getBasicBlockList().push_back(oorBlock);
     builder.SetInsertPoint(oorBlock);
     std::vector<llvm::Value*> args = { builder.CreateGlobalStringPtr(Loc().FileName()),
 	                               MakeIntegerConstant(Loc().LineNumber()), MakeIntegerConstant(start),
@@ -3723,9 +3736,10 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
     Types::Range* lrange = lty->GetRange();
 
     llvm::Value* w;
-    llvm::Value* ind[2] = { MakeIntegerConstant(0), 0 };
     llvm::Value* src = MakeAddressable(expr);
     size_t       p = 0;
+    llvm::Type*  intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
+
     for (auto i = lrange->Start(); i < lrange->End(); i += Types::SetDecl::SetBits)
     {
 	if (i >= (rrange->Start() & ~Types::SetDecl::SetMask) && i < rrange->End())
@@ -3734,17 +3748,16 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 	    {
 		size_t index = i - rrange->Start();
 		size_t sp = index >> Types::SetDecl::SetPow2Bits;
-		ind[1] = MakeIntegerConstant(sp);
-		llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
-		w = builder.CreateLoad(srci, "w");
+		llvm::Value* srci = builder.CreateGEP(intTy, src, MakeIntegerConstant(sp), "srci");
+		w = builder.CreateLoad(intTy, srci, "w");
 		if (size_t shift = (index & Types::SetDecl::SetMask))
 		{
 		    w = builder.CreateLShr(w, shift, "wsh");
 		    if (sp + 1 < rty->SetWords())
 		    {
-			ind[1] = MakeIntegerConstant(sp + 1);
-			llvm::Value* xp = builder.CreateGEP(src, ind, "srcip1");
-			llvm::Value* x = builder.CreateLoad(xp, "x");
+			llvm::Value* xp = builder.CreateGEP(intTy, src, MakeIntegerConstant(sp + 1),
+			                                    "srcip1");
+			llvm::Value* x = builder.CreateLoad(intTy, xp, "x");
 			x = builder.CreateShl(x, 32 - shift);
 			w = builder.CreateOr(w, x);
 		    }
@@ -3752,9 +3765,8 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 	    }
 	    else
 	    {
-		ind[1] = MakeIntegerConstant(0);
-		llvm::Value* srci = builder.CreateGEP(src, ind, "srci");
-		w = builder.CreateLoad(srci, "w");
+		llvm::Value* srci = builder.CreateGEP(intTy, src, MakeIntegerConstant(0), "srci");
+		w = builder.CreateLoad(intTy, srci, "w");
 		w = builder.CreateShl(w, rrange->Start() - i, "wsh");
 	    }
 	}
@@ -3762,8 +3774,7 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 	{
 	    w = MakeIntegerConstant(0);
 	}
-	ind[1] = MakeIntegerConstant(p);
-	llvm::Value* desti = builder.CreateGEP(dest, ind);
+	llvm::Value* desti = builder.CreateGEP(intTy, dest, MakeIntegerConstant(p));
 	builder.CreateStore(w, desti);
 	p++;
     }
@@ -3798,16 +3809,16 @@ llvm::Value* TypeCastAST::CodeGen()
     if (llvm::isa<Types::ClassDecl>(type) && llvm::isa<Types::ClassDecl>(current))
     {
 	llvm::Type* ty = llvm::PointerType::getUnqual(type->LlvmType());
-	return builder.CreateLoad(builder.CreateBitCast(Address(), ty));
+	return builder.CreateLoad(ty, builder.CreateBitCast(Address(), ty));
     }
     if (llvm::isa<Types::CharDecl>(type) && llvm::isa<Types::CharDecl>(current))
     {
-	return builder.CreateLoad(Address(), "char");
+	return builder.CreateLoad(type->LlvmType(), Address(), "char");
     }
     // Sets are compatible anyway...
     if (llvm::isa<Types::SetDecl>(current))
     {
-	return builder.CreateLoad(Address(), "set");
+	return builder.CreateLoad(current->LlvmType(), Address(), "set");
     }
     dump();
     assert(0 && "Expected to get something out of this function");
@@ -3841,8 +3852,7 @@ llvm::Value* TypeCastAST::Address()
     assert(v && "Expected to get a value here...");
     if (llvm::isa<Types::CharDecl>(type))
     {
-	llvm::Value* ind[2] = { MakeIntegerConstant(0), MakeIntegerConstant(1) };
-	return builder.CreateGEP(v, ind);
+	return builder.CreateGEP(type->LlvmType(), v, MakeIntegerConstant(1));
     }
 
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(type->LlvmType()));
@@ -3957,11 +3967,13 @@ void VirtFunctionAST::DoDump() const
 llvm::Value* VirtFunctionAST::Address()
 {
     llvm::Value*              v = MakeAddressable(self);
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-    v = builder.CreateGEP(v, ind, "vptr");
-    ind[1] = MakeIntegerConstant(index);
-    v = builder.CreateLoad(v, "vtable");
-    v = builder.CreateGEP(v, ind, "mfunc");
+    llvm::Type*               ty = self->Type()->LlvmType();
+    llvm::Type*               vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
+    llvm::Type*               ptrVTableTy = llvm::PointerType::getUnqual(vtableTy);
+    llvm::Value*              zero = MakeIntegerConstant(0);
+    v = builder.CreateGEP(ty, v, { zero, zero }, "vptr");
+    v = builder.CreateLoad(ptrVTableTy, v, "vtable");
+    v = builder.CreateGEP(vtableTy, v, { zero, MakeIntegerConstant(index) }, "mfunc");
     return v;
 }
 
@@ -4057,15 +4069,13 @@ llvm::Value* ClosureAST::CodeGen()
 {
     TRACE();
 
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), 0 };
     llvm::Function*           fn = builder.GetInsertBlock()->getParent();
     llvm::Value*              closure = CreateNamedAlloca(fn, type, "$$ClosureStruct");
     int                       index = 0;
     for (auto u : content)
     {
 	llvm::Value* v = u->Address();
-	ind[1] = MakeIntegerConstant(index);
-	llvm::Value* ptr = builder.CreateGEP(closure, ind, u->Name());
+	llvm::Value* ptr = builder.CreateGEP(v->getType(), closure, MakeIntegerConstant(index), u->Name());
 	builder.CreateStore(v, ptr);
 	index++;
     }
@@ -4085,10 +4095,10 @@ llvm::Value* TrampolineAST::CodeGen()
     llvm::Function* destFn = func->Proto()->LlvmFunction();
 
     // Temporary memory to store the trampoline itself.
-    llvm::Type*               trampTy = llvm::ArrayType::get(Types::Get<Types::CharDecl>()->LlvmType(), 32);
+    llvm::Type*               charTy = Types::Get<Types::CharDecl>()->LlvmType();
+    llvm::Type*               trampTy = llvm::ArrayType::get(charTy, 32);
     llvm::Value*              tramp = builder.CreateAlloca(trampTy, 0, "tramp");
-    std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), MakeIntegerConstant(0) };
-    llvm::Value*              tptr = builder.CreateGEP(tramp, ind, "tramp.first");
+    llvm::Value*              tptr = builder.CreateGEP(charTy, tramp, MakeIntegerConstant(0), "tramp.first");
     llvm::Value*              nest = closure->CodeGen();
     llvm::Type*               voidPtrTy = Types::GetVoidPtrType();
     nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
@@ -4238,11 +4248,12 @@ void InitRecordAST::DoDump() const
 llvm::Value* ArraySliceAST::Address()
 {
     auto         aty = llvm::dyn_cast<Types::ArrayDecl>(origType);
+    llvm::Type*  elemTy = aty->SubType()->LlvmType();
     llvm::Value* v = MakeAddressable(expr);
     llvm::Value* low = range->Low();
     int          start = aty->Ranges()[0]->Start();
     llvm::Value* index = builder.CreateSub(low, MakeIntegerConstant(start));
-    llvm::Value* ptr = builder.CreateGEP(v, { MakeIntegerConstant(0), index });
+    llvm::Value* ptr = builder.CreateGEP(elemTy, v, index);
 
     return builder.CreateBitCast(ptr, llvm::PointerType::getUnqual(type->LlvmType()));
 }

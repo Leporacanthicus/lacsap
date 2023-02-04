@@ -21,7 +21,7 @@ namespace Types
     size_t TypeDecl::AlignSize() const
     {
 	const llvm::DataLayout dl(theModule);
-	return dl.getPrefTypeAlignment(LlvmType());
+	return dl.getPrefTypeAlign(LlvmType()).value();
     }
 
     Range* TypeDecl::GetRange() const
@@ -336,13 +336,20 @@ namespace Types
 
     TypeDecl* ArrayDecl::Clone() const { return new Types::ArrayDecl(baseType, ranges); }
 
-    llvm::Type* DynArrayDecl::GetLlvmType() const
+    llvm::Type* DynArrayDecl::GetArrayType(TypeDecl* baseType)
     {
-	llvm::Type* ty = baseType->LlvmType();
-	llvm::Type* ptrTy = llvm::PointerType::getUnqual(ty);
-	llvm::Type* intTy = Get<IntegerDecl>()->LlvmType();
-	return llvm::StructType::create({ ptrTy, intTy, intTy }, "confArray");
+	static llvm::Type* dynTy = 0;
+	if (!dynTy)
+	{
+	    llvm::Type* ty = baseType->LlvmType();
+	    llvm::Type* ptrTy = llvm::PointerType::getUnqual(ty);
+	    llvm::Type* intTy = Get<IntegerDecl>()->LlvmType();
+	    dynTy = llvm::StructType::create({ ptrTy, intTy, intTy }, "confArray");
+	}
+	return dynTy;
     }
+
+    llvm::Type* DynArrayDecl::GetLlvmType() const { return GetArrayType(baseType); }
 
     void DynArrayDecl::DoDump() const
     {
@@ -533,7 +540,7 @@ namespace Types
 		}
 	    }
 	    size_t sz = dl.getTypeAllocSize(ty);
-	    size_t al = dl.getPrefTypeAlignment(ty);
+	    size_t al = dl.getPrefTypeAlign(ty).value();
 	    if (sz > maxSize)
 	    {
 		maxSize = sz;
@@ -1024,7 +1031,6 @@ namespace Types
 	if (!fv.size())
 	{
 	    llvm::StructType* ty = llvm::StructType::create(theContext, Name());
-	    ty->setBody(llvm::None);
 	    return ty;
 	}
 	return llvm::StructType::create(fv, Name());
@@ -1066,8 +1072,6 @@ namespace Types
 	// TODO: Implement this.
 	return 0;
     }
-
-    FuncPtrDecl::FuncPtrDecl(PrototypeAST* func) : CompoundDecl(TK_FuncPtr, 0), proto(func) {}
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
     {

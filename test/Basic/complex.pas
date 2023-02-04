@@ -31,8 +31,8 @@ begin
    WriteLn;
    print_bool("c=d", c=d);
    print_bool("c=c", c=c);
-   print_bool("c!=d", c=d);
-   print_bool("c!=c", c=c);
+   print_bool("c!=d", c<>d);
+   print_bool("c!=c", c<>c);
    WriteLn;
    print_real("Abs", Abs(c));
    print_Real("Arg", Arg(c));

@@ -35,6 +35,19 @@ namespace Builtin
 	return builder.CreateCall(f, a, "calltmp");
     }
 
+    static llvm::Value* CallRuntimeCplxFunc(llvm::IRBuilder<>& builder, const std::string& func,
+                                            ArgList& args)
+    {
+	llvm::Value*         res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
+	llvm::Value*         a = args[0]->CodeGen();
+	llvm::Type*          ty = args[0]->Type()->LlvmType();
+	llvm::Type*          pty = llvm::PointerType::getUnqual(ty);
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { pty, ty },
+	                                     "__c" + func);
+	builder.CreateCall(f, { res, a });
+	return builder.CreateLoad(ty, res);
+    }
+
     template<typename TY>
     class FunctionType : public FunctionBase
     {
@@ -590,16 +603,11 @@ namespace Builtin
 
     llvm::Value* FunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
-	std::string name;
 	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
 	{
-	    name = "__c" + funcname;
+	    return CallRuntimeCplxFunc(builder, funcname, args);
 	}
-	else
-	{
-	    name = funcname;
-	}
-	return CallRuntimeFPFunc(builder, name, args);
+	return CallRuntimeFPFunc(builder, funcname, args);
     }
 
     Types::TypeDecl* FunctionFloat::Type() const
@@ -619,16 +627,11 @@ namespace Builtin
 
     llvm::Value* FunctionFloatIntrinsic::CodeGen(llvm::IRBuilder<>& builder)
     {
-	std::string name;
 	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
 	{
-	    name = "__c" + funcname;
+	    return CallRuntimeCplxFunc(builder, funcname, args);
 	}
-	else
-	{
-	    name = "llvm." + funcname + ".f64";
-	}
-	return CallRuntimeFPFunc(builder, name, args);
+	return CallRuntimeFPFunc(builder, "llvm." + funcname + ".f64", args);
     }
 
     llvm::Value* FunctionRound::CodeGen(llvm::IRBuilder<>& builder)
@@ -1360,10 +1363,15 @@ namespace Builtin
 	llvm::Value* im = args[1]->CodeGen();
 	llvm::Type*  realTy = Types::Get<Types::RealDecl>()->LlvmType();
 
-	llvm::FunctionCallee f = GetFunction(Types::Get<Types::ComplexDecl>()->LlvmType(), { realTy, realTy },
-	                                     "__cpolar");
+	llvm::Type*  cplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
+	llvm::Type*  pCplxTy = llvm::PointerType::getUnqual(cplxTy);
+	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
 
-	return builder.CreateCall(f, { re, im });
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
+	                                     { pCplxTy, realTy, realTy }, "__cpolar");
+
+	builder.CreateCall(f, { res, re, im });
+	return builder.CreateLoad(cplxTy, res);
     }
 
     bool FunctionReIm::Semantics()

@@ -1299,13 +1299,16 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 
     case Token::Power:
     {
+	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
 	llvm::Type* cty = Types::Get<Types::ComplexDecl>()->LlvmType();
+	llvm::Type*  pcty = llvm::PointerType::getUnqual(cty);
 	llvm::Type* rty = Types::Get<Types::RealDecl>()->LlvmType();
 
-	llvm::FunctionCallee      f = GetFunction(cty, { cty, rty }, "__cpow");
-	std::vector<llvm::Value*> args = { builder.CreateLoad(cmplxTy, l, "lh"), r };
+	llvm::FunctionCallee      f = GetFunction(MakeVoidType(), { pcty, cty, rty }, "__cpow");
+	std::vector<llvm::Value*> args = { res, builder.CreateLoad(cmplxTy, l, "lh"), r };
 
-	return builder.CreateCall(f, args, "powtmp");
+	builder.CreateCall(f, args);
+	return builder.CreateLoad(cty, res);
     }
 
     case Token::Equal:

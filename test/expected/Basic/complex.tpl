@@ -7,8 +7,8 @@ c**3: -46.0000 +   9.0000i
 
 c=d:   FALSE
 c=c:    TRUE
-c!=d:   FALSE
-c!=c:    TRUE
+c!=d:    TRUE
+c!=c:   FALSE
 
 Abs:   3.6056
 Arg:   0.9828

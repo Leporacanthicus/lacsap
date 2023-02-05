@@ -275,6 +275,11 @@ llvm::Constant* MakeIntegerConstant(int val)
     return MakeConstant(val, Types::Get<Types::IntegerDecl>());
 }
 
+llvm::Constant* MakeRealConstant(double val)
+{
+    return llvm::ConstantFP::get(theContext, llvm::APFloat(val));
+}
+
 llvm::Constant* MakeBooleanConstant(int val)
 {
     return MakeConstant(val, Types::Get<Types::BoolDecl>());
@@ -357,7 +362,7 @@ llvm::Value* RealExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    return llvm::ConstantFP::get(theContext, llvm::APFloat(val));
+    return MakeRealConstant(val);
 }
 
 void IntegerExprAST::DoDump() const
@@ -1407,15 +1412,12 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (llvm::isa<Types::ComplexDecl>(lhs->Type()))
     {
-	auto         lhsa = llvm::dyn_cast<AddressableAST>(lhs);
-	llvm::Value* la = lhsa->Address();
+	llvm::Value* la = MakeAddressable(lhs);
 	llvm::Value* ra;
-	assert(lhsa && "Expect to complex values addressable");
+
 	if (llvm::isa<Types::ComplexDecl>(rhs->Type()))
 	{
-	    auto rhsa = llvm::dyn_cast<AddressableAST>(rhs);
-	    assert(rhsa && "Expect to complex values addressable");
-	    ra = rhsa->Address();
+	    ra = MakeAddressable(rhs);
 	}
 	else
 	{
@@ -3787,12 +3789,18 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 
 llvm::Value* TypeCastAST::CodeGen()
 {
+    Types::TypeDecl* current = expr->Type();
+    if (llvm::isa<Types::ComplexDecl>(type))
+    {
+	llvm::Value* res = Address();
+	llvm::Type*  cmplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
+	return builder.CreateLoad(cmplxTy, res);
+    }
     if (llvm::isa<Types::RealDecl>(type))
     {
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
 
-    Types::TypeDecl* current = expr->Type();
     if (type->IsIntegral() && current->IsIntegral())
     {
 	if (type->IsUnsigned())
@@ -3833,6 +3841,28 @@ llvm::Value* TypeCastAST::Address()
 {
     llvm::Value*     v = 0;
     Types::TypeDecl* current = expr->Type();
+
+    if (llvm::isa<Types::ComplexDecl>(type))
+    {
+	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
+	llvm::Value* re = expr->CodeGen();
+	llvm::Type*  realTy = Types::Get<Types::RealDecl>()->LlvmType();
+	llvm::Type*  cmplxTy = Types::Get<Types::ComplexDecl>()->LlvmType();
+
+	llvm::Constant* zero = MakeIntegerConstant(0);
+	llvm::Constant* one = MakeIntegerConstant(1);
+
+	if (current->IsIntegral())
+	{
+	    re = builder.CreateSIToFP(expr->CodeGen(), realTy, "tofp");
+	}
+	llvm::Value* im = MakeRealConstant(0.0);
+
+	builder.CreateStore(re, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+	builder.CreateStore(im, builder.CreateGEP(cmplxTy, res, { zero, one }));
+	return res;
+    }
+
     if (llvm::isa<Types::StringDecl>(current))
     {
 	v = MakeAddressable(expr);

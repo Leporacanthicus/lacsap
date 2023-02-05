@@ -19,6 +19,40 @@ begin
    WriteLn(s:5, ": ", x:7);
 end;
 
+procedure mults;
+
+var
+   res : complex;
+
+begin
+   res := c * 7;
+   print_complex("c * 7", res);
+   res := c * 7.5;
+   print_complex("c * 7.5", res);
+   res := 8.5 * c;
+   print_complex("8.5 * c", res);
+   res := 8 * c;
+   print_complex("8 * c", res);
+end;
+
+procedure exprs;
+
+var
+   res : complex;
+
+begin
+   res := (c + 7) / 2;
+   print_complex("(c + 7) / 2", res);
+   res := sqrt(c * c);
+   print_complex("sqrt(c*c)", res);
+   res := sqrt(sqr(c));
+   print_complex("sqrt(sqr(c))", res);
+   res := sqrt(sqrt(c * c) * sqrt(c * c));
+   print_complex("sqrt(sqrt(c*c)*sqrt(c*c))", res);
+   res := cos(c) + sin(c);
+   print_complex("cos(c)+sin(c)", res);
+end;   
+
 begin
    c := Cmplx(2, 3);
    d := Cmplx(1.5, 2.5);
@@ -47,4 +81,8 @@ begin
    print_complex("Tan", Tan(c)); 
    WriteLn;
    print_complex("Polar:", Polar(2, 3));
+   WriteLn;
+   mults;
+   WriteLn;
+   exprs;
 end.

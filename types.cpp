@@ -106,10 +106,11 @@ namespace Types
 	{
 	    return this;
 	}
-	if (ty->Type() == TK_LongInt || ty->Type() == TK_Real)
+	if (ty->Type() == TK_LongInt || ty->Type() == TK_Real || ty->Type() == TK_Complex)
 	{
 	    return ty;
 	}
+
 	return 0;
     }
 
@@ -131,6 +132,10 @@ namespace Types
 	    return this;
 	}
 	if (ty->Type() == TK_Real)
+	{
+	    return ty;
+	}
+	if (ty->Type() == TK_Complex)
 	{
 	    return ty;
 	}
@@ -159,6 +164,19 @@ namespace Types
     const TypeDecl* RealDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (SameAs(ty) || ty->Type() == TK_LongInt || ty->Type() == TK_Integer)
+	{
+	    return this;
+	}
+	if (ty->Type() == TK_Complex)
+	{
+	    return ty;
+	}
+	return 0;
+    }
+
+    const TypeDecl* ComplexDecl::CompatibleType(const TypeDecl* ty) const
+    {
+	if (SameAs(ty) || IsNumeric(ty))
 	{
 	    return this;
 	}

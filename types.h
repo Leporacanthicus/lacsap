@@ -749,6 +749,7 @@ namespace Types
 	          nullptr)
 	{
 	}
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Complex; }
 	bool        IsCompound() const override { return false; }
     };

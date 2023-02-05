@@ -1,6 +1,6 @@
 This is a list of "things to improve in general". 
 
-- Support integer types with variable size automagically (through type declaratio, e.g
+- Support integer types with variable size automagically (through type declaration, e.g
   type byte = 0..255; should make an 8-bit unsigned)
 
 - Use proper names for types.
@@ -23,7 +23,5 @@ This is a list of "things to improve in general".
    * Return an enum { OK, WrongArgCount, TypeMismatch }
 
 - Implement a function pass load/store -> memcpy for large load/stores.
-
-- Move to a newer LLVM and use new passmanager.
 
 - Val builtin function does not accept REAL type.

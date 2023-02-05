@@ -2589,6 +2589,14 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	}
 	return 0;
     }
+    if (llvm::isa<Types::PointerDecl>(ty))
+    {
+	if (AcceptToken(Token::Nil))
+	{
+	    return new InitValueAST(loc, ty, { new NilExprAST(loc) });
+	}
+	return Error(CurrentToken(), "Expected NIL initallzier for pointer");
+    }
     if (auto arrTy = llvm::dyn_cast<Types::ArrayDecl>(ty))
     {
 	if (AcceptToken(Token::LeftSquare))

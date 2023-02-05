@@ -452,6 +452,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Conformant Array", "confarray.pas", "" },
     { 0, "Basic", "Array Slice", "arrayslice.pas", "" },
     { 0, "Basic", "Dynamic Type", "dyntype.pas", "" },
+    { 0, "Basic", "Init Pointer", "initptr.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

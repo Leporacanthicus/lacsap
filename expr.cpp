@@ -553,13 +553,10 @@ llvm::Value* FieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    if (llvm::Value* v = MakeAddressable(expr))
-    {
-	llvm::Type* ty = expr->Type()->LlvmType();
-	return builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) },
-	                         "valueindex");
-    }
-    return Error(this, "Expression did not form an address");
+    llvm::Value* v = MakeAddressable(expr);
+    assert(v && "Expected MakeAddressable to have a value");
+    llvm::Type* ty = expr->Type()->LlvmType();
+    return builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) }, "valueindex");
 }
 
 void FieldExprAST::accept(ASTVisitor& v)
@@ -890,8 +887,8 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	{
 	    index = MakeIntegerConstant(0);
 	}
-	llvm::Value*              offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
-	llvm::Value*              bitsetAddr = builder.CreateGEP(intTy, setV, index, "valueindex");
+	llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
+	llvm::Value* bitsetAddr = builder.CreateGEP(intTy, setV, index, "valueindex");
 
 	llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr, "bitsetaddr");
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
@@ -1546,17 +1543,8 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	    AddressableAST* vi = llvm::dyn_cast<AddressableAST>(i);
 	    if (vdef[index].IsRef())
 	    {
-		if (vi)
-		{
-		    v = vi->Address();
-		}
-		else
-		{
-		    TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(i);
-		    assert(tc && "Uhm - this should be a typecast expression!");
-		    v = tc->Address();
-		    assert(v && "Expected an address to be generated");
-		}
+		assert(vi && "This should be an addressable value");
+		v = vi->Address();
 	    }
 	    else
 	    {
@@ -1673,10 +1661,7 @@ llvm::Value* CallExprAST::CodeGen()
     BasicDebugInfo(this);
 
     llvm::Value* calleF = callee->CodeGen();
-    if (!calleF)
-    {
-	return Error(this, "Unknown function '" + proto->Name() + "' referenced");
-    }
+    assert(calleF && "Expected function to generate some code");
 
     const std::vector<VarDef>& vdef = proto->Args();
     assert(vdef.size() == args.size() && "Incorrect number of arguments for function");
@@ -2219,18 +2204,13 @@ llvm::Value* AssignExprAST::AssignStr()
 
 llvm::Value* AssignExprAST::AssignSet()
 {
-    if (llvm::Value* v = rhs->CodeGen())
-    {
-	auto         lhsv = llvm::dyn_cast<AddressableAST>(lhs);
-	llvm::Value* dest = lhsv->Address();
-	if (*lhs->Type() == *rhs->Type())
-	{
-	    assert(dest && "Expected address from lhsv!");
-	    builder.CreateStore(v, dest);
-	    return v;
-	}
-    }
-    return 0;
+    llvm::Value* v = rhs->CodeGen();
+    auto         lhsv = llvm::dyn_cast<AddressableAST>(lhs);
+    llvm::Value* dest = lhsv->Address();
+    assert(*lhs->Type() == *rhs->Type() && "Types should match?");
+    assert(dest && "Expected address from lhsv!");
+    builder.CreateStore(v, dest);
+    return v;
 }
 
 llvm::Value* AssignExprAST::CodeGen()
@@ -2240,10 +2220,7 @@ llvm::Value* AssignExprAST::CodeGen()
     BasicDebugInfo(this);
 
     AddressableAST* lhsv = llvm::dyn_cast<AddressableAST>(lhs);
-    if (!lhsv)
-    {
-	return Error(this, "Left hand side of assignment must be a variable");
-    }
+    assert(lhsv && "Execpted addressable lhs");
 
     if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
     {
@@ -2269,10 +2246,6 @@ llvm::Value* AssignExprAST::CodeGen()
     }
 
     llvm::Value* dest = lhsv->Address();
-    if (!dest)
-    {
-	return Error(this, "Unknown variable name '" + lhsv->Name() + "'");
-    }
 
     // If rhs is a simple variable, and "large", then use memcpy on it!
     if (auto rhsv = llvm::dyn_cast<AddressableAST>(rhs))
@@ -2290,12 +2263,9 @@ llvm::Value* AssignExprAST::CodeGen()
 	}
     }
 
-    if (llvm::Value* v = rhs->CodeGen())
-    {
-	builder.CreateStore(v, dest);
-	return v;
-    }
-    return Error(this, "Could not produce expression for assignment");
+    llvm::Value* v = rhs->CodeGen();
+    builder.CreateStore(v, dest);
+    return v;
 }
 
 void IfExprAST::DoDump() const
@@ -2358,10 +2328,7 @@ llvm::Value* IfExprAST::CodeGen()
     if (then)
     {
 	llvm::Value* thenV = then->CodeGen();
-	if (!thenV)
-	{
-	    return 0;
-	}
+	assert(thenV && "Expect 'then' to generate code");
     }
 
     builder.CreateBr(mergeBB);
@@ -2372,15 +2339,12 @@ llvm::Value* IfExprAST::CodeGen()
 	builder.SetInsertPoint(elseBB);
 
 	llvm::Value* elseV = other->CodeGen();
-	if (!elseV)
-	{
-	    return 0;
-	}
+	assert(elseV && "Expect 'else' to generate code");
 	builder.CreateBr(mergeBB);
     }
     builder.SetInsertPoint(mergeBB);
 
-    return reinterpret_cast<llvm::Value*>(1);
+    return NoOpValue();
 }
 
 void ForExprAST::DoDump() const

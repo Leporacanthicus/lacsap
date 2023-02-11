@@ -128,11 +128,11 @@ static int Compile(const std::string& fileName)
 	std::cerr << "Could not open " << fileName << std::endl;
 	return 1;
     }
-    Parser p(source);
+    ParserInterface& p = GetParser(source);
 
     OptimizerInit();
 
-    ExprAST* ast = p.Parse(Parser::Program);
+    ExprAST* ast = p.Parse(ParserType::Program);
     if (int e = p.GetErrors())
     {
 	std::cerr << "Errors in parsing: " << e << ".\nExiting..." << std::endl;

@@ -19,5 +19,6 @@ public:
 
 void CallGraph(ExprAST* ast, CallGraphVisitor& visitor);
 void BuildClosures(ExprAST* ast);
+void AddClosureArg(FunctionAST* fn, std::vector<ExprAST*>& args);
 
 #endif

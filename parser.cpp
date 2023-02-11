@@ -271,8 +271,7 @@ void Parser::AssertToken(Token::TokenType type, const char* file, int line)
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type, Location("", 0, 0));
-	Error<bool>(CurrentToken(),
-	            "Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
+	Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
 	assert(0 && "Unexpected token");
     }
     NextToken(file, line);
@@ -930,7 +929,7 @@ void Parser::ParseConstDef()
 	const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
 	if (!cd)
 	{
-	    Error<bool>(CurrentToken(), "Invalid constant value");
+	    Error(CurrentToken(), "Invalid constant value");
 	    return;
 	}
 	if (!AddConst(nm, cd))
@@ -977,7 +976,7 @@ void Parser::ParseTypeDef()
 	    }
 	    if (!AddType(nm, ty, restricted))
 	    {
-		Error<bool>(token, "Name " + nm + " is already in use.");
+		Error(CurrentToken(), "Name " + nm + " is already in use.");
 		return;
 	    }
 	    if (llvm::isa<Types::PointerDecl>(ty) && llvm::dyn_cast<Types::PointerDecl>(ty)->IsIncomplete())
@@ -1003,7 +1002,7 @@ void Parser::ParseTypeDef()
 	{
 	    if (ty->IsIncomplete())
 	    {
-		Error<bool>(CurrentToken(), "Forward declared type '" + name + "' is incomplete.");
+		Error(CurrentToken(), "Forward declared type '" + name + "' is incomplete.");
 		return;
 	    }
 	    p->SetSubType(ty);
@@ -1011,7 +1010,7 @@ void Parser::ParseTypeDef()
 	else
 	{
 	    // TODO: Store token?
-	    Error<bool>(CurrentToken(), "Forward declared pointer type not declared: " + name);
+	    Error(CurrentToken(), "Forward declared pointer type not declared: " + name);
 	    return;
 	}
     }
@@ -1783,7 +1782,7 @@ void Parser::ParseLabels()
 	{
 	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
 	    {
-		Error<bool>(CurrentToken(), "Multiple label defintions?");
+		Error(CurrentToken(), "Multiple label defintions?");
 		return;
 	    }
 	}
@@ -3143,7 +3142,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    }
 	    if (!nameStack.Add(name, nmObj))
 	    {
-		return Error<FunctionAST*>(CurrentToken(), "Name '" + name + "' already exists...");
+		return Error(CurrentToken(), "Name '" + name + "' already exists...");
 	    }
 	}
 	if (AcceptToken(Token::Forward))

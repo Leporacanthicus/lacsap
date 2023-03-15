@@ -9,8 +9,12 @@
 #include "source.h"
 #include "trace.h"
 #include <iostream>
-#include <llvm/Analysis/Passes.h>
-#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Analysis/CGSCCPassManager.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/OptimizationLevel.h>
+
+#include <llvm/IR/PassManager.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Transforms/IPO.h>
@@ -19,14 +23,13 @@
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Transforms/Utils.h>
 
-llvm::legacy::PassManager* mpm;
-llvm::Module*              theModule;
-std::string                libpath;
+std::string libpath;
+llvm::Module* theModule;
 
 int      verbosity;
 bool     timetrace;
 bool     disableMemcpyOpt;
-OptLevel optimization;
+OptLevel optimization = O1;
 bool     rangeCheck;
 bool     debugInfo;
 bool     callGraph;
@@ -45,7 +48,7 @@ static llvm::cl::opt<int, true> Verbose("v", llvm::cl::desc("Enable verbose outp
 static llvm::cl::opt<OptLevel, true> OptimizationLevel(
     llvm::cl::desc("Choose optimization level:"),
     llvm::cl::values(clEnumVal(O0, "No optimizations"), clEnumVal(O1, "Enable trivial optimizations"),
-                     clEnumVal(O2, "Enable more optimizations")),
+                     clEnumVal(O2, "Enable more optimizations"), clEnumVal(O3, "Enable extensive optimisations")),
     llvm::cl::location(optimization));
 
 static llvm::cl::opt<EmitType, true> EmitSelection(
@@ -81,40 +84,48 @@ static llvm::cl::opt<Standard, true> StandardOpt("std", llvm::cl::desc("ISO stan
                                                                   clEnumVal(iso10206, "ISO-10206 mode")),
                                                  llvm::cl::location(standard));
 
-void OptimizerInit()
-{
-    mpm = new llvm::legacy::PassManager();
 
-    if (OptimizationLevel > O0)
+
+
+static void RunOptimisationPasses(llvm::Module& theModule)
+{
+    llvm::PassBuilder pb;
+
+    llvm::LoopAnalysisManager lam;
+    llvm::FunctionAnalysisManager fam;
+    llvm::CGSCCAnalysisManager cgam;
+    llvm::ModuleAnalysisManager mam;
+
+    pb.registerModuleAnalyses(mam);
+    pb.registerCGSCCAnalyses(cgam);
+    pb.registerFunctionAnalyses(fam);
+    pb.registerLoopAnalyses(lam);
+    pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+
+    llvm::OptimizationLevel opt;
+    switch (OptimizationLevel)
     {
-	// Promote allocas to registers.
-	mpm->add(llvm::createPromoteMemoryToRegisterPass());
-	// Provide basic AliasAnalysis support for GVN.
-	//	mpm->add(llvm::createBasicAliasAnalysisPass());
-	// Do simple "peephole" optimizations and bit-twiddling optzns.
-	mpm->add(llvm::createInstructionCombiningPass());
-	// Reassociate expressions.
-	mpm->add(llvm::createReassociatePass());
-	// Eliminate Common SubExpressions.
-	mpm->add(llvm::createGVNPass());
-	// Simplify the control flow graph (deleting unreachable blocks, etc).
-	mpm->add(llvm::createCFGSimplificationPass());
-	// Memory copying opts.
-	mpm->add(llvm::createMemCpyOptPass());
-	// Merge constants.
-	mpm->add(llvm::createConstantMergePass());
-	// dead code removal:
-	mpm->add(llvm::createDeadCodeEliminationPass());
-	if (OptimizationLevel > O1)
-	{
-	    // Inline functions.
-	    mpm->add(llvm::createFunctionInliningPass());
-	    // Thread jumps.
-	    mpm->add(llvm::createJumpThreadingPass());
-	    // Loop strength reduce.
-	    mpm->add(llvm::createLoopStrengthReducePass());
-	}
+    case O0:
+	opt = llvm::OptimizationLevel::O0;
+	break;
+    case O1:
+	opt = llvm::OptimizationLevel::O1;
+	break;
+    case O2:
+	opt = llvm::OptimizationLevel::O2;
+	break;
+    case O3:
+	opt = llvm::OptimizationLevel::O3;
+	break;
+    default:
+	std::cerr << "Unknown optimisaton level" << std::endl;
+	std::exit(1);
+	break;
     }
+
+    llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(opt);
+    mpm.run(theModule, mam);
 }
 
 static int Compile(const std::string& fileName)
@@ -129,8 +140,6 @@ static int Compile(const std::string& fileName)
 	return 1;
     }
     ParserInterface& p = GetParser(source);
-
-    OptimizerInit();
 
     ExprAST* ast = p.Parse(ParserType::Program);
     if (int e = p.GetErrors())
@@ -173,7 +182,8 @@ static int Compile(const std::string& fileName)
 	theModule->dump();
     }
 #endif
-    mpm->run(*theModule);
+
+    RunOptimisationPasses(*theModule);
     if (!CreateBinary(theModule, fileName, EmitSelection))
     {
 	return 1;

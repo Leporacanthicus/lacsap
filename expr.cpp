@@ -570,8 +570,8 @@ llvm::Value* VariantFieldExprAST::Address()
 {
     TRACE();
     EnsureSized();
-    llvm::Value*              v = MakeAddressable(expr);
-    llvm::Type*               ty = expr->Type()->LlvmType();
+    llvm::Value* v = MakeAddressable(expr);
+    llvm::Type*  ty = expr->Type()->LlvmType();
     v = builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) }, "valueindex");
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
@@ -606,9 +606,9 @@ llvm::Value* FilePointerExprAST::Address()
     TRACE();
     VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
     assert(vptr && "Expected variable expression!");
-    llvm::Value*              v = vptr->Address();
-    llvm::Type*               fileTy = pointer->Type()->LlvmType();
-    llvm::Type*               ptrTy = llvm::PointerType::getUnqual(Type()->LlvmType());
+    llvm::Value* v = vptr->Address();
+    llvm::Type*  fileTy = pointer->Type()->LlvmType();
+    llvm::Type*  ptrTy = llvm::PointerType::getUnqual(Type()->LlvmType());
     v = builder.CreateGEP(fileTy, v, { MakeIntegerConstant(0), MakeIntegerConstant(Types::FileDecl::Buffer) },
                           "bufptr");
     return builder.CreateLoad(ptrTy, v, "buffer");
@@ -1299,9 +1299,9 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
     case Token::Power:
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Type* cty = Types::Get<Types::ComplexDecl>()->LlvmType();
+	llvm::Type*  cty = Types::Get<Types::ComplexDecl>()->LlvmType();
 	llvm::Type*  pcty = llvm::PointerType::getUnqual(cty);
-	llvm::Type* rty = Types::Get<Types::RealDecl>()->LlvmType();
+	llvm::Type*  rty = Types::Get<Types::RealDecl>()->LlvmType();
 
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { pcty, cty, rty },
 	                                     "__cpow");
@@ -1431,7 +1431,7 @@ llvm::Value* BinaryExprAST::CodeGen()
     assert(l && r && "Should have a value for both sides");
 
     [[maybe_unused]] llvm::Type* lty = l->getType();
-    llvm::Type* rty = r->getType();
+    llvm::Type*                  rty = r->getType();
     assert(rty == lty && "Expect same types");
 
     // Can compare for (in)equality with pointers and integers
@@ -1576,7 +1576,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	assert(v && "Expect argument here");
 	if (llvm::isa<Types::DynArrayDecl>(vdef[index].Type()))
 	{
-	    auto aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type());
+	    auto        aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type());
 	    llvm::Type* elemTy = aty->SubType()->LlvmType();
 	    llvm::Type* ptrTy = llvm::PointerType::getUnqual(elemTy);
 
@@ -2233,12 +2233,12 @@ llvm::Value* AssignExprAST::CodeGen()
     {
 	StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
 	assert(rhs && "Expected string to convert correctly");
-	llvm::Value*              dest = lhsv->Address();
-	llvm::Type*               ty = Types::Get<Types::CharDecl>()->LlvmType();
-	llvm::Value*              dest1 = builder.CreateGEP(ty, dest, MakeIntegerConstant(0), "str_0");
-	llvm::Value*              v = rhs->CodeGen();
-	llvm::Align               dest_align{ std::max(AlignOfType(dest1->getType()), MIN_ALIGN) };
-	llvm::Align               src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
+	llvm::Value* dest = lhsv->Address();
+	llvm::Type*  ty = Types::Get<Types::CharDecl>()->LlvmType();
+	llvm::Value* dest1 = builder.CreateGEP(ty, dest, MakeIntegerConstant(0), "str_0");
+	llvm::Value* v = rhs->CodeGen();
+	llvm::Align  dest_align{ std::max(AlignOfType(dest1->getType()), MIN_ALIGN) };
+	llvm::Align  src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
 	return builder.CreateMemCpy(dest1, dest_align, v, src_align, str->Str().size());
     }
 
@@ -3099,9 +3099,9 @@ llvm::Value* VarDeclAST::CodeGen()
 	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
 	    if (cd && cd->VTableType(true))
 	    {
-		llvm::GlobalVariable*     gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
-		llvm::Type*               ty = Types::GetVoidPtrType();
-		llvm::Value*              dest = builder.CreateGEP(ty, v, MakeIntegerConstant(0), "vtable");
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
+		llvm::Type*           ty = Types::GetVoidPtrType();
+		llvm::Value*          dest = builder.CreateGEP(ty, v, MakeIntegerConstant(0), "vtable");
 		builder.CreateStore(gv, dest);
 	    }
 	    else if (ExprAST* iv = var.Init())
@@ -3716,8 +3716,8 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 	{
 	    if (i > rrange->Start())
 	    {
-		size_t index = i - rrange->Start();
-		size_t sp = index >> Types::SetDecl::SetPow2Bits;
+		size_t       index = i - rrange->Start();
+		size_t       sp = index >> Types::SetDecl::SetPow2Bits;
 		llvm::Value* srci = builder.CreateGEP(intTy, src, MakeIntegerConstant(sp), "srci");
 		w = builder.CreateLoad(intTy, srci, "w");
 		if (size_t shift = (index & Types::SetDecl::SetMask))
@@ -3964,11 +3964,11 @@ void VirtFunctionAST::DoDump() const
 
 llvm::Value* VirtFunctionAST::Address()
 {
-    llvm::Value*              v = MakeAddressable(self);
-    llvm::Type*               ty = self->Type()->LlvmType();
-    llvm::Type*               vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
-    llvm::Type*               ptrVTableTy = llvm::PointerType::getUnqual(vtableTy);
-    llvm::Value*              zero = MakeIntegerConstant(0);
+    llvm::Value* v = MakeAddressable(self);
+    llvm::Type*  ty = self->Type()->LlvmType();
+    llvm::Type*  vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
+    llvm::Type*  ptrVTableTy = llvm::PointerType::getUnqual(vtableTy);
+    llvm::Value* zero = MakeIntegerConstant(0);
     v = builder.CreateGEP(ty, v, { zero, zero }, "vptr");
     v = builder.CreateLoad(ptrVTableTy, v, "vtable");
     v = builder.CreateGEP(vtableTy, v, { zero, MakeIntegerConstant(index) }, "mfunc");
@@ -4067,9 +4067,9 @@ llvm::Value* ClosureAST::CodeGen()
 {
     TRACE();
 
-    llvm::Function*           fn = builder.GetInsertBlock()->getParent();
-    llvm::Value*              closure = CreateNamedAlloca(fn, type, "$$ClosureStruct");
-    int                       index = 0;
+    llvm::Function* fn = builder.GetInsertBlock()->getParent();
+    llvm::Value*    closure = CreateNamedAlloca(fn, type, "$$ClosureStruct");
+    int             index = 0;
     for (auto u : content)
     {
 	llvm::Value* v = u->Address();
@@ -4093,12 +4093,12 @@ llvm::Value* TrampolineAST::CodeGen()
     llvm::Function* destFn = func->Proto()->LlvmFunction();
 
     // Temporary memory to store the trampoline itself.
-    llvm::Type*               charTy = Types::Get<Types::CharDecl>()->LlvmType();
-    llvm::Type*               trampTy = llvm::ArrayType::get(charTy, 32);
-    llvm::Value*              tramp = builder.CreateAlloca(trampTy, 0, "tramp");
-    llvm::Value*              tptr = builder.CreateGEP(charTy, tramp, MakeIntegerConstant(0), "tramp.first");
-    llvm::Value*              nest = closure->CodeGen();
-    llvm::Type*               voidPtrTy = Types::GetVoidPtrType();
+    llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
+    llvm::Type*  trampTy = llvm::ArrayType::get(charTy, 32);
+    llvm::Value* tramp = builder.CreateAlloca(trampTy, 0, "tramp");
+    llvm::Value* tptr = builder.CreateGEP(charTy, tramp, MakeIntegerConstant(0), "tramp.first");
+    llvm::Value* nest = closure->CodeGen();
+    llvm::Type*  voidPtrTy = Types::GetVoidPtrType();
     nest = builder.CreateBitCast(nest, voidPtrTy, "closure");
     llvm::Value*         castFn = builder.CreateBitCast(destFn, voidPtrTy, "destFn");
     llvm::FunctionCallee llvmTramp = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
@@ -4275,8 +4275,8 @@ static void BuildUnitInitList()
 	index++;
     }
     unitList[unitInit.size()] = llvm::Constant::getNullValue(vp);
-    llvm::ArrayType* arr = llvm::ArrayType::get(vp, unitInit.size() + 1);
-    llvm::Constant*  init = llvm::ConstantArray::get(arr, unitList);
+    llvm::ArrayType*              arr = llvm::ArrayType::get(vp, unitInit.size() + 1);
+    llvm::Constant*               init = llvm::ConstantArray::get(arr, unitList);
     [[maybe_unused]] llvm::Value* unitInitList = new llvm::GlobalVariable(
         *theModule, arr, true, llvm::GlobalValue::ExternalLinkage, init, "UnitIniList");
     assert(unitInitList && "Unit Initializer List not built correctly?");

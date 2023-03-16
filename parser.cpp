@@ -2066,7 +2066,7 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
     (void)cd->VTableType(true);
     if (mf->IsVirtual() || mf->IsOverride())
     {
-	int index = mf->VirtIndex();
+	int                 index = mf->VirtIndex();
 	Types::FuncPtrDecl* funcPtr = new Types::FuncPtrDecl(proto);
 	expr = new VirtFunctionAST(CurrentToken().Loc(), self, index, funcPtr);
     }

@@ -11,8 +11,8 @@
 #include <iostream>
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/Analysis/LoopAnalysisManager.h>
-#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/OptimizationLevel.h>
+#include <llvm/Passes/PassBuilder.h>
 
 #include <llvm/IR/PassManager.h>
 #include <llvm/Support/CommandLine.h>
@@ -23,7 +23,7 @@
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Transforms/Utils.h>
 
-std::string libpath;
+std::string   libpath;
 llvm::Module* theModule;
 
 int      verbosity;
@@ -48,7 +48,8 @@ static llvm::cl::opt<int, true> Verbose("v", llvm::cl::desc("Enable verbose outp
 static llvm::cl::opt<OptLevel, true> OptimizationLevel(
     llvm::cl::desc("Choose optimization level:"),
     llvm::cl::values(clEnumVal(O0, "No optimizations"), clEnumVal(O1, "Enable trivial optimizations"),
-                     clEnumVal(O2, "Enable more optimizations"), clEnumVal(O3, "Enable extensive optimisations")),
+                     clEnumVal(O2, "Enable more optimizations"),
+                     clEnumVal(O3, "Enable extensive optimisations")),
     llvm::cl::location(optimization));
 
 static llvm::cl::opt<EmitType, true> EmitSelection(
@@ -84,24 +85,20 @@ static llvm::cl::opt<Standard, true> StandardOpt("std", llvm::cl::desc("ISO stan
                                                                   clEnumVal(iso10206, "ISO-10206 mode")),
                                                  llvm::cl::location(standard));
 
-
-
-
 static void RunOptimisationPasses(llvm::Module& theModule)
 {
     llvm::PassBuilder pb;
 
-    llvm::LoopAnalysisManager lam;
+    llvm::LoopAnalysisManager     lam;
     llvm::FunctionAnalysisManager fam;
-    llvm::CGSCCAnalysisManager cgam;
-    llvm::ModuleAnalysisManager mam;
+    llvm::CGSCCAnalysisManager    cgam;
+    llvm::ModuleAnalysisManager   mam;
 
     pb.registerModuleAnalyses(mam);
     pb.registerCGSCCAnalyses(cgam);
     pb.registerFunctionAnalyses(fam);
     pb.registerLoopAnalyses(lam);
     pb.crossRegisterProxies(lam, fam, cgam, mam);
-
 
     llvm::OptimizationLevel opt;
     switch (OptimizationLevel)

@@ -979,9 +979,10 @@ void Parser::ParseTypeDef()
 		Error(CurrentToken(), "Name " + nm + " is already in use.");
 		return;
 	    }
-	    if (llvm::isa<Types::PointerDecl>(ty) && llvm::dyn_cast<Types::PointerDecl>(ty)->IsIncomplete())
+	    auto pty = llvm::dyn_cast<Types::PointerDecl>(ty);
+	    if (pty && pty->IsIncomplete())
 	    {
-		incomplete.push_back(llvm::dyn_cast<Types::PointerDecl>(ty));
+		incomplete.push_back(pty);
 	    }
 	    if (!Expect(Token::Semicolon, true))
 	    {

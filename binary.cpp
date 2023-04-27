@@ -80,7 +80,7 @@ static void CreateObject(llvm::Module* module, const std::string& objname)
     llvm::TargetOptions                  options;
     std::string                          FeaturesStr = GetFeatureString();
     std::unique_ptr<llvm::TargetMachine> tm(
-        target->createTargetMachine(triple.getTriple(), mcpu, FeaturesStr, options, llvm::Reloc::Static));
+        target->createTargetMachine(triple.getTriple(), mcpu, FeaturesStr, options, llvm::Reloc::PIC_));
 
     if (!tm)
     {

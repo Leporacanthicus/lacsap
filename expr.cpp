@@ -2489,11 +2489,16 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::Value* stepVal = MakeConstant((stepDown) ? -1 : 1, start->Type());
     builder.CreateStore(startV, var);
 
+    llvm::BasicBlock* beforeBB = llvm::BasicBlock::Create(theContext, "before", theFunction);
     llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
+    llvm::BasicBlock* continueBB = llvm::BasicBlock::Create(theContext, "continue", theFunction);
     llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
 
     llvm::Type*  ty = variable->Type()->LlvmType();
     llvm::Value* curVar = builder.CreateLoad(ty, var, variable->Name());
+
+    builder.CreateBr(beforeBB);
+    builder.SetInsertPoint(beforeBB);
 
     llvm::Value* endCond;
 
@@ -2522,36 +2527,42 @@ llvm::Value* ForExprAST::CodeGen()
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
     builder.SetInsertPoint(loopBB);
+
+    llvm::PHINode* phi = builder.CreatePHI(ty, 2, "phi");
+    phi->addIncoming(curVar, beforeBB);
+
     if (!body->CodeGen())
     {
 	return 0;
     }
-    curVar = builder.CreateLoad(ty, var, variable->Name());
 
     if (start->Type()->IsUnsigned())
     {
 	if (stepDown)
 	{
-	    endCond = builder.CreateICmpUGT(curVar, endV, "loopcond");
+	    endCond = builder.CreateICmpUGT(phi, endV, "loopcond");
 	}
 	else
 	{
-	    endCond = builder.CreateICmpULT(curVar, endV, "loopcond");
+	    endCond = builder.CreateICmpULT(phi, endV, "loopcond");
 	}
     }
     else
     {
 	if (stepDown)
 	{
-	    endCond = builder.CreateICmpSGT(curVar, endV, "loopcond");
+	    endCond = builder.CreateICmpSGT(phi, endV, "loopcond");
 	}
 	else
 	{
-	    endCond = builder.CreateICmpSLT(curVar, endV, "loopcond");
+	    endCond = builder.CreateICmpSLT(phi, endV, "loopcond");
 	}
     }
-    curVar = builder.CreateAdd(curVar, stepVal, "nextvar");
+    builder.CreateBr(continueBB);
+    builder.SetInsertPoint(continueBB);
+    curVar = builder.CreateAdd(phi, stepVal, "nextvar");
     builder.CreateStore(curVar, var);
+    phi->addIncoming(curVar, continueBB);
     builder.CreateCondBr(endCond, loopBB, afterBB);
 
     BasicDebugInfo(this);

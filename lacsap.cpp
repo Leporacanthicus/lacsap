@@ -87,19 +87,6 @@ static llvm::cl::opt<Standard, true> StandardOpt("std", llvm::cl::desc("ISO stan
 
 static void RunOptimisationPasses(llvm::Module& theModule)
 {
-    llvm::PassBuilder pb;
-
-    llvm::LoopAnalysisManager     lam;
-    llvm::FunctionAnalysisManager fam;
-    llvm::CGSCCAnalysisManager    cgam;
-    llvm::ModuleAnalysisManager   mam;
-
-    pb.registerModuleAnalyses(mam);
-    pb.registerCGSCCAnalyses(cgam);
-    pb.registerFunctionAnalyses(fam);
-    pb.registerLoopAnalyses(lam);
-    pb.crossRegisterProxies(lam, fam, cgam, mam);
-
     llvm::OptimizationLevel opt;
     switch (OptimizationLevel)
     {
@@ -121,8 +108,24 @@ static void RunOptimisationPasses(llvm::Module& theModule)
 	break;
     }
 
-    llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(opt);
-    mpm.run(theModule, mam);
+    if (opt != llvm::OptimizationLevel::O0)
+    {
+	llvm::PassBuilder pb;
+
+	llvm::LoopAnalysisManager     lam;
+	llvm::FunctionAnalysisManager fam;
+	llvm::CGSCCAnalysisManager    cgam;
+	llvm::ModuleAnalysisManager   mam;
+
+	pb.registerModuleAnalyses(mam);
+	pb.registerCGSCCAnalyses(cgam);
+	pb.registerFunctionAnalyses(fam);
+	pb.registerLoopAnalyses(lam);
+	pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+	llvm::ModulePassManager mpm = pb.buildPerModuleDefaultPipeline(opt);
+	mpm.run(theModule, mam);
+    }
 }
 
 static int Compile(const std::string& fileName)

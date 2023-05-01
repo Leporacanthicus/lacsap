@@ -1212,6 +1212,27 @@ static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& o
     return 0;
 }
 
+template<typename FN>
+static llvm::Value* GenerateComplexBinExpr(llvm::Value* l, llvm::Value* r, FN func)
+{
+    llvm::Constant*  zero = MakeIntegerConstant(0);
+    llvm::Constant*  one = MakeIntegerConstant(1);
+    llvm::Type*      realTy = Types::Get<Types::RealDecl>()->LlvmType();
+    Types::TypeDecl* cmplxType = Types::Get<Types::ComplexDecl>();
+    llvm::Type*      cmplxTy = cmplxType->LlvmType();
+
+    llvm::Value* res = CreateTempAlloca(cmplxType);
+    llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
+    llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
+    llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
+    llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
+    auto [resr, resi] = func(lr, li, rr, ri);
+    builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
+    builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
+
+    return builder.CreateLoad(cmplxTy, res);
+}
+
 llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 {
     llvm::Constant* zero = MakeIntegerConstant(0);
@@ -1223,92 +1244,69 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
     {
     case Token::Plus:
     {
-	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
-	llvm::Value* resr = builder.CreateFAdd(lr, rr, "addr");
-	llvm::Value* resi = builder.CreateFAdd(li, ri, "addi");
-	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
-
-	return builder.CreateLoad(cmplxTy, res);
+	return GenerateComplexBinExpr(
+	    l, r,
+	    [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri) {
+	        return std::tuple{ builder.CreateFAdd(lr, rr, "addr"), builder.CreateFAdd(li, ri, "addi") };
+	    });
     }
     case Token::Minus:
     {
-	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
-	llvm::Value* resr = builder.CreateFSub(lr, rr, "subr");
-	llvm::Value* resi = builder.CreateFSub(li, ri, "subi");
-	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
-
-	return builder.CreateLoad(cmplxTy, res);
+	return GenerateComplexBinExpr(
+	    l, r,
+	    [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri) {
+	        return std::tuple{ builder.CreateFSub(lr, rr, "subr"), builder.CreateFSub(li, ri, "subi") };
+	    });
     }
     case Token::Multiply:
     {
 	// res = l * r = (l.r*r.r - l.i*r.i) + (l.r*r.i + l.i*r.r)i
-	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
-	llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
-	llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
-	llvm::Value* resr = builder.CreateFSub(lrxrr, lixri, "subr");
-	llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
-	llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
-	llvm::Value* resi = builder.CreateFAdd(lrxri, lixrr, "addi");
-	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
-
-	return builder.CreateLoad(cmplxTy, res);
+	return GenerateComplexBinExpr(l, r,
+	                              [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri)
+	                              {
+	                                  llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
+	                                  llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
+	                                  llvm::Value* resr = builder.CreateFSub(lrxrr, lixri, "subr");
+	                                  llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
+	                                  llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
+	                                  llvm::Value* resi = builder.CreateFAdd(lrxri, lixrr, "addi");
+	                                  return std::tuple{ resr, resi };
+	                              });
     }
     case Token::Divide:
     {
 	// res = l * r = (l.r*r.r + l.i*r.i) + (l.i*r.r - l.r*r.i)i / (r.r^2 + r.i^2)
-	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
-	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
-	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
-	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
-	llvm::Value* rr2 = builder.CreateFMul(rr, rr, "rr2");
-	llvm::Value* ri2 = builder.CreateFMul(ri, ri, "ri2");
-	llvm::Value* rr2ri2 = builder.CreateFAdd(rr2, ri2, "rr2ri2");
+	return GenerateComplexBinExpr(l, r,
+	                              [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri)
+	                              {
+	                                  llvm::Value* rr2 = builder.CreateFMul(rr, rr, "rr2");
+	                                  llvm::Value* ri2 = builder.CreateFMul(ri, ri, "ri2");
+	                                  llvm::Value* rr2ri2 = builder.CreateFAdd(rr2, ri2, "rr2ri2");
 
-	llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
-	llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
-	llvm::Value* resr = builder.CreateFAdd(lrxrr, lixri, "subr");
-	resr = builder.CreateFDiv(resr, rr2ri2, "resi");
+	                                  llvm::Value* lrxrr = builder.CreateFMul(lr, rr, "lrxrr");
+	                                  llvm::Value* lixri = builder.CreateFMul(li, ri, "lixri");
+	                                  llvm::Value* resr = builder.CreateFAdd(lrxrr, lixri, "addr");
+	                                  resr = builder.CreateFDiv(resr, rr2ri2, "resi");
 
-	llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
-	llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
-	llvm::Value* resi = builder.CreateFSub(lixrr, lrxri, "subi");
-	resi = builder.CreateFDiv(resi, rr2ri2, "resi");
-
-	builder.CreateStore(resr, builder.CreateGEP(cmplxTy, res, { zero, zero }));
-	builder.CreateStore(resi, builder.CreateGEP(cmplxTy, res, { zero, one }));
-
-	return builder.CreateLoad(cmplxTy, res);
+	                                  llvm::Value* lixrr = builder.CreateFMul(li, rr, "lixrr");
+	                                  llvm::Value* lrxri = builder.CreateFMul(lr, ri, "lrxri");
+	                                  llvm::Value* resi = builder.CreateFSub(lixrr, lrxri, "subi");
+	                                  resi = builder.CreateFDiv(resi, rr2ri2, "resi");
+	                                  return std::tuple{ resr, resi };
+	                              });
     }
 
     case Token::Power:
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());
-	llvm::Type*  cty = Types::Get<Types::ComplexDecl>()->LlvmType();
-	llvm::Type*  pcty = llvm::PointerType::getUnqual(cty);
-	llvm::Type*  rty = Types::Get<Types::RealDecl>()->LlvmType();
+	llvm::Type*  pcty = llvm::PointerType::getUnqual(cmplxTy);
 
-	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { pcty, cty, rty },
-	                                     "__cpow");
+	llvm::FunctionCallee      f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
+	                                          { pcty, cmplxTy, realTy }, "__cpow");
 	std::vector<llvm::Value*> args = { res, builder.CreateLoad(cmplxTy, l, "lh"), r };
 
 	builder.CreateCall(f, args);
-	return builder.CreateLoad(cty, res);
+	return builder.CreateLoad(cmplxTy, res);
     }
 
     case Token::Equal:
@@ -1326,14 +1324,15 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
     {
 	llvm::Value* lr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, zero }, "lr"));
 	llvm::Value* rr = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, zero }, "rr"));
-	llvm::Value* re = builder.CreateFCmpONE(lr, rr, "eqr");
+	llvm::Value* re = builder.CreateFCmpONE(lr, rr, "ner");
 	llvm::Value* li = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, l, { zero, one }, "li"));
 	llvm::Value* ri = builder.CreateLoad(realTy, builder.CreateGEP(cmplxTy, r, { zero, one }, "ri"));
-	llvm::Value* ie = builder.CreateFCmpONE(li, ri, "eqi");
+	llvm::Value* ie = builder.CreateFCmpONE(li, ri, "nei");
 	return builder.CreateOr(re, ie, "res");
     }
 
     default:
+	assert(0 && "Unexpected complex expression");
 	break;
     }
     return 0;

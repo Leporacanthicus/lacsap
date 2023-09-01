@@ -2,6 +2,7 @@
 #define SOURCE_H
 
 #include "location.h"
+#include <cstdint>
 #include <fstream>
 #include <string>
 

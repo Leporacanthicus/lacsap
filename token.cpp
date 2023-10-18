@@ -5,8 +5,6 @@
 #include <iostream>
 #include <sstream>
 
-Token::Token() : type(Token::Unknown), where("", 0, 0) {}
-
 Token::Token(TokenType t, const Location& w) : type(t), where(w)
 {
     if (where)

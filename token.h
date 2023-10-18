@@ -136,9 +136,7 @@ public:
 	Unknown = -1000,
     };
 
-    Token();
-
-    Token(TokenType t, const Location& w);
+    Token(TokenType t = Unknown, const Location& w = {"", 0, 0});
     Token(TokenType t, const Location& w, const std::string& str);
     Token(TokenType t, const Location& w, uint64_t v);
     Token(TokenType t, const Location& w, double v);

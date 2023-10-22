@@ -2323,7 +2323,7 @@ llvm::Value* IfExprAST::CodeGen()
 
     if (then)
     {
-	llvm::Value* thenV = then->CodeGen();
+	[[maybe_unused]]llvm::Value* thenV = then->CodeGen();
 	assert(thenV && "Expect 'then' to generate code");
     }
 
@@ -2334,7 +2334,7 @@ llvm::Value* IfExprAST::CodeGen()
 	assert(elseBB != mergeBB && "ElseBB should be different from MergeBB");
 	builder.SetInsertPoint(elseBB);
 
-	llvm::Value* elseV = other->CodeGen();
+	[[maybe_unused]]llvm::Value* elseV = other->CodeGen();
 	assert(elseV && "Expect 'else' to generate code");
 	builder.CreateBr(mergeBB);
     }

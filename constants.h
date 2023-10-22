@@ -31,7 +31,7 @@ namespace Constants
 	virtual Token    Translate() const = 0;
 	ConstKind        getKind() const { return kind; }
 	virtual void     dump() const = 0;
-	Location         Loc() const { return loc; }
+	const Location&  Loc() const { return loc; }
 	Types::TypeDecl* Type() const { return type; }
 
     protected:

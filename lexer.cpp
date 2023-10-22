@@ -45,7 +45,7 @@ int Lexer::PeekChar()
     return nextChar = GetChar();
 }
 
-static Token ConvertFloat(std::string& num, Location w)
+static Token ConvertFloat(const std::string& num, const Location& w)
 {
     double v = 0;
     char*  endPtr = 0;
@@ -70,7 +70,7 @@ static T SafeConvert(const std::string& num, bool& err, FN fn, int base)
     return v;
 }
 
-static Token ConvertInt(std::string& num, Location w, int base)
+static Token ConvertInt(const std::string& num, const Location& w, int base)
 {
     bool     err;
     uint64_t v = SafeConvert<uint64_t>(num, err, strtoull, base);
@@ -101,7 +101,7 @@ bool ValidForBase(char c, int base)
 Token Lexer::NumberToken()
 {
     int         ch = CurChar();
-    Location    w = Where();
+    const Location& w = Where();
     std::string num;
     int         base = 10;
 
@@ -207,7 +207,7 @@ Token Lexer::NumberToken()
 Token Lexer::StringToken()
 {
     std::string str;
-    Location    w = Where();
+    const Location& w = Where();
     int         quote = CurChar();
     int         ch = NextChar();
     for (;;)
@@ -252,7 +252,7 @@ static const SingleCharToken singleCharTokenTable[] = {
 Token Lexer::GetToken()
 {
     int      ch = CurChar();
-    Location w = Where();
+    const Location& w = Where();
 
     do
     {

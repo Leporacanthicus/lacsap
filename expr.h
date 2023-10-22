@@ -578,7 +578,7 @@ public:
     const std::string       ClosureName() { return "$$CLOSURE"; };
     static bool             classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void                    accept(ASTVisitor& v) override;
-    void                    EndLoc(Location loc) { endLoc = loc; }
+    void                            EndLoc(const Location& loc) { endLoc = loc; }
 
 private:
     PrototypeAST*             proto;

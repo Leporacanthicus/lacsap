@@ -85,7 +85,7 @@ public:
     bool          ParseInterface(InterfaceList& iList);
     void          ParseImports();
 
-    ExprAST* ConstDeclToExpr(Location loc, const Constants::ConstDecl* c);
+    ExprAST* ConstDeclToExpr(const Location& loc, const Constants::ConstDecl* c);
     ExprAST* ParseInitValue(Types::TypeDecl* ty);
 
     // Type declarations and defintitions
@@ -97,7 +97,7 @@ public:
     const Constants::ConstDecl* ParseConstRHS(int exprPrec, const Constants::ConstDecl* lhs);
     Constants::ConstDecl*       ParseConstEval(const Constants::ConstDecl* lhs, const Token& binOp,
                                                const Constants::ConstDecl* rhs);
-    const Constants::ConstDecl* ParseConstTerm(Location loc);
+    const Constants::ConstDecl* ParseConstTerm(const Location& loc);
 
     Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken);
@@ -183,7 +183,7 @@ public:
 
 void Parser::PrintError(Token t, const std::string& msg)
 {
-    if (Location loc = t.Loc())
+    if (const Location& loc = t.Loc())
     {
 	std::cerr << loc << " ";
     }
@@ -697,7 +697,7 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
     return 0;
 }
 
-const Constants::ConstDecl* Parser::ParseConstTerm(Location loc)
+const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 {
     Token::TokenType            unaryToken = Token::Unknown;
     const Constants::ConstDecl* cd = 0;
@@ -872,7 +872,7 @@ static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
 
 const Constants::ConstDecl* Parser::ParseConstExpr(const TerminatorList& terminators)
 {
-    Location                    loc = CurrentToken().Loc();
+    const Location&             loc = CurrentToken().Loc();
     const Constants::ConstDecl* cd;
 
     do
@@ -1581,7 +1581,7 @@ Types::StringDecl* Parser::ParseStringDecl()
 Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::Class);
     Types::ClassDecl* base = 0;
     // Find derived class, if available.
@@ -1752,7 +1752,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, bool maybeForwarded)
 ExprAST* Parser::ParseIntegerExpr(Token token)
 {
     int64_t          val = token.GetIntVal();
-    Location         loc = token.Loc();
+    const Location&  loc = token.Loc();
     Types::TypeDecl* type = Types::Get<Types::IntegerDecl>();
 
     if (val > std::numeric_limits<unsigned int>::max())
@@ -2580,7 +2580,7 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
     TRACE();
     AssertToken(Token::LeftSquare);
 
-    Location  loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     CCSetList ccs;
     if (ParseSeparatedList(*this, ccs))
     {
@@ -2605,7 +2605,7 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
     return 0;
 }
 
-ExprAST* Parser::ConstDeclToExpr(Location loc, const Constants::ConstDecl* c)
+ExprAST* Parser::ConstDeclToExpr(const Location& loc, const Constants::ConstDecl* c)
 {
     if (c->Type()->IsIntegral())
     {
@@ -2727,7 +2727,7 @@ private:
 
 ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     if (llvm::isa<Types::SetDecl>(ty))
     {
 	if (ExprAST* e = ParseSetExpr(ty))
@@ -3035,7 +3035,7 @@ ExprAST* Parser::ParseStatement()
 	{
 	    if (AcceptToken(Token::Assign))
 	    {
-		Location loc = CurrentToken().Loc();
+		const Location& loc = CurrentToken().Loc();
 		ExprAST* rhs = ParseExpression();
 		if (rhs)
 		{
@@ -3060,7 +3060,7 @@ BlockAST* Parser::ParseBlock(Location& endLoc)
 
     std::vector<ExprAST*> v;
     // Build ast of the content of the block.
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     while (!AcceptToken(Token::End))
     {
 	// Superfluous semicolons are discarded here
@@ -3105,7 +3105,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	return 0;
     }
 
-    Location     loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     std::string  name = proto->Name();
     NamedObject* nmObj = 0;
 
@@ -3265,7 +3265,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 ExprAST* Parser::ParseIfExpr()
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::If);
     ExprAST* cond = ParseExpression();
     if (!cond || !Expect(Token::Then, true))
@@ -3296,7 +3296,7 @@ ExprAST* Parser::ParseIfExpr()
 
 ExprAST* Parser::ParseForExpr()
 {
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::For);
     if (CurrentToken().GetToken() != Token::Identifier)
     {
@@ -3359,7 +3359,7 @@ ExprAST* Parser::ParseForExpr()
 ExprAST* Parser::ParseWhile()
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::While);
     ExprAST* cond = ParseExpression();
     if (cond && Expect(Token::Do, true))
@@ -3375,10 +3375,10 @@ ExprAST* Parser::ParseWhile()
 ExprAST* Parser::ParseRepeat()
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::Repeat);
     std::vector<ExprAST*> v;
-    Location              loc2 = CurrentToken().Loc();
+    const Location&       loc2 = CurrentToken().Loc();
     while (!AcceptToken(Token::Until))
     {
 	if (ExprAST* stmt = ParseStatement())
@@ -3402,7 +3402,7 @@ ExprAST* Parser::ParseRepeat()
 ExprAST* Parser::ParseCaseExpr()
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::Case);
     ExprAST* expr = ParseExpression();
     if (!expr || !Expect(Token::Of, true))
@@ -3418,7 +3418,7 @@ ExprAST* Parser::ParseCaseExpr()
     {
 	if (CurrentToken().GetToken() == Token::Otherwise || CurrentToken().GetToken() == Token::Else)
 	{
-	    Location loc = NextToken().Loc();
+	    const Location& loc = NextToken().Loc();
 	    if (otherwise)
 	    {
 		return Error(CurrentToken(), "An 'otherwise' or 'else' already used in this case block");
@@ -3475,7 +3475,7 @@ ExprAST* Parser::ParseCaseExpr()
 
 	case Token::Colon:
 	{
-	    Location locColon = NextToken().Loc();
+	    const Location& locColon = NextToken().Loc();
 	    ExprAST* s = ParseStatement();
 	    labels.push_back(new LabelExprAST(locColon, ranges, s));
 	    ranges.clear();
@@ -3593,7 +3593,7 @@ private:
 ExprAST* Parser::ParseWithBlock()
 {
     TRACE();
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::With);
 
     CCWith ccw(nameStack);
@@ -3683,7 +3683,7 @@ ExprAST* Parser::ParseWrite()
            "Expected write or writeln keyword here");
     NextToken();
 
-    Location                        loc = CurrentToken().Loc();
+    const Location&                 loc = CurrentToken().Loc();
     AddressableAST*                 file;
     std::vector<WriteAST::WriteArg> args;
     if (IsSemicolonOrEnd())
@@ -3753,7 +3753,7 @@ private:
 
 ExprAST* Parser::ParseRead()
 {
-    Location loc = CurrentToken().Loc();
+    const Location& loc = CurrentToken().Loc();
     bool     isReadln = CurrentToken().GetToken() == Token::Readln;
 
     assert((CurrentToken().GetToken() == Token::Read || CurrentToken().GetToken() == Token::Readln) &&
@@ -3985,7 +3985,7 @@ void Parser::ParseImports()
 
 ExprAST* Parser::ParseUnit(ParserType type)
 {
-    Location unitloc = CurrentToken().Loc();
+    const Location& unitloc = CurrentToken().Loc();
     if (!ParseProgram(type) || !Expect(Token::Semicolon, true))
     {
 	return 0;
@@ -4060,7 +4060,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	case Token::Begin:
 	{
-	    Location  loc = CurrentToken().Loc();
+	    const Location& loc = CurrentToken().Loc();
 	    Location  endLoc;
 	    BlockAST* body = ParseBlock(endLoc);
 	    if (!body)

@@ -48,7 +48,7 @@ public:
     llvm::DICompileUnit*        cu;
     llvm::DIBuilder*            builder;
     std::vector<llvm::DIScope*> lexicalBlocks;
-    void                        EmitLocation(Location loc);
+    void                        EmitLocation(const Location& loc);
     ~DebugInfo();
 };
 
@@ -90,7 +90,7 @@ static DebugInfo& GetDebugInfo()
     return *debugStack.back();
 }
 
-void DebugInfo::EmitLocation(Location loc)
+void DebugInfo::EmitLocation(const Location& loc)
 {
     if (loc.LineNumber() == 0)
     {
@@ -2042,7 +2042,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     if (debugInfo)
     {
 	DebugInfo&              di = GetDebugInfo();
-	Location                loc = body->Loc();
+	const Location&         loc = body->Loc();
 	llvm::DIFile*           unit = di.builder->createFile(di.cu->getFilename(), di.cu->getDirectory());
 	llvm::DIScope*          fnContext = unit;
 	llvm::DISubroutineType* st = CreateFunctionType(di, proto);
@@ -4030,7 +4030,7 @@ llvm::Value* UnitAST::CodeGen()
     DebugInfo di;
     if (debugInfo)
     {
-	Location loc = Loc();
+	const Location& loc = Loc();
 
 	// TODO: Fix path and add flags.
 	di.builder = new llvm::DIBuilder(*theModule, true);

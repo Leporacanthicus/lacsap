@@ -25,7 +25,7 @@ private:
     Token NumberToken();
     Token StringToken();
 
-    Location Where() const { return Location(source); }
+    Location Where() const { return source; }
 
 private:
     Source& source;

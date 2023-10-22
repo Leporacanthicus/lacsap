@@ -7,8 +7,10 @@
 class Location
 {
 public:
-    Location(const std::string& file, int line, int col) : fname(file), lineNum(line), column(col) {}
-    Location() : fname(""), lineNum(0), column(0) {}
+    Location(const std::string& file = "", int line = 0, int col = 0)
+        : fname(file), lineNum(line), column(col)
+    {
+    }
     std::string  to_string() const;
     std::string  FileName() const { return fname; }
                  operator bool() const { return fname != "" || lineNum != 0; }

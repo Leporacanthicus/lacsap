@@ -243,7 +243,7 @@ bool Parser::Expect(Token::TokenType type, bool eatIt, const char* file, int lin
 {
     if (CurrentToken().GetToken() != type)
     {
-	Token t(type, Location("", 0, 0));
+	Token t(type);
 	return Error<bool>(CurrentToken(),
 	                   "Expected '" + t.TypeStr() + "', got '" + CurrentToken().TypeStr() + "'.");
     }
@@ -270,7 +270,7 @@ void Parser::AssertToken(Token::TokenType type, const char* file, int line)
 {
     if (CurrentToken().GetToken() != type)
     {
-	Token t(type, Location("", 0, 0));
+	Token t(type);
 	Error(CurrentToken(), "Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
 	assert(0 && "Unexpected token");
     }
@@ -1495,7 +1495,7 @@ Types::RecordDecl* Parser::ParseRecordDecl()
 	auto rd = new Types::RecordDecl(fields, variant);
 	if (init.size())
 	{
-	    auto ir = new InitRecordAST(Location("", 0, 0), rd, init);
+	    auto ir = new InitRecordAST(Location(), rd, init);
 	    rd = llvm::dyn_cast<Types::RecordDecl>(Types::CloneWithInit(rd, ir));
 	}
 	return rd;
@@ -3161,7 +3161,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     if (proto->HasSelf())
     {
 	assert(proto->BaseObj() && "Expect base object!");
-	VariableExprAST* v = new VariableExprAST(Location("", 0, 0), "self", proto->BaseObj());
+	VariableExprAST* v = new VariableExprAST(Location(), "self", proto->BaseObj());
 	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
@@ -4118,7 +4118,7 @@ ExprAST* Parser::Parse(ParserType type)
 	nameStack.Add("input", new VarDef(input));
 	nameStack.Add("output", new VarDef(output));
 	std::vector<VarDef> varList{ input, output };
-	ast.push_back(new VarDeclAST(Location("", 0, 0), varList));
+	ast.push_back(new VarDeclAST(Location(), varList));
     }
 
     return ParseUnit(type);
@@ -4129,7 +4129,7 @@ Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
     const llvm::fltSemantics& sem = llvm::APFloat::IEEEdouble();
     double                    maxReal = llvm::APFloat::getLargest(sem).convertToDouble();
     double                    minReal = llvm::APFloat::getLargest(sem, /*Negative=*/true).convertToDouble();
-    Location                  unknownLoc = Location("", 0, 0);
+    Location                  unknownLoc;
     if (!(AddType("integer", Types::Get<Types::IntegerDecl>()) &&
           AddType("longint", Types::Get<Types::Int64Decl>()) &&
           AddType("int64", Types::Get<Types::Int64Decl>()) &&

@@ -938,7 +938,7 @@ namespace Builtin
     {
 	if (args.size() == 0)
 	{
-	    args.push_back(new VariableExprAST(Location("", 0, 0), "input", Types::Get<Types::TextDecl>()));
+	    args.push_back(new VariableExprAST(Location(), "input", Types::Get<Types::TextDecl>()));
 	    return true;
 	}
 	return FunctionFile::Semantics();

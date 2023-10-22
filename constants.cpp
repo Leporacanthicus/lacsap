@@ -145,7 +145,7 @@ namespace Constants
 	{
 	    return 0;
 	}
-	return new RealConstDecl(Location("", 0, 0), fn(lValue, rValue));
+	return new RealConstDecl(Location(), fn(lValue, rValue));
     }
 
     template<typename FN>
@@ -155,7 +155,7 @@ namespace Constants
 	const IntConstDecl* rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
 	if (lhsI && rhsI)
 	{
-	    return new IntConstDecl(Location("", 0, 0), fn(lhsI->Value(), rhsI->Value()));
+	    return new IntConstDecl(Location(), fn(lhsI->Value(), rhsI->Value()));
 	}
 	return 0;
     }
@@ -173,7 +173,7 @@ namespace Constants
 	    std::string lValue;
 	    if (GetAsString(lValue, rValue, &lhs, &rhs))
 	    {
-		return new StringConstDecl(Location("", 0, 0), lValue + rValue);
+		return new StringConstDecl(Location(), lValue + rValue);
 	    }
 	    return ErrorConst("Invalid operand for +");
 	}

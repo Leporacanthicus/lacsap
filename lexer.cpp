@@ -288,15 +288,16 @@ Token Lexer::GetToken()
     {
     case '.':
 	tt = Token::Period;
-	if (PeekChar() == '.')
+	switch (PeekChar())
 	{
+	case '.':
 	    NextChar();
 	    tt = Token::DotDot;
-	}
-	else if (PeekChar() == ')')
-	{
+	    break;
+	case ')':
 	    NextChar();
 	    tt = Token::RightSquare;
+	    break;
 	}
 	break;
 
@@ -308,7 +309,6 @@ Token Lexer::GetToken()
 	    tt = Token::LessOrEqual;
 	    NextChar();
 	    break;
-
 	case '>':
 	    tt = Token::NotEqual;
 	    NextChar();
@@ -318,15 +318,16 @@ Token Lexer::GetToken()
 
     case '>':
 	tt = Token::GreaterThan;
-	if (PeekChar() == '=')
+	switch (PeekChar())
 	{
+	case '=':
 	    tt = Token::GreaterOrEqual;
 	    NextChar();
-	}
-	else if (PeekChar() == '<')
-	{
+	    break;
+	case '<':
 	    tt = Token::SymDiff;
 	    NextChar();
+	    break;
 	}
 	break;
 
@@ -339,6 +340,7 @@ Token Lexer::GetToken()
 	}
 	break;
     case '(':
+	tt = Token::LeftParen;
 	if (PeekChar() == '.')
 	{
 	    NextChar();
@@ -346,6 +348,7 @@ Token Lexer::GetToken()
 	}
 	break;
     case '*':
+	tt = Token::Multiply;
 	if (PeekChar() == '*')
 	{
 	    NextChar();

@@ -116,7 +116,7 @@ public:
     ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}
     virtual ~ExprAST() {}
     void                 dump() const;
-    virtual void         DoDump() const { std::cerr << "Empty node"; }
+    virtual void         DoDump() const = 0;
     void                 accept(ASTVisitor& v) override { v.visit(this); }
     virtual llvm::Value* CodeGen()
     {
@@ -298,6 +298,7 @@ public:
     DynArrayExprAST(const Location& w, ExprAST* v, ExprAST* index, Types::DynRangeDecl* r,
                     Types::TypeDecl* ty);
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_DynArrayExpr; }
+    void         DoDump() const override;
     llvm::Value* Address() override;
     void         accept(ASTVisitor& v) override;
 

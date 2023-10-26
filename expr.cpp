@@ -538,6 +538,15 @@ void DynArrayExprAST::accept(ASTVisitor& v)
     v.visit(this);
 }
 
+void DynArrayExprAST::DoDump() const
+{
+    std::cerr << "DynArray: ";
+    expr->dump();
+    std::cerr << "[";
+    index->dump();
+    std::cerr << "]";
+}
+
 void FieldExprAST::DoDump() const
 {
     std::cerr << "Field " << element << std::endl;

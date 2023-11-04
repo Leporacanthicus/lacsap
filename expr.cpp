@@ -303,7 +303,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 
     llvm::Align dest_align{ std::max(AlignOfType(dest2->getType()), MIN_ALIGN) };
     llvm::Align src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
-    return builder.CreateMemCpy(dest2, dest_align, v, src_align, rhs->Str().size());
+    return builder.CreateMemCpy(dest2, dest_align, v, src_align, rhs->Str().size() + 1);
 }
 
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)

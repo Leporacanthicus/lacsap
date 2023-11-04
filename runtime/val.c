@@ -1,19 +1,22 @@
 #include "runtime.h"
 #include <inttypes.h>
 #include <stdint.h>
-#include <string.h>
+#include <stdlib.h>
 
-void __Val_int(const String* s, int* res)
+void __Val_int(String* s, int* res)
 {
-    sscanf((const char*)s->str, "%d", res);
+    s->str[s->len] = 0;
+    *res = strtol((const char*)&s->str, NULL, 0);
 }
 
-void __Val_long(const String* s, int64_t* res)
+void __Val_long(String* s, int64_t* res)
 {
-    sscanf((const char*)s->str, "%" PRId64, res);
+    s->str[s->len] = 0;
+    *res = strtoll((const char*)&s->str, NULL, 0);
 }
 
-void __Val_real(const String* s, double* res)
+void __Val_real(String* s, double* res)
 {
-    sscanf((const char*)s->str, "%lf", res);
+    s->str[s->len] = 0;
+    *res = strtod((const char*)&s->str, NULL);
 }

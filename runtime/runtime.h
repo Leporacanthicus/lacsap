@@ -40,7 +40,7 @@ struct FileEntry
 typedef struct
 {
     unsigned char len;
-    unsigned char str[MaxStringLen];
+    unsigned char str[MaxStringLen + 1];
 } String;
 
 struct TimeStamp

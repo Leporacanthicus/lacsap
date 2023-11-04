@@ -726,9 +726,9 @@ namespace Types
     {
     public:
 	StringDecl(unsigned size)
-	    : ArrayDecl(
-	          TK_String, new CharDecl,
-	          std::vector<RangeDecl*>(1, new RangeDecl(new Range(0, size), Get<Types::IntegerDecl>())))
+	    : ArrayDecl(TK_String, new CharDecl,
+	                std::vector<RangeDecl*>(
+	                    1, new RangeDecl(new Range(0, size + 1), Get<Types::IntegerDecl>())))
 	{
 	    assert(size > 0 && "Zero size not allowed");
 	}
@@ -736,7 +736,7 @@ namespace Types
 	bool            IsStringLike() const override { return true; }
 	void            DoDump() const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
-	int             Capacity() const { return Ranges()[0]->GetRange()->Size() - 1; }
+	int             Capacity() const { return Ranges()[0]->GetRange()->Size() - 2; }
     };
 
     class ComplexDecl : public RecordDecl

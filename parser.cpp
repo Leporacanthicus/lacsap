@@ -85,7 +85,7 @@ public:
     bool          ParseInterface(InterfaceList& iList);
     void          ParseImports();
 
-    ExprAST* ConstDeclToExpr(const Location& loc, const Constants::ConstDecl* c);
+    ExprAST* ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const Constants::ConstDecl* c);
     ExprAST* ParseInitValue(Types::TypeDecl* ty);
 
     // Type declarations and defintitions
@@ -403,9 +403,10 @@ bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 	}
 	else
 	{
-	    if (!IsOneOf(parser.CurrentToken().GetToken(), lc.separators))
+	    bool good = IsOneOf(parser.CurrentToken().GetToken(), lc.separators);
+	    parser.NextToken();
+	    if (!good)
 	    {
-		parser.NextToken();
 		return false;
 	    }
 	}
@@ -918,17 +919,23 @@ void Parser::ParseConstDef()
 	    if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
 	    {
 		NextToken();
-		auto init = ParseInitValue(ty);
-
-		if (!AddConst(nm, new Constants::CompoundConstDecl(CurrentToken().Loc(), ty, init)))
+		if (auto init = ParseInitValue(ty))
 		{
+		    if (!AddConst(nm, new Constants::CompoundConstDecl(CurrentToken().Loc(), ty, init)))
+		    {
+			return;
+		    }
+		    if (!Expect(Token::Semicolon, true))
+		    {
+			return;
+		    }
+		    continue;
+		}
+		else
+		{
+		    Error(CurrentToken(), "Unexpected constant content?");
 		    return;
 		}
-		if (!Expect(Token::Semicolon, true))
-		{
-		    return;
-		}
-		continue;
 	    }
 	}
 	const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
@@ -2610,14 +2617,26 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
     return 0;
 }
 
-ExprAST* Parser::ConstDeclToExpr(const Location& loc, const Constants::ConstDecl* c)
+ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const Constants::ConstDecl* c)
 {
     if (c->Type()->IsIntegral())
     {
+	if (llvm::isa<Types::RealDecl>(ty))
+	{
+	    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
+	    {
+		return new RealExprAST(loc, ci->Value(), ty);
+	    }
+	    return Error(CurrentToken(), "Real constant initializer from incompatible type");
+	}
 	return new IntegerExprAST(loc, ConstDeclToInt(c), c->Type());
     }
     if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(c))
     {
+	if (!llvm::isa<Types::RealDecl>(ty))
+	{
+	    return Error(CurrentToken(), "Real constant initializer from incompatible type");
+	}
 	return new RealExprAST(loc, rc->Value(), rc->Type());
     }
     if (auto sc = llvm::dyn_cast<Constants::StringConstDecl>(c))
@@ -2631,7 +2650,7 @@ class CCArrayInitList : public ListConsumer
 {
 public:
     CCArrayInitList(Types::ArrayDecl* ty)
-        : ListConsumer{ Token::Semicolon, Token::RightSquare, true }, type(ty)
+        : ListConsumer{ { Token::Comma, Token::Semicolon }, { Token::RightSquare }, true }, type(ty)
     {
     }
     bool Consume(Parser& parser) override
@@ -2639,9 +2658,9 @@ public:
 	
 	if (const Constants::ConstDecl* cd = parser.ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot }))
 	{
-	    int                         value = ConstDeclToInt(cd);
-	    int                         end = 0;
-	    bool                        hasEnd = false;
+	    int  value = ConstDeclToInt(cd);
+	    int  end = 0;
+	    bool hasEnd = false;
 	    if (parser.AcceptToken(Token::DotDot))
 	    {
 		cd = parser.ParseConstExpr({ Token::Colon });
@@ -2788,7 +2807,7 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
     if (const Constants::ConstDecl* cd = ParseConstExpr(
             { Token::Comma, Token::Semicolon, Token::Colon, Token::RightSquare }))
     {
-	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, cd) });
+	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, ty, cd) });
     }
     return 0;
 }

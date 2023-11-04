@@ -12,3 +12,8 @@ void __Val_long(const String* s, int64_t* res)
 {
     sscanf((const char*)s->str, "%" PRId64, res);
 }
+
+void __Val_real(const String* s, double* res)
+{
+    sscanf((const char*)s->str, "%lf", res);
+}

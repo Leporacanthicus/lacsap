@@ -869,8 +869,7 @@ namespace Builtin
     bool FunctionVal::Semantics()
     {
 	return args.size() == 2 && args[0]->Type()->IsStringLike() && llvm::isa<VariableExprAST>(args[1]) &&
-	       (llvm::isa<Types::IntegerDecl>(args[1]->Type()) ||
-	        llvm::isa<Types::Int64Decl>(args[1]->Type()));
+	       Types::IsNumeric(args[1]->Type()) && !llvm::isa<Types::ComplexDecl>(args[1]->Type());
     }
 
     llvm::Value* FunctionVal::CodeGen(llvm::IRBuilder<>& builder)
@@ -885,6 +884,10 @@ namespace Builtin
 	else if (llvm::isa<Types::Int64Decl>(var1->Type()))
 	{
 	    name += "long";
+	}
+	else if (llvm::isa<Types::RealDecl>(var1->Type()))
+	{
+	    name += "real";
 	}
 	else
 	{

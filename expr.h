@@ -112,8 +112,7 @@ public:
 	EK_InitArray,
 	EK_InitRecord,
     };
-    ExprAST(const Location& w, ExprKind k) : loc(w), kind(k), type(0) {}
-    ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : loc(w), kind(k), type(ty) {}
+    ExprAST(const Location& w, ExprKind k, Types::TypeDecl* ty = 0) : loc(w), kind(k), type(ty) {}
     virtual ~ExprAST() {}
     void                 dump() const;
     virtual void         DoDump() const = 0;
@@ -579,7 +578,7 @@ public:
     const std::string       ClosureName() { return "$$CLOSURE"; };
     static bool             classof(const ExprAST* e) { return e->getKind() == EK_Function; }
     void                    accept(ASTVisitor& v) override;
-    void                            EndLoc(const Location& loc) { endLoc = loc; }
+    void                    EndLoc(const Location& loc) { endLoc = loc; }
 
 private:
     PrototypeAST*             proto;

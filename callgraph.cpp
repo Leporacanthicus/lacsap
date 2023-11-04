@@ -1,4 +1,5 @@
 #include "callgraph.h"
+#include "trace.h"
 #include "visitor.h"
 #include <map>
 #include <set>
@@ -105,7 +106,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 	{
 	    if (verbosity)
 	    {
-		std::cerr << "Adding arguments for function" << std::endl;
+		std::cerr << "Adding arguments for function " << call->Proto()->Name() << std::endl;
 	    }
 	    AddClosureArg(proto->Function(), call->Args());
 	}
@@ -207,6 +208,7 @@ void AddToUses(VarSet& uses, VarSet& more)
 
 void BuildClosures(ExprAST* ast)
 {
+    TRACE();
     CallGraphClosureCollector v;
     CallGraph(ast, v);
 

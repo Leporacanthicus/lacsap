@@ -151,10 +151,10 @@ public:
     void PrintError(Token t, const std::string& msg);
     template<typename T = std::nullptr_t>
     T Error(Token t, const std::string& msg)
-	{
-	    PrintError(t, msg);
-	    return T{};
-	}
+    {
+	PrintError(t, msg);
+	return T{};
+    }
 
 private:
     Lexer                     lexer;
@@ -184,8 +184,14 @@ static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
 class ListConsumer
 {
 public:
-    ListConsumer(Token::TokenType s, Token::TokenType t, bool a) : separators{s}, terminators{t}, allowEmpty(a) {}
-    ListConsumer(const TerminatorList& s, const TerminatorList& t, bool a) : separators{s}, terminators{t}, allowEmpty(a) {}
+    ListConsumer(Token::TokenType s, Token::TokenType t, bool a)
+        : separators{ s }, terminators{ t }, allowEmpty(a)
+    {
+    }
+    ListConsumer(const TerminatorList& s, const TerminatorList& t, bool a)
+        : separators{ s }, terminators{ t }, allowEmpty(a)
+    {
+    }
     virtual bool Consume(Parser& parser) = 0;
     virtual ~ListConsumer() {}
 
@@ -2019,16 +2025,13 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 
 ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args)
 {
-    if (expr)
+    assert(expr && "Expect to get an expression here");
+    assert(proto && "Prototype should have been found here...");
+    if (FunctionAST* fn = proto->Function())
     {
-	assert(proto && "Prototype should have been found here...");
-	if (FunctionAST* fn = proto->Function())
-	{
-	    AddClosureArg(fn, args);
-	}
-	return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
+	AddClosureArg(fn, args);
     }
-    return 0;
+    return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
 }
 
 ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcName,
@@ -2053,7 +2056,6 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
 	else
 	{
 	    return Error(CurrentToken(), "Expected function pointer");
-	    ;
 	}
     }
     else if (const MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
@@ -2593,7 +2595,7 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
     AssertToken(Token::LeftSquare);
 
     const Location& loc = CurrentToken().Loc();
-    CCSetList ccs;
+    CCSetList       ccs;
     if (ParseSeparatedList(*this, ccs))
     {
 	Types::TypeDecl* type = 0;
@@ -2635,7 +2637,7 @@ ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const
     {
 	if (!llvm::isa<Types::RealDecl>(ty))
 	{
-	    return Error(CurrentToken(), "Real constant initializer from incompatible type");
+	    return Error(CurrentToken(), "Real constant initializer into incompatible type");
 	}
 	return new RealExprAST(loc, rc->Value(), rc->Type());
     }
@@ -2655,8 +2657,9 @@ public:
     }
     bool Consume(Parser& parser) override
     {
-	
-	if (const Constants::ConstDecl* cd = parser.ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot }))
+
+	if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
+	        { Token::Comma, Token::Colon, Token::DotDot }))
 	{
 	    int  value = ConstDeclToInt(cd);
 	    int  end = 0;
@@ -3068,7 +3071,7 @@ ExprAST* Parser::ParseStatement()
 	    if (AcceptToken(Token::Assign))
 	    {
 		const Location& loc = CurrentToken().Loc();
-		ExprAST* rhs = ParseExpression();
+		ExprAST*        rhs = ParseExpression();
 		if (rhs)
 		{
 		    expr = new AssignExprAST(loc, expr, rhs);
@@ -3138,8 +3141,8 @@ FunctionAST* Parser::ParseDefinition(int level)
     }
 
     const Location& loc = CurrentToken().Loc();
-    std::string  name = proto->Name();
-    NamedObject* nmObj = 0;
+    std::string     name = proto->Name();
+    NamedObject*    nmObj = 0;
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef*     fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -3508,7 +3511,7 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Colon:
 	{
 	    const Location& locColon = NextToken().Loc();
-	    ExprAST* s = ParseStatement();
+	    ExprAST*        s = ParseStatement();
 	    labels.push_back(new LabelExprAST(locColon, ranges, s));
 	    ranges.clear();
 	    if (!ExpectSemicolonOrEnd())
@@ -3786,7 +3789,7 @@ private:
 ExprAST* Parser::ParseRead()
 {
     const Location& loc = CurrentToken().Loc();
-    bool     isReadln = CurrentToken().GetToken() == Token::Readln;
+    bool            isReadln = CurrentToken().GetToken() == Token::Readln;
 
     assert((CurrentToken().GetToken() == Token::Read || CurrentToken().GetToken() == Token::Readln) &&
            "Expected read or readln keyword here");
@@ -4093,8 +4096,8 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	case Token::Begin:
 	{
 	    const Location& loc = CurrentToken().Loc();
-	    Location  endLoc;
-	    BlockAST* body = ParseBlock(endLoc);
+	    Location        endLoc;
+	    BlockAST*       body = ParseBlock(endLoc);
 	    if (!body)
 	    {
 		return 0;

@@ -151,10 +151,10 @@ public:
     void PrintError(Token t, const std::string& msg);
     template<typename T = std::nullptr_t>
     T Error(Token t, const std::string& msg)
-    {
-	PrintError(t, msg);
-	return T{};
-    }
+	{
+	    PrintError(t, msg);
+	    return T{};
+	}
 
 private:
     Lexer                     lexer;
@@ -169,16 +169,29 @@ private:
 
 using NameWrapper = StackWrapper<const NamedObject*>;
 
+static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
+{
+    for (auto i : list)
+    {
+	if (t == i)
+	{
+	    return true;
+	}
+    }
+    return false;
+}
+
 class ListConsumer
 {
 public:
-    ListConsumer(Token::TokenType s, Token::TokenType e, bool a) : separator(s), end{ e }, allowEmpty(a) {}
+    ListConsumer(Token::TokenType s, Token::TokenType t, bool a) : separators{s}, terminators{t}, allowEmpty(a) {}
+    ListConsumer(const TerminatorList& s, const TerminatorList& t, bool a) : separators{s}, terminators{t}, allowEmpty(a) {}
     virtual bool Consume(Parser& parser) = 0;
     virtual ~ListConsumer() {}
 
-    Token::TokenType separator;
-    Token::TokenType end;
-    bool             allowEmpty;
+    TerminatorList separators;
+    TerminatorList terminators;
+    bool           allowEmpty;
 };
 
 void Parser::PrintError(Token t, const std::string& msg)
@@ -376,7 +389,7 @@ ExprAST* Parser::ParseDefaultExpr()
 
 bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 {
-    bool done = lc.allowEmpty && parser.CurrentToken().GetToken() == lc.end;
+    bool done = lc.allowEmpty && IsOneOf(parser.CurrentToken().GetToken(), lc.terminators);
 
     while (!done)
     {
@@ -384,19 +397,21 @@ bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 	{
 	    return false;
 	}
-	if (parser.CurrentToken().GetToken() == lc.end)
+	if (IsOneOf(parser.CurrentToken().GetToken(), lc.terminators))
 	{
 	    done = true;
 	}
 	else
 	{
-	    if (!parser.Expect(lc.separator, true))
+	    if (!IsOneOf(parser.CurrentToken().GetToken(), lc.separators))
 	    {
+		parser.NextToken();
 		return false;
 	    }
 	}
     }
-    return parser.Expect(lc.end, true);
+    parser.NextToken();
+    return true;
 }
 
 ExprAST* Parser::ParseGoto()
@@ -858,16 +873,6 @@ const Constants::ConstDecl* Parser::ParseConstRHS(int exprPrec, const Constants:
 	}
 	lhs = ParseConstEval(lhs, binOp, rhs);
     }
-}
-
-static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
-{
-    for (auto i : list)
-    {
-	if (t == i)
-	    return true;
-    }
-    return false;
 }
 
 const Constants::ConstDecl* Parser::ParseConstExpr(const TerminatorList& terminators)
@@ -2631,31 +2636,39 @@ public:
     }
     bool Consume(Parser& parser) override
     {
-	const Constants::ConstDecl* cd = parser.ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot });
-	int                         value = ConstDeclToInt(cd);
-	int                         end = 0;
-	bool                        hasEnd = false;
-	if (parser.AcceptToken(Token::DotDot))
+	
+	if (const Constants::ConstDecl* cd = parser.ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot }))
 	{
-	    cd = parser.ParseConstExpr({ Token::Colon });
-	    end = ConstDeclToInt(cd);
-	    hasEnd = true;
+	    int                         value = ConstDeclToInt(cd);
+	    int                         end = 0;
+	    bool                        hasEnd = false;
+	    if (parser.AcceptToken(Token::DotDot))
+	    {
+		cd = parser.ParseConstExpr({ Token::Colon });
+		if (!cd)
+		{
+		    return false;
+		}
+		end = ConstDeclToInt(cd);
+		hasEnd = true;
+	    }
+	    parser.Expect(Token::Colon, true);
+	    ExprAST* e = parser.ParseInitValue(type->SubType());
+	    if (!e)
+	    {
+		return false;
+	    }
+	    if (hasEnd)
+	    {
+		list.push_back({ value, end, e });
+	    }
+	    else
+	    {
+		list.push_back({ value, e });
+	    }
+	    return true;
 	}
-	parser.Expect(Token::Colon, true);
-	ExprAST* e = parser.ParseInitValue(type->SubType());
-	if (!e)
-	{
-	    return false;
-	}
-	if (hasEnd)
-	{
-	    list.push_back({ value, end, e });
-	}
-	else
-	{
-	    list.push_back({ value, e });
-	}
-	return true;
+	return false;
     }
     const std::vector<ArrayInit>& Values() { return list; }
 
@@ -2773,7 +2786,7 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	}
     }
     if (const Constants::ConstDecl* cd = ParseConstExpr(
-            { Token::Semicolon, Token::Colon, Token::RightSquare }))
+            { Token::Comma, Token::Semicolon, Token::Colon, Token::RightSquare }))
     {
 	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, cd) });
     }

@@ -619,7 +619,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	{
 	    if (parg[idx].IsRef() && !(llvm::isa<AddressableAST>(a) || llvm::isa<ClosureAST>(a)))
 	    {
-		Error(a, "Expect variable for 'var' parameter");
+		Error(c, "Expect variable for 'var' parameter");
 	    }
 	    else
 	    {
@@ -658,7 +658,7 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
 	}
 	if (bad)
 	{
-	    Error(a, "Incompatible argument type " + std::to_string(idx));
+	    Error(c, "Incompatible argument type " + std::to_string(idx));
 	}
 	idx++;
     }

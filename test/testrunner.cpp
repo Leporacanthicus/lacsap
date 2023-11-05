@@ -348,6 +348,7 @@ TestEntry testCaseList[] = {
     { LACSAP_ONLY, "Basic", "Random Number", "randtest.pas", "" },
     { 0, "Basic", "Fact Bignum", "fact-bignum.pas", "" },
     { 0, "Basic", "Nested Funcs", "nestfunc.pas", "" },
+    { 0, "Basic", "Nested Funcs2", "nestfunc2.pas", "" },
     { 0, "Basic", "Recursion", "recursion.pas", " < recursion.txt" },
     { 0, "Basic", "Test 04", "test04.pas", "" },
     { 0, "Basic", "Test 07", "test07.pas", "" },

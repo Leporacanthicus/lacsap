@@ -2027,10 +2027,6 @@ ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::v
 {
     assert(expr && "Expect to get an expression here");
     assert(proto && "Prototype should have been found here...");
-    if (FunctionAST* fn = proto->Function())
-    {
-	AddClosureArg(fn, args);
-    }
     return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
 }
 

@@ -102,7 +102,7 @@ void UpdateCallVisitor::visit(ExprAST* expr)
 {
     if (CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
     {
-	if (call->Proto()->Name() == proto->Name() && call->Args().size() != proto->Args().size())
+	if (call->Proto()->Function() == proto->Function() && call->Args().size() != proto->Args().size())
 	{
 	    if (verbosity)
 	    {

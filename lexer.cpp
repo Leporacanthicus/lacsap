@@ -100,10 +100,10 @@ bool ValidForBase(char c, int base)
 
 Token Lexer::NumberToken()
 {
-    int         ch = CurChar();
+    int             ch = CurChar();
     const Location& w = Where();
-    std::string num;
-    int         base = 10;
+    std::string     num;
+    int             base = 10;
 
     if (ch == '$')
     {
@@ -206,10 +206,10 @@ Token Lexer::NumberToken()
 // Needs to deal with '' in the middle of string and '''' as a char constant.
 Token Lexer::StringToken()
 {
-    std::string str;
+    std::string     str;
     const Location& w = Where();
-    int         quote = CurChar();
-    int         ch = NextChar();
+    int             quote = CurChar();
+    int             ch = NextChar();
     for (;;)
     {
 	if (ch == quote)
@@ -251,7 +251,7 @@ static const SingleCharToken singleCharTokenTable[] = {
 
 Token Lexer::GetToken()
 {
-    int      ch = CurChar();
+    int             ch = CurChar();
     const Location& w = Where();
 
     do
@@ -275,6 +275,15 @@ Token Lexer::GetToken()
 	    NextChar();
 	    ch = NextChar();
 	}
+	// C++ style comments.
+	if (ch == '/' && PeekChar() == '/')
+	{
+	    do
+	    {
+		ch = NextChar();
+	    } while (ch != '\n' && ch != EOF);
+	}
+
     } while (isspace(ch));
 
     // EOF -> return now...

@@ -2,6 +2,8 @@ This is a nearly complete Pascal compiler, based on LLVM.
 
 *The compiler now passes the ISO7185 Pascal Acceptance Test suite.*
 
+Some support for iso10206 as well.
+
 See BUILD.md for build instructions.
 
 The purpose of the project is mainly to learn how LLVM operates together with a compiler.

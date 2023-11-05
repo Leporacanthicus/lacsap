@@ -814,8 +814,7 @@ namespace Builtin
 	llvm::Value* pA = var0->Address();
 	llvm::Value* pB = var2->Address();
 
-	llvm::Type* ptrTy = ty0->SubType()->LlvmType();
-	//	std::vector<llvm::Value*> ind = { MakeIntegerConstant(0), start };
+	llvm::Type*  ptrTy = ty0->SubType()->LlvmType();
 	llvm::Value* src = builder.CreateGEP(ptrTy, pA, start, "dest");
 	llvm::Align  dest_align{ std::max(AlignOfType(pB->getType()), MIN_ALIGN) };
 	llvm::Align  src_align{ std::max(AlignOfType(src->getType()), MIN_ALIGN) };

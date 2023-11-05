@@ -182,4 +182,12 @@ Date: 2-Jan-2020
 When compiling for Arm64, the iso7185pat.pas doesn't compile
 due to lack of trampoline support.
 ----------------------------------------------------------------
+Bug22:
+Date: 5-Nov-2023
 
+When compiling nested functions/procedures, if two functions
+in different scope had the same name, it would fail to compile
+the code with a bogus incorrect argument.
+
+Fixed in: 8cb4b39b381bbf55123ffb02abd7a62e2f577f43
+----------------------------------------------------------------

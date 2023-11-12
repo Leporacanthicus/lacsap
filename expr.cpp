@@ -6,6 +6,7 @@
 #include "types.h"
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/APSInt.h>
+#include <llvm/CodeGen/CommandFlags.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
@@ -1764,8 +1765,26 @@ static llvm::Function* CreateFunction(const std::string& name, const std::vector
     }
 
     llvmFunc->setAttributes(attrList);
-    // TODO: Allow this to be disabled.
-    llvmFunc->addFnAttr("no-frame-pointer-elim", "true");
+    std::string framePointer;
+    switch (llvm::codegen::getFramePointerUsage())
+    {
+    case llvm::FramePointerKind::None:
+	framePointer = "none";
+	break;
+    case llvm::FramePointerKind::NonLeaf:
+	framePointer = "non-leaf";
+	break;
+    case llvm::FramePointerKind::All:
+	framePointer = "all";
+	break;
+    default:
+	assert(0 && "Expected to have a case to cover this option");
+	break;
+    }
+    if (!framePointer.empty())
+    {
+	llvmFunc->addFnAttr("frame-pointer", framePointer);
+    }
     return llvmFunc;
 }
 

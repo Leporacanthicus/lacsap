@@ -586,6 +586,12 @@ llvm::Value* VariantFieldExprAST::Address()
     return builder.CreateBitCast(v, llvm::PointerType::getUnqual(Type()->LlvmType()));
 }
 
+void VariantFieldExprAST::accept(ASTVisitor& v)
+{
+    expr->accept(v);
+    v.visit(this);
+}
+
 void PointerExprAST::DoDump() const
 {
     std::cerr << "Pointer:";
@@ -4301,6 +4307,12 @@ void ArraySliceAST::DoDump() const
 {
     expr->dump();
     range->dump();
+}
+
+void ArraySliceAST::accept(ASTVisitor& v)
+{
+    expr->accept(v);
+    v.visit(this);
 }
 
 static void BuildUnitInitList()

@@ -31,6 +31,26 @@ private:
     Semantics* sema;
 };
 
+template<typename T>
+bool FindParentOfType(ExprAST* e)
+{
+    class CheckISA : public ASTVisitor
+    {
+    public:
+	void visit(ExprAST* e) override
+	{
+	    if (llvm::isa<T>(e))
+		result = true;
+	}
+
+	bool result = false;
+    };
+
+    CheckISA ci;
+    e->accept(ci);
+    return ci.result;
+}
+
 class SemaFixup
 {
 public:
@@ -442,6 +462,12 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
 
     Types::TypeDecl* lty = a->lhs->Type();
     Types::TypeDecl* rty = a->rhs->Type();
+
+    if (!FindParentOfType<VariableExprAST>(a->lhs))
+    {
+	Error(a, "Assigning to a constant");
+	return;
+    }
 
     auto lsty = llvm::dyn_cast<Types::SetDecl>(lty);
     auto rsty = llvm::dyn_cast<Types::SetDecl>(rty);

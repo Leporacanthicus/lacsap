@@ -366,6 +366,7 @@ public:
     void         DoDump() const override;
     llvm::Value* Address() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_VariantFieldExpr; }
+    void         accept(ASTVisitor& v) override;
 
 private:
     ExprAST* expr;
@@ -1005,6 +1006,7 @@ public:
         : ExprAST(w, EK_InitValue, ty), values(v)
     {
     }
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_InitValue; }
     llvm::Value* CodeGen() override;
     void         DoDump() const override;
 
@@ -1019,6 +1021,7 @@ public:
         : ExprAST(w, EK_InitArray, ty), values(v)
     {
     }
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_InitArray; }
     llvm::Value* CodeGen() override;
     void         DoDump() const override;
 
@@ -1033,6 +1036,7 @@ public:
         : ExprAST(w, EK_InitRecord, ty), values(v)
     {
     }
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_InitRecord; }
     llvm::Value* CodeGen() override;
     void         DoDump() const override;
 
@@ -1064,8 +1068,10 @@ public:
 	SetType(t);
     }
 
+    static bool  classof(const ExprAST* e) { return e->getKind() == EK_ArraySlice; }
     llvm::Value* Address() override;
     void         DoDump() const override;
+    void         accept(ASTVisitor& v) override;
 
 private:
     ExprAST*         expr;

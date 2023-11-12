@@ -23,3 +23,7 @@ This is a list of "things to improve in general".
    * Return an enum { OK, WrongArgCount, TypeMismatch }
 
 - Implement a function pass load/store -> memcpy for large load/stores.
+
+- Pass token as const ref instead of copy. SHould shorten the overall code size a little bit.
+
+- ConstASTVisitor?

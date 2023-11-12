@@ -8,9 +8,9 @@
 #include <llvm/ADT/APSInt.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Verifier.h>
@@ -2057,7 +2057,10 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	llvm::DISubroutineType* st = CreateFunctionType(di, proto);
 	std::string             name = proto->Name();
 	int                     lineNum = loc.LineNumber();
-	llvm::DISubprogram* sp = di.builder->createFunction(fnContext, name, "", unit, lineNum, st, lineNum);
+	llvm::DISubprogram::DISPFlags spFlags = llvm::DISubprogram::toSPFlags(true, true,
+	                                                                      (optimization >= O1));
+	llvm::DISubprogram* sp = di.builder->createFunction(fnContext, name, "", unit, lineNum, st, lineNum,
+	                                                    llvm::DINode::FlagZero, spFlags);
 
 	theFunction->setSubprogram(sp);
 	di.lexicalBlocks.push_back(sp);
@@ -2332,7 +2335,7 @@ llvm::Value* IfExprAST::CodeGen()
 
     if (then)
     {
-	[[maybe_unused]]llvm::Value* thenV = then->CodeGen();
+	[[maybe_unused]] llvm::Value* thenV = then->CodeGen();
 	assert(thenV && "Expect 'then' to generate code");
     }
 
@@ -2343,7 +2346,7 @@ llvm::Value* IfExprAST::CodeGen()
 	assert(elseBB != mergeBB && "ElseBB should be different from MergeBB");
 	builder.SetInsertPoint(elseBB);
 
-	[[maybe_unused]]llvm::Value* elseV = other->CodeGen();
+	[[maybe_unused]] llvm::Value* elseV = other->CodeGen();
 	assert(elseV && "Expect 'else' to generate code");
 	builder.CreateBr(mergeBB);
     }
@@ -3085,7 +3088,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	                                                                : llvm::Function::InternalLinkage);
 
 	    llvm::GlobalVariable*  gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init,
-                                                                var.Name());
+	                                                         var.Name());
 	    const llvm::DataLayout dl(theModule);
 	    size_t                 al = dl.getPrefTypeAlign(ty).value();
 	    al = std::max(size_t(4), al);

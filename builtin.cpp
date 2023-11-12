@@ -997,7 +997,16 @@ namespace Builtin
     {
 	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
 	llvm::Value* start = args[1]->CodeGen();
-	llvm::Value* len = args[2]->CodeGen();
+	
+	llvm::Value* len;
+	if (args.size() == 2)
+	{
+	    len = MakeIntegerConstant(255);
+	}
+	else
+	{
+	    len = args[2]->CodeGen();;
+	}
 
 	std::vector<llvm::Type*> argTypes = { str->getType(), start->getType(), len->getType() };
 	llvm::Type*              strTy = Type()->LlvmType();
@@ -1010,6 +1019,11 @@ namespace Builtin
 
     bool FunctionCopy::Semantics()
     {
+	if (args.size() == 2)
+	{
+	    return args[0]->Type()->IsStringLike() &&
+		llvm::isa<Types::IntegerDecl>(args[1]->Type());
+	}
 	return args.size() == 3 && args[0]->Type()->IsStringLike() &&
 	       llvm::isa<Types::IntegerDecl>(args[1]->Type()) &&
 	       llvm::isa<Types::IntegerDecl>(args[2]->Type());

@@ -5,31 +5,17 @@ think can be added with relative ease.
 The existance of this document is by no means a promise of ISO 10206
 functionality appearing anytime soon (or ever).
 
-Constants:
-   Array and struct constant declarations
-
 Types:
-   complex
    Restricted types (Opaque types for modules) [supported by parser]
 
-Variables:
-   Value initializers.
-
 Functions
-   { string functions }
-   substr(s, i)
-
    writestr(s, p1, ..., pn)   { kinda like sprintf }
-   readstr(e, v1, ..., vn)  { kinda like sscanf }
-
-   empty(f)   { true if file f is empty }
-   position(f)
-   lastposition(f)
+   readstr(s, v1, ..., vn)  { kinda like sscanf }
 
 Modules
 
    New keywords:
-     "module", "export", "import", "interface", "implementation", "qualified"
+     "module", "export", "import", "interface", "implementation"
 
 Some more details can be found here:
 https://dl.acm.org/doi/pdf/10.1145/165564.165576

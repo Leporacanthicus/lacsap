@@ -1915,11 +1915,10 @@ void PrototypeAST::CreateArgumentAlloca()
     }
     if (!llvm::isa<Types::VoidDecl>(type))
     {
-	std::string       shortname = ShortName(name);
-	llvm::AllocaInst* a = CreateAlloca(llvmFunc, VarDef(shortname, type));
-	if (!variables.Add(shortname, a))
+	llvm::AllocaInst* a = CreateAlloca(llvmFunc, VarDef(resname, type));
+	if (!variables.Add(resname, a))
 	{
-	    Error(this, "Duplicate function result name '" + shortname + "'.");
+	    Error(this, "Duplicate function result name '" + resname + "'.");
 	}
     }
 }
@@ -2139,7 +2138,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
     else
     {
-	std::string  shortname = ShortName(proto->Name());
+	std::string  shortname = proto->ResName();
 	llvm::Value* v = variables.Find(shortname);
 	assert(v && "Expect function result 'variable' to exist");
 	llvm::Type*  ty = proto->Type()->LlvmType();

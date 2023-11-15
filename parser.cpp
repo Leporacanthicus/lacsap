@@ -3010,9 +3010,15 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     }
 
     Types::TypeDecl* resultType;
+    std::string      resultName = funcName;
     // If we have a function, expect ": type".
     if (isFunction)
     {
+	if (AcceptToken(Token::Equal))
+	{
+	    resultName = CurrentToken().GetIdentName();
+	    AssertToken(Token::Identifier);
+	}
 	if (!Expect(Token::Colon, true) || !(resultType = ParseSimpleType(true)))
 	{
 	    return 0;
@@ -3034,7 +3040,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     }
 
     assert(!od && "Expect no object here");
-    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, 0);
+    PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, resultName, 0);
     return proto;
 }
 
@@ -3129,9 +3135,9 @@ FunctionAST* Parser::ParseDefinition(int level)
 	return 0;
     }
 
-    const Location& loc = CurrentToken().Loc();
-    std::string     name = proto->Name();
-    NamedObject*    nmObj = 0;
+    const Location&    loc = CurrentToken().Loc();
+    const std::string& name = proto->Name();
+    NamedObject*       nmObj = 0;
 
     const NamedObject* def = nameStack.Find(name);
     const FuncDef*     fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
@@ -3160,6 +3166,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	{
 	    Types::TypeDecl* ty = new Types::FunctionDecl(proto);
 	    nmObj = new FuncDef(name, ty, proto);
+	    // Procedure = void function. Do not introdce a result name.
 	    if (llvm::isa<Types::VoidDecl>(proto->Type()))
 	    {
 		shortname = "";
@@ -3188,10 +3195,11 @@ FunctionAST* Parser::ParseDefinition(int level)
 	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
-    if (shortname != "")
+    if (shortname != "" && proto->ResName() != shortname)
     {
 	assert(nmObj);
-	nameStack.Add(shortname, nmObj);
+	VarDef* vd = new VarDef(proto->ResName(), proto->Type());
+	nameStack.Add(proto->ResName(), vd);
     }
 
     for (auto v : proto->Args())
@@ -4088,8 +4096,8 @@ ExprAST* Parser::ParseUnit(ParserType type)
 		return 0;
 	    }
 	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
-	                                           Types::Get<Types::VoidDecl>(), 0);
-	    initFunction = new FunctionAST(loc, proto, std::vector<VarDeclAST*>(), body);
+	                                           Types::Get<Types::VoidDecl>(), "", 0);
+	    initFunction = new FunctionAST(loc, proto, {}, body);
 	    initFunction->EndLoc(endLoc);
 	    if (!Expect(Token::Period, true))
 	    {

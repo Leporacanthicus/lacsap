@@ -519,9 +519,10 @@ class PrototypeAST : public ExprAST
 
 public:
     PrototypeAST(const Location& w, const std::string& nm, const std::vector<VarDef>& ar,
-                 Types::TypeDecl* resTy, Types::ClassDecl* obj)
+                 Types::TypeDecl* resTy, const std::string& resNm, Types::ClassDecl* obj)
         : ExprAST(w, EK_Prototype, resTy)
         , name(nm)
+        , resname(resNm)
         , args(ar)
         , function(0)
         , baseobj(obj)
@@ -535,7 +536,8 @@ public:
     llvm::Function*            Create(const std::string& namePrefix);
     llvm::Function*            LlvmFunction() const { return llvmFunc; }
     void                       CreateArgumentAlloca();
-    std::string                Name() const { return name; }
+    const std::string&         Name() const { return name; }
+    const std::string&         ResName() const { return resname; }
     const std::vector<VarDef>& Args() const { return args; }
     bool                       IsForward() const { return isForward; }
     bool                       HasSelf() const { return hasSelf; }
@@ -552,6 +554,7 @@ public:
 
 private:
     std::string         name;
+    std::string         resname;
     std::vector<VarDef> args;
     FunctionAST*        function;
     Types::ClassDecl*   baseobj;

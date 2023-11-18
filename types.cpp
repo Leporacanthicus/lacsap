@@ -211,6 +211,32 @@ namespace Types
 	}
     }
 
+    const TypeDecl* PointerDecl::CompatibleType(const TypeDecl* ty) const
+    {
+	if (SameAs(ty))
+	{
+	    return this;
+	}
+	if (auto ptrTy = llvm::dyn_cast<PointerDecl>(ty))
+	{
+	    if (baseType->SameAs(ptrTy->baseType))
+	    {
+		return this;
+	    }
+	    if (auto classTy = llvm::dyn_cast<ClassDecl>(ptrTy->baseType))
+	    {
+		if (auto thisClassTy = llvm::dyn_cast<ClassDecl>(baseType))
+		{
+		    if (classTy->DerivedFrom(thisClassTy))
+		    {
+			return this;
+		    }
+		}
+	    }
+	}
+	return 0;
+    }
+
     bool CompoundDecl::classof(const TypeDecl* e)
     {
 	switch (e->getKind())
@@ -991,6 +1017,18 @@ namespace Types
     }
 
     int ClassDecl::FieldCount() const { return fields.size() + (baseobj ? baseobj->FieldCount() : 0); }
+
+    const TypeDecl* ClassDecl::DerivedFrom(const TypeDecl* ty) const
+    {
+	ClassDecl* cd = baseobj;
+	while (cd)
+	{
+	    if (ty == cd)
+		return cd;
+	    cd = cd->baseobj;
+	}
+	return 0;
+    }
 
     const TypeDecl* ClassDecl::CompatibleType(const TypeDecl* ty) const
     {

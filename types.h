@@ -414,7 +414,6 @@ namespace Types
 	llvm::Type*   GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
     };
-
     // Since we need to do "late" binding of pointer types, we just keep
     // the name and resolve the actual type at a later point. If the
     // type is known, store it directly. (Otherwise, when we call the fixup).
@@ -436,6 +435,7 @@ namespace Types
 	bool        IsCompound() const override { return false; }
 	void        DoDump() const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
+	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 
     protected:
 	llvm::Type*   GetLlvmType() const override;
@@ -633,6 +633,7 @@ namespace Types
 	const TypeDecl*  CompatibleType(const TypeDecl* ty) const override;
 	llvm::Type*      VTableType(bool opaque) const;
 	static bool      classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
+	const TypeDecl*  DerivedFrom(const TypeDecl* ty) const;
 
     protected:
 	llvm::Type*   GetLlvmType() const override;

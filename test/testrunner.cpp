@@ -456,6 +456,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Init Pointer", "initptr.pas", "" },
     { 0, "Basic", "SubString", "substr.pas", "" },
     { 0, "Basic", "ResultNmae", "resultname.pas", "" },
+    { 0, "Basic", "Dyn Alloc Virtual Object", "dynvirt.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

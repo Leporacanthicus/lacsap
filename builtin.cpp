@@ -701,12 +701,14 @@ namespace Builtin
     llvm::Value* FunctionNew::CodeGen(llvm::IRBuilder<>& builder)
     {
 	Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
-	size_t              size = pd->SubType()->Size();
+	assert(pd && "The argument to new should be a PointerDecl!");
+	const Types::TypeDecl* elemTy = pd->SubType();
+	size_t                 size = elemTy->Size();
 	llvm::Type*         ty = Types::Get<Types::IntegerDecl>()->LlvmType();
 
 	// Result is "void *"
-	llvm::Type*          resTy = Types::GetVoidPtrType();
-	llvm::FunctionCallee f = GetFunction(resTy, { ty }, "__new");
+	llvm::Type*          voidTy = Types::GetVoidPtrType();
+	llvm::FunctionCallee f = GetFunction(voidTy, { ty }, "__new");
 
 	llvm::Value* retVal = builder.CreateCall(f, { MakeIntegerConstant(size) }, "new");
 
@@ -714,6 +716,18 @@ namespace Builtin
 	// TODO: Fix this to be a proper TypeCast...
 	retVal = builder.CreateBitCast(retVal, pd->LlvmType(), "cast");
 	llvm::Value* pA = var->Address();
+
+	// TODO: We need to recursively process the type here, and construct vtables for all
+	// of the elements that are classes (that have VTables).
+	if (auto cd = llvm::dyn_cast<Types::ClassDecl>(elemTy))
+	{
+	    if (cd->VTableType(true))
+	    {
+		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
+		llvm::Value* dest = builder.CreateGEP(voidTy, retVal, MakeIntegerConstant(0), "vtable");
+		builder.CreateStore(gv, dest);
+	    }
+	}
 	return builder.CreateStore(retVal, pA);
     }
 

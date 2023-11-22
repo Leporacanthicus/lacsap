@@ -19,7 +19,7 @@ Inheritance
 Object creation
   Global variable. - Done.
   Local variable. - Done.
-  Dynamic allocation (New/Dispose).
+  Dynamic allocation (New/Dispose) - Partly works. 
 
 Improvements
   Move shortname calculation into a function. - Done

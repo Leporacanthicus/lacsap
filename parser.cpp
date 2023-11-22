@@ -2158,6 +2158,10 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 	    {
 		std::string             objname;
 		const Types::FieldDecl* fd = cd->GetElement(elem, objname);
+		if (!fd)
+		{
+		    return Error("Field " + name + " not found in object");
+		}
 
 		type = fd->SubType();
 		if (fd->IsStatic())
@@ -3533,7 +3537,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
     {
 	vtableoffset = !!cd->VTableType(true);
     }
-    for (int i = 0; i < fields->FieldCount(); i++)
+    for (int i = vtableoffset; i < fields->FieldCount() + vtableoffset; i++)
     {
 	const Types::FieldDecl* f = fields->GetElement(i);
 	Types::TypeDecl*        ty = f->SubType();
@@ -3553,7 +3557,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	    ExprAST* e;
 	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ClassDecl>(fields))
 	    {
-		e = new FieldExprAST(CurrentToken().Loc(), v, i + vtableoffset, ty);
+		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
 	    }
 	    else
 	    {

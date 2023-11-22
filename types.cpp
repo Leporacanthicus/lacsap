@@ -1000,14 +1000,14 @@ namespace Types
 
     const FieldDecl* ClassDecl::GetElement(unsigned int n, std::string& objname) const
     {
-	int b = baseobj ? baseobj->FieldCount() : 0;
-	if (n < (unsigned)b)
+	unsigned b = baseobj ? baseobj->FieldCount() : 0;
+	if (baseobj && n < b + (baseobj->VTableType(true) ? 1 : 0))
 	{
 	    return baseobj->GetElement(n, objname);
 	}
-	assert(n < b + fields.size() && "Out of range field");
+	assert(n <= b + fields.size() && "Out of range field");
 	objname = Name();
-	return fields[n - b];
+	return fields[n - (b + (VTableType(true) ? 1 : 0))];
     }
 
     const FieldDecl* ClassDecl::GetElement(unsigned int n) const
@@ -1047,15 +1047,17 @@ namespace Types
     {
 	std::vector<llvm::Type*> fv;
 
+	int vtableoffset = 0;
 	if (VTableType(true))
 	{
+	    vtableoffset = 1;
 	    fv.push_back(llvm::PointerType::getUnqual(vtableType));
 	}
 
 	int fc = FieldCount();
 	for (int i = 0; i < fc; i++)
 	{
-	    const FieldDecl* f = GetElement(i);
+	    const FieldDecl* f = GetElement(i + vtableoffset);
 
 	    assert(!llvm::isa<MemberFuncDecl>(f->SubType()) && "Should not have member functions now");
 

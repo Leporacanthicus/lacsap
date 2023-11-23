@@ -462,12 +462,12 @@ const EnumDef* Parser::GetEnumValue(const std::string& name)
 
 bool Parser::AddType(const std::string& name, Types::TypeDecl* ty, bool restricted)
 {
-    return nameStack.Add(name, new TypeDef(name, ty, restricted));
+    return nameStack.Add(new TypeDef(name, ty, restricted));
 }
 
 bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 {
-    if (!nameStack.Add(name, new ConstDef(name, cd)))
+    if (!nameStack.Add(new ConstDef(name, cd)))
     {
 	// TODO: Track location better.
 	return Error<bool>("Name " + name + " is already declared as a constant");
@@ -1113,7 +1113,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 	Types::EnumDecl* ty = new Types::EnumDecl(ccv.Names(), Types::Get<Types::IntegerDecl>());
 	for (auto v : ty->Values())
 	{
-	    if (!nameStack.Add(v.name, new EnumDef(v.name, v.value, ty)))
+	    if (!nameStack.Add(new EnumDef(v.name, v.value, ty)))
 	    {
 		return Error("Enumerated value by name " + v.name + " already exists...");
 	    }
@@ -1797,7 +1797,7 @@ void Parser::ParseLabels()
     {
 	for (auto n : labels.Values())
 	{
-	    if (!nameStack.Add(std::to_string(n), new LabelDef(n)))
+	    if (!nameStack.Add(new LabelDef(n)))
 	    {
 		Error("Multiple label defintions?");
 		return;
@@ -2828,7 +2828,7 @@ VarDeclAST* Parser::ParseVarDecls()
 		{
 		    VarDef v(n, type);
 		    varList.push_back(v);
-		    if (!nameStack.Add(n, new VarDef(v)))
+		    if (!nameStack.Add(new VarDef(v)))
 		    {
 			return Error("Name '" + n + "' is already defined");
 		    }
@@ -3175,7 +3175,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	    {
 		shortname = "";
 	    }
-	    if (!nameStack.Add(name, nmObj))
+	    if (!nameStack.Add(nmObj))
 	    {
 		return Error("Name '" + name + "' already exists...");
 	    }
@@ -3203,23 +3203,23 @@ FunctionAST* Parser::ParseDefinition(int level)
     {
 	assert(nmObj);
 	VarDef* vd = new VarDef(proto->ResName(), proto->Type());
-	nameStack.Add(proto->ResName(), vd);
+	nameStack.Add(vd);
     }
 
     for (auto v : proto->Args())
     {
-	if (!nameStack.Add(v.Name(), new VarDef(v.Name(), v.Type())))
+	if (!nameStack.Add(new VarDef(v.Name(), v.Type())))
 	{
 	    return Error("Duplicate name '" + v.Name() + "'.");
 	}
 	if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(v.Type()))
 	{
 	    Types::DynRangeDecl* dr = dty->Range();
-	    if (!nameStack.Add(dr->LowName(), new VarDef(dr->LowName(), dr->SubType())))
+	    if (!nameStack.Add(new VarDef(dr->LowName(), dr->SubType())))
 	    {
 		return Error("Duplicate name '" + dr->LowName() + "'.");
 	    }
-	    if (!nameStack.Add(dr->HighName(), new VarDef(dr->HighName(), dr->SubType())))
+	    if (!nameStack.Add(new VarDef(dr->HighName(), dr->SubType())))
 	    {
 		return Error("Duplicate name '" + dr->HighName() + "'.");
 	    }
@@ -3563,7 +3563,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	    {
 		e = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    }
-	    nameStack.Add(f->Name(), new WithDef(f->Name(), e, f->SubType()));
+	    nameStack.Add(new WithDef(f->Name(), e, f->SubType()));
 	}
     }
     if (Types::ClassDecl* od = const_cast<Types::ClassDecl*>(llvm::dyn_cast<Types::ClassDecl>(fields)))
@@ -3573,7 +3573,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	{
 	    Types::MemberFuncDecl* mf = const_cast<Types::MemberFuncDecl*>(od->GetMembFunc(i));
 	    std::string            name = mf->Proto()->Name();
-	    nameStack.Add(name, new MembFuncDef(name, i, od));
+	    nameStack.Add(new MembFuncDef(name, i, od));
 	}
     }
 }
@@ -3926,7 +3926,7 @@ ExprAST* Parser::ParseUses()
 		{
 		    for (auto i : ua->Interface().List())
 		    {
-			if (!nameStack.Add(i.first, i.second))
+			if (!nameStack.Add(i.second))
 			{
 			    return 0;
 			}
@@ -3976,7 +3976,7 @@ bool Parser::ParseInterface(InterfaceList& iList)
 	    std::string      name = proto->Name();
 	    Types::TypeDecl* ty = new Types::FunctionDecl(proto);
 	    FuncDef*         nmObj = new FuncDef(name, ty, proto);
-	    if (!nameStack.Add(name, nmObj))
+	    if (!nameStack.Add(nmObj))
 	    {
 		return Error<bool>("Interface name '" + name + "' already exists in...");
 	    }
@@ -3994,14 +3994,13 @@ bool Parser::ParseInterface(InterfaceList& iList)
 	    break;
 
 	default:
-	    Error("Unexpected token");
-	    return false;
+	    return Error<bool>("Unexpected token");
 	    break;
 	}
     } while (CurrentToken().GetToken() != Token::Implementation);
     for (auto i : nameStack.GetLevel())
     {
-	iList.Add(i->Name(), i);
+	iList.Add(i.second);
     }
     return true;
 }
@@ -4078,7 +4077,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    }
 	    for (auto i : interfaceList.List())
 	    {
-		if (!nameStack.Add(i.first, i.second))
+		if (!nameStack.Add(i.second))
 		{
 		    return 0;
 		}
@@ -4147,8 +4146,8 @@ ExprAST* Parser::Parse(ParserType type)
     {
 	VarDef input("input", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
 	VarDef output("output", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
-	nameStack.Add("input", new VarDef(input));
-	nameStack.Add("output", new VarDef(output));
+	nameStack.Add(new VarDef(input));
+	nameStack.Add(new VarDef(output));
 	std::vector<VarDef> varList{ input, output };
 	ast.push_back(new VarDeclAST(Location(), varList));
     }
@@ -4171,8 +4170,8 @@ Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
           AddType("timestamp", Types::GetTimeStampType()) &&
           AddType("bindingtype", Types::GetBindingType()) &&
           AddType("complex", Types::Get<Types::ComplexDecl>()) &&
-          nameStack.Add("false", new EnumDef("false", 0, Types::Get<Types::BoolDecl>())) &&
-          nameStack.Add("true", new EnumDef("true", 1, Types::Get<Types::BoolDecl>())) &&
+          nameStack.Add(new EnumDef("false", 0, Types::Get<Types::BoolDecl>())) &&
+          nameStack.Add(new EnumDef("true", 1, Types::Get<Types::BoolDecl>())) &&
           AddConst("maxint", new Constants::IntConstDecl(unknownLoc, INT_MAX)) &&
           AddConst("maxchar", new Constants::IntConstDecl(unknownLoc, UCHAR_MAX)) &&
           AddConst("pi", new Constants::RealConstDecl(unknownLoc, llvm::numbers::pi)) &&

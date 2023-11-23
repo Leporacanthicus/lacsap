@@ -28,31 +28,12 @@ public:
 
     size_t MaxLevel() const { return stack.size() - 1; }
 
-    std::vector<T> GetLevel()
-    {
-	std::vector<T> v;
-	for (auto i : stack.back())
-	{
-	    v.push_back(i.second);
-	}
-	return v;
-    }
-
-    std::vector<T> GetLevel(int n)
-    {
-	std::vector<T> v;
-	assert(n < stack.size() && "Requests for getlevel should be in bounds...");
-	for (auto i : stack[n])
-	{
-	    v.push_back(i.second);
-	}
-	return v;
-    }
+    const MapType& GetLevel() { return stack.back(); }
 
     void DropLevel() { stack.pop_back(); }
 
     /* Returns false on failure */
-    bool Add(std::string name, const T v)
+    bool Add(std::string name, const T& v)
     {
 	if (caseInsensitive)
 	{
@@ -70,6 +51,8 @@ public:
 	}
 	return false;
     }
+    // Alternative version, used with NamedObject
+    bool Add(const T& v) { return Add(v->Name(), v); }
 
     T Find(std::string name, size_t& level) const
     {
@@ -125,20 +108,6 @@ public:
 	return 0;
     }
 
-    T FindBottomLevel(std::string name)
-    {
-	if (caseInsensitive)
-	{
-	    strlower(name);
-	}
-	MapIter it = stack.front().find(name);
-	if (it != stack.front().end())
-	{
-	    return it->second;
-	}
-	return 0;
-    }
-
     void dump() const;
 
 private:
@@ -179,7 +148,7 @@ class InterfaceList
 {
 public:
     InterfaceList(){};
-    bool                                      Add(std::string name, const NamedObject* obj);
+    bool                                      Add(const NamedObject* obj);
     const Stack<const NamedObject*>::MapType& List() const { return list; }
 
 private:

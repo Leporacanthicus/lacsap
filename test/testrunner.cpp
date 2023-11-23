@@ -494,6 +494,7 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "Wrong args 4", "wrongargs4.pas", "" },
     { LACSAP_ONLY, "CompErr", "Assign to constant", "constassign.pas", "" },
     { LACSAP_ONLY, "CompErr", "Downcast class", "downcast.pas", "" },
+    { LACSAP_ONLY, "CompErr", "Duplicate member function Definition", "dupmembfunc.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

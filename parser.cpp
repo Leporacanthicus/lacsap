@@ -3191,6 +3191,12 @@ FunctionAST* Parser::ParseDefinition(int level)
 	}
     }
 
+    // We're not in a forward declaration.
+    if (proto->Function())
+    {
+	return Error("Duplicate defintion of " + proto->Name());
+    }
+
     NameWrapper wrapper(nameStack);
     if (proto->HasSelf())
     {

@@ -80,7 +80,7 @@ public:
 	}
 	if (verbosity > 1)
 	{
-	    std::cerr << "Not found" << name << std::endl;
+	    std::cerr << "Not found " << name << std::endl;
 #if !NDEBUG
 	    dump();
 #endif

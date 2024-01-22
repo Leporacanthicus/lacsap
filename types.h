@@ -46,7 +46,6 @@ namespace Types
 	int64_t  Start() const { return start; }
 	int64_t  End() const { return end; }
 	uint64_t Size() const { return (uint64_t)(end - start) + 1; }
-	void     dump() const;
 	void     DoDump() const;
 
     private:

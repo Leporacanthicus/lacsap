@@ -423,7 +423,7 @@ llvm::Value* AddressableAST::CodeGen()
 void VariableExprAST::DoDump() const
 {
     std::cerr << "Variable: " << name << " ";
-    Type()->dump();
+    Type()->DoDump();
 }
 
 llvm::Value* VariableExprAST::Address()
@@ -456,7 +456,7 @@ ArrayExprAST::ArrayExprAST(const Location& loc, ExprAST* v, const std::vector<Ex
 void ArrayExprAST::DoDump() const
 {
     std::cerr << "Array: ";
-    expr->dump();
+    expr->DoDump();
     std::cerr << "[";
     bool first = true;
     for (auto i : indices)
@@ -466,7 +466,7 @@ void ArrayExprAST::DoDump() const
 	    std::cerr << ", ";
 	}
 	first = false;
-	i->dump();
+	i->DoDump();
     }
 }
 
@@ -542,9 +542,9 @@ void DynArrayExprAST::accept(ASTVisitor& v)
 void DynArrayExprAST::DoDump() const
 {
     std::cerr << "DynArray: ";
-    expr->dump();
+    expr->DoDump();
     std::cerr << "[";
-    index->dump();
+    index->DoDump();
     std::cerr << "]";
 }
 
@@ -595,7 +595,7 @@ void VariantFieldExprAST::accept(ASTVisitor& v)
 void PointerExprAST::DoDump() const
 {
     std::cerr << "Pointer:";
-    pointer->dump();
+    pointer->DoDump();
 }
 
 llvm::Value* PointerExprAST::Address()
@@ -614,7 +614,7 @@ void PointerExprAST::accept(ASTVisitor& v)
 void FilePointerExprAST::DoDump() const
 {
     std::cerr << "FilePointer:";
-    pointer->dump();
+    pointer->DoDump();
 }
 
 llvm::Value* FilePointerExprAST::Address()
@@ -677,9 +677,9 @@ static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
 void BinaryExprAST::DoDump() const
 {
     std::cerr << "BinaryOp: ";
-    lhs->dump();
+    lhs->DoDump();
     oper.dump();
-    rhs->dump();
+    rhs->DoDump();
 }
 
 static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm::Value* src)
@@ -1362,9 +1362,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (verbosity)
     {
-	lhs->dump();
-	oper.dump();
-	rhs->dump();
+	this->dump();
     }
 
     if (llvm::isa<SetExprAST>(rhs) || llvm::isa<SetExprAST>(lhs) ||
@@ -1493,7 +1491,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 void UnaryExprAST::DoDump() const
 {
     std::cerr << "Unary: " << oper.ToString();
-    rhs->dump();
+    rhs->DoDump();
 }
 
 llvm::Value* UnaryExprAST::CodeGen()
@@ -1531,7 +1529,7 @@ void CallExprAST::DoDump() const
     std::cerr << "call: " << proto->Name() << "(";
     for (auto i : args)
     {
-	i->dump();
+	i->DoDump();
     }
     std::cerr << ")";
 }
@@ -1710,7 +1708,7 @@ void BlockAST::DoDump() const
     std::cerr << "Block: Begin " << std::endl;
     for (auto p : content)
     {
-	p->dump();
+	p->DoDump();
     }
     std::cerr << "Block End;" << std::endl;
 }
@@ -2026,9 +2024,9 @@ FunctionAST::FunctionAST(const Location& w, PrototypeAST* prot, const std::vecto
 void FunctionAST::DoDump() const
 {
     std::cerr << "Function: " << std::endl;
-    proto->dump();
+    proto->DoDump();
     std::cerr << "Function body:" << std::endl;
-    body->dump();
+    body->DoDump();
 }
 
 void FunctionAST::accept(ASTVisitor& v)
@@ -2194,7 +2192,7 @@ Types::TypeDecl* FunctionAST::ClosureType()
 
 void StringExprAST::DoDump() const
 {
-    std::cerr << "String: '" << val << "'" << std::endl;
+    std::cerr << "String: '" << val << "'";
 }
 
 llvm::Value* StringExprAST::CodeGen()
@@ -2218,9 +2216,9 @@ llvm::Value* StringExprAST::Address()
 void AssignExprAST::DoDump() const
 {
     std::cerr << "Assign: " << std::endl;
-    lhs->dump();
+    lhs->DoDump();
     std::cerr << ":=";
-    rhs->dump();
+    rhs->DoDump();
 }
 
 llvm::Value* AssignExprAST::AssignStr()
@@ -2309,16 +2307,16 @@ llvm::Value* AssignExprAST::CodeGen()
 void IfExprAST::DoDump() const
 {
     std::cerr << "if: " << std::endl;
-    cond->dump();
+    cond->DoDump();
     std::cerr << "then: ";
     if (then)
     {
-	then->dump();
+	then->DoDump();
     }
     if (other)
     {
 	std::cerr << " else::";
-	other->dump();
+	other->DoDump();
     }
 }
 
@@ -2388,7 +2386,7 @@ llvm::Value* IfExprAST::CodeGen()
 void ForExprAST::DoDump() const
 {
     std::cerr << "for: " << std::endl;
-    start->dump();
+    start->DoDump();
     if (stepDown)
     {
 	std::cerr << " downto ";
@@ -2397,9 +2395,9 @@ void ForExprAST::DoDump() const
     {
 	std::cerr << " to ";
     }
-    end->dump();
+    end->DoDump();
     std::cerr << " do ";
-    body->dump();
+    body->DoDump();
 }
 
 void ForExprAST::accept(ASTVisitor& v)
@@ -2616,9 +2614,9 @@ llvm::Value* ForExprAST::CodeGen()
 void WhileExprAST::DoDump() const
 {
     std::cerr << "While: ";
-    cond->dump();
+    cond->DoDump();
     std::cerr << " Do: ";
-    body->dump();
+    body->DoDump();
 }
 
 llvm::Value* WhileExprAST::CodeGen()
@@ -2663,9 +2661,9 @@ void WhileExprAST::accept(ASTVisitor& v)
 void RepeatExprAST::DoDump() const
 {
     std::cerr << "Repeat: ";
-    body->dump();
+    body->DoDump();
     std::cerr << " until: ";
-    cond->dump();
+    cond->DoDump();
 }
 
 llvm::Value* RepeatExprAST::CodeGen()
@@ -2718,16 +2716,16 @@ void WriteAST::DoDump() const
 	    std::cerr << ", ";
 	}
 	first = false;
-	a.expr->dump();
+	a.expr->DoDump();
 	if (a.width)
 	{
 	    std::cerr << ":";
-	    a.width->dump();
+	    a.width->DoDump();
 	}
 	if (a.precision)
 	{
 	    std::cerr << ":";
-	    a.precision->dump();
+	    a.precision->DoDump();
 	}
     }
     std::cerr << ")";
@@ -2948,7 +2946,7 @@ void ReadAST::DoDump() const
 	    std::cerr << ", ";
 	}
 	first = false;
-	a->dump();
+	a->DoDump();
     }
     std::cerr << ")";
 }
@@ -3211,7 +3209,7 @@ void LabelExprAST::DoDump() const
 	first = false;
     }
     std::cerr << ": ";
-    stmt->dump();
+    stmt->DoDump();
 }
 
 llvm::Value* LabelExprAST::CodeGen()
@@ -3256,16 +3254,16 @@ void LabelExprAST::accept(ASTVisitor& v)
 void CaseExprAST::DoDump() const
 {
     std::cerr << "Case ";
-    expr->dump();
+    expr->DoDump();
     std::cerr << " of " << std::endl;
     for (auto l : labels)
     {
-	l->dump();
+	l->DoDump();
     }
     if (otherwise)
     {
 	std::cerr << "otherwise: ";
-	otherwise->dump();
+	otherwise->DoDump();
     }
 }
 
@@ -3378,9 +3376,9 @@ llvm::Value* CaseExprAST::CodeGen()
 void RangeExprAST::DoDump() const
 {
     std::cerr << "Range:";
-    low->dump();
+    low->DoDump();
     std::cerr << "..";
-    high->dump();
+    high->DoDump();
 }
 
 bool RangeExprAST::IsConstant()
@@ -3399,7 +3397,7 @@ void SetExprAST::DoDump() const
 	    std::cerr << ", ";
 	}
 	first = false;
-	v->dump();
+	v->DoDump();
     }
     std::cerr << "]";
 }
@@ -3606,7 +3604,8 @@ llvm::Value* SetExprAST::Address()
 
 void WithExprAST::DoDump() const
 {
-    std::cerr << "With ... do " << std::endl;
+    std::cerr << "With ... do ";
+    body->DoDump();
 }
 
 llvm::Value* WithExprAST::CodeGen()
@@ -3626,9 +3625,9 @@ int GetErrors(void)
 void RangeReduceAST::DoDump() const
 {
     std::cerr << "RangeReduce: ";
-    expr->dump();
+    expr->DoDump();
     std::cerr << "[";
-    range->dump();
+    range->DoDump();
     std::cerr << "]";
 }
 
@@ -3673,9 +3672,9 @@ llvm::Value* RangeReduceAST::CodeGen()
 void RangeCheckAST::DoDump() const
 {
     std::cerr << "RangeCheck: ";
-    expr->dump();
+    expr->DoDump();
     std::cerr << "[";
-    range->dump();
+    range->DoDump();
     std::cerr << "]";
 }
 
@@ -3737,9 +3736,9 @@ llvm::Value* RangeCheckAST::CodeGen()
 void TypeCastAST::DoDump() const
 {
     std::cerr << "TypeCast to ";
-    type->dump();
+    type->DoDump();
     std::cerr << "(";
-    expr->dump();
+    expr->DoDump();
     std::cerr << ")";
 }
 
@@ -3920,14 +3919,14 @@ llvm::Value* SizeOfExprAST::CodeGen()
 void SizeOfExprAST::DoDump() const
 {
     std::cerr << "Sizeof(";
-    type->dump();
+    type->DoDump();
     std::cerr << ")" << std::endl;
 }
 
 void BuiltinExprAST::DoDump() const
 {
     std::cerr << "Builtin(";
-    type->dump();
+    type->DoDump();
     std::cerr << ")" << std::endl;
 }
 
@@ -3949,7 +3948,7 @@ void BuiltinExprAST::accept(ASTVisitor& v)
 void VTableAST::DoDump() const
 {
     std::cerr << "VTable(";
-    type->dump();
+    type->DoDump();
     std::cerr << ")" << std::endl;
 }
 
@@ -4110,7 +4109,7 @@ void ClosureAST::DoDump() const
     std::cerr << "Closure ";
     for (auto c : content)
     {
-	c->dump();
+	c->DoDump();
     }
     std::cerr << std::endl;
 }
@@ -4214,7 +4213,7 @@ void InitValueAST::DoDump() const
     std::cerr << "Init: ";
     for (auto v : values)
     {
-	v->dump();
+	v->DoDump();
     }
 }
 
@@ -4255,7 +4254,7 @@ void InitArrayAST::DoDump() const
     for (auto v : values)
     {
 	std::cerr << v.Start() << ".." << v.End() << ":";
-	v.Value()->dump();
+	v.Value()->DoDump();
     }
 }
 
@@ -4291,7 +4290,7 @@ void InitRecordAST::DoDump() const
 	    sep = ',';
 	}
 	std::cerr << ":";
-	v.Value()->dump();
+	v.Value()->DoDump();
     }
 }
 
@@ -4310,8 +4309,8 @@ llvm::Value* ArraySliceAST::Address()
 
 void ArraySliceAST::DoDump() const
 {
-    expr->dump();
-    range->dump();
+    expr->DoDump();
+    range->DoDump();
 }
 
 void ArraySliceAST::accept(ASTVisitor& v)

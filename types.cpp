@@ -420,14 +420,14 @@ namespace Types
 	return 0;
     }
 
-    void Range::dump() const { std::cerr << "[" << start << ".." << end << "]"; }
+    void Range::DoDump() const { std::cerr << "[" << start << ".." << end << "]"; }
 
     void RangeDecl::DoDump() const
     {
 	std::cerr << "RangeDecl: ";
 	baseType->DoDump();
 	std::cerr << " ";
-	range->dump();
+	range->DoDump();
     }
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const
@@ -1103,7 +1103,7 @@ namespace Types
     void MemberFuncDecl::DoDump() const
     {
 	std::cerr << "Member function ";
-	proto->dump();
+	proto->DoDump();
     }
 
     void FuncPtrDecl::DoDump() const { std::cerr << "FunctionPtr "; }

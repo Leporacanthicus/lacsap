@@ -1805,10 +1805,12 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
     }
 
     std::string actualName;
+    llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::InternalLinkage;
     // Don't mangle our 'main' functions name, as we call that from C
     if (name == "__PascalMain")
     {
 	actualName = name;
+	linkage = llvm::GlobalValue::ExternalLinkage;
     }
     else
     {
@@ -1821,6 +1823,10 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
     }
 
     llvmFunc = CreateFunction(actualName, args, type);
+    if (llvmFunc)
+    {
+	llvmFunc->setLinkage(linkage);
+    }
     return llvmFunc;
 }
 

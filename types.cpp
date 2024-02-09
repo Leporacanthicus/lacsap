@@ -623,6 +623,10 @@ namespace Types
 	    [[maybe_unused]] llvm::Type* ty = GetLlvmType();
 	    assert(ty == opaqueType && "Expect opaqueType to be returned");
 	    assert(!opaqueType->isOpaque() && "Expect opaqueness to have gone away");
+	    if (opaqueType->isOpaque())
+	    {
+		llvm_unreachable("Unexpected opaque type");
+	    }
 	}
     }
 

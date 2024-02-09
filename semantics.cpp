@@ -14,6 +14,7 @@ public:
 private:
     Types::TypeDecl* BinarySetUpdate(BinaryExprAST* b);
     void             CheckBinExpr(BinaryExprAST* b);
+    void             CheckUnaryExpr(UnaryExprAST* b);
     void             CheckAssignExpr(AssignExprAST* a);
     void             CheckRangeExpr(RangeExprAST* r);
     void             CheckSetExpr(SetExprAST* s);
@@ -129,6 +130,10 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     if (BinaryExprAST* b = llvm::dyn_cast<BinaryExprAST>(expr))
     {
 	CheckBinExpr(b);
+    }
+    else if (UnaryExprAST* u = llvm::dyn_cast<UnaryExprAST>(expr))
+    {
+	CheckUnaryExpr(u);
     }
     else if (AssignExprAST* a = llvm::dyn_cast<AssignExprAST>(expr))
     {
@@ -454,6 +459,20 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
 	}
     }
     b->UpdateType(ty);
+}
+
+void TypeCheckVisitor::CheckUnaryExpr(UnaryExprAST* u)
+{
+    TRACE();
+
+    if (u->oper.GetToken() == Token::Not)
+    {
+	Types::TypeDecl* ty = u->rhs->Type();
+	if (!ty->IsIntegral() || llvm::isa<Types::CharDecl>(ty))
+	{
+	    Error(u, "Expect integral argument to NOT");
+	}
+    }
 }
 
 void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)

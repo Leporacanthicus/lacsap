@@ -78,28 +78,81 @@ int __eoln(File* file)
     return *file->buffer == '\n';
 }
 
+struct interface
+{
+    int (*fngetnext)(struct interface* intf);
+    int (*fneof)(struct interface* intf);
+    int (*fneoln)(struct interface* intf);
+    int (*fncurrent)(struct interface* intf);
+    void (*fnpreread)(struct interface* intf);
+
+    union
+    {
+	File*   file;
+	String* str;
+    };
+};
+
+int file_current(struct interface* intf)
+{
+    return *intf->file->buffer;
+}
+
+int file_get_text(struct interface* intf)
+{
+    return __get_text(intf->file);
+}
+
+int file_eof(struct interface* intf)
+{
+    return __eof(intf->file);
+}
+
+int file_eoln(struct interface* intf)
+{
+    return __eoln(intf->file);
+}
+
+void file_preread(struct interface* intf)
+{
+    if (!files[intf->file->handle].readAhead)
+    {
+	__get_text(intf->file);
+    }
+}
+
+static void initFile(File* file, struct interface* intf)
+{
+    intf->file = file;
+    intf->fngetnext = file_get_text;
+    intf->fneof = file_eof;
+    intf->fneoln = file_eoln;
+    intf->fncurrent = file_current;
+    intf->fnpreread = file_preread;
+}
+
 /*******************************************
  * Read Functionality
  *******************************************
  */
-static void skip_spaces(File* file)
+static void skip_spaces(struct interface* intf)
 {
-    while (isspace(*file->buffer) && !__eof(file))
+    while (isspace(intf->fncurrent(intf)) && !intf->fneof(intf))
     {
-	__get_text(file);
+	intf->fngetnext(intf);
     }
 }
 
-static int get_sign(File* file)
+static int get_sign(struct interface* intf)
 {
-    if (*file->buffer == '-')
+    if (intf->fncurrent(intf) == '-')
     {
-	__get_text(file);
+	intf->fngetnext(intf);
 	return -1;
     }
-    else if (*file->buffer == '+')
+    else if (intf->fncurrent(intf) == '+')
     {
-	__get_text(file);
+	intf->fngetnext(intf);
     }
     return 1;
 }
@@ -134,30 +187,36 @@ static double exponent_to_multi(int exponent)
     return m;
 }
 
-void __read_int64(File* file, int64_t* v)
+static void readint64(struct interface* intf, int64_t* v)
 {
     int64_t n = 0;
 
-    if (file->handle >= MaxPascalFiles)
-    {
-	return;
-    }
-    if (!files[file->handle].readAhead)
-    {
-	__get_text(file);
-    }
-    skip_spaces(file);
-    int sign = get_sign(file);
-    while (isdigit(*file->buffer))
+    intf->fnpreread(intf);
+
+    skip_spaces(intf);
+    int sign = get_sign(intf);
+    while (isdigit(intf->fncurrent(intf)))
     {
 	n *= 10;
-	n += (*file->buffer) - '0';
-	if (!__get_text(file))
+	n += (intf->fncurrent(intf)) - '0';
+	if (!intf->fngetnext(intf))
 	{
 	    break;
 	}
     }
     *v = n * sign;
+}
+
+void __read_int64(File* file, int64_t* v)
+{
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+
+    struct interface intf;
+    initFile(file, &intf);
+    readint64(&intf, v);
 }
 
 void __read_int32(File* file, int* v)
@@ -175,66 +234,58 @@ void __read_chr(File* file, char* v)
 	return;
     }
 
-    if (!files[file->handle].readAhead)
-    {
-	__get_text(file);
-    }
+    struct interface intf;
+    initFile(file, &intf);
 
-    *v = *file->buffer;
-    __get_text(file);
+    intf.fnpreread(&intf);
+
+    *v = intf.fncurrent(&intf);
+    intf.fngetnext(&intf);
 }
 
-void __read_real(File* file, double* v)
+static void readreal(struct interface* intf, double* v)
 {
     double n = 0;
     double divisor = 1.0;
     double multiplicand = 1.0;
     int    exponent = 0;
 
-    if (file->handle >= MaxPascalFiles)
-    {
-	return;
-    }
-    if (!files[file->handle].readAhead)
-    {
-	__get_text(file);
-    }
+    intf->fnpreread(intf);
+    skip_spaces(intf);
+    int sign = get_sign(intf);
 
-    skip_spaces(file);
-    int sign = get_sign(file);
-
-    while (isdigit(*file->buffer))
+    while (isdigit(intf->fncurrent(intf)))
     {
 	n *= 10.0;
-	n += (*file->buffer) - '0';
-	if (!__get_text(file))
+	n += (intf->fncurrent(intf)) - '0';
+	if (!intf->fngetnext(intf))
 	{
 	    break;
 	}
     }
-    if (*file->buffer == '.')
+    if (intf->fncurrent(intf) == '.')
     {
-	__get_text(file);
-	while (isdigit(*file->buffer))
+	intf->fngetnext(intf);
+	while (isdigit(intf->fncurrent(intf)))
 	{
 	    n *= 10.0;
-	    n += (*file->buffer) - '0';
+	    n += (intf->fncurrent(intf)) - '0';
 	    divisor *= 10.0;
-	    if (!__get_text(file))
+	    if (!intf->fngetnext(intf))
 	    {
 		break;
 	    }
 	}
     }
-    if (*file->buffer == 'e' || *file->buffer == 'E')
+    if (intf->fncurrent(intf) == 'e' || intf->fncurrent(intf) == 'E')
     {
-	__get_text(file);
-	int expsign = get_sign(file);
-	while (isdigit(*file->buffer) && !__eoln(file))
+	intf->fngetnext(intf);
+	int expsign = get_sign(intf);
+	while (isdigit(intf->fncurrent(intf)) && !intf->fneoln(intf))
 	{
 	    exponent *= 10;
-	    exponent += (*file->buffer) - '0';
-	    if (!__get_text(file))
+	    exponent += (intf->fncurrent(intf)) - '0';
+	    if (!intf->fngetnext(intf))
 	    {
 		break;
 	    }
@@ -244,6 +295,19 @@ void __read_real(File* file, double* v)
     }
     n = n * sign / divisor * multiplicand;
     *v = n;
+}
+
+void __read_real(File* file, double* v)
+{
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+
+    struct interface intf;
+    initFile(file, &intf);
+
+    readreal(&intf, v);
 }
 
 void __read_nl(File* file)
@@ -263,29 +327,49 @@ void __read_nl(File* file)
     files[file->handle].readAhead = 0;
 }
 
-void __read_str(File* file, String* val)
+static void readstr(struct interface* intf, String* v)
 {
     char   buffer[256];
     size_t count = 0;
 
-    if (file->handle >= MaxPascalFiles)
+    intf->fnpreread(intf);
+
+    while (!intf->fneoln(intf) && count < sizeof(buffer))
     {
-	return;
-    }
-    if (!files[file->handle].readAhead)
-    {
-	__get_text(file);
-    }
-    while (*file->buffer != '\n' && count < sizeof(buffer))
-    {
-	buffer[count++] = *file->buffer;
-	if (!__get_text(file))
+	buffer[count++] = intf->fncurrent(intf);
+	if (!intf->fngetnext(intf))
 	{
 	    break;
 	}
     }
-    val->len = count;
-    memcpy(val->str, buffer, count);
+    v->len = count;
+    memcpy(v->str, buffer, count);
+}
+
+void __read_str(File* file, String* v)
+{
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+
+    struct interface intf;
+    initFile(file, &intf);
+
+    readstr(&intf, v);
+}
+
+static void readchars(struct interface* intf, char* v)
+{
+    intf->fnpreread(intf);
+    while (intf->fncurrent(intf) != '\n')
+    {
+	*v++ = intf->fncurrent(intf);
+	if (!intf->fngetnext(intf))
+	{
+	    break;
+	}
+    }
 }
 
 void __read_chars(File* file, char* v)
@@ -294,16 +378,8 @@ void __read_chars(File* file, char* v)
     {
 	return;
     }
-    if (!files[file->handle].readAhead)
-    {
-	__get_text(file);
-    }
-    while (*file->buffer != '\n')
-    {
-	*v++ = *file->buffer;
-	if (!__get_text(file))
-	{
-	    break;
-	}
-    }
+    struct interface intf;
+    initFile(file, &intf);
+
+    readchars(&intf, v);
 }

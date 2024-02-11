@@ -739,6 +739,12 @@ class WriteAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
+    enum class WriteKind
+    {
+	Write,
+	WriteLn,
+	WriteStr
+    };
     struct WriteArg
     {
 	WriteArg() : expr(0), width(0), precision(0) {}
@@ -747,8 +753,8 @@ public:
 	ExprAST* precision;
     };
 
-    WriteAST(const Location& w, AddressableAST* f, const std::vector<WriteArg>& a, bool isLn)
-        : ExprAST(w, EK_Write), file(f), args(a), isWriteln(isLn)
+    WriteAST(const Location& w, AddressableAST* dst, const std::vector<WriteArg>& a, WriteKind knd)
+        : ExprAST(w, EK_Write), dest(dst), args(a), kind(knd)
     {
     }
     void         DoDump() const override;
@@ -757,9 +763,9 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    AddressableAST*       file;
+    AddressableAST*       dest;
     std::vector<WriteArg> args;
-    bool                  isWriteln;
+    WriteKind             kind;
 };
 
 class ReadAST : public ExprAST

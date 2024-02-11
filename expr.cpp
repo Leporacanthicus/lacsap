@@ -2700,13 +2700,19 @@ void RepeatExprAST::accept(ASTVisitor& v)
 
 void WriteAST::DoDump() const
 {
-    if (isWriteln)
+    switch (kind)
     {
+    case WriteKind::WriteLn:
 	std::cerr << "Writeln(";
-    }
-    else
-    {
+	break;
+
+    case WriteKind::Write:
 	std::cerr << "Write(";
+	break;
+
+    case WriteKind::WriteStr:
+	std::cerr << "WriteStr(";
+	break;
     }
     bool first = true;
     for (auto a : args)
@@ -2733,7 +2739,7 @@ void WriteAST::DoDump() const
 
 void WriteAST::accept(ASTVisitor& v)
 {
-    file->accept(v);
+    dest->accept(v);
     for (auto a : args)
     {
 	a.expr->accept(v);
@@ -2748,7 +2754,7 @@ void WriteAST::accept(ASTVisitor& v)
     }
 }
 
-static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty)
+static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty, WriteAST::WriteKind kind)
 {
     std::string              suffix;
     llvm::Type*              intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
@@ -2804,7 +2810,12 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	assert(0);
 	return Error(0, "Invalid type argument for write");
     }
-    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__write_" + suffix);
+    std::string extra = "";
+    if (kind == WriteAST::WriteKind::WriteStr)
+    {
+	extra = "S_";
+    }
+    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__write_" + extra + suffix);
 }
 
 static llvm::FunctionCallee CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
@@ -2822,24 +2833,31 @@ llvm::Value* WriteAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    llvm::Value* f = file->Address();
+    llvm::Value* dst = dest->Address();
     llvm::Value* v = 0;
-    bool         isText = llvm::isa<Types::TextDecl>(file->Type());
-    if (isText && args.empty() && !isWriteln)
+    bool         isText = dest->Type()->IsStringLike() || llvm::isa<Types::TextDecl>(dest->Type());
+    if (kind == WriteKind::WriteStr)
+    {
+	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dst->getType() },
+	                                      "__write_S_init");
+	v = builder.CreateCall(fc, { dst });
+    }
+    if (kind != WriteKind::WriteLn && args.empty())
     {
 	return NoOpValue();
     }
+
     for (auto arg : args)
     {
 	std::vector<llvm::Value*> argsV;
 	llvm::FunctionCallee      fn;
-	argsV.push_back(f);
+	argsV.push_back(dst);
 	if (isText)
 	{
 	    Types::TypeDecl* type = arg.expr->Type();
 	    llvm::Type*      charTy = Types::Get<Types::CharDecl>()->LlvmType();
 	    assert(type && "Expected type here");
-	    if (!(fn = CreateWriteFunc(type, f->getType())))
+	    if (!(fn = CreateWriteFunc(type, dst->getType(), kind)))
 	    {
 		return 0;
 	    }
@@ -2915,15 +2933,15 @@ llvm::Value* WriteAST::CodeGen()
 	{
 	    v = MakeAddressable(arg.expr);
 	    argsV.push_back(builder.CreateBitCast(v, Types::GetVoidPtrType()));
-	    fn = CreateWriteBinFunc(v->getType(), f->getType());
+	    fn = CreateWriteBinFunc(v->getType(), dst->getType());
 	}
 	v = builder.CreateCall(fn, argsV, "");
     }
-    if (isWriteln)
+    if (kind == WriteKind::WriteLn)
     {
-	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { f->getType() },
+	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dst->getType() },
 	                                      "__write_nl");
-	v = builder.CreateCall(fc, f, "");
+	v = builder.CreateCall(fc, dst);
     }
     return v;
 }

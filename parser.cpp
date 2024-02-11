@@ -3673,7 +3673,8 @@ ExprAST* Parser::ParseWithBlock()
 class CCWrite : public ListConsumer
 {
 public:
-    CCWrite() : ListConsumer{ Token::Comma, Token::RightParen, false }, file(0){};
+    CCWrite(WriteAST::WriteKind knd)
+        : ListConsumer{ Token::Comma, Token::RightParen, false }, dest(0), kind(knd){};
     bool Consume(Parser& parser) override
     {
 	WriteAST::WriteArg wa;
@@ -3683,68 +3684,86 @@ public:
 	    {
 		if (auto vexpr = llvm::dyn_cast<AddressableAST>(wa.expr))
 		{
-		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
+		    if (kind == WriteAST::WriteKind::WriteStr)
 		    {
-			file = vexpr;
-			wa.expr = 0;
+			dest = vexpr;
+			return true;
+		    }
+		    else if (llvm::isa<Types::FileDecl>(vexpr->Type()))
+		    {
+			dest = vexpr;
+			return true;
 		    }
 		}
-		if (file == 0)
+		if (dest == 0)
 		{
-		    file = new VariableExprAST(parser.CurrentToken().Loc(), "output",
+		    dest = new VariableExprAST(parser.CurrentToken().Loc(), "output",
 		                               Types::Get<Types::TextDecl>());
 		}
 	    }
-	    if (wa.expr)
+	    if (parser.AcceptToken(Token::Colon))
 	    {
-		if (parser.AcceptToken(Token::Colon))
+		wa.width = parser.ParseExpression();
+		if (!wa.width)
 		{
-		    wa.width = parser.ParseExpression();
-		    if (!wa.width)
-		    {
-			return parser.Error<bool>("Invalid width expression");
-		    }
+		    return parser.Error<bool>("Invalid width expression");
 		}
-		if (parser.AcceptToken(Token::Colon))
-		{
-		    wa.precision = parser.ParseExpression();
-		    if (!wa.precision)
-		    {
-			return parser.Error<bool>("Invalid precision expression");
-		    }
-		}
-		args.push_back(wa);
 	    }
+	    if (parser.AcceptToken(Token::Colon))
+	    {
+		wa.precision = parser.ParseExpression();
+		if (!wa.precision)
+		{
+		    return parser.Error<bool>("Invalid precision expression");
+		}
+	    }
+	    args.push_back(wa);
+
 	    return true;
 	}
 	return false;
     }
     std::vector<WriteAST::WriteArg>& Args() { return args; }
-    AddressableAST*                  File() { return file; }
+    AddressableAST*                  Dest() { return dest; }
 
 private:
     std::vector<WriteAST::WriteArg> args;
-    AddressableAST*                 file;
+    AddressableAST*                 dest;
+    WriteAST::WriteKind             kind;
 };
 
 ExprAST* Parser::ParseWrite()
 {
-    bool isWriteln = CurrentToken().GetToken() == Token::Writeln;
+    Token::TokenType    writeToken = CurrentToken().GetToken();
+    WriteAST::WriteKind kind;
+    switch (writeToken)
+    {
+    case Token::Write:
+	kind = WriteAST::WriteKind::Write;
+	break;
+    case Token::Writeln:
+	kind = WriteAST::WriteKind::WriteLn;
+	break;
+    case Token::WriteStr:
+	kind = WriteAST::WriteKind::WriteStr;
+	break;
+    default:
+	llvm_unreachable("Unexpected type of write operation");
+	return 0;
+    }
 
-    assert((CurrentToken().GetToken() == Token::Write || CurrentToken().GetToken() == Token::Writeln) &&
-           "Expected write or writeln keyword here");
     NextToken();
 
     const Location&                 loc = CurrentToken().Loc();
-    AddressableAST*                 file;
+    AddressableAST*                 dest;
     std::vector<WriteAST::WriteArg> args;
     if (IsSemicolonOrEnd())
     {
-	if (!isWriteln)
+	if (kind != WriteAST::WriteKind::WriteLn)
 	{
-	    return Error("Write must have arguments.");
+	    return Error("Write or WriteStr must have arguments.");
 	}
-	file = new VariableExprAST(loc, "output", Types::Get<Types::TextDecl>());
+	dest = new VariableExprAST(loc, "output", Types::Get<Types::TextDecl>());
     }
     else
     {
@@ -3752,15 +3771,15 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return 0;
 	}
-	CCWrite ccw;
+	CCWrite ccw(kind);
 	if (!ParseSeparatedList(*this, ccw))
 	{
 	    return 0;
 	}
-	file = ccw.File();
+	dest = ccw.Dest();
 	args = ccw.Args();
     }
-    return new WriteAST(loc, file, args, isWriteln);
+    return new WriteAST(loc, dest, args, kind);
 }
 
 class CCRead : public ListConsumer
@@ -3868,10 +3887,12 @@ ExprAST* Parser::ParsePrimary()
 
     case Token::Write:
     case Token::Writeln:
+    case Token::WriteStr:
 	return ParseWrite();
 
     case Token::Read:
     case Token::Readln:
+    case Token::ReadStr:
 	return ParseRead();
 
     case Token::Goto:

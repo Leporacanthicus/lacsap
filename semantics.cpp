@@ -812,7 +812,15 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 
 void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 {
-    bool isText = llvm::isa<Types::TextDecl>(w->file->Type());
+    bool isText = llvm::isa<Types::TextDecl>(w->dest->Type()) || w->kind == WriteAST::WriteKind::WriteStr;
+
+    if (w->kind == WriteAST::WriteKind::WriteStr)
+    {
+	if (!w->dest->Type()->IsStringLike())
+	{
+	    Error(w, "First argument to WriteStr should be a string");
+	}
+    }
 
     if (isText)
     {
@@ -852,7 +860,7 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 	    }
 	    else
 	    {
-		auto fd = llvm::dyn_cast<Types::FileDecl>(w->file->Type());
+		auto fd = llvm::dyn_cast<Types::FileDecl>(w->dest->Type());
 		if (!fd->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Write argument should match elements of the file");

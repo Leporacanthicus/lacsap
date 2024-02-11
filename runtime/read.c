@@ -36,16 +36,11 @@ static int read_chunk_text(struct FileEntry* f)
     return EOF;
 }
 
-int get_next(struct FileEntry* f)
-{
-    return read_chunk_text(f);
-}
-
 /* Make a local function so it can inline */
 static int __get_text(File* file)
 {
     struct FileEntry* f = &files[file->handle];
-    int               ch = get_next(f);
+    int               ch = read_chunk_text(f);
     *file->buffer = ch;
     if (ch == EOF)
     {
@@ -142,7 +137,6 @@ static double exponent_to_multi(int exponent)
 void __read_int64(File* file, int64_t* v)
 {
     int64_t n = 0;
-    int sign;
 
     if (file->handle >= MaxPascalFiles)
     {
@@ -153,7 +147,7 @@ void __read_int64(File* file, int64_t* v)
 	__get_text(file);
     }
     skip_spaces(file);
-    sign = get_sign(file);
+    int sign = get_sign(file);
     while (isdigit(*file->buffer))
     {
 	n *= 10;
@@ -173,8 +167,6 @@ void __read_int32(File* file, int* v)
     // We probably should check range?
     *v = (int)n;
 }
-
-
 
 void __read_chr(File* file, char* v)
 {
@@ -198,7 +190,6 @@ void __read_real(File* file, double* v)
     double divisor = 1.0;
     double multiplicand = 1.0;
     int    exponent = 0;
-    int    sign;
 
     if (file->handle >= MaxPascalFiles)
     {
@@ -210,7 +201,7 @@ void __read_real(File* file, double* v)
     }
 
     skip_spaces(file);
-    sign = get_sign(file);
+    int sign = get_sign(file);
 
     while (isdigit(*file->buffer))
     {

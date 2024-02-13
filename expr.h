@@ -773,8 +773,15 @@ class ReadAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    ReadAST(const Location& w, AddressableAST* fi, const std::vector<ExprAST*>& a, bool isLn)
-        : ExprAST(w, EK_Read), file(fi), args(a), isReadln(isLn)
+    enum class ReadKind
+    {
+	Read,
+	ReadLn,
+	ReadStr
+    };
+
+    ReadAST(const Location& w, AddressableAST* sc, const std::vector<ExprAST*>& a, ReadKind knd)
+        : ExprAST(w, EK_Read), src(sc), args(a), kind(knd)
     {
     }
     void         DoDump() const override;
@@ -783,9 +790,9 @@ public:
     void         accept(ASTVisitor& v) override;
 
 private:
-    AddressableAST*       file;
+    AddressableAST*       src;
     std::vector<ExprAST*> args;
-    bool                  isReadln;
+    ReadKind              kind;
 };
 
 class LabelExprAST : public ExprAST

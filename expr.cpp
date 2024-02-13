@@ -2835,7 +2835,7 @@ llvm::Value* WriteAST::CodeGen()
 
     llvm::Value* dst = dest->Address();
     llvm::Value* v = 0;
-    bool         isText = dest->Type()->IsStringLike() || llvm::isa<Types::TextDecl>(dest->Type());
+    bool         isText = kind == WriteKind::WriteStr || llvm::isa<Types::TextDecl>(dest->Type());
     if (kind == WriteKind::WriteStr)
     {
 	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dst->getType() },
@@ -2948,13 +2948,19 @@ llvm::Value* WriteAST::CodeGen()
 
 void ReadAST::DoDump() const
 {
-    if (isReadln)
+    switch (kind)
     {
+    case ReadKind::ReadLn:
 	std::cerr << "Readln(";
-    }
-    else
-    {
+	break;
+
+    case ReadKind::Read:
 	std::cerr << "Read(";
+	break;
+
+    case ReadKind::ReadStr:
+	std::cerr << "ReadStr(";
+	break;
     }
     bool first = true;
     for (auto a : args)
@@ -2971,7 +2977,7 @@ void ReadAST::DoDump() const
 
 void ReadAST::accept(ASTVisitor& v)
 {
-    file->accept(v);
+    src->accept(v);
     for (auto a : args)
     {
 	a->accept(v);
@@ -2979,7 +2985,7 @@ void ReadAST::accept(ASTVisitor& v)
     v.visit(this);
 }
 
-static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
+static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty, ReadAST::ReadKind kind)
 {
     std::string              suffix;
     llvm::Type*              lty = llvm::PointerType::getUnqual(ty->LlvmType());
@@ -3012,7 +3018,14 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty)
     {
 	return Error(0, "Invalid type argument for read");
     }
-    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__read_" + suffix);
+
+    std::string extra = "";
+    if (kind == ReadAST::ReadKind::ReadStr)
+    {
+	extra = "S_";
+    }
+
+    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__read_" + extra + suffix);
 }
 
 static llvm::FunctionCallee CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
@@ -3027,17 +3040,24 @@ llvm::Value* ReadAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    llvm::Value* f = file->Address();
+    llvm::Value* sc = src->Address();
     llvm::Value* v;
-    bool         isText = llvm::isa<Types::TextDecl>(file->Type());
-    llvm::Type*  fTy = f->getType();
-    if (isText && args.empty() && !isReadln)
+    llvm::Value* descr = 0;
+    bool         isText = kind == ReadKind::ReadStr || llvm::isa<Types::TextDecl>(src->Type());
+    llvm::Type*  srcTy = sc->getType();
+    if (kind == ReadKind::ReadStr)
+    {
+	llvm::FunctionCallee fc = GetFunction(Types::GetVoidPtrType(), { srcTy }, "__read_S_init");
+	descr = builder.CreateCall(fc, { sc });
+    }
+    if (args.empty() && kind != ReadKind::ReadLn)
     {
 	return NoOpValue();
     }
+
     for (auto arg : args)
     {
-	std::vector<llvm::Value*> argsV = { f };
+	std::vector<llvm::Value*> argsV = { sc };
 	AddressableAST*           vexpr = llvm::dyn_cast<AddressableAST>(arg);
 	assert(vexpr && "Argument for read/readln should be a variable");
 
@@ -3053,11 +3073,11 @@ llvm::Value* ReadAST::CodeGen()
 	llvm::FunctionCallee fn;
 	if (isText)
 	{
-	    fn = CreateReadFunc(ty, fTy);
+	    fn = CreateReadFunc(ty, srcTy, kind);
 	}
 	else
 	{
-	    fn = CreateReadBinFunc(ty, fTy);
+	    fn = CreateReadBinFunc(ty, srcTy);
 	}
 
 	if (!fn)
@@ -3066,12 +3086,18 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	v = builder.CreateCall(fn, argsV, "");
     }
-    if (isReadln)
+    if (kind == ReadKind::ReadLn)
     {
 	assert(isText && "File is not text for readln");
-	llvm::FunctionCallee fn = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { fTy },
+	llvm::FunctionCallee fn = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { srcTy },
 	                                      "__read_nl");
-	v = builder.CreateCall(fn, f, "");
+	v = builder.CreateCall(fn, sc, "");
+    }
+    if (kind == ReadKind::ReadStr)
+    {
+	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { srcTy },
+	                                      "__read_S_end");
+	v = builder.CreateCall(fc, descr, "");
     }
     return v;
 }

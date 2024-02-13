@@ -3680,7 +3680,7 @@ public:
 	WriteAST::WriteArg wa;
 	if ((wa.expr = parser.ParseExpression()))
 	{
-	    if (args.size() == 0)
+	    if (!dest)
 	    {
 		if (auto vexpr = llvm::dyn_cast<AddressableAST>(wa.expr))
 		{
@@ -3695,7 +3695,7 @@ public:
 			return true;
 		    }
 		}
-		if (dest == 0)
+		if (!dest)
 		{
 		    dest = new VariableExprAST(parser.CurrentToken().Loc(), "output",
 		                               Types::Get<Types::TextDecl>());
@@ -3785,68 +3785,87 @@ ExprAST* Parser::ParseWrite()
 class CCRead : public ListConsumer
 {
 public:
-    CCRead() : ListConsumer{ Token::Comma, Token::RightParen, false }, file(0) {}
+    CCRead(ReadAST::ReadKind knd) : ListConsumer{ Token::Comma, Token::RightParen, false }, src(0), kind(knd)
+    {
+    }
     bool Consume(Parser& parser) override
     {
 	if (ExprAST* expr = parser.ParseExpression())
 	{
-	    if (args.size() == 0)
+	    if (!src)
 	    {
 		if (auto vexpr = llvm::dyn_cast<AddressableAST>(expr))
 		{
+		    if (kind == ReadAST::ReadKind::ReadStr)
+		    {
+			src = vexpr;
+			return true;
+		    }
 		    if (llvm::isa<Types::FileDecl>(vexpr->Type()))
 		    {
-			file = vexpr;
-			expr = 0;
+			src = vexpr;
+			return true;
 		    }
 		}
-		if (file == 0)
+		if (!src)
 		{
-		    file = new VariableExprAST(parser.CurrentToken().Loc(), "input",
-		                               Types::Get<Types::TextDecl>());
+		    src = new VariableExprAST(parser.CurrentToken().Loc(), "input",
+		                              Types::Get<Types::TextDecl>());
 		}
 	    }
-	    if (expr)
-	    {
-		args.push_back(expr);
-	    }
+	    args.push_back(expr);
 	    return true;
 	}
 	return false;
     }
     std::vector<ExprAST*>& Args() { return args; }
-    AddressableAST*        File() { return file; }
+    AddressableAST*        Src() { return src; }
 
 private:
     std::vector<ExprAST*> args;
-    AddressableAST*       file;
+    AddressableAST*       src;
+    ReadAST::ReadKind     kind;
 };
 
 ExprAST* Parser::ParseRead()
 {
     const Location& loc = CurrentToken().Loc();
-    bool            isReadln = CurrentToken().GetToken() == Token::Readln;
+    Token::TokenType  readToken = CurrentToken().GetToken();
+    ReadAST::ReadKind kind;
+    switch (readToken)
+    {
+    case Token::Read:
+	kind = ReadAST::ReadKind::Read;
+	break;
+    case Token::Readln:
+	kind = ReadAST::ReadKind::ReadLn;
+	break;
+    case Token::ReadStr:
+	kind = ReadAST::ReadKind::ReadStr;
+	break;
+    default:
+	llvm_unreachable("Unexpected type of read operation");
+	return 0;
+    }
 
-    assert((CurrentToken().GetToken() == Token::Read || CurrentToken().GetToken() == Token::Readln) &&
-           "Expected read or readln keyword here");
     NextToken();
 
     std::vector<ExprAST*> args;
-    AddressableAST*       file = 0;
+    AddressableAST*       src = 0;
     if (IsSemicolonOrEnd())
     {
-	if (!isReadln)
+	if (kind != ReadAST::ReadKind::ReadLn)
 	{
 	    return Error("Read must have arguments.");
 	}
-	file = new VariableExprAST(loc, "input", Types::Get<Types::TextDecl>());
+	src = new VariableExprAST(loc, "input", Types::Get<Types::TextDecl>());
     }
     else
     {
-	CCRead ccr;
+	CCRead ccr(kind);
 	if (Expect(Token::LeftParen, ExpectConsume) && ParseSeparatedList(*this, ccr))
 	{
-	    file = ccr.File();
+	    src = ccr.Src();
 	    args = ccr.Args();
 	}
 	else
@@ -3854,7 +3873,7 @@ ExprAST* Parser::ParseRead()
 	    return 0;
 	}
     }
-    return new ReadAST(loc, file, args, isReadln);
+    return new ReadAST(loc, src, args, kind);
 }
 
 ExprAST* Parser::ParsePrimary()

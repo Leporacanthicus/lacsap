@@ -1,8 +1,9 @@
 #include "runtime.h"
 #include <ctype.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int read_chunk_text(struct FileEntry* f)
 {
@@ -89,7 +90,11 @@ struct interface
     union
     {
 	File*   file;
-	String* str;
+	struct
+	{
+	    String* str;
+	    int     strpos;
+	};
     };
 };
 
@@ -129,6 +134,99 @@ static void initFile(File* file, struct interface* intf)
     intf->fneoln = file_eoln;
     intf->fncurrent = file_current;
     intf->fnpreread = file_preread;
+}
+
+static int str_current(struct interface* intf)
+{
+    return intf->str->str[intf->strpos];
+}
+
+static int str_get_text(struct interface* intf)
+{
+    if (intf->strpos == intf->str->len)
+    {
+	return EOF;
+    }
+    intf->strpos++;
+    return str_current(intf);
+}
+
+static int str_eof(struct interface* intf)
+{
+    return (intf->strpos == intf->str->len);
+}
+
+// Nothing to do here.
+static void str_preread(struct interface* intf)
+{
+    (void)intf;
+}
+
+static void initStr(String* str, struct interface* intf)
+{
+    intf->str = str;
+    intf->strpos = 0;
+    intf->fngetnext = str_get_text;
+    // EOF and EOLN are the same, we don't support multi-line input...
+    intf->fneof = str_eof;
+    intf->fneoln = str_eof;
+    intf->fncurrent = str_current;
+    intf->fnpreread = str_preread;
+}
+
+struct interfaceNode
+{
+    struct interfaceNode* next;
+    struct interface*     intf;
+};
+
+static struct interfaceNode* intfList;
+
+struct interface* __read_S_init(String* str)
+{
+    struct interface* intf = malloc(sizeof(struct interface));
+    initStr(str, intf);
+    // TODO: Threading will need a lock here.
+    struct interfaceNode* intfNode = malloc(sizeof(struct interfaceNode));
+    intfNode->intf = intf;
+    intfNode->next = intfList;
+    intfList = intfNode;
+    return intf;
+}
+
+void __read_S_end(struct interface* intf)
+{
+    struct interfaceNode* prev = NULL;
+    for (struct interfaceNode* in = intfList; in; prev = in, in = in->next)
+    {
+	if (in->intf == intf)
+	{
+	    if (prev)
+	    {
+		prev->next = in->next;
+	    }
+	    else
+	    {
+		intfList = in->next;
+	    }
+	    free(in->intf);
+	    free(in);
+	    return;
+	}
+    }
+    assert(0 && "Huh? We lost the interface somewhere...");
+}
+
+static struct interface* findInterface(String* str)
+{
+    for (struct interfaceNode* in = intfList; in; in = in->next)
+    {
+	if (in->intf->str == str)
+	{
+	    return in->intf;
+	}
+    }
+    return NULL;
 }
 
 /*******************************************
@@ -219,12 +317,34 @@ void __read_int64(File* file, int64_t* v)
     readint64(&intf, v);
 }
 
+void __read_S_int64(String* str, int64_t* v)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+    readint64(intf, v);
+}
+
 void __read_int32(File* file, int* v)
 {
     int64_t n;
     __read_int64(file, &n);
     // We probably should check range?
     *v = (int)n;
+}
+
+void __read_S_int32(String* str, int* v)
+{
+    int64_t n;
+    __read_S_int64(str, &n);
+    *v = (int)n;
+}
+
+static void readchar(struct interface* intf, char* v)
+{
+    intf->fnpreread(intf);
+
+    *v = intf->fncurrent(intf);
+    intf->fngetnext(intf);
 }
 
 void __read_chr(File* file, char* v)
@@ -237,10 +357,15 @@ void __read_chr(File* file, char* v)
     struct interface intf;
     initFile(file, &intf);
 
-    intf.fnpreread(&intf);
+    readchar(&intf, v);
+}
 
-    *v = intf.fncurrent(&intf);
-    intf.fngetnext(&intf);
+void __read_S_chr(String* str, char* v)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+
+    readchar(intf, v);
 }
 
 static void readreal(struct interface* intf, double* v)
@@ -310,6 +435,14 @@ void __read_real(File* file, double* v)
     readreal(&intf, v);
 }
 
+void __read_S_real(String* str, double* v)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+
+    readreal(intf, v);
+}
+
 void __read_nl(File* file)
 {
     if (!files[file->handle].readAhead)
@@ -359,6 +492,14 @@ void __read_str(File* file, String* v)
     readstr(&intf, v);
 }
 
+void __read_S_str(String* str, String* v)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+
+    readstr(intf, v);
+}
+
 static void readchars(struct interface* intf, char* v)
 {
     intf->fnpreread(intf);
@@ -382,4 +523,12 @@ void __read_chars(File* file, char* v)
     initFile(file, &intf);
 
     readchars(&intf, v);
+}
+
+void __read_S_chars(String* str, char* v)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+
+    readchars(intf, v);
 }

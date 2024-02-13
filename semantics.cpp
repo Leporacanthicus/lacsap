@@ -761,7 +761,7 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
 
 void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 {
-    bool isText = llvm::isa<Types::TextDecl>(r->file->Type());
+    bool isText = r->kind == ReadAST::ReadKind::ReadStr || llvm::isa<Types::TextDecl>(r->src->Type());
 
     if (isText)
     {
@@ -800,7 +800,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 	    }
 	    else
 	    {
-		auto fd = llvm::dyn_cast<Types::FileDecl>(r->file->Type());
+		auto fd = llvm::dyn_cast<Types::FileDecl>(r->src->Type());
 		if (!fd->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Read argument should match elements of the file");

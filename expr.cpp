@@ -2818,15 +2818,6 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__write_" + extra + suffix);
 }
 
-static llvm::FunctionCallee CreateWriteBinFunc(llvm::Type* ty, llvm::Type* fty)
-{
-    assert(ty && "Type should not be NULL!");
-    assert(ty->isPointerTy() && "Expected pointer argument");
-    llvm::Type* voidPtrTy = Types::GetVoidPtrType();
-
-    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { fty, voidPtrTy }, "__write_bin");
-}
-
 llvm::Value* WriteAST::CodeGen()
 {
     TRACE();
@@ -2835,10 +2826,12 @@ llvm::Value* WriteAST::CodeGen()
 
     llvm::Value* dst = dest->Address();
     llvm::Value* v = 0;
+    llvm::Type*  voidPtrTy = Types::GetVoidPtrType();
     bool         isText = kind == WriteKind::WriteStr || llvm::isa<Types::TextDecl>(dest->Type());
+    llvm::Type*  dstTy = dst->getType();
     if (kind == WriteKind::WriteStr)
     {
-	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dst->getType() },
+	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dstTy },
 	                                      "__write_S_init");
 	v = builder.CreateCall(fc, { dst });
     }
@@ -2857,7 +2850,7 @@ llvm::Value* WriteAST::CodeGen()
 	    Types::TypeDecl* type = arg.expr->Type();
 	    llvm::Type*      charTy = Types::Get<Types::CharDecl>()->LlvmType();
 	    assert(type && "Expected type here");
-	    if (!(fn = CreateWriteFunc(type, dst->getType(), kind)))
+	    if (!(fn = CreateWriteFunc(type, dstTy, kind)))
 	    {
 		return 0;
 	    }
@@ -2932,14 +2925,14 @@ llvm::Value* WriteAST::CodeGen()
 	else
 	{
 	    v = MakeAddressable(arg.expr);
-	    argsV.push_back(builder.CreateBitCast(v, Types::GetVoidPtrType()));
-	    fn = CreateWriteBinFunc(v->getType(), dst->getType());
+	    argsV.push_back(builder.CreateBitCast(v, voidPtrTy));
+	    fn = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dstTy, voidPtrTy }, "__write_bin");
 	}
 	v = builder.CreateCall(fn, argsV, "");
     }
     if (kind == WriteKind::WriteLn)
     {
-	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dst->getType() },
+	llvm::FunctionCallee fc = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { dstTy },
 	                                      "__write_nl");
 	v = builder.CreateCall(fc, dst);
     }
@@ -3028,12 +3021,6 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty,
     return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__read_" + extra + suffix);
 }
 
-static llvm::FunctionCallee CreateReadBinFunc(Types::TypeDecl* ty, llvm::Type* fty)
-{
-    return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { fty, Types::GetVoidPtrType() },
-                       "__read_bin");
-}
-
 llvm::Value* ReadAST::CodeGen()
 {
     TRACE();
@@ -3041,13 +3028,14 @@ llvm::Value* ReadAST::CodeGen()
     BasicDebugInfo(this);
 
     llvm::Value* sc = src->Address();
+    llvm::Type*  voidPtrTy = Types::GetVoidPtrType();
     llvm::Value* v;
     llvm::Value* descr = 0;
     bool         isText = kind == ReadKind::ReadStr || llvm::isa<Types::TextDecl>(src->Type());
     llvm::Type*  srcTy = sc->getType();
     if (kind == ReadKind::ReadStr)
     {
-	llvm::FunctionCallee fc = GetFunction(Types::GetVoidPtrType(), { srcTy }, "__read_S_init");
+	llvm::FunctionCallee fc = GetFunction(voidPtrTy, { srcTy }, "__read_S_init");
 	descr = builder.CreateCall(fc, { sc });
     }
     if (args.empty() && kind != ReadKind::ReadLn)
@@ -3065,11 +3053,6 @@ llvm::Value* ReadAST::CodeGen()
 	v = vexpr->Address();
 	assert(v && "Could not evaluate address of expression for read");
 
-	if (!isText)
-	{
-	    v = builder.CreateBitCast(v, Types::GetVoidPtrType());
-	}
-	argsV.push_back(v);
 	llvm::FunctionCallee fn;
 	if (isText)
 	{
@@ -3077,9 +3060,13 @@ llvm::Value* ReadAST::CodeGen()
 	}
 	else
 	{
-	    fn = CreateReadBinFunc(ty, srcTy);
+	    fn = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { srcTy, voidPtrTy }, "__read_bin");
+	    v = builder.CreateBitCast(v, voidPtrTy);
 	}
 
+	argsV.push_back(v);
+
+	assert(fn && "Expected function to be defined here");
 	if (!fn)
 	{
 	    return 0;

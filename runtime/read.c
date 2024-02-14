@@ -98,27 +98,27 @@ struct interface
     };
 };
 
-int file_current(struct interface* intf)
+static int file_current(struct interface* intf)
 {
     return *intf->file->buffer;
 }
 
-int file_get_text(struct interface* intf)
+static int file_get_text(struct interface* intf)
 {
     return __get_text(intf->file);
 }
 
-int file_eof(struct interface* intf)
+static int file_eof(struct interface* intf)
 {
     return __eof(intf->file);
 }
 
-int file_eoln(struct interface* intf)
+static int file_eoln(struct interface* intf)
 {
     return __eoln(intf->file);
 }
 
-void file_preread(struct interface* intf)
+static void file_preread(struct interface* intf)
 {
     if (!files[intf->file->handle].readAhead)
     {

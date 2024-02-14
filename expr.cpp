@@ -2714,14 +2714,10 @@ void WriteAST::DoDump() const
 	std::cerr << "WriteStr(";
 	break;
     }
-    bool first = true;
+    dest->dump();
     for (auto a : args)
     {
-	if (!first)
-	{
-	    std::cerr << ", ";
-	}
-	first = false;
+	std::cerr << ", ";
 	a.expr->DoDump();
 	if (a.width)
 	{
@@ -2734,7 +2730,7 @@ void WriteAST::DoDump() const
 	    a.precision->DoDump();
 	}
     }
-    std::cerr << ")";
+    std::cerr << ")" << std::endl;
 }
 
 void WriteAST::accept(ASTVisitor& v)
@@ -2752,6 +2748,7 @@ void WriteAST::accept(ASTVisitor& v)
 	    a.precision->accept(v);
 	}
     }
+    v.visit(this);
 }
 
 static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty, WriteAST::WriteKind kind)
@@ -2955,17 +2952,13 @@ void ReadAST::DoDump() const
 	std::cerr << "ReadStr(";
 	break;
     }
-    bool first = true;
+    src->dump();
     for (auto a : args)
     {
-	if (!first)
-	{
-	    std::cerr << ", ";
-	}
-	first = false;
+	std::cerr << ", ";
 	a->DoDump();
     }
-    std::cerr << ")";
+    std::cerr << ")" << std::endl;
 }
 
 void ReadAST::accept(ASTVisitor& v)

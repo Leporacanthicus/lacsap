@@ -763,13 +763,32 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 {
     bool isText = r->kind == ReadAST::ReadKind::ReadStr || llvm::isa<Types::TextDecl>(r->src->Type());
 
+    if (r->kind == ReadAST::ReadKind::ReadStr)
+    {
+	if (!llvm::isa<Types::StringDecl>(r->src->Type()))
+	{
+	    Error(r->src, "First argument to ReadStr should be a string");
+	}
+    }
+    else
+    {
+	if (!llvm::isa<Types::FileDecl>(r->src->Type()))
+	{
+	    Error(r->src, "First argument to Read or ReadLn should be a file");
+	}
+	if (!isText && r->kind == ReadAST::ReadKind::ReadLn)
+	{
+	    Error(r->src, "File argument for ReadLn should be a textfile");
+	}
+    }
+
     if (isText)
     {
 	for (auto arg : r->args)
 	{
 	    if (!llvm::isa<AddressableAST>(arg))
 	    {
-		Error(arg, "Invalid argument for read/readln - must be a variable-expression");
+		Error(arg, "Invalid argument for Read/ReadLN - must be a variable-expression");
 	    }
 	    if (arg->Type()->IsCompound())
 	    {
@@ -789,7 +808,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
     {
 	if (r->args.size() != 1)
 	{
-	    Error(r, "Read of binary file must have exactly one argument");
+	    Error(r, "Read of binary file must have exactly one argument after the file");
 	}
 	else
 	{
@@ -801,7 +820,7 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
 	    else
 	    {
 		auto fd = llvm::dyn_cast<Types::FileDecl>(r->src->Type());
-		if (!fd->SubType()->AssignableType(arg->Type()))
+		if (!fd || !fd->SubType()->AssignableType(arg->Type()))
 		{
 		    Error(arg, "Read argument should match elements of the file");
 		}
@@ -816,12 +835,22 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 
     if (w->kind == WriteAST::WriteKind::WriteStr)
     {
-	if (!w->dest->Type()->IsStringLike())
+	if (!llvm::isa<Types::StringDecl>(w->dest->Type()))
 	{
-	    Error(w, "First argument to WriteStr should be a string");
+	    Error(w->dest, "First argument to ReadStr should be a string");
 	}
     }
-
+    else
+    {
+	if (!llvm::isa<Types::FileDecl>(w->dest->Type()))
+	{
+	    Error(w->dest, "First argument to Write or WriteLn should be a file");
+	}
+	if (!isText && w->kind == WriteAST::WriteKind::WriteLn)
+	{
+	    Error(w->dest, "File argument for WritelLn should be a textfile");
+	}
+    }
     if (isText)
     {
 	for (auto arg : w->args)

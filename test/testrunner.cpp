@@ -499,6 +499,7 @@ TestEntry negativeCaseList[] = {
     { LACSAP_ONLY, "CompErr", "Duplicate member function Definition", "dupmembfunc.pas", "" },
     { 0, "CompErr", "Not Char", "notchar.pas", "" },
     { 0, "CompErr", "Not Real", "notreal.pas", "" },
+    { 0, "CompErr", "Bad negate", "badneg.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

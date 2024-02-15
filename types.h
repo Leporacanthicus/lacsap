@@ -260,6 +260,7 @@ namespace Types
     public:
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	bool            IsCompound() const override { return false; }
 	static bool     classof(const TypeDecl* e)
 	{
 	    return e->getKind() == TK_Range || e->getKind() == TK_DynRange;
@@ -281,7 +282,6 @@ namespace Types
 	int         Start() const { return range->Start(); }
 	int         End() const { return range->End(); }
 	TypeKind    Type() const override { return baseType->Type(); }
-	bool        IsCompound() const override { return false; }
 	bool        IsIntegral() const override { return true; }
 	bool        IsUnsigned() const override { return Start() >= 0; }
 	unsigned    Bits() const override;

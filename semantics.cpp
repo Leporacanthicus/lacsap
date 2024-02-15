@@ -465,12 +465,19 @@ void TypeCheckVisitor::CheckUnaryExpr(UnaryExprAST* u)
 {
     TRACE();
 
+    Types::TypeDecl* ty = u->rhs->Type();
     if (u->oper.GetToken() == Token::Not)
     {
-	Types::TypeDecl* ty = u->rhs->Type();
 	if (!ty->IsIntegral() || llvm::isa<Types::CharDecl>(ty))
 	{
 	    Error(u, "Expect integral argument to NOT");
+	}
+    }
+    if (u->oper.GetToken() == Token::Minus)
+    {
+	if (!IsNumeric(ty))
+	{
+	    Error(u, "Expect numeric type (Real, Integer) argument to unary '-'");
 	}
     }
 }
@@ -883,17 +890,10 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
 	else
 	{
 	    ExprAST* arg = w->args[0].expr;
-	    if (!llvm::isa<VariableExprAST>(arg))
+	    auto     fd = llvm::dyn_cast<Types::FileDecl>(w->dest->Type());
+	    if (!fd || !fd->SubType()->AssignableType(arg->Type()))
 	    {
-		Error(arg, "Invalid argument for binary write - must be a variable-expression");
-	    }
-	    else
-	    {
-		auto fd = llvm::dyn_cast<Types::FileDecl>(w->dest->Type());
-		if (!fd->SubType()->AssignableType(arg->Type()))
-		{
-		    Error(arg, "Write argument should match elements of the file");
-		}
+		Error(arg, "Write argument should match elements of the file");
 	    }
 	}
     }

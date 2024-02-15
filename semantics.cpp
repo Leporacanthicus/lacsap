@@ -13,19 +13,10 @@ public:
 
 private:
     Types::TypeDecl* BinarySetUpdate(BinaryExprAST* b);
-    void             CheckBinExpr(BinaryExprAST* b);
-    void             CheckUnaryExpr(UnaryExprAST* b);
-    void             CheckAssignExpr(AssignExprAST* a);
-    void             CheckRangeExpr(RangeExprAST* r);
-    void             CheckSetExpr(SetExprAST* s);
-    void             CheckArrayExpr(ArrayExprAST* a);
-    void             CheckDynArrayExpr(DynArrayExprAST* d);
-    void             CheckBuiltinExpr(BuiltinExprAST* b);
-    void             CheckCallExpr(CallExprAST* c);
-    void             CheckForExpr(ForExprAST* f);
-    void             CheckReadExpr(ReadAST* f);
-    void             CheckWriteExpr(WriteAST* f);
-    void             CheckCaseExpr(CaseExprAST* c);
+    template<typename T>
+    void Check(T* t);
+    template<typename T>
+    void             MaybeCheck(ExprAST* t);
     void             Error(const ExprAST* e, const std::string& msg) const;
 
 private:
@@ -118,69 +109,6 @@ void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
     sema->AddError();
 }
 
-void TypeCheckVisitor::visit(ExprAST* expr)
-{
-    TRACE();
-
-    if (verbosity > 1)
-    {
-	expr->dump();
-    }
-
-    if (BinaryExprAST* b = llvm::dyn_cast<BinaryExprAST>(expr))
-    {
-	CheckBinExpr(b);
-    }
-    else if (UnaryExprAST* u = llvm::dyn_cast<UnaryExprAST>(expr))
-    {
-	CheckUnaryExpr(u);
-    }
-    else if (AssignExprAST* a = llvm::dyn_cast<AssignExprAST>(expr))
-    {
-	CheckAssignExpr(a);
-    }
-    else if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(expr))
-    {
-	CheckRangeExpr(r);
-    }
-    else if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(expr))
-    {
-	CheckSetExpr(s);
-    }
-    else if (ArrayExprAST* a = llvm::dyn_cast<ArrayExprAST>(expr))
-    {
-	CheckArrayExpr(a);
-    }
-    else if (DynArrayExprAST* d = llvm::dyn_cast<DynArrayExprAST>(expr))
-    {
-	CheckDynArrayExpr(d);
-    }
-    else if (BuiltinExprAST* b = llvm::dyn_cast<BuiltinExprAST>(expr))
-    {
-	CheckBuiltinExpr(b);
-    }
-    else if (CallExprAST* c = llvm::dyn_cast<CallExprAST>(expr))
-    {
-	CheckCallExpr(c);
-    }
-    else if (ForExprAST* f = llvm::dyn_cast<ForExprAST>(expr))
-    {
-	CheckForExpr(f);
-    }
-    else if (ReadAST* r = llvm::dyn_cast<ReadAST>(expr))
-    {
-	CheckReadExpr(r);
-    }
-    else if (WriteAST* w = llvm::dyn_cast<WriteAST>(expr))
-    {
-	CheckWriteExpr(w);
-    }
-    else if (CaseExprAST* c = llvm::dyn_cast<CaseExprAST>(expr))
-    {
-	CheckCaseExpr(c);
-    }
-}
-
 ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty)
 {
     if (*ty != *a->Type())
@@ -260,7 +188,8 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
     return rty;
 }
 
-void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
+template<>
+void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 {
     TRACE();
 
@@ -461,7 +390,8 @@ void TypeCheckVisitor::CheckBinExpr(BinaryExprAST* b)
     b->UpdateType(ty);
 }
 
-void TypeCheckVisitor::CheckUnaryExpr(UnaryExprAST* u)
+template<>
+void TypeCheckVisitor::Check<UnaryExprAST>(UnaryExprAST* u)
 {
     TRACE();
 
@@ -482,7 +412,8 @@ void TypeCheckVisitor::CheckUnaryExpr(UnaryExprAST* u)
     }
 }
 
-void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
+template<>
+void TypeCheckVisitor::Check<AssignExprAST>(AssignExprAST* a)
 {
     TRACE();
 
@@ -562,7 +493,8 @@ void TypeCheckVisitor::CheckAssignExpr(AssignExprAST* a)
     a->rhs = Recast(a->rhs, ty);
 }
 
-void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
+template<>
+void TypeCheckVisitor::Check<RangeExprAST>(RangeExprAST* r)
 {
     TRACE();
 
@@ -572,7 +504,8 @@ void TypeCheckVisitor::CheckRangeExpr(RangeExprAST* r)
     }
 }
 
-void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
+template<>
+void TypeCheckVisitor::Check<SetExprAST>(SetExprAST* s)
 {
     TRACE();
 
@@ -588,7 +521,8 @@ void TypeCheckVisitor::CheckSetExpr(SetExprAST* s)
     }
 }
 
-void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
+template<>
+void TypeCheckVisitor::Check<ArrayExprAST>(ArrayExprAST* a)
 {
     TRACE();
 
@@ -617,7 +551,8 @@ void TypeCheckVisitor::CheckArrayExpr(ArrayExprAST* a)
     }
 }
 
-void TypeCheckVisitor::CheckDynArrayExpr(DynArrayExprAST* d)
+template<>
+void TypeCheckVisitor::Check<DynArrayExprAST>(DynArrayExprAST* d)
 {
     TRACE();
 
@@ -643,7 +578,8 @@ void TypeCheckVisitor::CheckDynArrayExpr(DynArrayExprAST* d)
     }
 }
 
-void TypeCheckVisitor::CheckBuiltinExpr(BuiltinExprAST* b)
+template<>
+void TypeCheckVisitor::Check<BuiltinExprAST>(BuiltinExprAST* b)
 {
     TRACE();
     if (!b->bif->Semantics())
@@ -652,7 +588,8 @@ void TypeCheckVisitor::CheckBuiltinExpr(BuiltinExprAST* b)
     }
 }
 
-void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
+template<>
+void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
 {
     TRACE();
     const PrototypeAST* proto = c->proto;
@@ -716,7 +653,8 @@ void TypeCheckVisitor::CheckCallExpr(CallExprAST* c)
     }
 }
 
-void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
+template<>
+void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
 {
     // Check start + end and cast if necessary. Fail if incompatible types.
     Types::TypeDecl* vty = f->variable->Type();
@@ -766,7 +704,8 @@ void TypeCheckVisitor::CheckForExpr(ForExprAST* f)
     }
 }
 
-void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
+template<>
+void TypeCheckVisitor::Check<ReadAST>(ReadAST* r)
 {
     bool isText = r->kind == ReadAST::ReadKind::ReadStr || llvm::isa<Types::TextDecl>(r->src->Type());
 
@@ -836,7 +775,8 @@ void TypeCheckVisitor::CheckReadExpr(ReadAST* r)
     }
 }
 
-void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
+template<>
+void TypeCheckVisitor::Check<WriteAST>(WriteAST* w)
 {
     bool isText = llvm::isa<Types::TextDecl>(w->dest->Type()) || w->kind == WriteAST::WriteKind::WriteStr;
 
@@ -899,7 +839,8 @@ void TypeCheckVisitor::CheckWriteExpr(WriteAST* w)
     }
 }
 
-void TypeCheckVisitor::CheckCaseExpr(CaseExprAST* c)
+template<>
+void TypeCheckVisitor::Check<CaseExprAST>(CaseExprAST* c)
 {
     TRACE();
     if (!c->expr->Type()->IsIntegral())
@@ -935,6 +876,39 @@ void Semantics::RunFixups()
     {
 	f->DoIt();
     }
+}
+
+template<typename T>
+void TypeCheckVisitor::MaybeCheck(ExprAST* e)
+{
+    if (T* t = llvm::dyn_cast<T>(e))
+    {
+	Check(t);
+    }
+}
+
+void TypeCheckVisitor::visit(ExprAST* expr)
+{
+    TRACE();
+
+    if (verbosity > 1)
+    {
+	expr->dump();
+    }
+
+    MaybeCheck<BinaryExprAST>(expr);
+    MaybeCheck<UnaryExprAST>(expr);
+    MaybeCheck<AssignExprAST>(expr);
+    MaybeCheck<RangeExprAST>(expr);
+    MaybeCheck<SetExprAST>(expr);
+    MaybeCheck<ArrayExprAST>(expr);
+    MaybeCheck<DynArrayExprAST>(expr);
+    MaybeCheck<BuiltinExprAST>(expr);
+    MaybeCheck<CallExprAST>(expr);
+    MaybeCheck<ForExprAST>(expr);
+    MaybeCheck<ReadAST>(expr);
+    MaybeCheck<WriteAST>(expr);
+    MaybeCheck<CaseExprAST>(expr);
 }
 
 void Semantics::Analyse(ExprAST* ast)

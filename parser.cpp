@@ -201,11 +201,16 @@ static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
 class ListConsumer
 {
 public:
-    ListConsumer(Token::TokenType s, Token::TokenType t, bool a)
+    enum class AllowEmpty
+    {
+	No,
+	Yes
+    };
+    ListConsumer(Token::TokenType s, Token::TokenType t, AllowEmpty a)
         : separators{ s }, terminators{ t }, allowEmpty(a)
     {
     }
-    ListConsumer(const TerminatorList& s, const TerminatorList& t, bool a)
+    ListConsumer(const TerminatorList& s, const TerminatorList& t, AllowEmpty a)
         : separators{ s }, terminators{ t }, allowEmpty(a)
     {
     }
@@ -214,7 +219,7 @@ public:
 
     TerminatorList separators;
     TerminatorList terminators;
-    bool           allowEmpty;
+    AllowEmpty     allowEmpty;
 };
 
 void Parser::PrintError(const Token& t, const std::string& msg)
@@ -411,7 +416,8 @@ ExprAST* Parser::ParseDefaultExpr()
 
 bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 {
-    bool done = lc.allowEmpty && IsOneOf(parser.CurrentToken().GetToken(), lc.terminators);
+    bool done = lc.allowEmpty == ListConsumer::AllowEmpty::Yes &&
+                IsOneOf(parser.CurrentToken().GetToken(), lc.terminators);
 
     while (!done)
     {
@@ -1051,7 +1057,7 @@ void Parser::ParseTypeDef()
 class CCNames : public ListConsumer
 {
 public:
-    CCNames(Token::TokenType e) : ListConsumer{ Token::Comma, e, false } {}
+    CCNames(Token::TokenType e) : ListConsumer{ Token::Comma, e, ListConsumer::AllowEmpty::No } {}
     bool Consume(Parser& parser)
     {
 	// Don't move forward here.
@@ -1072,7 +1078,7 @@ private:
 class CCIntegers : public ListConsumer
 {
 public:
-    CCIntegers(Token::TokenType e) : ListConsumer(Token::Comma, e, false) {}
+    CCIntegers(Token::TokenType e) : ListConsumer(Token::Comma, e, ListConsumer::AllowEmpty::No) {}
     virtual bool GetValue(Parser& parser, int& val)
     {
 	if (parser.CurrentToken().GetToken() == Token::Integer)
@@ -1934,7 +1940,7 @@ ExprAST* Parser::ParseExpression()
 class CCExpressions : public ListConsumer
 {
 public:
-    CCExpressions() : ListConsumer{ Token::Comma, Token::RightSquare, false } {}
+    CCExpressions() : ListConsumer{ Token::Comma, Token::RightSquare, ListConsumer::AllowEmpty::No } {}
     bool Consume(Parser& parser)
     {
 	if (ExprAST* e = parser.ParseExpression())
@@ -2577,7 +2583,7 @@ ExprAST* Parser::ParseParenExpr()
 class CCSetList : public ListConsumer
 {
 public:
-    CCSetList() : ListConsumer{ Token::Comma, Token::RightSquare, true } {}
+    CCSetList() : ListConsumer{ Token::Comma, Token::RightSquare, ListConsumer::AllowEmpty::Yes } {}
     bool Consume(Parser& parser) override
     {
 	if (ExprAST* v = parser.ParseExpression())
@@ -2661,7 +2667,10 @@ class CCArrayInitList : public ListConsumer
 {
 public:
     CCArrayInitList(Types::ArrayDecl* ty)
-        : ListConsumer{ { Token::Comma, Token::Semicolon }, { Token::RightSquare }, true }, type(ty)
+        : ListConsumer{ { Token::Comma, Token::Semicolon },
+	                { Token::RightSquare },
+	                ListConsumer::AllowEmpty::Yes }
+        , type(ty)
     {
     }
     bool Consume(Parser& parser) override
@@ -2712,7 +2721,7 @@ class CCRecordInitList : public ListConsumer
 {
 public:
     CCRecordInitList(Types::TypeDecl* ty)
-        : ListConsumer{ Token::Semicolon, Token::RightSquare, true }
+        : ListConsumer{ Token::Semicolon, Token::RightSquare, ListConsumer::AllowEmpty::Yes }
         , type(llvm::dyn_cast<Types::FieldCollection>(ty))
     {
     }
@@ -3602,7 +3611,7 @@ class CCWith : public ListConsumer
 {
 public:
     CCWith(Stack<const NamedObject*>& ns)
-        : ListConsumer{ Token::Comma, Token::Do, false }, levels(0), nameStack(ns)
+        : ListConsumer{ Token::Comma, Token::Do, ListConsumer::AllowEmpty::No }, levels(0), nameStack(ns)
     {
     }
     bool Consume(Parser& parser) override
@@ -3674,7 +3683,7 @@ class CCWrite : public ListConsumer
 {
 public:
     CCWrite(WriteAST::WriteKind knd)
-        : ListConsumer{ Token::Comma, Token::RightParen, false }, dest(0), kind(knd){};
+        : ListConsumer{ Token::Comma, Token::RightParen, ListConsumer::AllowEmpty::No }, dest(0), kind(knd){};
     bool Consume(Parser& parser) override
     {
 	WriteAST::WriteArg wa;
@@ -3785,7 +3794,8 @@ ExprAST* Parser::ParseWrite()
 class CCRead : public ListConsumer
 {
 public:
-    CCRead(ReadAST::ReadKind knd) : ListConsumer{ Token::Comma, Token::RightParen, false }, src(0), kind(knd)
+    CCRead(ReadAST::ReadKind knd)
+        : ListConsumer{ Token::Comma, Token::RightParen, ListConsumer::AllowEmpty::No }, src(0), kind(knd)
     {
     }
     bool Consume(Parser& parser) override
@@ -3926,7 +3936,7 @@ ExprAST* Parser::ParsePrimary()
 class CCProgram : public ListConsumer
 {
 public:
-    CCProgram() : ListConsumer{ Token::Comma, Token::RightParen, false } {}
+    CCProgram() : ListConsumer{ Token::Comma, Token::RightParen, ListConsumer::AllowEmpty::No } {}
     bool Consume(Parser& parser) override { return parser.Expect(Token::Identifier, Parser::ExpectConsume); }
 };
 

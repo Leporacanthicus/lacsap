@@ -15,6 +15,7 @@ class Lexer
 public:
     Lexer(Source& source);
     Token GetToken();
+    Source& GetSource() { return source; }
 
 private:
     int NextChar();

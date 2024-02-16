@@ -225,16 +225,22 @@ public:
 
 void Parser::PrintError(const Token& t, const std::string& msg)
 {
-    if (const Location& loc = t.Loc())
+    const Location& loc = t.Loc();
+    if (loc)
     {
 	std::cerr << loc << " ";
     }
     std::cerr << "Error: " << msg << std::endl;
     errCnt++;
-    if (errCnt > 30)
+    if (loc)
     {
-	std::cerr << "Too many errors, quitting..." << std::endl;
-	exit(1);
+	Source& source = lexer.GetSource();
+	source.PrintSource(loc.LineNumber());
+	if (errCnt > 30)
+	{
+	    std::cerr << "Too many errors, quitting..." << std::endl;
+	    exit(1);
+	}
     }
 }
 

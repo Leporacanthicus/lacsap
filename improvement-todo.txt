@@ -17,8 +17,6 @@ This is a list of "things to improve in general".
    * Range check for reading ranged values.
    * Range check for set assignment.
 
-- Print source with errors.
-
 - Better error messages from built-in functions.
    * Return an enum { OK, WrongArgCount, TypeMismatch }
 

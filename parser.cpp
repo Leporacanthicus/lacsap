@@ -130,6 +130,7 @@ public:
     Types::VariantDecl* ParseVariantDecl(Types::FieldDecl*& markerField);
     int64_t             ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
     bool                ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args);
+    unsigned            ParseStringSize(Token::TokenType end);
 
     // Helper for syntax checking
     bool     Expect(Token::TokenType type, ExpectConsuming consumption, const char* file, int line);
@@ -137,7 +138,7 @@ public:
     bool     AcceptToken(Token::TokenType type, const char* file, int line);
     bool     IsSemicolonOrEnd();
     bool     ExpectSemicolonOrEnd(const char* file, int line);
-    unsigned ParseStringSize(Token::TokenType end);
+    std::string GetIdentifier(const char* file, int line, ExpectConsuming consumption);
 
     // General helper functions
     void ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, int parentCount);
@@ -280,6 +281,20 @@ const Token& Parser::PeekToken(const char* file, int line)
     return nextToken;
 }
 
+std::string Parser::GetIdentifier(const char* file, int line, ExpectConsuming consumption)
+{
+    if (CurrentToken().GetToken() == Token::Identifier)
+    {
+	std::string name = CurrentToken().GetIdentName();
+	if (consumption == ExpectConsume)
+	{
+	    NextToken(file, line);
+	}
+	return name;
+    }
+    return "";
+}
+
 bool Parser::Expect(Token::TokenType type, ExpectConsuming consumption, const char* file, int line)
 {
     if (CurrentToken().GetToken() != type)
@@ -340,6 +355,7 @@ bool Parser::AcceptToken(Token::TokenType type, const char* file, int line)
 #define Expect(t, e) Expect(t, e, __FILE__, __LINE__)
 #define AssertToken(t) AssertToken(t, __FILE__, __LINE__)
 #define AcceptToken(t) AcceptToken(t, __FILE__, __LINE__)
+#define GetIdentifier(a) GetIdentifier(__FILE__, __LINE__, a)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 {
@@ -358,9 +374,10 @@ ExprAST* Parser::ParseSizeOfExpr()
 	return 0;
     }
     ExprAST* expr = 0;
-    if (CurrentToken().GetToken() == Token::Identifier)
+    std::string name = GetIdentifier(NoExpectConsume);
+    if (!name.empty())
     {
-	if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
+	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
 	    expr = new SizeOfExprAST(CurrentToken().Loc(), ty);
 	    AssertToken(Token::Identifier);
@@ -388,14 +405,7 @@ ExprAST* Parser::ParseDefaultExpr()
 	return 0;
     }
     ExprAST*         expr = 0;
-    Types::TypeDecl* ty = 0;
-    if (CurrentToken().GetToken() == Token::Identifier)
-    {
-	if ((ty = GetTypeDecl(CurrentToken().GetIdentName())))
-	{
-	    AssertToken(Token::Identifier);
-	}
-    }
+    Types::TypeDecl* ty = GetTypeDecl(GetIdentifier(ExpectConsume));
     if (!ty)
     {
 	if (ExprAST* e = ParseExpression())
@@ -494,16 +504,17 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
 
 Types::TypeDecl* Parser::ParseSimpleType(bool errOnNoType)
 {
-    if (Expect(Token::Identifier, NoExpectConsume))
+    std::string name = GetIdentifier(NoExpectConsume);
+    if (!name.empty())
     {
-	if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
+	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
 	    AssertToken(Token::Identifier);
 	    return ty;
 	}
 	if (errOnNoType)
 	{
-	    return Error("Identifier '" + CurrentToken().GetIdentName() + "' does not name a type");
+	    return Error("Identifier '" + name + "' does not name a type");
 	}
     }
     return 0;
@@ -620,14 +631,12 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
     const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
     if (!startC && Expect(Token::Identifier, NoExpectConsume) && PeekToken().GetToken() == Token::DotDot)
     {
-	std::string lowName = CurrentToken().GetIdentName();
-	NextToken();
+	std::string lowName = GetIdentifier(ExpectConsume);
 	if (!Expect(Token::DotDot, ExpectConsume) || !Expect(Token::Identifier, NoExpectConsume))
 	{
 	    return 0;
 	}
-	std::string highName = CurrentToken().GetIdentName();
-	NextToken();
+	std::string highName = GetIdentifier(ExpectConsume);
 	if (endToken != Token::Semicolon)
 	{
 	    AcceptToken(Token::Colon);
@@ -635,7 +644,7 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	    {
 		return 0;
 	    }
-	    if ((type = GetTypeDecl(CurrentToken().GetIdentName())))
+	    if ((type = GetTypeDecl(GetIdentifier(NoExpectConsume))))
 	    {
 		NextToken();
 	    }
@@ -697,18 +706,15 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                                     Token::TokenType altToken)
 {
-    if (CurrentToken().GetToken() == Token::Identifier)
+    std::string name = GetIdentifier(NoExpectConsume);
+    if ((type = GetTypeDecl(name)))
     {
-	std::string name = CurrentToken().GetIdentName();
-	if ((type = GetTypeDecl(name)))
+	if (!type->IsIntegral())
 	{
-	    if (!type->IsIntegral())
-	    {
-		return Error("Type used as index specification should be integral type");
-	    }
-	    AssertToken(Token::Identifier);
-	    return new Types::RangeDecl(type->GetRange(), type);
+	    return Error("Type used as index specification should be integral type");
 	}
+	AssertToken(Token::Identifier);
+	return new Types::RangeDecl(type->GetRange(), type);
     }
 
     return ParseRange(type, endToken, altToken);
@@ -930,38 +936,35 @@ void Parser::ParseConstDef()
     AssertToken(Token::Const);
     do
     {
-	if (!Expect(Token::Identifier, NoExpectConsume))
+	std::string nm = GetIdentifier(ExpectConsume);
+	if (nm.empty())
 	{
 	    return;
 	}
-	std::string nm = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
 	if (!Expect(Token::Equal, ExpectConsume))
 	{
 	    return;
 	}
-	if (CurrentToken().GetToken() == Token::Identifier)
+	std::string val = GetIdentifier(NoExpectConsume);
+	if (Types::TypeDecl* ty = GetTypeDecl(val))
 	{
-	    if (Types::TypeDecl* ty = GetTypeDecl(CurrentToken().GetIdentName()))
+	    AssertToken(Token::Identifier);
+	    if (auto init = ParseInitValue(ty))
 	    {
-		NextToken();
-		if (auto init = ParseInitValue(ty))
+		if (!AddConst(nm, new Constants::CompoundConstDecl(CurrentToken().Loc(), ty, init)))
 		{
-		    if (!AddConst(nm, new Constants::CompoundConstDecl(CurrentToken().Loc(), ty, init)))
-		    {
-			return;
-		    }
-		    if (!Expect(Token::Semicolon, ExpectConsume))
-		    {
-			return;
-		    }
-		    continue;
-		}
-		else
-		{
-		    Error("Unexpected constant content?");
 		    return;
 		}
+		if (!Expect(Token::Semicolon, ExpectConsume))
+		{
+		    return;
+		}
+		continue;
+	    }
+	    else
+	    {
+		Error("Unexpected constant content?");
+		return;
 	    }
 	}
 	const Constants::ConstDecl* cd = ParseConstExpr({ Token::Semicolon });
@@ -972,6 +975,7 @@ void Parser::ParseConstDef()
 	}
 	if (!AddConst(nm, cd))
 	{
+	    Error("Duplicate constant declaration");
 	    return;
 	}
 	if (!Expect(Token::Semicolon, ExpectConsume))
@@ -988,18 +992,17 @@ void Parser::ParseTypeDef()
     AssertToken(Token::Type);
     do
     {
-	if (!Expect(Token::Identifier, NoExpectConsume))
+	std::string name = GetIdentifier(ExpectConsume);
+	if (name.empty())
 	{
 	    return;
 	}
-	std::string nm = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
 	if (!Expect(Token::Equal, ExpectConsume))
 	{
 	    return;
 	}
 	bool restricted = AcceptToken(Token::Restricted);
-	if (Types::TypeDecl* ty = ParseType(nm, AllowForwarding))
+	if (Types::TypeDecl* ty = ParseType(name, AllowForwarding))
 	{
 	    ExprAST* init = 0;
 	    if (AcceptToken(Token::Value))
@@ -1011,9 +1014,9 @@ void Parser::ParseTypeDef()
 		}
 		ty = Types::CloneWithInit(ty, init);
 	    }
-	    if (!AddType(nm, ty, restricted))
+	    if (!AddType(name, ty, restricted))
 	    {
-		Error("Name " + nm + " is already in use.");
+		Error("Name " + name + " is already in use.");
 		return;
 	    }
 	    auto pty = llvm::dyn_cast<Types::PointerDecl>(ty);
@@ -1060,11 +1063,10 @@ public:
     CCNames(Token::TokenType e) : ListConsumer{ Token::Comma, e, ListConsumer::AllowEmpty::No } {}
     bool Consume(Parser& parser)
     {
-	// Don't move forward here.
-	if (parser.Expect(Token::Identifier, Parser::NoExpectConsume))
+	std::string name = parser.GetIdentifier(Parser::ExpectConsume);
+	if (!name.empty())
 	{
-	    names.push_back(parser.CurrentToken().GetIdentName());
-	    parser.AssertToken(Token::Identifier);
+	    names.push_back(name);
 	    return true;
 	}
 	return false;
@@ -1147,10 +1149,9 @@ Types::PointerDecl* Parser::ParsePointerType(Forwarding maybeForwarded)
     NextToken();
     // If the name is an identifier then it may be name of a not yet declared type.
     // We need to forward declare it, and backpatch later.
-    if (CurrentToken().GetToken() == Token::Identifier)
+    std::string name = GetIdentifier(ExpectConsume);
+    if (!name.empty())
     {
-	std::string name = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
 	if (maybeForwarded == NoForwarding)
 	{
 	    // Is it a known type?
@@ -1232,10 +1233,9 @@ Types::TypeDecl* Parser::ParseArrayDecl()
 Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
 {
     std::vector<Types::FieldDecl*> variants;
-    std::string                    marker = "";
-    if (CurrentToken().GetToken() == Token::Identifier && PeekToken().GetToken() == Token::Colon)
+    std::string                    marker = GetIdentifier(NoExpectConsume);
+    if (!marker.empty() && PeekToken().GetToken() == Token::Colon)
     {
-	marker = CurrentToken().GetIdentName();
 	AssertToken(Token::Identifier);
 	AssertToken(Token::Colon);
     }
@@ -1248,7 +1248,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
     {
 	return Error("Expect variant selector to be integral type");
     }
-    if (marker != "")
+    if (!marker.empty())
     {
 	markerField = new Types::FieldDecl(marker, markerTy, false);
     }
@@ -1310,12 +1310,12 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
 		{
 		    do
 		    {
-			if (!Expect(Token::Identifier, NoExpectConsume))
+			std::string name = GetIdentifier(ExpectConsume);
+			if (name.empty())
 			{
 			    return 0;
 			}
-			names.push_back(CurrentToken().GetIdentName());
-			AssertToken(Token::Identifier);
+			names.push_back(name);
 			if (CurrentToken().GetToken() != Token::Colon && !Expect(Token::Comma, ExpectConsume))
 			{
 			    return 0;
@@ -1622,16 +1622,15 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
     // Find derived class, if available.
     if (AcceptToken(Token::LeftParen))
     {
-	if (!Expect(Token::Identifier, NoExpectConsume))
+	std::string baseName = GetIdentifier(ExpectConsume);
+	if (baseName.empty())
 	{
 	    return 0;
 	}
-	std::string baseName = CurrentToken().GetIdentName();
 	if (!(base = llvm::dyn_cast_or_null<Types::ClassDecl>(GetTypeDecl(baseName))))
 	{
 	    return Error("Expected class as base");
 	}
-	AssertToken(Token::Identifier);
 	if (!Expect(Token::RightParen, ExpectConsume))
 	{
 	    return 0;
@@ -1710,18 +1709,14 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 	{
 	    return 0;
 	}
-	if (Expect(Token::Identifier, NoExpectConsume))
+	std::string varName = GetIdentifier(ExpectConsume);
+	if (const NamedObject* def = nameStack.Find(varName))
 	{
-	    std::string varName = CurrentToken().GetIdentName();
-	    if (const NamedObject* def = nameStack.Find(varName))
+	    if (!llvm::isa<VarDef>(def))
 	    {
-		if (!llvm::isa<VarDef>(def))
-		{
-		    return Error("Expected variable name");
-		}
-		NextToken();
-		return def->Type();
+		return Error("Expected variable name");
 	    }
+	    return def->Type();
 	}
 	return Error("Expected an identifier for 'type of'");
     }
@@ -1729,7 +1724,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 
     case Token::Identifier:
     {
-	if (!GetEnumValue(CurrentToken().GetIdentName()))
+	if (!GetEnumValue(GetIdentifier(NoExpectConsume)))
 	{
 	    if (Types::TypeDecl* ty = ParseSimpleType(false))
 	    {
@@ -2161,104 +2156,101 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
     AssertToken(Token::Period);
-    if (Expect(Token::Identifier, NoExpectConsume))
+    std::string name = GetIdentifier(ExpectConsume);
+    if (name.empty())
     {
-	std::string         typedesc;
-	std::string         name = CurrentToken().GetIdentName();
-	ExprAST*            e = 0;
-	Types::VariantDecl* v = 0;
-	unsigned            fc = 0;
-	if (auto cd = llvm::dyn_cast<Types::ClassDecl>(type))
+	return 0;
+    }
+    std::string         typedesc;
+    ExprAST*            e = 0;
+    Types::VariantDecl* v = 0;
+    unsigned            fc = 0;
+    if (auto cd = llvm::dyn_cast<Types::ClassDecl>(type))
+    {
+	int elem = cd->Element(name);
+	typedesc = "object";
+	if (elem >= 0)
 	{
-	    int elem = cd->Element(name);
-	    typedesc = "object";
-	    if (elem >= 0)
+	    std::string             objname;
+	    const Types::FieldDecl* fd = cd->GetElement(elem, objname);
+	    if (!fd)
 	    {
-		std::string             objname;
-		const Types::FieldDecl* fd = cd->GetElement(elem, objname);
-		if (!fd)
-		{
-		    return Error("Field " + name + " not found in object");
-		}
+		return Error("Field " + name + " not found in object");
+	    }
 
-		type = fd->SubType();
-		if (fd->IsStatic())
-		{
-		    std::string vname = objname + "$" + fd->Name();
-		    e = new VariableExprAST(CurrentToken().Loc(), vname, type);
-		}
-		else
-		{
-		    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
-		}
+	    type = fd->SubType();
+	    if (fd->IsStatic())
+	    {
+		std::string vname = objname + "$" + fd->Name();
+		e = new VariableExprAST(CurrentToken().Loc(), vname, type);
 	    }
 	    else
 	    {
-		if ((elem = cd->MembFunc(name)) >= 0)
-		{
-		    NextToken();
-
-		    Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
-		    const NamedObject*     def = nameStack.Find(membfunc->LongName());
-
-		    std::vector<ExprAST*> args;
-		    if (!ParseArgs(def, args))
-		    {
-			return 0;
-		    }
-
-		    return MakeSelfCall(expr, membfunc, cd, args);
-		}
-		else
-		{
-		    fc = cd->FieldCount();
-		    v = cd->Variant();
-		}
-	    }
-	}
-	else if (auto rd = llvm::dyn_cast<Types::RecordDecl>(type))
-	{
-	    typedesc = "record";
-	    int elem = rd->Element(name);
-	    if (elem >= 0)
-	    {
-		type = rd->GetElement(elem)->SubType();
 		e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
-	    }
-	    else
-	    {
-		fc = rd->FieldCount();
-		v = rd->Variant();
 	    }
 	}
 	else
 	{
-	    if (auto sd = llvm::dyn_cast<Types::StringDecl>(type))
+	    if ((elem = cd->MembFunc(name)) >= 0)
 	    {
-		strlower(name);
-		if (name == "capacity")
+		Types::MemberFuncDecl* membfunc = cd->GetMembFunc(elem);
+		const NamedObject*     def = nameStack.Find(membfunc->LongName());
+
+		std::vector<ExprAST*> args;
+		if (!ParseArgs(def, args))
 		{
-		    int cap = sd->Capacity();
-		    e = new IntegerExprAST(CurrentToken().Loc(), cap, Types::Get<Types::IntegerDecl>());
+		    return 0;
 		}
+
+		return MakeSelfCall(expr, membfunc, cd, args);
 	    }
-	    if (!e)
+	    else
 	    {
-		return Error("Attempt to use field of variable that hasn't got fields");
+		fc = cd->FieldCount();
+		v = cd->Variant();
 	    }
 	}
-	if (!e && v)
+    }
+    else if (auto rd = llvm::dyn_cast<Types::RecordDecl>(type))
+    {
+	typedesc = "record";
+	int elem = rd->Element(name);
+	if (elem >= 0)
 	{
-	    e = FindVariant(expr, type, fc, v, name);
+	    type = rd->GetElement(elem)->SubType();
+	    e = new FieldExprAST(CurrentToken().Loc(), expr, elem, type);
+	}
+	else
+	{
+	    fc = rd->FieldCount();
+	    v = rd->Variant();
+	}
+    }
+    else
+    {
+	if (auto sd = llvm::dyn_cast<Types::StringDecl>(type))
+	{
+	    strlower(name);
+	    if (name == "capacity")
+	    {
+		int cap = sd->Capacity();
+		e = new IntegerExprAST(CurrentToken().Loc(), cap, Types::Get<Types::IntegerDecl>());
+	    }
 	}
 	if (!e)
 	{
-	    return Error("Can't find element " + name + " in " + typedesc);
+	    return Error("Attempt to use field of variable that hasn't got fields");
 	}
-	NextToken();
-	return e;
     }
-    return 0;
+    if (!e && v)
+    {
+	e = FindVariant(expr, type, fc, v, name);
+    }
+    if (!e)
+    {
+	return Error("Can't find element " + name + " in " + typedesc);
+    }
+    return e;
 }
 
 ExprAST* Parser::ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type)
@@ -2337,11 +2329,9 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 	    ExprAST* arg = 0;
 	    if (isFuncArg)
 	    {
-		Token token = CurrentToken();
-		if (token.GetToken() == Token::Identifier)
+		std::string idName = GetIdentifier(ExpectConsume);
+		if (!idName.empty())
 		{
-		    std::string idName = token.GetIdentName();
-		    NextToken();
 		    if (const NamedObject* argDef = nameStack.Find(idName))
 		    {
 			if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(argDef))
@@ -2383,26 +2373,27 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 
 VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*& type)
 {
-    if (Expect(Token::Period, ExpectConsume) || Expect(Token::Identifier, NoExpectConsume))
+    if (Expect(Token::Period, ExpectConsume))
     {
-	std::string field = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
-
-	const Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
-	int                     elem;
-	if ((elem = od->Element(field)) >= 0)
+	std::string field = GetIdentifier(ExpectConsume);
+	if (!field.empty())
 	{
-	    std::string             objname;
-	    const Types::FieldDecl* fd = od->GetElement(elem, objname);
-	    if (fd->IsStatic())
+	    const Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
+	    int                     elem;
+	    if ((elem = od->Element(field)) >= 0)
 	    {
-		type = fd->SubType();
-		std::string name = objname + "$" + field;
-		return new VariableExprAST(CurrentToken().Loc(), name, type);
+		std::string             objname;
+		const Types::FieldDecl* fd = od->GetElement(elem, objname);
+		if (fd->IsStatic())
+		{
+		    type = fd->SubType();
+		    std::string name = objname + "$" + field;
+		    return new VariableExprAST(CurrentToken().Loc(), name, type);
+		}
+		return Error("Expected static variable '" + field + "'");
 	    }
-	    return Error("Expected static variable '" + field + "'");
+	    return Error("Expected member variabe name '" + field + "'");
 	}
-	return Error("Expected member variabe name '" + field + "'");
     }
     return 0;
 }
@@ -2731,12 +2722,11 @@ public:
 	std::vector<int> elems;
 	do
 	{
-	    if (!parser.Expect(Token::Identifier, Parser::NoExpectConsume))
+	    std::string fieldName = parser.GetIdentifier(Parser::ExpectConsume);
+	    if (fieldName.empty())
 	    {
 		return false;
 	    }
-	    std::string fieldName = parser.CurrentToken().GetIdentName();
-	    parser.NextToken();
 	    int                     elem = type->Element(fieldName);
 	    const Types::FieldDecl* fty = nullptr;
 	    if (elem >= 0)
@@ -2900,13 +2890,12 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     std::string funcName = "noname";
     if (!unnamed)
     {
-	if (!Expect(Token::Identifier, NoExpectConsume))
+	// Get function name.
+	funcName = GetIdentifier(ExpectConsume);
+	if (funcName.empty())
 	{
 	    return 0;
 	}
-	// Get function name.
-	funcName = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
 
 	// Is it a member function?
 	// FIXME: Nested classes, should we do this again?
@@ -2920,8 +2909,8 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		    {
 			return 0;
 		    }
-		    std::string m = CurrentToken().GetIdentName();
-		    AssertToken(Token::Identifier);
+
+		    std::string m = GetIdentifier(ExpectConsume);
 
 		    int elem;
 		    if ((elem = od->MembFunc(m)) >= 0)
@@ -2995,12 +2984,12 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 		{
 		    flags |= VarDef::Flags::Reference;
 		}
-		if (!Expect(Token::Identifier, NoExpectConsume))
+
+		std::string arg = GetIdentifier(ExpectConsume);
+		if (arg.empty())
 		{
 		    return 0;
 		}
-		std::string arg = CurrentToken().GetIdentName();
-		NextToken();
 
 		names.push_back(arg);
 		if (AcceptToken(Token::Colon))
@@ -3043,8 +3032,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     {
 	if (AcceptToken(Token::Equal))
 	{
-	    resultName = CurrentToken().GetIdentName();
-	    AssertToken(Token::Identifier);
+	    resultName = GetIdentifier(ExpectConsume);
 	}
 	if (!Expect(Token::Colon, Parser::ExpectConsume) || !(resultType = ParseSimpleType(true)))
 	{
@@ -3362,12 +3350,12 @@ ExprAST* Parser::ParseForExpr()
 {
     const Location& loc = CurrentToken().Loc();
     AssertToken(Token::For);
-    if (CurrentToken().GetToken() != Token::Identifier)
+
+    std::string varName = GetIdentifier(ExpectConsume);
+    if (varName.empty())
     {
 	return Error("Expected identifier name, got " + CurrentToken().ToString());
     }
-    std::string varName = CurrentToken().GetIdentName();
-    AssertToken(Token::Identifier);
     const NamedObject* def = nameStack.Find(varName);
     if (!def)
     {
@@ -3947,10 +3935,9 @@ bool Parser::ParseProgram(ParserType type)
     {
 	t = Token::Unit;
     }
-    if (Expect(t, ExpectConsume) && Expect(Token::Identifier, NoExpectConsume))
+    if (Expect(t, ExpectConsume))
     {
-	moduleName = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
+	moduleName = GetIdentifier(ExpectConsume);
 	if (type == ParserType::Program && AcceptToken(Token::LeftParen))
 	{
 	    CCProgram ccp;
@@ -3964,10 +3951,9 @@ bool Parser::ParseProgram(ParserType type)
 ExprAST* Parser::ParseUses()
 {
     AssertToken(Token::Uses);
-    if (Expect(Token::Identifier, NoExpectConsume))
+    std::string unitname = GetIdentifier(ExpectConsume);
+    if (!unitname.empty())
     {
-	std::string unitname = CurrentToken().GetIdentName();
-	AssertToken(Token::Identifier);
 	if (unitname == "math")
 	{
 	    if (Expect(Token::Semicolon, ExpectConsume))

@@ -584,7 +584,7 @@ void TypeCheckVisitor::Check<BuiltinExprAST>(BuiltinExprAST* b)
     TRACE();
     if (!b->bif->Semantics())
     {
-	Error(b, "Invalid use of builtin function");
+	Error(b, "Invalid use of builtin function " + b->bif->Name());
     }
 }
 

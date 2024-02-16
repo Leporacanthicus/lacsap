@@ -16,14 +16,16 @@ namespace Builtin
     class FunctionBase
     {
     public:
-	FunctionBase(const std::vector<ExprAST*>& a) : args(a) {}
+	FunctionBase(const std::string& nm, const std::vector<ExprAST*>& a) : name(nm), args(a) {}
 	virtual llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) = 0;
 	virtual Types::TypeDecl* Type() const = 0;
 	virtual bool             Semantics() = 0;
 	virtual void             accept(ASTVisitor& v);
+	const std::string&       Name() const { return name; }
 	virtual ~FunctionBase() {}
 
     protected:
+	std::string           name;
 	std::vector<ExprAST*> args;
     };
 

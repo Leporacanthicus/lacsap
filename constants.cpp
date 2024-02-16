@@ -29,7 +29,7 @@ namespace Constants
     template<>
     void RealConstDecl::dump() const
     {
-	std::cerr << "RealConstDelc: " << Value() << std::endl;
+	std::cerr << "RealConstDecl: " << Value() << std::endl;
     }
     template<>
     Token CharConstDecl::Translate() const

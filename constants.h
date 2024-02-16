@@ -4,11 +4,6 @@
 #include "token.h"
 #include "types.h"
 
-namespace llvm
-{
-    class Constant;
-};
-
 namespace Constants
 {
     enum ConstKind

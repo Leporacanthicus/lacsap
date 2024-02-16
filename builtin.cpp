@@ -75,7 +75,7 @@ namespace Builtin
     public:
 	using FunctionBase::FunctionBase;
 	Types::TypeDecl* Type() const override { return args[0]->Type(); }
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
     };
 
     class FunctionSameAsArg2 : public FunctionBase
@@ -83,7 +83,7 @@ namespace Builtin
     public:
 	using FunctionBase::FunctionBase;
 	Types::TypeDecl* Type() const override { return args[0]->Type(); }
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
     };
 
     class FunctionAbs : public FunctionSameAsArg
@@ -99,7 +99,6 @@ namespace Builtin
     public:
 	using FunctionSameAsArg::FunctionSameAsArg;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
     };
 
     class FunctionOdd : public FunctionBool
@@ -107,7 +106,7 @@ namespace Builtin
     public:
 	using FunctionBool::FunctionBool;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionRound : public FunctionInt
@@ -115,7 +114,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionTrunc : public FunctionRound
@@ -130,7 +129,7 @@ namespace Builtin
     public:
 	using FunctionReal::FunctionReal;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionChr : public FunctionBase
@@ -139,7 +138,7 @@ namespace Builtin
 	using FunctionBase::FunctionBase;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return Types::Get<Types::CharDecl>(); }
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
     };
 
     class FunctionOrd : public FunctionInt
@@ -147,7 +146,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionLength : public FunctionInt
@@ -155,7 +154,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionPopcnt : public FunctionInt
@@ -163,7 +162,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionSucc : public FunctionSameAsArg
@@ -171,7 +170,7 @@ namespace Builtin
     public:
 	using FunctionSameAsArg::FunctionSameAsArg;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionPred : public FunctionSucc
@@ -191,7 +190,7 @@ namespace Builtin
 	}
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override;
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
 
     protected:
 	std::string func;
@@ -202,7 +201,7 @@ namespace Builtin
     public:
 	using FunctionFloat::FunctionFloat;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionFloatIntrinsic : public FunctionFloat
@@ -217,7 +216,7 @@ namespace Builtin
     public:
 	using FunctionVoid::FunctionVoid;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionDispose : public FunctionNew
@@ -231,7 +230,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -239,7 +238,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -254,7 +253,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -262,7 +261,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -270,7 +269,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -279,7 +278,7 @@ namespace Builtin
     public:
 	FunctionFile(const std::string& fn, ArgList& a) : FunctionVoid(fn, a) {}
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionFileInfo : public FunctionFile
@@ -293,7 +292,7 @@ namespace Builtin
     {
     public:
 	using FunctionFile::FunctionFile;
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
 	Types::TypeDecl* Type() const override { return Types::Get<Types::BoolDecl>(); }
     };
 
@@ -308,7 +307,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -316,7 +315,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -325,7 +324,7 @@ namespace Builtin
     public:
 	using FunctionLongInt::FunctionLongInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionCycles : public FunctionClock
@@ -340,7 +339,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionParamstr : public FunctionString
@@ -348,7 +347,7 @@ namespace Builtin
     public:
 	using FunctionString::FunctionString;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionCopy : public FunctionString
@@ -356,7 +355,7 @@ namespace Builtin
     public:
 	using FunctionString::FunctionString;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionTrim : public FunctionString
@@ -364,7 +363,7 @@ namespace Builtin
     public:
 	using FunctionString::FunctionString;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionIndex : public FunctionInt
@@ -372,7 +371,7 @@ namespace Builtin
     public:
 	using FunctionInt::FunctionInt;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionMin : public FunctionSameAsArg2
@@ -393,7 +392,7 @@ namespace Builtin
     {
     public:
 	using FunctionInt::FunctionInt;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -401,7 +400,7 @@ namespace Builtin
     {
     public:
 	using FunctionVoid::FunctionVoid;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -409,7 +408,7 @@ namespace Builtin
     {
     public:
 	FunctionTime(const std::string& fn, ArgList& a);
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return arrayType; }
 
@@ -421,7 +420,7 @@ namespace Builtin
     {
     public:
 	FunctionDate(const std::string& fn, ArgList& a);
-	bool             Semantics() override;
+	ErrorType        Semantics() override;
 	llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) override;
 	Types::TypeDecl* Type() const override { return arrayType; }
 
@@ -440,7 +439,7 @@ namespace Builtin
     {
     public:
 	using FunctionFile::FunctionFile;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -450,7 +449,7 @@ namespace Builtin
 	FunctionStrCompOp(const std::string& fn, ArgList& a, Token::TokenType o) : FunctionBool(fn, a), op(o)
 	{
 	}
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 
     private:
@@ -461,7 +460,7 @@ namespace Builtin
     {
     public:
 	using FunctionFile::FunctionFile;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -469,7 +468,7 @@ namespace Builtin
     {
     public:
 	using FunctionCplx::FunctionCplx;
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -484,7 +483,7 @@ namespace Builtin
     {
     public:
 	FunctionReIm(const std::string& fn, ArgList& a, int idx) : FunctionReal(fn, a), index(idx) {}
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 
     private:
@@ -495,7 +494,7 @@ namespace Builtin
     {
     public:
 	FunctionCmplxToReal(const std::string& fn, ArgList& a) : FunctionReal(fn, a) {}
-	bool         Semantics() override;
+	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
@@ -507,11 +506,30 @@ namespace Builtin
 	}
     }
 
-    bool FunctionSameAsArg::Semantics() { return (args.size() == 1) && Types::IsNumeric(args[0]->Type()); }
-
-    bool FunctionSameAsArg2::Semantics()
+    ErrorType FunctionSameAsArg::Semantics()
     {
-	return (args.size() == 2) && Types::IsNumeric(args[0]->Type()) && Types::IsNumeric(args[1]->Type());
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!Types::IsNumeric(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
+
+    ErrorType FunctionSameAsArg2::Semantics()
+    {
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!Types::IsNumeric(args[0]->Type()) || !Types::IsNumeric(args[1]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     /* Note that abs returnes "real" for complex, otherwise int or real depending on input type */
@@ -566,7 +584,18 @@ namespace Builtin
 	return builder.CreateTrunc(v, Types::Get<Types::BoolDecl>()->LlvmType(), "odd");
     }
 
-    bool FunctionOdd::Semantics() { return args.size() == 1 && args[0]->Type()->IsIntegral(); }
+    ErrorType FunctionOdd::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionSqr::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -599,8 +628,6 @@ namespace Builtin
 	return builder.CreateFMul(a, a, "sqr");
     }
 
-    bool FunctionSqr::Semantics() { return args.size() == 1 && Types::IsNumeric(args[0]->Type()); }
-
     llvm::Value* FunctionFloat::CodeGen(llvm::IRBuilder<>& builder)
     {
 	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()))
@@ -619,10 +646,18 @@ namespace Builtin
 	return Types::Get<Types::RealDecl>();
     }
 
-    bool FunctionFloat::Semantics()
+    ErrorType FunctionFloat::Semantics()
     {
-	return args.size() == 1 &&
-	       (llvm::isa<Types::ComplexDecl>(args[0]->Type()) || CastIntegerToReal(args[0]));
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+
+	if (llvm::isa<Types::ComplexDecl>(args[0]->Type()) || CastIntegerToReal(args[0]))
+	{
+	    return ErrorType::Ok;
+	}
+	return ErrorType::WrongArgType;
     }
 
     llvm::Value* FunctionFloatIntrinsic::CodeGen(llvm::IRBuilder<>& builder)
@@ -640,9 +675,17 @@ namespace Builtin
 	return builder.CreateFPToSI(v, Types::Get<Types::IntegerDecl>()->LlvmType(), "to.int");
     }
 
-    bool FunctionRound::Semantics()
+    ErrorType FunctionRound::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::RealDecl>(args[0]->Type());
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::RealDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionTrunc::CodeGen(llvm::IRBuilder<>& builder)
@@ -657,7 +700,14 @@ namespace Builtin
 	return builder.CreateCall(f, {}, "calltmp");
     }
 
-    bool FunctionRandom::Semantics() { return args.size() == 0; }
+    ErrorType FunctionRandom::Semantics()
+    {
+	if (args.size() != 0)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionChr::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -665,7 +715,18 @@ namespace Builtin
 	return builder.CreateTrunc(a, Types::Get<Types::CharDecl>()->LlvmType(), "chr");
     }
 
-    bool FunctionChr::Semantics() { return args.size() == 1 && args[0]->Type()->IsIntegral(); }
+    ErrorType FunctionChr::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionOrd::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -673,7 +734,18 @@ namespace Builtin
 	return builder.CreateZExt(a, Types::Get<Types::IntegerDecl>()->LlvmType(), "ord");
     }
 
-    bool FunctionOrd::Semantics() { return args.size() == 1 && args[0]->Type()->IsIntegral(); }
+    ErrorType FunctionOrd::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionSucc::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -683,11 +755,21 @@ namespace Builtin
 	return builder.CreateAdd(a, b, "succ");
     }
 
-    bool FunctionSucc::Semantics()
+    ErrorType FunctionSucc::Semantics()
     {
-	return (args.size() == 1 && args[0]->Type()->IsIntegral()) ||
-	       (args.size() == 2 && args[0]->Type()->IsIntegral() &&
-	        args[1]->Type() == Types::Get<Types::IntegerDecl>());
+	if (args.size() < 1 || args.size() > 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	if (args.size() == 2 && !llvm::isa<Types::IntegerDecl>(args[1]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionPred::CodeGen(llvm::IRBuilder<>& builder)
@@ -731,10 +813,17 @@ namespace Builtin
 	return builder.CreateStore(retVal, pA);
     }
 
-    bool FunctionNew::Semantics()
+    ErrorType FunctionNew::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::PointerDecl>(args[0]->Type()) &&
-	       llvm::isa<AddressableAST>(args[0]);
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::PointerDecl>(args[0]->Type()) || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionDispose::CodeGen(llvm::IRBuilder<>& builder)
@@ -745,9 +834,18 @@ namespace Builtin
 	return builder.CreateCall(f, { args[0]->CodeGen() });
     }
 
-    bool FunctionHalt::Semantics()
+    ErrorType FunctionHalt::Semantics()
     {
-	return args.size() <= 1 && (args.size() == 0 || args[0]->Type()->IsIntegral());
+	if (args.size() > 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args.size() == 1 &&
+	    (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type())))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionHalt::CodeGen(llvm::IRBuilder<>& builder)
@@ -764,9 +862,17 @@ namespace Builtin
 	return builder.CreateCall(f, { v });
     }
 
-    bool FunctionInc::Semantics()
+    ErrorType FunctionInc::Semantics()
     {
-	return args.size() == 1 && args[0]->Type()->IsIntegral() && llvm::isa<AddressableAST>(args[0]);
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral() || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionInc::CodeGen(llvm::IRBuilder<>& builder)
@@ -792,11 +898,11 @@ namespace Builtin
     }
 
     // Pack(a, start, apacked);
-    bool FunctionPack::Semantics()
+    ErrorType FunctionPack::Semantics()
     {
 	if (args.size() != 3)
 	{
-	    return false;
+	    return ErrorType::WrongArgCount;
 	}
 	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	Types::ArrayDecl* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
@@ -804,12 +910,22 @@ namespace Builtin
 	{
 	    if (args[1]->Type()->IsIntegral() && args[1]->Type()->AssignableType(t0->Ranges()[0]))
 	    {
-		return t0->SubType() == t2->SubType() && llvm::isa<VariableExprAST>(args[0]) &&
-		       t0->Ranges().size() == 1 && llvm::isa<VariableExprAST>(args[2]) &&
-		       t2->Ranges().size() == 1;
+		if (t0->SubType() != t2->SubType())
+		{
+		    return ErrorType::WrongArgType;
+		}
+		if (!llvm::isa<VariableExprAST>(args[0]) || !llvm::isa<VariableExprAST>(args[2]))
+		{
+		    return ErrorType::WrongArgType;
+		}
+		if (t0->Ranges().size() != 1 || t2->Ranges().size() != 1)
+		{
+		    return ErrorType::WrongArgType;
+		}
+		return ErrorType::Ok;
 	    }
 	}
-	return false;
+	return ErrorType::WrongArgType;
     }
 
     llvm::Value* FunctionPack::CodeGen(llvm::IRBuilder<>& builder)
@@ -836,11 +952,11 @@ namespace Builtin
     }
 
     // Unpack(apacked, a, start);
-    bool FunctionUnpack::Semantics()
+    ErrorType FunctionUnpack::Semantics()
     {
 	if (args.size() != 3)
 	{
-	    return false;
+	    return ErrorType::WrongArgCount;
 	}
 	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	Types::ArrayDecl* t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
@@ -848,12 +964,22 @@ namespace Builtin
 	{
 	    if (args[2]->Type()->IsIntegral() && args[2]->Type()->AssignableType(t1->Ranges()[0]))
 	    {
-		return t0->SubType() == t1->SubType() && llvm::isa<VariableExprAST>(args[0]) &&
-		       t0->Ranges().size() == 1 && llvm::isa<VariableExprAST>(args[1]) &&
-		       t1->Ranges().size() == 1 && args[2]->Type()->IsIntegral();
+		if (t0->SubType() != t1->SubType())
+		{
+		    return ErrorType::WrongArgType;
+		}
+		if (!llvm::isa<VariableExprAST>(args[0]) || !llvm::isa<VariableExprAST>(args[1]))
+		{
+		    return ErrorType::WrongArgType;
+		}
+		if (t0->Ranges().size() != 1 || t1->Ranges().size() != 1 || !args[2]->Type()->IsIntegral())
+		{
+		    return ErrorType::WrongArgType;
+		}
+		return ErrorType::Ok;
 	    }
 	}
-	return false;
+	return ErrorType::WrongArgType;
     }
 
     llvm::Value* FunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
@@ -879,10 +1005,25 @@ namespace Builtin
 	return builder.CreateMemCpy(dest, dest_align, pA, src_align, args[0]->Type()->Size());
     }
 
-    bool FunctionVal::Semantics()
+    ErrorType FunctionVal::Semantics()
     {
-	return args.size() == 2 && args[0]->Type()->IsStringLike() && llvm::isa<VariableExprAST>(args[1]) &&
-	       Types::IsNumeric(args[1]->Type()) && !llvm::isa<Types::ComplexDecl>(args[1]->Type());
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsStringLike())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	if (!llvm::isa<VariableExprAST>(args[1]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	if (!Types::IsNumeric(args[1]->Type()) || llvm::isa<Types::ComplexDecl>(args[1]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionVal::CodeGen(llvm::IRBuilder<>& builder)
@@ -925,10 +1066,17 @@ namespace Builtin
 	return builder.CreateCall(f, { faddr });
     }
 
-    bool FunctionFile::Semantics()
+    ErrorType FunctionFile::Semantics()
     {
-	return (args.size() == 1 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
-	        llvm::isa<AddressableAST>(args[0]));
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionFileInfo::CodeGen(llvm::IRBuilder<>& builder)
@@ -950,12 +1098,12 @@ namespace Builtin
     }
 
     // Used for eof/eoln, where no argument means the "input" file.
-    bool FunctionFileBool::Semantics()
+    ErrorType FunctionFileBool::Semantics()
     {
 	if (args.size() == 0)
 	{
 	    args.push_back(new VariableExprAST(Location(), "input", Types::Get<Types::TextDecl>()));
-	    return true;
+	    return ErrorType::Ok;
 	}
 	return FunctionFile::Semantics();
     }
@@ -970,9 +1118,17 @@ namespace Builtin
 	return builder.CreateZExt(v, Types::Get<Types::IntegerDecl>()->LlvmType(), "extend");
     }
 
-    bool FunctionLength::Semantics()
+    ErrorType FunctionLength::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::StringDecl>(args[0]->Type());
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::StringDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionAssign::CodeGen(llvm::IRBuilder<>& builder)
@@ -994,17 +1150,21 @@ namespace Builtin
 	return builder.CreateCall(f, argsV);
     }
 
-    bool FunctionAssign::Semantics()
+    ErrorType FunctionAssign::Semantics()
     {
-	if (args.size() != 2 || !llvm::isa<AddressableAST>(args[0]))
+	if (args.size() != 2)
 	{
-	    return false;
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
 	}
 	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->IsStringLike())
 	{
-	    return false;
+	    return ErrorType::WrongArgType;
 	}
-	return true;
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionCopy::CodeGen(llvm::IRBuilder<>& builder)
@@ -1031,16 +1191,21 @@ namespace Builtin
 	return builder.CreateCall(f, argsV, "copy");
     }
 
-    bool FunctionCopy::Semantics()
+    ErrorType FunctionCopy::Semantics()
     {
-	if (args.size() == 2)
+	if (args.size() < 2 || args.size() > 3)
 	{
-	    return args[0]->Type()->IsStringLike() &&
-		llvm::isa<Types::IntegerDecl>(args[1]->Type());
+	    return ErrorType::WrongArgCount;
 	}
-	return args.size() == 3 && args[0]->Type()->IsStringLike() &&
-	       llvm::isa<Types::IntegerDecl>(args[1]->Type()) &&
-	       llvm::isa<Types::IntegerDecl>(args[2]->Type());
+	if (!args[0]->Type()->IsStringLike() || !llvm::isa<Types::IntegerDecl>(args[1]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	if (args.size() == 3 && !llvm::isa<Types::IntegerDecl>(args[2]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionTrim::CodeGen(llvm::IRBuilder<>& builder)
@@ -1053,7 +1218,18 @@ namespace Builtin
 	return builder.CreateCall(f, { str }, "trim");
     }
 
-    bool FunctionTrim::Semantics() { return args.size() == 1 && args[0]->Type()->IsStringLike(); }
+    ErrorType FunctionTrim::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsStringLike())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionIndex::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1066,9 +1242,17 @@ namespace Builtin
 	return builder.CreateCall(f, { str1, str2 }, "Index");
     }
 
-    bool FunctionIndex::Semantics()
+    ErrorType FunctionIndex::Semantics()
     {
-	return args.size() == 2 && args[0]->Type()->IsStringLike() && args[1]->Type()->IsStringLike();
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsStringLike() || !args[1]->Type()->IsStringLike())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionClock::CodeGen(llvm::IRBuilder<>& builder)
@@ -1078,7 +1262,14 @@ namespace Builtin
 	return builder.CreateCall(f, {}, "clock");
     }
 
-    bool FunctionClock::Semantics() { return args.size() == 0; }
+    ErrorType FunctionClock::Semantics()
+    {
+	if (args.size() != 0)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionPanic::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1089,7 +1280,18 @@ namespace Builtin
 	return builder.CreateCall(f, { message });
     }
 
-    bool FunctionPanic::Semantics() { return args.size() == 1 && args[0]->Type()->IsStringLike(); }
+    ErrorType FunctionPanic::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsStringLike())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionPopcnt::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1123,10 +1325,17 @@ namespace Builtin
 	return count;
     }
 
-    bool FunctionPopcnt::Semantics()
+    ErrorType FunctionPopcnt::Semantics()
     {
-	return args.size() == 1 &&
-	       (args[0]->Type()->IsIntegral() || llvm::isa<Types::SetDecl>(args[0]->Type()));
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsIntegral() && !llvm::isa<Types::SetDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionCycles::CodeGen(llvm::IRBuilder<>& builder)
@@ -1148,9 +1357,17 @@ namespace Builtin
 	return builder.CreateCall(f, { a, b });
     }
 
-    bool FunctionFloat2Arg::Semantics()
+    ErrorType FunctionFloat2Arg::Semantics()
     {
-	return args.size() == 2 && CastIntegerToReal(args[0]) && CastIntegerToReal(args[1]);
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!CastIntegerToReal(args[0]) || !CastIntegerToReal(args[1]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionParamstr::CodeGen(llvm::IRBuilder<>& builder)
@@ -1165,7 +1382,17 @@ namespace Builtin
 	return builder.CreateCall(f, n, "paramstr");
     }
 
-    bool FunctionParamstr::Semantics() { return args.size() == 1 && args[0]->Type()->IsIntegral(); }
+    ErrorType FunctionParamstr::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args[0]->Type()->IsIntegral())
+	{
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionParamcount::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1174,7 +1401,14 @@ namespace Builtin
 	return builder.CreateCall(f, {}, "paramcount");
     }
 
-    bool FunctionParamcount::Semantics() { return args.size() == 0; }
+    ErrorType FunctionParamcount::Semantics()
+    {
+	if (args.size() != 0)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionMax::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1219,7 +1453,18 @@ namespace Builtin
 	return builder.CreateSelect(sel, a, b, "min");
     }
 
-    bool FunctionSign::Semantics() { return args.size() == 1 && Types::IsNumeric(args[0]->Type()); }
+    ErrorType FunctionSign::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!Types::IsNumeric(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
 
     llvm::Value* FunctionSign::CodeGen(llvm::IRBuilder<>& builder)
     {
@@ -1246,10 +1491,17 @@ namespace Builtin
 	return builder.CreateSelect(sel2, mone, res, "sgn2");
     }
 
-    bool FunctionGetTimeStamp::Semantics()
+    ErrorType FunctionGetTimeStamp::Semantics()
     {
-	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<AddressableAST>(args[0]);
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args[0]->Type() != Types::GetTimeStampType() || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionGetTimeStamp::CodeGen(llvm::IRBuilder<>& builder)
@@ -1269,10 +1521,17 @@ namespace Builtin
 	    { new Types::RangeDecl(new Types::Range(1, 9), Types::Get<Types::IntegerDecl>()) });
     }
 
-    bool FunctionTime::Semantics()
+    ErrorType FunctionTime::Semantics()
     {
-	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<AddressableAST>(args[0]);
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args[0]->Type() != Types::GetTimeStampType() || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionTime::CodeGen(llvm::IRBuilder<>& builder)
@@ -1297,10 +1556,17 @@ namespace Builtin
 	    { new Types::RangeDecl(new Types::Range(1, 11), Types::Get<Types::IntegerDecl>()) });
     }
 
-    bool FunctionDate::Semantics()
+    ErrorType FunctionDate::Semantics()
     {
-	return args.size() == 1 && args[0]->Type() == Types::GetTimeStampType() &&
-	       llvm::isa<AddressableAST>(args[0]);
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args[0]->Type() != Types::GetTimeStampType() || !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionDate::CodeGen(llvm::IRBuilder<>& builder)
@@ -1318,10 +1584,18 @@ namespace Builtin
 	return addr;
     }
 
-    bool FunctionBind::Semantics()
+    ErrorType FunctionBind::Semantics()
     {
-	return (args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
-	        args[1]->Type() == Types::GetBindingType() && llvm::isa<AddressableAST>(args[0]));
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || args[1]->Type() == Types::GetBindingType() ||
+	    !llvm::isa<AddressableAST>(args[0]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionBind::CodeGen(llvm::IRBuilder<>& builder)
@@ -1336,9 +1610,17 @@ namespace Builtin
 	return builder.CreateCall(f, { faddr, binding });
     }
 
-    bool FunctionStrCompOp::Semantics()
+    ErrorType FunctionStrCompOp::Semantics()
     {
-	return args.size() == 2 && args[0]->Type()->IsStringLike() && args[1]->Type()->IsStringLike();
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!args[0]->Type()->IsStringLike() || !args[1]->Type()->IsStringLike())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionStrCompOp::CodeGen(llvm::IRBuilder<>& builder)
@@ -1347,10 +1629,17 @@ namespace Builtin
 	return MakeStrCompare(op, v);
     }
 
-    bool FunctionSeek::Semantics()
+    ErrorType FunctionSeek::Semantics()
     {
-	return args.size() == 2 && llvm::isa<Types::FileDecl>(args[0]->Type()) &&
-	       args[1]->Type()->IsIntegral();
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->IsIntegral())
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionSeek::CodeGen(llvm::IRBuilder<>& builder)
@@ -1366,9 +1655,17 @@ namespace Builtin
 	return builder.CreateCall(f, { faddr, pos });
     }
 
-    bool FunctionComplex::Semantics()
+    ErrorType FunctionComplex::Semantics()
     {
-	return args.size() == 2 && CastIntegerToReal(args[0]) && CastIntegerToReal(args[1]);
+	if (args.size() != 2)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!CastIntegerToReal(args[0]) || !CastIntegerToReal(args[1]))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionComplex::CodeGen(llvm::IRBuilder<>& builder)
@@ -1404,9 +1701,17 @@ namespace Builtin
 	return builder.CreateLoad(cplxTy, res);
     }
 
-    bool FunctionReIm::Semantics()
+    ErrorType FunctionReIm::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::ComplexDecl>(args[0]->Type());
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionReIm::CodeGen(llvm::IRBuilder<>& builder)
@@ -1419,9 +1724,17 @@ namespace Builtin
 	                          builder.CreateGEP(realTy, caddr, MakeIntegerConstant(index), "reim"));
     }
 
-    bool FunctionCmplxToReal::Semantics()
+    ErrorType FunctionCmplxToReal::Semantics()
     {
-	return args.size() == 1 && llvm::isa<Types::ComplexDecl>(args[0]->Type());
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::ComplexDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionCmplxToReal::CodeGen(llvm::IRBuilder<>& builder)

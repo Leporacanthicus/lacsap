@@ -582,9 +582,17 @@ template<>
 void TypeCheckVisitor::Check<BuiltinExprAST>(BuiltinExprAST* b)
 {
     TRACE();
-    if (!b->bif->Semantics())
+    Builtin::ErrorType e = b->bif->Semantics();
+    switch (e)
     {
-	Error(b, "Invalid use of builtin function " + b->bif->Name());
+    case Builtin::ErrorType::WrongArgCount:
+	Error(b, "Builtin function: '" + b->bif->Name() + "' wrong number of arguments");
+	break;
+    case Builtin::ErrorType::WrongArgType:
+	Error(b, "Builtin function: '" + b->bif->Name() + "' wrong argument type(s)");
+	break;
+    case Builtin::ErrorType::Ok:
+	break;
     }
 }
 

@@ -13,13 +13,20 @@ class ExprAST;
 
 namespace Builtin
 {
+    enum class ErrorType
+    {
+	Ok,
+	WrongArgCount,
+	WrongArgType
+    };
+
     class FunctionBase
     {
     public:
 	FunctionBase(const std::string& nm, const std::vector<ExprAST*>& a) : name(nm), args(a) {}
 	virtual llvm::Value*     CodeGen(llvm::IRBuilder<>& builder) = 0;
 	virtual Types::TypeDecl* Type() const = 0;
-	virtual bool             Semantics() = 0;
+	virtual ErrorType        Semantics() = 0;
 	virtual void             accept(ASTVisitor& v);
 	const std::string&       Name() const { return name; }
 	virtual ~FunctionBase() {}

@@ -151,7 +151,7 @@ static int Compile(const std::string& fileName)
     BuildClosures(ast);
 
     Semantics sema;
-    sema.Analyse(ast);
+    sema.Analyse(source, ast);
 
     if (int e = sema.GetErrors())
     {

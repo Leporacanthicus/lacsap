@@ -20,10 +20,14 @@ char FileSource::Get()
 void FileSource::PrintSource(uint32_t line)
 {
     std::fstream::pos_type here = input.tellg();
-    char                   ch;
+    input.clear();
     input.seekg(lineStart[line]);
+
+    char ch;
     while ((ch = input.get()) && ch != '\n' && input)
+    {
 	std::cerr << ch;
+    }
     std::cerr << std::endl;
     input.seekg(here);
 }

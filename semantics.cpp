@@ -8,7 +8,7 @@
 class TypeCheckVisitor : public ASTVisitor
 {
 public:
-    TypeCheckVisitor(Semantics* s) : sema(s){};
+    TypeCheckVisitor(Source& src, Semantics* s) : sema(s), source(src){};
     void visit(ExprAST* expr) override;
 
 private:
@@ -21,6 +21,7 @@ private:
 
 private:
     Semantics* sema;
+    Source&    source;
 };
 
 template<typename T>
@@ -106,6 +107,10 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 void TypeCheckVisitor::Error(const ExprAST* e, const std::string& msg) const
 {
     std::cerr << e->Loc() << " Error: " << msg << std::endl;
+    if (e->Loc())
+    {
+	source.PrintSource(e->Loc().LineNumber());
+    }
     sema->AddError();
 }
 
@@ -919,12 +924,12 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     MaybeCheck<CaseExprAST>(expr);
 }
 
-void Semantics::Analyse(ExprAST* ast)
+void Semantics::Analyse(Source& src, ExprAST* ast)
 {
     TIME_TRACE();
     TRACE();
 
-    TypeCheckVisitor tc(this);
+    TypeCheckVisitor tc(src, this);
     ast->accept(tc);
     RunFixups();
 }

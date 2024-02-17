@@ -23,3 +23,6 @@ This is a list of "things to improve in general".
 - Implement a function pass load/store -> memcpy for large load/stores.
 
 - ConstASTVisitor?
+
+- Could do with better error recovery.
+

@@ -459,6 +459,8 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Dyn Alloc Virtual Object", "dynvirt.pas", "" },
     { 0, "Basic", "WriteStr", "wstr.pas", "" },
     { 0, "Basic", "ReadStr", "rstr.pas", "" },
+    { 0, "Basic", "Default value", "default.pas", "" },
+    { 0, "Basic", "Bind file", "bind.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

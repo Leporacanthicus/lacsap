@@ -411,13 +411,17 @@ ExprAST* Parser::ParseDefaultExpr()
 	return 0;
     }
     ExprAST*         expr = 0;
-    Types::TypeDecl* ty = GetTypeDecl(GetIdentifier(ExpectConsume));
+    Types::TypeDecl* ty = GetTypeDecl(GetIdentifier(NoExpectConsume));
     if (!ty)
     {
 	if (ExprAST* e = ParseExpression())
 	{
 	    ty = e->Type();
 	}
+    }
+    else
+    {
+	AssertToken(Token::Identifier);
     }
     if (ty)
     {

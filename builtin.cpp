@@ -1590,7 +1590,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || args[1]->Type() == Types::GetBindingType() ||
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || args[1]->Type() != Types::GetBindingType() ||
 	    !llvm::isa<AddressableAST>(args[0]))
 	{
 	    return ErrorType::WrongArgType;

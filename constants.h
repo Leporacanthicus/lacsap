@@ -16,6 +16,8 @@ namespace Constants
 	CK_BoolConstDecl,
 	CK_StringConstDecl,
 	CK_CompoundConstDecl,
+	CK_RangeConstDecl,
+	CK_SetConstDecl,
     };
 
     class ConstDecl
@@ -104,6 +106,46 @@ namespace Constants
 
     private:
 	ExprAST* expr;
+    };
+
+    class RangeConstDecl : public ConstDecl
+    {
+    public:
+	RangeConstDecl(const Location& w, Types::TypeDecl* ty, const Types::Range& r)
+	    : ConstDecl(ty, CK_RangeConstDecl, w), range(r)
+	{
+	}
+	static bool  classof(const ConstDecl* e) { return e->getKind() == CK_RangeConstDecl; }
+	Types::Range Value() const { return range; }
+	void         dump() const override;
+	Token        Translate() const override
+	{
+	    assert(0 && "Should not call this");
+	    return Token(Token::Unknown, loc);
+	}
+
+    private:
+	Types::Range range;
+    };
+
+    class SetConstDecl : public ConstDecl
+    {
+    public:
+	SetConstDecl(const Location& w, Types::TypeDecl* ty, const std::vector<const ConstDecl*> s)
+	    : ConstDecl(ty, CK_SetConstDecl, w), set(s)
+	{
+	}
+	static bool classof(const ConstDecl* e) { return e->getKind() == CK_SetConstDecl; }
+	const std::vector<const ConstDecl*>& Value() const { return set; }
+	void                                 dump() const override;
+	Token                                Translate() const override
+	{
+	    assert(0 && "Should not call this");
+	    return Token(Token::Unknown, loc);
+	}
+
+    private:
+	std::vector<const ConstDecl*> set;
     };
 
     ConstDecl* ErrorConst(const std::string& msg);

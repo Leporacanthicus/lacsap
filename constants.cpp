@@ -65,6 +65,23 @@ namespace Constants
 	std::cerr << std::endl;
     }
 
+    void RangeConstDecl::dump() const
+    {
+	std::cerr << "RangeConstDecl";
+	range.DoDump();
+	std::cerr << std::endl;
+    }
+
+    void SetConstDecl::dump() const
+    {
+	std::cerr << "SetConstDecl [";
+	for (auto v : set)
+	{
+	    v->dump();
+	}
+	std::cerr << "]" << std::endl;
+    }
+
     static bool GetAsReal(double& lValue, double& rValue, const ConstDecl& lhs, const ConstDecl& rhs)
     {
 

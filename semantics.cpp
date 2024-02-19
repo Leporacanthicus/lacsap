@@ -669,6 +669,7 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
 template<>
 void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
 {
+    TRACE();
     // Check start + end and cast if necessary. Fail if incompatible types.
     Types::TypeDecl* vty = f->variable->Type();
     bool             bad = !vty->IsIntegral();

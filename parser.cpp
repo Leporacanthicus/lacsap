@@ -109,6 +109,8 @@ public:
     Constants::ConstDecl*       ParseConstEval(const Constants::ConstDecl* lhs, const Token& binOp,
                                                const Constants::ConstDecl* rhs);
     const Constants::ConstDecl* ParseConstTerm(const Location& loc);
+    const Constants::ConstDecl* ParseConstFunction(std::string name);
+    const Constants::ConstDecl* ParseConstSetExpr();
 
     Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken);
@@ -536,13 +538,37 @@ Token Parser::TranslateToken(const Token& token)
     {
 	if (const Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
 	{
-	    if (!llvm::isa<Constants::CompoundConstDecl>(cd))
+	    if (!llvm::isa<Constants::CompoundConstDecl>(cd) && !llvm::isa<Constants::SetConstDecl>(cd) &&
+	        !llvm::isa<Constants::EnumConstDecl>(cd))
 	    {
 		return cd->Translate();
 	    }
 	}
     }
     return token;
+}
+
+static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
+{
+    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
+    {
+	return ci->Value();
+    }
+    if (auto cc = llvm::dyn_cast<Constants::CharConstDecl>(c))
+    {
+	return cc->Value();
+    }
+    if (auto ce = llvm::dyn_cast<Constants::EnumConstDecl>(c))
+    {
+	return ce->Value();
+    }
+    if (auto cb = llvm::dyn_cast<Constants::BoolConstDecl>(c))
+    {
+	return cb->Value();
+    }
+    c->dump();
+    assert(0 && "Didn't expect to get here");
+    return -1;
 }
 
 int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
@@ -576,7 +602,14 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
     {
 	tt = CurrentToken().GetToken();
 
-	if (const EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
+	std::string name = CurrentToken().GetIdentName();
+
+	if (const Constants::ConstDecl* cd = GetConstDecl(name))
+	{
+	    type = cd->Type();
+	    result = ConstDeclToInt(cd);
+	}
+	else if (const EnumDef* ed = GetEnumValue(name))
 	{
 	    type = ed->Type();
 	    result = ed->Value();
@@ -610,28 +643,6 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	result = -result;
     }
     return result;
-}
-
-static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
-{
-    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
-    {
-	return ci->Value();
-    }
-    if (auto cc = llvm::dyn_cast<Constants::CharConstDecl>(c))
-    {
-	return cc->Value();
-    }
-    if (auto ce = llvm::dyn_cast<Constants::EnumConstDecl>(c))
-    {
-	return ce->Value();
-    }
-    if (auto cb = llvm::dyn_cast<Constants::BoolConstDecl>(c))
-    {
-	return cb->Value();
-    }
-    assert(0 && "Didn't expect to get here");
-    return -1;
 }
 
 Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
@@ -755,8 +766,107 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
     return 0;
 }
 
+// Note: name is not const ref, because we call strlower on it.
+const Constants::ConstDecl* Parser::ParseConstFunction(std::string name)
+{
+    static std::vector<std::string> names = { "chr" /* , "succ", "pred", "ord" */ };
+    strlower(name);
+    const Constants::ConstDecl* cd = 0;
+    if (std::find(names.begin(), names.end(), name) != names.end())
+    {
+	NextToken();
+	if (Expect(Token::LeftParen, ExpectConsume))
+	{
+	    if ((cd = ParseConstExpr({ Token::RightParen })))
+	    {
+		if (!Expect(Token::RightParen, ExpectConsume))
+		{
+		    return 0;
+		}
+	    }
+	    else
+	    {
+		return 0;
+	    }
+	}
+	if (name == "chr")
+	{
+	    if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
+	    {
+		cd = new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
+	    }
+	}
+    }
+    return cd;
+}
+
+class CCConstSetList : public ListConsumer
+{
+public:
+    CCConstSetList() : ListConsumer{ Token::Comma, Token::RightSquare, ListConsumer::AllowEmpty::Yes } {}
+    bool Consume(Parser& parser) override
+    {
+	if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
+	        { Token::DotDot, Token::Comma, Token::RightSquare }))
+	{
+	    Location loc = cd->Loc();
+	    if (parser.AcceptToken(Token::DotDot))
+	    {
+		if (const Constants::ConstDecl* cde = parser.ParseConstExpr(
+		        { Token::Comma, Token::RightSquare }))
+		{
+		    Types::TypeDecl* type = cd->Type();
+		    if (type != cde->Type())
+		    {
+			return false;
+		    }
+		    int64_t start = ConstDeclToInt(cd);
+		    int64_t end = ConstDeclToInt(cde);
+		    cd = new Constants::RangeConstDecl(loc, type, Types::Range(start, end));
+		}
+		else
+		{
+		    return false;
+		}
+	    }
+	    values.push_back(cd);
+	    return true;
+	}
+	return false;
+    }
+    std::vector<const Constants::ConstDecl*>& Values() { return values; }
+
+private:
+    std::vector<const Constants::ConstDecl*> values;
+};
+
+const Constants::ConstDecl* Parser::ParseConstSetExpr()
+{
+    AssertToken(Token::LeftSquare);
+    CCConstSetList ccs;
+    Location       loc = CurrentToken().Loc();
+    if (ParseSeparatedList(*this, ccs))
+    {
+	Types::TypeDecl* type = 0;
+	if (!ccs.Values().empty())
+	{
+	    type = ccs.Values()[0]->Type();
+	    for (auto i = ccs.Values().begin() + 1, e = ccs.Values().end(); i != e; i++)
+	    {
+		if ((*i)->Type() != type)
+		{
+		    return Error("Not all elements of set are same type");
+		}
+	    }
+	}
+	return new Constants::SetConstDecl(loc, new Types::SetDecl(0, type), ccs.Values());
+    }
+    return 0;
+}
+
 const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 {
+    TRACE();
     Token::TokenType            unaryToken = Token::Unknown;
     const Constants::ConstDecl* cd = 0;
     int                         mul = 1;
@@ -780,10 +890,14 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	AssertToken(Token::LeftParen);
 	cd = ParseConstExpr({ Token::RightParen });
 	// We don't eat the right paren here, it gets eaten later.
-	if (!Expect(Token::RightParen, NoExpectConsume))
+	if (!Expect(Token::RightParen, ExpectConsume))
 	{
 	    return 0;
 	}
+	break;
+
+    case Token::LeftSquare:
+	cd = ParseConstSetExpr();
 	break;
 
     case Token::StringLiteral:
@@ -792,6 +906,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	    return Error("Unary + or - not allowed for string constants");
 	}
 	cd = new Constants::StringConstDecl(loc, CurrentToken().GetStrVal());
+	NextToken();
 	break;
 
     case Token::Integer:
@@ -802,6 +917,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	    v = ~v;
 	}
 	cd = new Constants::IntConstDecl(loc, v * mul);
+	NextToken();
 	break;
     }
 
@@ -811,6 +927,7 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	    return Error("Unary 'not' is not allowed for real constants");
 	}
 	cd = new Constants::RealConstDecl(loc, CurrentToken().GetRealVal() * mul);
+	NextToken();
 	break;
 
     case Token::Char:
@@ -819,10 +936,16 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	    return Error("Unary + or - not allowed for char constants");
 	}
 	cd = new Constants::CharConstDecl(loc, (char)CurrentToken().GetIntVal());
+	NextToken();
 	break;
 
     case Token::Identifier:
-	if (const EnumDef* ed = GetEnumValue(CurrentToken().GetIdentName()))
+    {
+	std::string name = GetIdentifier(NoExpectConsume);
+	if ((cd = ParseConstFunction(name)))
+	{
+	}
+	else if (const EnumDef* ed = GetEnumValue(name))
 	{
 	    if (llvm::isa<Types::BoolDecl>(ed->Type()))
 	    {
@@ -845,10 +968,11 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 		}
 		cd = new Constants::EnumConstDecl(ed->Type(), loc, ed->Value());
 	    }
+	    NextToken();
 	}
 	else
 	{
-	    if (!(cd = GetConstDecl(CurrentToken().GetIdentName())))
+	    if (!(cd = GetConstDecl(name)))
 	    {
 		return 0;
 	    }
@@ -876,13 +1000,14 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 		                 " only integer and real types can be negated");
 		}
 	    }
+	    NextToken();
 	}
 	break;
+    }
 
     default:
 	return 0;
     }
-    NextToken();
     return cd;
 }
 
@@ -2461,6 +2586,31 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
     return expr;
 }
 
+static ExprAST* CreateSetExprFromSetConst(const Constants::SetConstDecl* set)
+{
+    TRACE();
+    std::vector<ExprAST*> setValues;
+    for (auto v : set->Value())
+    {
+	ExprAST* e = 0;
+	if (auto rd = llvm::dyn_cast<Constants::RangeConstDecl>(v))
+	{
+	    Types::Range r = rd->Value();
+	    ExprAST*     start = new IntegerExprAST(rd->Loc(), r.Start(), rd->Type());
+	    ExprAST*     end = new IntegerExprAST(rd->Loc(), r.End(), rd->Type());
+
+	    e = new RangeExprAST(v->Loc(), start, end);
+	}
+	else
+	{
+	    e = new IntegerExprAST(v->Loc(), ConstDeclToInt(v), v->Type());
+	}
+	assert(e && "Expected to have an ExprAST now!");
+	setValues.push_back(e);
+    }
+    return new SetExprAST(set->Loc(), setValues, set->Type());
+}
+
 ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
 {
     TRACE();
@@ -2468,10 +2618,23 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
     std::string idName = token.GetIdentName();
     AssertToken(Token::Identifier);
     const NamedObject* def = nameStack.Find(idName);
+    if (const ConstDef* constDef = llvm::dyn_cast_or_null<const ConstDef>(def))
+    {
+	const Constants::ConstDecl* cd = constDef->ConstValue();
+	if (auto ed = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
+	{
+	    return new IntegerExprAST(token.Loc(), ed->Value(), ed->Type());
+	}
+	if (auto sd = llvm::dyn_cast<Constants::SetConstDecl>(cd))
+	{
+	    return CreateSetExprFromSetConst(sd);
+	}
+    }
     if (const EnumDef* enumDef = llvm::dyn_cast_or_null<EnumDef>(def))
     {
 	return new IntegerExprAST(token.Loc(), enumDef->Value(), enumDef->Type());
     }
+
     bool isBuiltin = Builtin::IsBuiltin(idName);
     if (!def && !isBuiltin)
     {
@@ -3358,8 +3521,8 @@ ExprAST* Parser::ParseIfExpr()
 
 ExprAST* Parser::ParseForExpr()
 {
-    const Location& loc = CurrentToken().Loc();
     AssertToken(Token::For);
+    const Location& loc = CurrentToken().Loc();
 
     std::string varName = GetIdentifier(ExpectConsume);
     if (varName.empty())

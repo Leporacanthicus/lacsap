@@ -503,6 +503,8 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "Not Char", "notchar.pas", "" },
     { 0, "CompErr", "Not Real", "notreal.pas", "" },
     { 0, "CompErr", "Bad negate", "badneg.pas", "" },
+    { 0, "CompErr", "chr of char", "chrchar.pas", "" },
+    { 0, "CompErr", "Odd of char", "oddchar.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

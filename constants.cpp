@@ -85,10 +85,10 @@ namespace Constants
     static bool GetAsReal(double& lValue, double& rValue, const ConstDecl& lhs, const ConstDecl& rhs)
     {
 
-	const RealConstDecl* lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
-	const RealConstDecl* rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
-	const IntConstDecl*  lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl*  rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
+	const auto lhsR = llvm::dyn_cast<RealConstDecl>(&lhs);
+	const auto rhsR = llvm::dyn_cast<RealConstDecl>(&rhs);
+	const auto lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
+	const auto rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
 
 	bool ok = rhsR && lhsR;
 	if (lhsR)
@@ -118,11 +118,11 @@ namespace Constants
     static bool GetAsString(std::string& lValue, std::string& rValue, const ConstDecl* lhs,
                             const ConstDecl* rhs)
     {
-	const StringConstDecl* lhsS = llvm::dyn_cast<StringConstDecl>(lhs);
-	const StringConstDecl* rhsS = llvm::dyn_cast<StringConstDecl>(rhs);
-	const CharConstDecl*   lhsC = llvm::dyn_cast<CharConstDecl>(lhs);
-	const CharConstDecl*   rhsC = llvm::dyn_cast<CharConstDecl>(rhs);
-	bool                   ok = lhsS && rhsS;
+	const auto lhsS = llvm::dyn_cast<StringConstDecl>(lhs);
+	const auto rhsS = llvm::dyn_cast<StringConstDecl>(rhs);
+	const auto lhsC = llvm::dyn_cast<CharConstDecl>(lhs);
+	const auto rhsC = llvm::dyn_cast<CharConstDecl>(rhs);
+	bool       ok = lhsS && rhsS;
 	if (lhsS)
 	{
 	    lValue = lhsS->Value();
@@ -168,8 +168,8 @@ namespace Constants
     template<typename FN>
     ConstDecl* DoIntegerMath(const ConstDecl& lhs, const ConstDecl& rhs, FN fn)
     {
-	const IntConstDecl* lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
-	const IntConstDecl* rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
+	const auto lhsI = llvm::dyn_cast<IntConstDecl>(&lhs);
+	const auto rhsI = llvm::dyn_cast<IntConstDecl>(&rhs);
 	if (lhsI && rhsI)
 	{
 	    return new IntConstDecl(Location(), fn(lhsI->Value(), rhsI->Value()));

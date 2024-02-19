@@ -67,7 +67,7 @@ void SetRangeFixup::DoIt()
 {
     if (!expr->Type()->GetRange())
     {
-	Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(expr->Type());
+	auto sd = llvm::dyn_cast<Types::SetDecl>(expr->Type());
 	sd->UpdateRange(guessRange);
     }
 }
@@ -126,10 +126,10 @@ ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty)
 
 Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
-    Types::SetDecl* lty = llvm::dyn_cast<Types::SetDecl>(b->lhs->Type());
-    Types::SetDecl* rty = llvm::dyn_cast<Types::SetDecl>(b->rhs->Type());
+    auto lty = llvm::dyn_cast<Types::SetDecl>(b->lhs->Type());
+    auto rty = llvm::dyn_cast<Types::SetDecl>(b->rhs->Type());
     assert(lty && rty && "Expect set declarations on both side!");
-    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->lhs))
+    if (auto s = llvm::dyn_cast<SetExprAST>(b->lhs))
     {
 	if (s->values.empty() && rty->SubType())
 	{
@@ -137,7 +137,7 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 	        llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
 	}
     }
-    if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
+    if (auto s = llvm::dyn_cast<SetExprAST>(b->rhs))
     {
 	if (s->values.empty() && lty->SubType())
 	{
@@ -213,14 +213,14 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	}
 
 	// Empty set always has the "right" type
-	if (SetExprAST* s = llvm::dyn_cast<SetExprAST>(b->rhs))
+	if (auto s = llvm::dyn_cast<SetExprAST>(b->rhs))
 	{
 	    if (s->values.empty())
 	    {
 		llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(lty);
 	    }
 	}
-	if (Types::SetDecl* sd = llvm::dyn_cast<Types::SetDecl>(rty))
+	if (auto sd = llvm::dyn_cast<Types::SetDecl>(rty))
 	{
 	    assert(sd->SubType() && "Should have a subtype");
 	    if (*lty != *sd->SubType())
@@ -476,8 +476,8 @@ void TypeCheckVisitor::Check<AssignExprAST>(AssignExprAST* a)
 
     if (Types::IsCharArray(lty) && !llvm::isa<Types::StringDecl>(lty) && llvm::isa<StringExprAST>(a->rhs))
     {
-	StringExprAST*    s = llvm::dyn_cast<StringExprAST>(a->rhs);
-	Types::ArrayDecl* aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
+	auto s = llvm::dyn_cast<StringExprAST>(a->rhs);
+	auto aty = llvm::dyn_cast<Types::ArrayDecl>(lty);
 	if (aty->Ranges().size() == 1)
 	{
 	    if (aty->Ranges()[0]->GetRange()->Size() >= s->Str().size())
@@ -634,9 +634,9 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
 	    a = Recast(a, parg[idx].Type());
 	    bad = false;
 	}
-	else if (Types::FuncPtrDecl* argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
+	else if (auto argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
 	{
-	    FunctionExprAST* fnArg = llvm::dyn_cast<FunctionExprAST>(a);
+	    auto fnArg = llvm::dyn_cast<FunctionExprAST>(a);
 	    assert(fnArg && "Expected argument to be FunctionExprAST");
 
 	    if (fnArg->Proto()->IsMatchWithoutClosure(argTy->Proto()))

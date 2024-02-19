@@ -367,7 +367,7 @@ bool Parser::AcceptToken(Token::TokenType type, const char* file, int line)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 {
-    if (const TypeDef* typeDef = llvm::dyn_cast_or_null<const TypeDef>(nameStack.Find(name)))
+    if (const auto typeDef = llvm::dyn_cast_or_null<const TypeDef>(nameStack.Find(name)))
     {
 	return typeDef->Type();
     }
@@ -487,7 +487,7 @@ ExprAST* Parser::ParseGoto()
 
 const Constants::ConstDecl* Parser::GetConstDecl(const std::string& name)
 {
-    if (const ConstDef* constDef = llvm::dyn_cast_or_null<const ConstDef>(nameStack.Find(name)))
+    if (const auto constDef = llvm::dyn_cast_or_null<const ConstDef>(nameStack.Find(name)))
     {
 	return constDef->ConstValue();
     }
@@ -978,20 +978,19 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	    }
 	    if (llvm::isa<Constants::BoolConstDecl>(cd) && unaryToken == Token::Not)
 	    {
-		const Constants::BoolConstDecl* bd = llvm::dyn_cast<Constants::BoolConstDecl>(cd);
+		const auto bd = llvm::dyn_cast<Constants::BoolConstDecl>(cd);
 		cd = new Constants::BoolConstDecl(loc, !bd->Value());
 	    }
 
 	    if (mul == -1)
 	    {
-		if (llvm::isa<Constants::RealConstDecl>(cd))
+		if (const auto rd = llvm::dyn_cast<Constants::RealConstDecl>(cd))
 		{
-		    const Constants::RealConstDecl* rd = llvm::dyn_cast<Constants::RealConstDecl>(cd);
+		    ;
 		    cd = new Constants::RealConstDecl(loc, -rd->Value());
 		}
-		else if (llvm::isa<Constants::IntConstDecl>(cd))
+		else if (const auto id = llvm::dyn_cast<Constants::IntConstDecl>(cd))
 		{
-		    const Constants::IntConstDecl* id = llvm::dyn_cast<Constants::IntConstDecl>(cd);
 		    cd = new Constants::IntConstDecl(loc, -id->Value());
 		}
 		else
@@ -1323,7 +1322,7 @@ Types::TypeDecl* Parser::ParseArrayDecl()
 	{
 	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
 	    {
-		if (Types::RangeDecl* rr = llvm::dyn_cast<Types::RangeDecl>(r))
+		if (auto rr = llvm::dyn_cast<Types::RangeDecl>(r))
 		{
 		    assert(type && "Uh? Type is supposed to be set now");
 		    rv.push_back(rr);
@@ -1784,7 +1783,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
     bool                                needVtable = false;
     for (auto f = fields.begin(); f != fields.end();)
     {
-	if (Types::MemberFuncDecl* m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->SubType()))
+	if (auto m = llvm::dyn_cast<Types::MemberFuncDecl>((*f)->SubType()))
 	{
 	    mf.push_back(m);
 	    if (m->IsVirtual() || m->IsOverride())
@@ -2123,7 +2122,7 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 	}
 	else
 	{
-	    Types::ArrayDecl* adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
+	    auto adecl = llvm::dyn_cast<Types::ArrayDecl>(type);
 	    if (!adecl)
 	    {
 		return Error("Expected variable of array type when using index");
@@ -2182,14 +2181,14 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
 
     const PrototypeAST* proto = 0;
     ExprAST*            expr = 0;
-    if (const FuncDef* funcDef = llvm::dyn_cast<const FuncDef>(def))
+    if (const auto funcDef = llvm::dyn_cast<const FuncDef>(def))
     {
 	proto = funcDef->Proto();
 	expr = new FunctionExprAST(CurrentToken().Loc(), proto);
     }
     else if (llvm::isa<const VarDef>(def))
     {
-	if (Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
+	if (auto fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	{
 	    proto = fp->Proto();
 	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
@@ -2199,9 +2198,9 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
 	    return Error("Expected function pointer");
 	}
     }
-    else if (const MembFuncDef* m = llvm::dyn_cast_or_null<MembFuncDef>(def))
+    else if (const auto m = llvm::dyn_cast_or_null<MembFuncDef>(def))
     {
-	Types::ClassDecl*      cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
+	auto                   cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
 	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index());
 	VariableExprAST*       self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
 	return MakeSelfCall(self, mf, cd, args);
@@ -2252,7 +2251,7 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 	// If name is empty, we have a made up struct. Dig another level down.
 	if (fd->Name() == "")
 	{
-	    Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
+	    auto r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
 	    assert(r && "Expect record declarataion");
 	    elem = r->Element(name);
 	    if (elem >= 0)
@@ -2270,7 +2269,7 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 	if (fd->Name() == "")
 	{
 	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
-	    const Types::RecordDecl* r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
+	    const auto r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
 	    assert(r && "Expect record declarataion");
 	    if ((elem = r->Element(name)) >= 0)
 	    {
@@ -2438,11 +2437,11 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
     {
 	unsigned            argNo = 0;
 	const PrototypeAST* proto = 0;
-	if (const FuncDef* funcDef = llvm::dyn_cast_or_null<FuncDef>(def))
+	if (const auto funcDef = llvm::dyn_cast_or_null<FuncDef>(def))
 	{
 	    proto = funcDef->Proto();
 	}
-	else if (const VarDef* varDef = llvm::dyn_cast_or_null<VarDef>(def))
+	else if (const auto varDef = llvm::dyn_cast_or_null<VarDef>(def))
 	{
 	    if (const Types::FuncPtrDecl* fp = llvm::dyn_cast<Types::FuncPtrDecl>(varDef->Type()))
 	    {
@@ -2469,11 +2468,11 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		{
 		    if (const NamedObject* argDef = nameStack.Find(idName))
 		    {
-			if (const FuncDef* fd = llvm::dyn_cast<FuncDef>(argDef))
+			if (const auto fd = llvm::dyn_cast<FuncDef>(argDef))
 			{
 			    arg = new FunctionExprAST(CurrentToken().Loc(), fd->Proto());
 			}
-			else if (const VarDef* vd = llvm::dyn_cast<VarDef>(argDef))
+			else if (const auto vd = llvm::dyn_cast<VarDef>(argDef))
 			{
 			    if (llvm::isa<Types::FuncPtrDecl>(vd->Type()))
 			    {
@@ -2513,7 +2512,7 @@ VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*&
 	std::string field = GetIdentifier(ExpectConsume);
 	if (!field.empty())
 	{
-	    const Types::ClassDecl* od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
+	    const auto              od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
 	    int                     elem;
 	    if ((elem = od->Element(field)) >= 0)
 	    {
@@ -2541,19 +2540,19 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
     Types::TypeDecl* type = def->Type();
     assert(type && "Expect type here...");
 
-    if (const WithDef* w = llvm::dyn_cast<WithDef>(def))
+    if (const auto w = llvm::dyn_cast<WithDef>(def))
     {
 	expr = llvm::dyn_cast<AddressableAST>(w->Actual());
     }
     else
     {
-	if (const MembFuncDef* m = llvm::dyn_cast<MembFuncDef>(def))
+	if (const auto m = llvm::dyn_cast<MembFuncDef>(def))
 	{
 	    Types::ClassDecl*      od = llvm::dyn_cast<Types::ClassDecl>(type);
 	    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index());
 	    type = mf->Proto()->Type();
 	}
-	else if (const TypeDef* ty = llvm::dyn_cast<TypeDef>(def))
+	else if (const auto ty = llvm::dyn_cast<TypeDef>(def))
 	{
 	    if (llvm::isa<Types::ClassDecl>(ty->Type()))
 	    {
@@ -2562,7 +2561,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	}
 	if (!expr)
 	{
-	    if (Types::FunctionDecl* fd = llvm::dyn_cast<Types::FunctionDecl>(type))
+	    if (auto fd = llvm::dyn_cast<Types::FunctionDecl>(type))
 	    {
 		type = fd->Proto()->Type();
 	    }
@@ -2618,7 +2617,7 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
     std::string idName = token.GetIdentName();
     AssertToken(Token::Identifier);
     const NamedObject* def = nameStack.Find(idName);
-    if (const ConstDef* constDef = llvm::dyn_cast_or_null<const ConstDef>(def))
+    if (const auto constDef = llvm::dyn_cast_or_null<const ConstDef>(def))
     {
 	const Constants::ConstDecl* cd = constDef->ConstValue();
 	if (auto ed = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
@@ -3107,7 +3106,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	// See if it's a "forward declaration"?
 	if (const NamedObject* def = nameStack.Find(funcName))
 	{
-	    const FuncDef* fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
+	    const auto fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
 	    if (fnDef && fnDef->Proto() && fnDef->Proto()->IsForward())
 	    {
 		fwdProto = fnDef->Proto();
@@ -3328,7 +3327,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     NamedObject*       nmObj = 0;
 
     const NamedObject* def = nameStack.Find(name);
-    const FuncDef*     fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
+    const auto         fnDef = llvm::dyn_cast_or_null<const FuncDef>(def);
     std::string        shortname;
     if (!(fnDef && fnDef->Proto() && fnDef->Proto() == proto))
     {
@@ -3723,7 +3722,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 {
     TRACE();
     int vtableoffset = 0;
-    if (const Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(fields))
+    if (const auto cd = llvm::dyn_cast<Types::ClassDecl>(fields))
     {
 	vtableoffset = !!cd->VTableType(true);
     }
@@ -3733,7 +3732,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	Types::TypeDecl*        ty = f->SubType();
 	if (f->Name() == "")
 	{
-	    Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(ty);
+	    auto rd = llvm::dyn_cast<Types::RecordDecl>(ty);
 	    assert(rd && "Expected record declarataion here!");
 	    ExprAST* vv = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    ExpandWithNames(rd, vv, 0);
@@ -3756,7 +3755,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	    nameStack.Add(new WithDef(f->Name(), e, f->SubType()));
 	}
     }
-    if (Types::ClassDecl* od = const_cast<Types::ClassDecl*>(llvm::dyn_cast<Types::ClassDecl>(fields)))
+    if (auto od = const_cast<Types::ClassDecl*>(llvm::dyn_cast<Types::ClassDecl>(fields)))
     {
 	int count = od->MembFuncCount();
 	for (int i = 0; i < count; i++)
@@ -3784,7 +3783,7 @@ public:
 	    ExprAST* e = parser.ParseIdentifierExpr(parser.CurrentToken());
 	    if (auto v = llvm::dyn_cast_or_null<AddressableAST>(e))
 	    {
-		if (Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
+		if (auto rd = llvm::dyn_cast<Types::RecordDecl>(v->Type()))
 		{
 		    parser.ExpandWithNames(rd, v, 0);
 		    if (Types::VariantDecl* variant = rd->Variant())
@@ -4151,7 +4150,7 @@ ExprAST* Parser::ParseUses()
 	    errCnt += p.GetErrors();
 	    if (Expect(Token::Semicolon, ExpectConsume))
 	    {
-		if (UnitAST* ua = llvm::dyn_cast_or_null<UnitAST>(e))
+		if (auto ua = llvm::dyn_cast_or_null<UnitAST>(e))
 		{
 		    for (auto i : ua->Interface().List())
 		    {

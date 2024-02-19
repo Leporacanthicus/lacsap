@@ -267,7 +267,7 @@ namespace Types
 	{
 	    return false;
 	}
-	const CompoundDecl* cty = llvm::dyn_cast<CompoundDecl>(ty);
+	const auto cty = llvm::dyn_cast<CompoundDecl>(ty);
 	return cty && *cty->SubType() == *baseType;
     }
 
@@ -336,7 +336,7 @@ namespace Types
     {
 	if (CompoundDecl::SameAs(ty))
 	{
-	    if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	    if (const auto aty = llvm::dyn_cast<ArrayDecl>(ty))
 	    {
 		if (ranges.size() != aty->Ranges().size())
 		{
@@ -362,7 +362,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	if (const auto aty = llvm::dyn_cast<ArrayDecl>(ty))
 	{
 	    if (aty->SubType() == SubType() && ranges.size() == aty->Ranges().size())
 	    {
@@ -409,7 +409,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	if (const auto aty = llvm::dyn_cast<ArrayDecl>(ty))
 	{
 	    if (aty->SubType() != SubType() || aty->Ranges().size() != 1)
 	    {
@@ -432,7 +432,7 @@ namespace Types
 
     bool RangeDecl::SameAs(const TypeDecl* ty) const
     {
-	if (const RangeDecl* rty = llvm::dyn_cast<RangeDecl>(ty))
+	if (const auto rty = llvm::dyn_cast<RangeDecl>(ty))
 	{
 	    return rty->Type() == Type() && *range == *rty->range;
 	}
@@ -503,7 +503,7 @@ namespace Types
 
     bool EnumDecl::SameAs(const TypeDecl* ty) const
     {
-	if (const EnumDecl* ety = llvm::dyn_cast<EnumDecl>(ty))
+	if (const auto ety = llvm::dyn_cast<EnumDecl>(ty))
 	{
 	    if (ety->Type() != Type() || values.size() != ety->values.size())
 	    {
@@ -572,7 +572,7 @@ namespace Types
 	for (auto f : fields)
 	{
 	    llvm::Type* ty = f->LlvmType();
-	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
+	    if (auto pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsIncomplete())
 		{
@@ -640,7 +640,7 @@ namespace Types
 	    // Check for special record type
 	    if (f->Name() == "")
 	    {
-		RecordDecl* rd = llvm::dyn_cast<RecordDecl>(f->SubType());
+		auto rd = llvm::dyn_cast<RecordDecl>(f->SubType());
 		assert(rd && "Expected record declarataion here!");
 		if (rd->Element(name) >= 0)
 		{
@@ -663,7 +663,7 @@ namespace Types
 	    return false;
 	}
 
-	if (const FieldCollection* fty = llvm::dyn_cast<FieldCollection>(ty))
+	if (const auto fty = llvm::dyn_cast<FieldCollection>(ty))
 	{
 	    if (fields.size() != fty->fields.size())
 	    {
@@ -710,7 +710,7 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 	for (auto f : fields)
 	{
-	    if (PointerDecl* pf = llvm::dyn_cast_or_null<PointerDecl>(f->SubType()))
+	    if (auto pf = llvm::dyn_cast_or_null<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsIncomplete() || !f->HasLlvmType())
 		{
@@ -763,7 +763,7 @@ namespace Types
 	    llvm::DIType* d = 0;
 	    size_t        size = 0;
 	    size_t        align = 0;
-	    if (PointerDecl* pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
+	    if (auto pf = llvm::dyn_cast<PointerDecl>(f->SubType()))
 	    {
 		if (pf->IsForward() && !pf->DiType())
 		{
@@ -1040,7 +1040,7 @@ namespace Types
 	{
 	    return this;
 	}
-	if (const ClassDecl* cd = llvm::dyn_cast<ClassDecl>(ty))
+	if (const auto cd = llvm::dyn_cast<ClassDecl>(ty))
 	{
 	    return (cd->baseobj) ? CompatibleType(cd->baseobj) : 0;
 	}
@@ -1067,7 +1067,7 @@ namespace Types
 
 	    if (!f->IsStatic())
 	    {
-		if (PointerDecl* pd = llvm::dyn_cast<PointerDecl>(f->SubType()))
+		if (auto pd = llvm::dyn_cast<PointerDecl>(f->SubType()))
 		{
 		    if (pd->IsIncomplete() && !pd->HasLlvmType())
 		    {
@@ -1137,15 +1137,13 @@ namespace Types
 
     bool FuncPtrDecl::SameAs(const TypeDecl* ty) const
     {
-	if (ty->Type() == TK_FuncPtr)
+	if (const auto fty = llvm::dyn_cast<FuncPtrDecl>(ty))
 	{
-	    const FuncPtrDecl* fty = llvm::dyn_cast<FuncPtrDecl>(ty);
 	    assert(fty && "Expect to convert to function pointer!");
 	    return *proto == *fty->proto;
 	}
-	if (ty->Type() == TK_Function)
+	if (const auto fty = llvm::dyn_cast<FunctionDecl>(ty))
 	{
-	    const FunctionDecl* fty = llvm::dyn_cast<FunctionDecl>(ty);
 	    assert(fty && "Expect to convert to function declaration");
 	    return *proto == *fty->Proto();
 	}
@@ -1204,7 +1202,7 @@ namespace Types
     {
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
-	llvm::IntegerType* ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
+	auto               ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
 	llvm::Type*        ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
@@ -1249,7 +1247,7 @@ namespace Types
 
     const TypeDecl* SetDecl::CompatibleType(const TypeDecl* ty) const
     {
-	if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
+	if (const auto sty = llvm::dyn_cast<SetDecl>(ty))
 	{
 	    if (*baseType == *sty->baseType)
 	    {
@@ -1263,7 +1261,7 @@ namespace Types
     {
 	if (CompoundDecl::SameAs(ty))
 	{
-	    if (const SetDecl* sty = llvm::dyn_cast<SetDecl>(ty))
+	    if (const auto sty = llvm::dyn_cast<SetDecl>(ty))
 	    {
 		return sty->range && *range == *sty->range;
 	    }
@@ -1294,7 +1292,7 @@ namespace Types
 	}
 	if (ty->Type() == TK_Array)
 	{
-	    if (const ArrayDecl* aty = llvm::dyn_cast<ArrayDecl>(ty))
+	    if (const auto aty = llvm::dyn_cast<ArrayDecl>(ty))
 	    {
 		if (aty->Ranges().size() == 1)
 		{

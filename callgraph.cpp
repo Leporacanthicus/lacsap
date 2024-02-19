@@ -11,19 +11,19 @@ public:
 
     void visit(ExprAST* a) override
     {
-	if (FunctionAST* f = llvm::dyn_cast<FunctionAST>(a))
+	if (auto f = llvm::dyn_cast<FunctionAST>(a))
 	{
 	    visitor.Caller(f);
 	}
 
-	if (VarDeclAST* v = llvm::dyn_cast<VarDeclAST>(a))
+	if (auto v = llvm::dyn_cast<VarDeclAST>(a))
 	{
 	    visitor.VarDecl(v);
 	}
 
-	if (CallExprAST* c = llvm::dyn_cast<CallExprAST>(a))
+	if (auto c = llvm::dyn_cast<CallExprAST>(a))
 	{
-	    if (FunctionExprAST* fe = llvm::dyn_cast<FunctionExprAST>(c->Callee()))
+	    if (auto fe = llvm::dyn_cast<FunctionExprAST>(c->Callee()))
 	    {
 		if (FunctionAST* fn = fe->Proto()->Function())
 		{
@@ -100,7 +100,7 @@ private:
  */
 void UpdateCallVisitor::visit(ExprAST* expr)
 {
-    if (CallExprAST* call = llvm::dyn_cast<CallExprAST>(expr))
+    if (auto call = llvm::dyn_cast<CallExprAST>(expr))
     {
 	if (call->Proto()->Function() == proto->Function() && call->Args().size() != proto->Args().size())
 	{
@@ -136,11 +136,11 @@ class CollectUses : public ASTVisitor
 public:
     void visit(ExprAST* a) override
     {
-	if (VariableExprAST* v = llvm::dyn_cast<VariableExprAST>(a))
+	if (auto v = llvm::dyn_cast<VariableExprAST>(a))
 	{
-	    if (TypeCastAST* tc = llvm::dyn_cast<TypeCastAST>(v))
+	    if (auto tc = llvm::dyn_cast<TypeCastAST>(v))
 	    {
-		if (VariableExprAST* e = llvm::dyn_cast<VariableExprAST>(tc->Expr()))
+		if (auto e = llvm::dyn_cast<VariableExprAST>(tc->Expr()))
 		{
 		    v = e;
 		}
@@ -152,11 +152,11 @@ public:
 	    assert(v->Name() != "");
 	    uses.insert(v->Name());
 	}
-	if (CallExprAST* c = llvm::dyn_cast<CallExprAST>(a))
+	if (auto c = llvm::dyn_cast<CallExprAST>(a))
 	{
-	    if (FunctionExprAST* fe = llvm::dyn_cast<FunctionExprAST>(c->Callee()))
+	    if (auto fe = llvm::dyn_cast<FunctionExprAST>(c->Callee()))
 	    {
-		if (FunctionAST* fn = fe->Proto()->Function())
+		if (auto fn = fe->Proto()->Function())
 		{
 		    calls.insert(fn);
 		}

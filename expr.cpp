@@ -206,7 +206,7 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* 
 
 static llvm::AllocaInst* CreateAlloca(llvm::Function* fn, const VarDef& var)
 {
-    if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
+    if (auto fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
     {
 	fc->EnsureSized();
     }
@@ -224,7 +224,7 @@ llvm::AllocaInst* CreateTempAlloca(Types::TypeDecl* ty)
 
 llvm::Value* MakeAddressable(ExprAST* e)
 {
-    if (AddressableAST* ea = llvm::dyn_cast<AddressableAST>(e))
+    if (auto ea = llvm::dyn_cast<AddressableAST>(e))
     {
 	llvm::Value* v = ea->Address();
 	assert(v && "Expect addressable object to have address");
@@ -341,7 +341,7 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
 void ExprAST::EnsureSized() const
 {
     TRACE();
-    if (Types::FieldCollection* fc = llvm::dyn_cast_or_null<Types::FieldCollection>(Type()))
+    if (auto fc = llvm::dyn_cast_or_null<Types::FieldCollection>(Type()))
     {
 	fc->EnsureSized();
     }
@@ -620,7 +620,7 @@ void FilePointerExprAST::DoDump() const
 llvm::Value* FilePointerExprAST::Address()
 {
     TRACE();
-    VariableExprAST* vptr = llvm::dyn_cast<VariableExprAST>(pointer);
+    auto vptr = llvm::dyn_cast<VariableExprAST>(pointer);
     assert(vptr && "Expected variable expression!");
     llvm::Value* v = vptr->Address();
     llvm::Type*  fileTy = pointer->Type()->LlvmType();
@@ -746,7 +746,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return inl;
     }
 
-    Types::SetDecl* type = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
+    auto type = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
     assert(*type == *lhs->Type() && "Expect both sides to have same type");
     assert(type && "Expect to get a type");
 
@@ -783,7 +783,7 @@ llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 	TempStringFromChar(v, e);
 	return v;
     }
-    if (StringExprAST* se = llvm::dyn_cast<StringExprAST>(e))
+    if (auto se = llvm::dyn_cast<StringExprAST>(e))
     {
 	llvm::Value* v = CreateTempAlloca(ty);
 	TempStringFromStringExpr(v, se);
@@ -1388,8 +1388,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	}
     }
 
-    Types::ArrayDecl* ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
-    Types::ArrayDecl* al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
+    auto ar = llvm::dyn_cast<Types::ArrayDecl>(rhs->Type());
+    auto al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
     if (al && ar)
     {
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
@@ -1544,13 +1544,13 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
     {
 	llvm::Value* v = 0;
 
-	if (ClosureAST* ca = llvm::dyn_cast<ClosureAST>(i))
+	if (auto ca = llvm::dyn_cast<ClosureAST>(i))
 	{
 	    v = ca->CodeGen();
 	}
 	else
 	{
-	    AddressableAST* vi = llvm::dyn_cast<AddressableAST>(i);
+	    auto vi = llvm::dyn_cast<AddressableAST>(i);
 	    if (vdef[index].IsRef())
 	    {
 		assert(vi && "This should be an addressable value");
@@ -1752,7 +1752,7 @@ static llvm::Function* CreateFunction(const std::string& name, const std::vector
 
     llvm::Type*          resTy = resultType->LlvmType();
     llvm::FunctionCallee fc = GetFunction(resTy, argTypes, name);
-    llvm::Function*      llvmFunc = llvm::dyn_cast<llvm::Function>(fc.getCallee());
+    auto                 llvmFunc = llvm::dyn_cast<llvm::Function>(fc.getCallee());
     assert(llvmFunc && "Should have found a function here!");
     if (!llvmFunc->empty())
     {
@@ -1840,7 +1840,7 @@ void PrototypeAST::CreateArgumentAlloca()
 	// Skip over the closure argument in the loop below.
 	offset = 1;
 
-	Types::RecordDecl* rd = llvm::dyn_cast<Types::RecordDecl>(closureType);
+	auto rd = llvm::dyn_cast<Types::RecordDecl>(closureType);
 	assert(rd && "Expected a record for closure type!");
 	for (int i = 0; i < rd->FieldCount(); i++)
 	{
@@ -2228,7 +2228,7 @@ llvm::Value* AssignExprAST::AssignStr()
     assert(lhsv && "Expect variable in lhs");
     assert(llvm::isa<Types::StringDecl>(lhsv->Type()) && "Expect string type in lhsv->Type()");
 
-    if (StringExprAST* srhs = llvm::dyn_cast<StringExprAST>(rhs))
+    if (auto srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
 	llvm::Value* dest = lhsv->Address();
 	return TempStringFromStringExpr(dest, srhs);
@@ -2255,7 +2255,7 @@ llvm::Value* AssignExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    AddressableAST* lhsv = llvm::dyn_cast<AddressableAST>(lhs);
+    auto lhsv = llvm::dyn_cast<AddressableAST>(lhs);
     assert(lhsv && "Execpted addressable lhs");
 
     if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
@@ -2270,7 +2270,7 @@ llvm::Value* AssignExprAST::CodeGen()
 
     if (llvm::isa<StringExprAST>(rhs) && Types::IsCharArray(lhs->Type()))
     {
-	StringExprAST* str = llvm::dyn_cast<StringExprAST>(rhs);
+	auto str = llvm::dyn_cast<StringExprAST>(rhs);
 	assert(rhs && "Expected string to convert correctly");
 	llvm::Value* dest = lhsv->Address();
 	llvm::Type*  ty = Types::Get<Types::CharDecl>()->LlvmType();
@@ -2853,7 +2853,7 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    if (llvm::isa<Types::StringDecl>(type))
 	    {
-		if (AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr))
+		if (auto a = llvm::dyn_cast<AddressableAST>(arg.expr))
 		{
 		    v = a->Address();
 		}
@@ -2872,7 +2872,7 @@ llvm::Value* WriteAST::CodeGen()
 		}
 		else
 		{
-		    AddressableAST* a = llvm::dyn_cast<AddressableAST>(arg.expr);
+		    auto a = llvm::dyn_cast<AddressableAST>(arg.expr);
 		    assert(a && "Expected addressable value");
 		    v = a->Address();
 		    v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
@@ -3039,7 +3039,7 @@ llvm::Value* ReadAST::CodeGen()
     for (auto arg : args)
     {
 	std::vector<llvm::Value*> argsV = { sc };
-	AddressableAST*           vexpr = llvm::dyn_cast<AddressableAST>(arg);
+	auto                      vexpr = llvm::dyn_cast<AddressableAST>(arg);
 	assert(vexpr && "Argument for read/readln should be a variable");
 
 	Types::TypeDecl* ty = vexpr->Type();
@@ -3105,7 +3105,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	llvm::Type* ty = var.Type()->LlvmType();
 	if (!func)
 	{
-	    if (Types::FieldCollection* fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
+	    if (auto fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
 	    {
 		fc->EnsureSized();
 	    }
@@ -3117,7 +3117,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	    if (cd && cd->VTableType(true))
 	    {
 		llvm::GlobalVariable*        gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
-		llvm::StructType*            sty = llvm::dyn_cast<llvm::StructType>(ty);
+		auto                         sty = llvm::dyn_cast<llvm::StructType>(ty);
 		std::vector<llvm::Constant*> vtable(sty->getNumElements());
 		vtable[0] = gv;
 		unsigned i = 1;
@@ -3170,7 +3170,7 @@ llvm::Value* VarDeclAST::CodeGen()
 	else
 	{
 	    v = CreateAlloca(func->Proto()->LlvmFunction(), var);
-	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
+	    auto cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
 	    if (cd && cd->VTableType(true))
 	    {
 		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
@@ -3378,7 +3378,7 @@ llvm::Value* CaseExprAST::CodeGen()
 	    {
 		for (int i = val.first; i <= val.second; i++)
 		{
-		    llvm::IntegerType* intTy = llvm::dyn_cast<llvm::IntegerType>(ty);
+		    auto intTy = llvm::dyn_cast<llvm::IntegerType>(ty);
 		    sw->addCase(llvm::ConstantInt::get(intTy, i), ll.second);
 		}
 	    }
@@ -3433,10 +3433,10 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
     Types::SetDecl::ElemType elems[Types::SetDecl::MaxSetWords] = {};
     for (auto v : values)
     {
-	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
+	if (auto r = llvm::dyn_cast<RangeExprAST>(v))
 	{
-	    IntegerExprAST* le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
-	    IntegerExprAST* he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
+	    auto            le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
+	    auto            he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
 	    int             start = type->GetRange()->Start();
 	    int             low = le->Int() - start;
 	    int             high = he->Int() - start;
@@ -3449,7 +3449,7 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
 	}
 	else
 	{
-	    IntegerExprAST* e = llvm::dyn_cast<IntegerExprAST>(v);
+	    auto            e = llvm::dyn_cast<IntegerExprAST>(v);
 	    int             start = type->GetRange()->Start();
 	    unsigned        i = e->Int() - start;
 	    if (i < (unsigned)type->GetRange()->Size())
@@ -3459,10 +3459,10 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
 	}
     }
 
-    Types::SetDecl*  setType = llvm::dyn_cast<Types::SetDecl>(type);
+    auto             setType = llvm::dyn_cast<Types::SetDecl>(type);
     size_t           size = setType->SetWords();
     llvm::Constant*  initArr[Types::SetDecl::MaxSetWords];
-    llvm::ArrayType* aty = llvm::dyn_cast<llvm::ArrayType>(ty);
+    auto             aty = llvm::dyn_cast<llvm::ArrayType>(ty);
     llvm::Type*      eltTy = aty->getElementType();
 
     for (size_t i = 0; i < size; i++)
@@ -3500,7 +3500,7 @@ llvm::Value* SetExprAST::Address()
     bool allConstants = true;
     for (auto v : values)
     {
-	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
+	if (auto r = llvm::dyn_cast<RangeExprAST>(v))
 	{
 	    if (!IsConstant(r->HighExpr()) || !IsConstant(r->LowExpr()))
 	    {
@@ -3540,7 +3540,7 @@ llvm::Value* SetExprAST::Address()
     for (auto v : values)
     {
 	// If we have a "range", then make a loop.
-	if (RangeExprAST* r = llvm::dyn_cast<RangeExprAST>(v))
+	if (auto r = llvm::dyn_cast<RangeExprAST>(v))
 	{
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();
@@ -3771,8 +3771,8 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
     TRACE();
 
     Types::TypeDecl* current = expr->Type();
-    Types::SetDecl*  rty = llvm::dyn_cast<Types::SetDecl>(current);
-    Types::SetDecl*  lty = llvm::dyn_cast<Types::SetDecl>(type);
+    auto             rty = llvm::dyn_cast<Types::SetDecl>(current);
+    auto             lty = llvm::dyn_cast<Types::SetDecl>(type);
 
     llvm::Value* dest = CreateTempAlloca(type);
 
@@ -3916,7 +3916,7 @@ llvm::Value* TypeCastAST::Address()
 	{
 	    v = MakeStringFromExpr(expr, type);
 	}
-	else if (AddressableAST* ae = llvm::dyn_cast<AddressableAST>(expr))
+	else if (auto ae = llvm::dyn_cast<AddressableAST>(expr))
 	{
 	    v = ae->Address();
 	}
@@ -3980,7 +3980,7 @@ llvm::Value* VTableAST::CodeGen()
 {
     TRACE();
 
-    llvm::StructType* ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
+    auto ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
     assert(ty && "Huh? No vtable?");
     std::vector<llvm::Constant*> vtInit = GetInitializer();
 
@@ -4018,7 +4018,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 
 void VTableAST::Fixup()
 {
-    llvm::StructType*            ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(true));
+    auto                         ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(true));
     std::vector<llvm::Constant*> vtInit = GetInitializer();
     assert(vtInit.size() && "Should have something to initialize here");
 
@@ -4041,7 +4041,7 @@ llvm::Value* VirtFunctionAST::Address()
 {
     llvm::Value* v = MakeAddressable(self);
     llvm::Type*  ty = self->Type()->LlvmType();
-    llvm::Type*  vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
+    auto         vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
     llvm::Type*  ptrVTableTy = llvm::PointerType::getUnqual(vtableTy);
     llvm::Value* zero = MakeIntegerConstant(0);
     v = builder.CreateGEP(ty, v, { zero, zero }, "vptr");
@@ -4252,7 +4252,7 @@ llvm::Value* InitArrayAST::CodeGen()
 
     for (auto v : values)
     {
-	llvm::Constant* c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
+	auto c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
 	if (v.IsRange())
 	{
 	    for (int i = v.Start(); i <= v.End(); i++)
@@ -4265,7 +4265,7 @@ llvm::Value* InitArrayAST::CodeGen()
 	    initArr[v.Start() - range->Start()] = c;
 	}
     }
-    llvm::ArrayType* arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
+    auto arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
 
     llvm::Constant* init = llvm::ConstantArray::get(arrty,
                                                     llvm::ArrayRef<llvm::Constant*>(initArr.data(), size));
@@ -4290,13 +4290,13 @@ llvm::Value* InitRecordAST::CodeGen()
 
     for (auto v : values)
     {
-	llvm::Constant* c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
+	auto c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
 	for (auto e : v.Elements())
 	{
 	    initArr[e] = c;
 	}
     }
-    llvm::StructType* ty = llvm::dyn_cast<llvm::StructType>(type->LlvmType());
+    auto ty = llvm::dyn_cast<llvm::StructType>(type->LlvmType());
 
     llvm::Constant* init = llvm::ConstantStruct::get(ty, initArr);
     return init;

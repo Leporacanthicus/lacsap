@@ -782,7 +782,7 @@ namespace Builtin
 
     llvm::Value* FunctionNew::CodeGen(llvm::IRBuilder<>& builder)
     {
-	Types::PointerDecl* pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
+	auto pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
 	assert(pd && "The argument to new should be a PointerDecl!");
 	const Types::TypeDecl* elemTy = pd->SubType();
 	size_t                 size = elemTy->Size();
@@ -904,8 +904,8 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
-	Types::ArrayDecl* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
+	auto* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	auto* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
 	if (t0 && t2)
 	{
 	    if (args[1]->Type()->IsIntegral() && args[1]->Type()->AssignableType(t0->Ranges()[0]))
@@ -931,11 +931,11 @@ namespace Builtin
     llvm::Value* FunctionPack::CodeGen(llvm::IRBuilder<>& builder)
     {
 	// Pack(X, n, Y) -> copy X to Y, starting at offset n
-	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
-	VariableExprAST* var2 = llvm::dyn_cast<VariableExprAST>(args[2]);
+	auto* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto* var2 = llvm::dyn_cast<VariableExprAST>(args[2]);
 
 	llvm::Value*      start = args[1]->CodeGen();
-	Types::ArrayDecl* ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	auto*             ty0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
 	if (ty0->Ranges()[0]->Start())
 	{
 	    start = builder.CreateSub(start, MakeConstant(ty0->Ranges()[0]->Start(), args[1]->Type()));
@@ -958,8 +958,8 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	Types::ArrayDecl* t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
-	Types::ArrayDecl* t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
+	auto t0 = llvm::dyn_cast<Types::ArrayDecl>(args[0]->Type());
+	auto t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
 	if (t0 && t1)
 	{
 	    if (args[2]->Type()->IsIntegral() && args[2]->Type()->AssignableType(t1->Ranges()[0]))
@@ -985,11 +985,11 @@ namespace Builtin
     llvm::Value* FunctionUnpack::CodeGen(llvm::IRBuilder<>& builder)
     {
 	// Unpack(X, Y, n) -> copy X to Y, starting at offset n
-	VariableExprAST* var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
-	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
+	auto var0 = llvm::dyn_cast<VariableExprAST>(args[0]);
+	auto var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 
 	llvm::Value*      start = args[2]->CodeGen();
-	Types::ArrayDecl* ty1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
+	auto              ty1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
 	if (ty1->Ranges()[0]->Start())
 	{
 	    start = builder.CreateSub(start, MakeConstant(ty1->Ranges()[0]->Start(), args[2]->Type()));
@@ -1029,7 +1029,7 @@ namespace Builtin
     llvm::Value* FunctionVal::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value*     str = MakeStringFromExpr(args[0], args[0]->Type());
-	VariableExprAST* var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
+	auto             var1 = llvm::dyn_cast<VariableExprAST>(args[1]);
 	std::string      name = "__Val_";
 	if (llvm::isa<Types::IntegerDecl>(var1->Type()))
 	{
@@ -1088,7 +1088,7 @@ namespace Builtin
 	                                      Types::Get<Types::BoolDecl>()->LlvmType() };
 	llvm::FunctionCallee     f = GetFunction(Type()->LlvmType(), argTypes, "__" + name);
 
-	Types::FileDecl* fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
+	auto             fd = llvm::dyn_cast<Types::FileDecl>(fvar->Type());
 	llvm::Value*     sz = MakeIntegerConstant(fd->SubType()->Size());
 	llvm::Value*     isText = MakeBooleanConstant(llvm::isa<Types::TextDecl>(fd));
 
@@ -1314,7 +1314,7 @@ namespace Builtin
 	llvm::Type*          ty = val->getType();
 	llvm::FunctionCallee f = GetFunction(ty, { ty }, name);
 	llvm::Value*         count = builder.CreateCall(f, val, "count");
-	Types::SetDecl*      sd = llvm::dyn_cast<Types::SetDecl>(type);
+	auto                 sd = llvm::dyn_cast<Types::SetDecl>(type);
 	for (size_t i = 1; i < sd->SetWords(); i++)
 	{
 	    addr = builder.CreateGEP(intTy, v, MakeIntegerConstant(i), "leftSet");

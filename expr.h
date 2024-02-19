@@ -657,6 +657,8 @@ private:
 
 class IfExprAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
+
 public:
     IfExprAST(const Location& w, ExprAST* c, ExprAST* t, ExprAST* e)
         : ExprAST(w, EK_IfExpr), cond(c), then(t), other(e)
@@ -704,6 +706,8 @@ private:
 
 class WhileExprAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
+
 public:
     WhileExprAST(const Location& w, ExprAST* c, ExprAST* b) : ExprAST(w, EK_WhileExpr), cond(c), body(b) {}
     void         DoDump() const override;
@@ -718,6 +722,8 @@ private:
 
 class RepeatExprAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
+
 public:
     RepeatExprAST(const Location& w, ExprAST* c, ExprAST* b) : ExprAST(w, EK_RepeatExpr), cond(c), body(b)
     {

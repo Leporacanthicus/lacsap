@@ -1719,6 +1719,7 @@ void BlockAST::accept(ASTVisitor& v)
     {
 	i->accept(v);
     }
+    v.visit(this);
 }
 
 llvm::Value* BlockAST::CodeGen()
@@ -2044,6 +2045,7 @@ void FunctionAST::accept(ASTVisitor& v)
     {
 	i->accept(v);
     }
+    v.visit(this);
 }
 
 static llvm::DISubroutineType* CreateFunctionType(DebugInfo& di, PrototypeAST* proto)
@@ -2331,6 +2333,7 @@ void IfExprAST::accept(ASTVisitor& v)
     {
 	other->accept(v);
     }
+    v.visit(this);
 }
 
 llvm::Value* IfExprAST::CodeGen()
@@ -2656,6 +2659,7 @@ void WhileExprAST::accept(ASTVisitor& v)
 {
     cond->accept(v);
     body->accept(v);
+    v.visit(this);
 }
 
 void RepeatExprAST::DoDump() const
@@ -2696,6 +2700,7 @@ void RepeatExprAST::accept(ASTVisitor& v)
 {
     cond->accept(v);
     body->accept(v);
+    v.visit(this);
 }
 
 void WriteAST::DoDump() const
@@ -4086,6 +4091,7 @@ void UnitAST::accept(ASTVisitor& v)
     {
 	initFunc->accept(v);
     }
+    v.visit(this);
 }
 
 llvm::Value* UnitAST::CodeGen()
@@ -4188,6 +4194,7 @@ llvm::Value* TrampolineAST::CodeGen()
 void TrampolineAST::accept(ASTVisitor& v)
 {
     func->accept(v);
+    v.visit(this);
 }
 
 llvm::Value* InitValueAST::CodeGen()

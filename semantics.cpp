@@ -876,6 +876,36 @@ void TypeCheckVisitor::Check<CaseExprAST>(CaseExprAST* c)
     }
 }
 
+template<>
+void TypeCheckVisitor::Check(WhileExprAST* w)
+{
+    TRACE();
+    if (!llvm::isa<Types::BoolDecl>(w->cond->Type()))
+    {
+	Error(w->cond, "The condition for 'while' should be a boolean expression");
+    }
+}
+
+template<>
+void TypeCheckVisitor::Check(RepeatExprAST* r)
+{
+    TRACE();
+    if (!llvm::isa<Types::BoolDecl>(r->cond->Type()))
+    {
+	Error(r->cond, "The condition for 'repeat' should be a boolean expression");
+    }
+}
+
+template<>
+void TypeCheckVisitor::Check(IfExprAST* i)
+{
+    TRACE();
+    if (!llvm::isa<Types::BoolDecl>(i->cond->Type()))
+    {
+	Error(i->cond, "The condition for 'if' should be a boolean expression");
+    }
+}
+
 void Semantics::AddFixup(SemaFixup* f)
 {
     TRACE();
@@ -923,6 +953,9 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     MaybeCheck<ReadAST>(expr);
     MaybeCheck<WriteAST>(expr);
     MaybeCheck<CaseExprAST>(expr);
+    MaybeCheck<WhileExprAST>(expr);
+    MaybeCheck<RepeatExprAST>(expr);
+    MaybeCheck<IfExprAST>(expr);
 }
 
 void Semantics::Analyse(Source& src, ExprAST* ast)

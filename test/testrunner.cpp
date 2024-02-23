@@ -461,8 +461,8 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "ReadStr", "rstr.pas", "" },
     { 0, "Basic", "Default value", "default.pas", "" },
     { 0, "Basic", "Bind file", "bind.pas", "" },
-    { 0, "Basic", "ISO const eclarations", "isoconst.pas", "" },
-
+    { 0, "Basic", "ISO const declarations", "isoconst.pas", "" },
+    { 0, "Basic", "Const functions", "constfuncs.pas", "" },
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.
     { LACSAP_ONLY, "File", "CopyFile2", "copyfile2.pas", "File/infile.dat File/outfile.dat" },

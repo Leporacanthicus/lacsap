@@ -19,6 +19,8 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <vector>
 
 using TerminatorList = std::vector<Token::TokenType>;
@@ -765,38 +767,165 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
     return 0;
 }
 
+template<typename T>
+static const Constants::ConstDecl* UpdateValueSameType(const Constants::ConstDecl* cd, T func)
+{
+    if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
+    {
+	return new Constants::IntConstDecl(intConst->Loc(), func(intConst->Value()));
+    }
+    if (auto enumConst = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
+    {
+	return new Constants::EnumConstDecl(enumConst->Type(), enumConst->Loc(), func(enumConst->Value()));
+    }
+    return 0;
+}
+
 // Note: name is not const ref, because we call strlower on it.
 const Constants::ConstDecl* Parser::ParseConstFunction(std::string name)
 {
-    static std::vector<std::string> names = { "chr" /* , "succ", "pred", "ord" */ };
+    // Don't even try if the next token to come isn't a left paren.
+    if (PeekToken() != Token::LeftParen)
+    {
+	return 0;
+    }
+    using ConstArgs = std::vector<const Constants::ConstDecl*>;
+    using Func = std::function<const Constants::ConstDecl*(const ConstArgs&)>;
+    struct NameFunc
+    {
+	const char* name;
+	size_t      minArgs;
+	size_t      maxArgs;
+	Func        func;
+    };
+    std::vector<NameFunc> names = {
+	{ "chr", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
+	      {
+	          return new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
+	      }
+	      return 0;
+	  } },
+	{ "succ", 1, 2,
+	  [this](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      int n = 1;
+	      if (args.size() > 1)
+	      {
+	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          {
+		      n = intConst->Value();
+	          }
+	          else
+	          {
+		      return Error("Expected integer as second argument to 'succ'");
+	          }
+	      }
+	      return UpdateValueSameType(args[0], [n](int64_t v) { return v + n; });
+	  } },
+	{ "pred", 1, 2,
+	  [this](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      int n = 1;
+	      if (args.size() > 1)
+	      {
+	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          {
+		      n = intConst->Value();
+	          }
+	          else
+	          {
+		      return Error("Expected integer as second argument to 'pred'");
+	          }
+	      }
+	      return UpdateValueSameType(args[0], [n](int64_t v) { return v - n; });
+	  } },
+	{ "ord", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  { return new Constants::IntConstDecl(args[0]->Loc(), ConstDeclToInt(args[0])); } },
+	{ "length", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto strConst = llvm::dyn_cast<Constants::StringConstDecl>(args[0]))
+	      {
+	          return new Constants::IntConstDecl(strConst->Loc(), strConst->Value().length());
+	      }
+	      return 0;
+	  } },
+	{ "sin", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), sin(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "cos", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), cos(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "ln", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          // Yes, we want log here, log10 is Pascal type log
+	          return new Constants::RealConstDecl(rc->Loc(), log(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "exp", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), exp(rc->Value()));
+	      }
+	      return 0;
+	  } },
+    };
+
     strlower(name);
-    const Constants::ConstDecl* cd = 0;
-    if (std::find(names.begin(), names.end(), name) != names.end())
+    if (auto func = std::find_if(names.begin(), names.end(), [&](auto it) { return name == it.name; });
+        func != names.end())
     {
 	NextToken();
-	if (Expect(Token::LeftParen, ExpectConsume))
+	AssertToken(Token::LeftParen);
+	ConstArgs args;
+	for (;;)
 	{
-	    if ((cd = ParseConstExpr({ Token::RightParen })))
+	    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Comma, Token::RightParen });
+	    args.push_back(cd);
+	    if (AcceptToken(Token::Comma))
 	    {
-		if (!Expect(Token::RightParen, ExpectConsume))
+		continue;
+	    }
+	    else if (Expect(Token::RightParen, ExpectConsume))
+	    {
+		if (func->minArgs > args.size() || func->maxArgs < args.size())
 		{
-		    return 0;
+		    std::stringstream ss;
+		    ss << "Incorrect number of arguments for " << name << " expected " << func->minArgs;
+		    if (func->maxArgs != func->minArgs)
+		    {
+			ss << ".." << func->maxArgs;
+		    }
+		    ss << " arguments.";
+		    return Error(ss.str());
 		}
-	    }
-	    else
-	    {
-		return 0;
-	    }
-	}
-	if (name == "chr")
-	{
-	    if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
-	    {
-		cd = new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
+		return func->func(args);
 	    }
 	}
     }
-    return cd;
+    return 0;
 }
 
 class CCConstSetList : public ListConsumer

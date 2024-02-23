@@ -1,5 +1,4 @@
 #include "location.h"
-//#include <algorithm>
 
 std::string Location::to_string() const
 {

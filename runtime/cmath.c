@@ -32,7 +32,7 @@ void __ccos(struct Complex* res, struct Complex a)
 void __ctan(struct Complex* res, struct Complex a)
 {
     // tan(x + iy) = sin(2x)/(cos(2x)+cosh(2y)) + i sinh(2y)/(cos(2x)+cosh(2y))
-    double         div = cos(2 * a.r) + cosh(2 * a.i);
+    double div = cos(2 * a.r) + cosh(2 * a.i);
     res->r = sin(2 * a.r) / div;
     res->i = sinh(2 * a.i) / div;
 }
@@ -40,7 +40,7 @@ void __ctan(struct Complex* res, struct Complex a)
 void __cexp(struct Complex* res, struct Complex a)
 {
     // exp(x + iy) = exp(x) * cos(y) + i exp(x) * sin(y)
-    double         ex = exp(a.r);
+    double ex = exp(a.r);
     res->r = ex * cos(a.i);
     res->i = ex * sin(a.i);
 }
@@ -83,9 +83,9 @@ void __cpow(struct Complex* res, struct Complex a, double b)
 	res->r = 1.0;
 	return;
     }
-    double         re = 0.5 * log(a.r * a.r + a.i * a.i) * b;
-    double         im = atan2(a.i, a.r) * b;
-    
+    double re = 0.5 * log(a.r * a.r + a.i * a.i) * b;
+    double im = atan2(a.i, a.r) * b;
+
     struct Complex tmp = { re, im };
 
     __cexp(res, tmp);

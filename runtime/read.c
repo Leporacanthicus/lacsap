@@ -89,7 +89,7 @@ struct interface
 
     union
     {
-	File*   file;
+	File* file;
 	struct
 	{
 	    String* str;

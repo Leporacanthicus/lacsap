@@ -10,8 +10,8 @@
 #include <llvm/ADT/Triple.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/LLVMContext.h>
 #include <llvm/MC/SubtargetFeature.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Pass.h>

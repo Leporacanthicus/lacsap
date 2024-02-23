@@ -72,9 +72,15 @@ namespace Types
 	return diType;
     }
 
-    void CharDecl::DoDump() const { std::cerr << "Type: Char"; }
+    void CharDecl::DoDump() const
+    {
+	std::cerr << "Type: Char";
+    }
 
-    llvm::Type* CharDecl::GetLlvmType() const { return llvm::Type::getInt8Ty(theContext); }
+    llvm::Type* CharDecl::GetLlvmType() const
+    {
+	return llvm::Type::getInt8Ty(theContext);
+    }
 
     llvm::DIType* CharDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -152,9 +158,15 @@ namespace Types
 	return 0;
     }
 
-    void RealDecl::DoDump() const { std::cerr << "Type: Real"; }
+    void RealDecl::DoDump() const
+    {
+	std::cerr << "Type: Real";
+    }
 
-    llvm::Type* RealDecl::GetLlvmType() const { return llvm::Type::getDoubleTy(theContext); }
+    llvm::Type* RealDecl::GetLlvmType() const
+    {
+	return llvm::Type::getDoubleTy(theContext);
+    }
 
     llvm::DIType* RealDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -183,15 +195,30 @@ namespace Types
 	return 0;
     }
 
-    const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const { return CompatibleType(ty); }
+    const TypeDecl* RealDecl::AssignableType(const TypeDecl* ty) const
+    {
+	return CompatibleType(ty);
+    }
 
-    void VoidDecl::DoDump() const { std::cerr << "Void"; }
+    void VoidDecl::DoDump() const
+    {
+	std::cerr << "Void";
+    }
 
-    llvm::Type* VoidDecl::GetLlvmType() const { return llvm::Type::getVoidTy(theContext); }
+    llvm::Type* VoidDecl::GetLlvmType() const
+    {
+	return llvm::Type::getVoidTy(theContext);
+    }
 
-    void BoolDecl::DoDump() const { std::cerr << "Type: Bool"; }
+    void BoolDecl::DoDump() const
+    {
+	std::cerr << "Type: Bool";
+    }
 
-    llvm::Type* BoolDecl::GetLlvmType() const { return llvm::Type::getInt1Ty(theContext); }
+    llvm::Type* BoolDecl::GetLlvmType() const
+    {
+	return llvm::Type::getInt1Ty(theContext);
+    }
 
     llvm::DIType* BoolDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -378,7 +405,10 @@ namespace Types
 	return this;
     }
 
-    TypeDecl* ArrayDecl::Clone() const { return new Types::ArrayDecl(baseType, ranges); }
+    TypeDecl* ArrayDecl::Clone() const
+    {
+	return new Types::ArrayDecl(baseType, ranges);
+    }
 
     llvm::Type* DynArrayDecl::GetArrayType(TypeDecl* baseType)
     {
@@ -393,7 +423,10 @@ namespace Types
 	return dynTy;
     }
 
-    llvm::Type* DynArrayDecl::GetLlvmType() const { return GetArrayType(baseType); }
+    llvm::Type* DynArrayDecl::GetLlvmType() const
+    {
+	return GetArrayType(baseType);
+    }
 
     void DynArrayDecl::DoDump() const
     {
@@ -420,7 +453,10 @@ namespace Types
 	return 0;
     }
 
-    void Range::DoDump() const { std::cerr << "[" << start << ".." << end << "]"; }
+    void Range::DoDump() const
+    {
+	std::cerr << "[" << start << ".." << end << "]";
+    }
 
     void RangeDecl::DoDump() const
     {
@@ -473,7 +509,10 @@ namespace Types
 	return b;
     }
 
-    unsigned RangeDecl::Bits() const { return baseType->Bits(); }
+    unsigned RangeDecl::Bits() const
+    {
+	return baseType->Bits();
+    }
 
     void DynRangeDecl::DoDump() const
     {
@@ -524,7 +563,10 @@ namespace Types
 	return true;
     }
 
-    unsigned EnumDecl::Bits() const { return BitsNeeded(values.size()); }
+    unsigned EnumDecl::Bits() const
+    {
+	return BitsNeeded(values.size());
+    }
 
     llvm::DIType* EnumDecl::GetDIType(llvm::DIBuilder* builder) const
     {
@@ -542,7 +584,10 @@ namespace Types
 
     FunctionDecl::FunctionDecl(PrototypeAST* p) : CompoundDecl(TK_Function, p->Type()), proto(p) {}
 
-    void FunctionDecl::DoDump() const { std::cerr << "Function " << baseType; }
+    void FunctionDecl::DoDump() const
+    {
+	std::cerr << "Function " << baseType;
+    }
 
     void FieldDecl::DoDump() const
     {
@@ -890,7 +935,10 @@ namespace Types
 	}
     }
 
-    size_t ClassDecl::MembFuncCount() const { return membfuncs.size(); }
+    size_t ClassDecl::MembFuncCount() const
+    {
+	return membfuncs.size();
+    }
 
     int ClassDecl::MembFunc(const std::string& nm) const
     {
@@ -1020,7 +1068,10 @@ namespace Types
 	return GetElement(n, objname);
     }
 
-    int ClassDecl::FieldCount() const { return fields.size() + (baseobj ? baseobj->FieldCount() : 0); }
+    int ClassDecl::FieldCount() const
+    {
+	return fields.size() + (baseobj ? baseobj->FieldCount() : 0);
+    }
 
     const TypeDecl* ClassDecl::DerivedFrom(const TypeDecl* ty) const
     {
@@ -1110,7 +1161,10 @@ namespace Types
 	proto->DoDump();
     }
 
-    void FuncPtrDecl::DoDump() const { std::cerr << "FunctionPtr "; }
+    void FuncPtrDecl::DoDump() const
+    {
+	std::cerr << "FunctionPtr ";
+    }
 
     llvm::Type* FuncPtrDecl::GetLlvmType() const
     {
@@ -1185,7 +1239,10 @@ namespace Types
 	baseType->DoDump();
     }
 
-    void TextDecl::DoDump() const { std::cerr << "Text "; }
+    void TextDecl::DoDump() const
+    {
+	std::cerr << "Text ";
+    }
 
     SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty) : CompoundDecl(TK_Set, ty), range(r)
     {
@@ -1202,8 +1259,8 @@ namespace Types
     {
 	assert(range);
 	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
-	auto               ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
-	llvm::Type*        ty = llvm::ArrayType::get(ity, SetWords());
+	auto        ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
+	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
 

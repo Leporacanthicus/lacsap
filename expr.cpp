@@ -1803,7 +1803,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 	return llvmFunc;
     }
 
-    std::string actualName;
+    std::string                     actualName;
     llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::InternalLinkage;
     // Don't mangle our 'main' functions name, as we call that from C
     if (name == "__PascalMain")
@@ -3440,11 +3440,11 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
     {
 	if (auto r = llvm::dyn_cast<RangeExprAST>(v))
 	{
-	    auto            le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
-	    auto            he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
-	    int             start = type->GetRange()->Start();
-	    int             low = le->Int() - start;
-	    int             high = he->Int() - start;
+	    auto le = llvm::dyn_cast<IntegerExprAST>(r->LowExpr());
+	    auto he = llvm::dyn_cast<IntegerExprAST>(r->HighExpr());
+	    int  start = type->GetRange()->Start();
+	    int  low = le->Int() - start;
+	    int  high = he->Int() - start;
 	    low = std::max(0, low);
 	    high = std::min((int)type->GetRange()->Size(), high);
 	    for (int i = low; i <= high; i++)
@@ -3454,9 +3454,9 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
 	}
 	else
 	{
-	    auto            e = llvm::dyn_cast<IntegerExprAST>(v);
-	    int             start = type->GetRange()->Start();
-	    unsigned        i = e->Int() - start;
+	    auto     e = llvm::dyn_cast<IntegerExprAST>(v);
+	    int      start = type->GetRange()->Start();
+	    unsigned i = e->Int() - start;
 	    if (i < (unsigned)type->GetRange()->Size())
 	    {
 		elems[i >> Types::SetDecl::SetPow2Bits] |= (1 << (i & Types::SetDecl::SetMask));
@@ -3464,11 +3464,11 @@ llvm::Constant* SetExprAST::MakeConstantSetArray()
 	}
     }
 
-    auto             setType = llvm::dyn_cast<Types::SetDecl>(type);
-    size_t           size = setType->SetWords();
-    llvm::Constant*  initArr[Types::SetDecl::MaxSetWords];
-    auto             aty = llvm::dyn_cast<llvm::ArrayType>(ty);
-    llvm::Type*      eltTy = aty->getElementType();
+    auto            setType = llvm::dyn_cast<Types::SetDecl>(type);
+    size_t          size = setType->SetWords();
+    llvm::Constant* initArr[Types::SetDecl::MaxSetWords];
+    auto            aty = llvm::dyn_cast<llvm::ArrayType>(ty);
+    llvm::Type*     eltTy = aty->getElementType();
 
     for (size_t i = 0; i < size; i++)
     {

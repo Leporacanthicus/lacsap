@@ -11,9 +11,9 @@ public:
         : fname(file), lineNum(line), column(col)
     {
     }
-    std::string  to_string() const;
-    std::string  FileName() const { return fname; }
-                 operator bool() const { return fname != "" || lineNum != 0; }
+    std::string to_string() const;
+    std::string FileName() const { return fname; }
+    operator bool() const { return fname != "" || lineNum != 0; }
     unsigned int LineNumber() const { return lineNum; }
     unsigned int Column() const { return column; }
 

@@ -16,8 +16,8 @@ private:
     template<typename T>
     void Check(T* t);
     template<typename T>
-    void             MaybeCheck(ExprAST* t);
-    void             Error(const ExprAST* e, const std::string& msg) const;
+    void MaybeCheck(ExprAST* t);
+    void Error(const ExprAST* e, const std::string& msg) const;
 
 private:
     Semantics* sema;

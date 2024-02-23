@@ -2,8 +2,8 @@
 #define TYPES_H
 
 #include <iostream>
-#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Type.h>
 #include <string>
 
@@ -429,11 +429,11 @@ namespace Types
 	    baseType = t;
 	    incomplete = false;
 	}
-	bool        IsIncomplete() const override { return incomplete; }
-	bool        IsForward() const { return forward; }
-	bool        IsCompound() const override { return false; }
-	void        DoDump() const override;
-	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
+	bool            IsIncomplete() const override { return incomplete; }
+	bool            IsForward() const { return forward; }
+	bool            IsCompound() const override { return false; }
+	void            DoDump() const override;
+	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 
     protected:
@@ -492,7 +492,7 @@ namespace Types
 	bool        IsStatic() const { return isStatic; }
 	bool        SameAs(const TypeDecl* ty) const override { return baseType->SameAs(ty); }
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Field; }
-	            operator Access() { return access; }
+	operator Access() { return access; }
 
     private:
 	bool   isStatic;

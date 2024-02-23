@@ -45,7 +45,7 @@ public:
     int GetErrors() override { return errCnt; }
 
     // Token handling functions
-    const Token& CurrentToken() const;
+    const Token&     CurrentToken() const;
     void             NextToken(const char* file, int line);
     Token::TokenType PeekToken(const char* file, int line);
 
@@ -137,11 +137,11 @@ public:
     unsigned            ParseStringSize(Token::TokenType end);
 
     // Helper for syntax checking
-    bool     Expect(Token::TokenType type, ExpectConsuming consumption, const char* file, int line);
-    void     AssertToken(Token::TokenType type, const char* file, int line);
-    bool     AcceptToken(Token::TokenType type, const char* file, int line);
-    bool     IsSemicolonOrEnd();
-    bool     ExpectSemicolonOrEnd(const char* file, int line);
+    bool        Expect(Token::TokenType type, ExpectConsuming consumption, const char* file, int line);
+    void        AssertToken(Token::TokenType type, const char* file, int line);
+    bool        AcceptToken(Token::TokenType type, const char* file, int line);
+    bool        IsSemicolonOrEnd();
+    bool        ExpectSemicolonOrEnd(const char* file, int line);
     std::string GetIdentifier(const char* file, int line, ExpectConsuming consumption);
 
     // General helper functions
@@ -382,7 +382,7 @@ ExprAST* Parser::ParseSizeOfExpr()
     {
 	return 0;
     }
-    ExprAST* expr = 0;
+    ExprAST*    expr = 0;
     std::string name = GetIdentifier(NoExpectConsume);
     if (!name.empty())
     {
@@ -2640,8 +2640,8 @@ VariableExprAST* Parser::ParseStaticMember(const TypeDef* def, Types::TypeDecl*&
 	std::string field = GetIdentifier(ExpectConsume);
 	if (!field.empty())
 	{
-	    const auto              od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
-	    int                     elem;
+	    const auto od = llvm::dyn_cast<Types::ClassDecl>(def->Type());
+	    int        elem;
 	    if ((elem = od->Element(field)) >= 0)
 	    {
 		std::string             objname;
@@ -2900,8 +2900,8 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
     TRACE();
     AssertToken(Token::LeftSquare);
 
-    const Location  loc = CurrentToken().Loc();
-    CCSetList       ccs;
+    const Location loc = CurrentToken().Loc();
+    CCSetList      ccs;
     if (ParseSeparatedList(*this, ccs))
     {
 	Types::TypeDecl* type = 0;
@@ -3828,8 +3828,8 @@ ExprAST* Parser::ParseCaseExpr()
 	case Token::Colon:
 	{
 	    NextToken();
-	    const Location  locColon = CurrentToken().Loc();
-	    ExprAST*        s = ParseStatement();
+	    const Location locColon = CurrentToken().Loc();
+	    ExprAST*       s = ParseStatement();
 	    labels.push_back(new LabelExprAST(locColon, ranges, s));
 	    ranges.clear();
 	    if (!ExpectSemicolonOrEnd())
@@ -4449,9 +4449,9 @@ ExprAST* Parser::ParseUnit(ParserType type)
 
 	case Token::Begin:
 	{
-	    const Location  loc = CurrentToken().Loc();
-	    Location        endLoc;
-	    BlockAST*       body = ParseBlock(endLoc);
+	    const Location loc = CurrentToken().Loc();
+	    Location       endLoc;
+	    BlockAST*      body = ParseBlock(endLoc);
 	    if (!body)
 	    {
 		return 0;

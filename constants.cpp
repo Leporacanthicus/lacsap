@@ -18,9 +18,15 @@ namespace Constants
 	std::cerr << "IntConstDecl: " << Value() << std::endl;
     }
 
-    Token EnumConstDecl::Translate() const { return Token(Token::Integer, loc, value); }
+    Token EnumConstDecl::Translate() const
+    {
+	return Token(Token::Integer, loc, value);
+    }
 
-    void EnumConstDecl::dump() const { std::cerr << "EnumConstDecl: " << Value() << std::endl; }
+    void EnumConstDecl::dump() const
+    {
+	std::cerr << "EnumConstDecl: " << Value() << std::endl;
+    }
     template<>
     Token RealConstDecl::Translate() const
     {
@@ -54,9 +60,15 @@ namespace Constants
 	std::cerr << "BoolConstDecl: " << Value() << std::endl;
     }
 
-    Token StringConstDecl::Translate() const { return Token(Token::StringLiteral, loc, value); }
+    Token StringConstDecl::Translate() const
+    {
+	return Token(Token::StringLiteral, loc, value);
+    }
 
-    void StringConstDecl::dump() const { std::cerr << "StringConstDecl: " << Value() << std::endl; }
+    void StringConstDecl::dump() const
+    {
+	std::cerr << "StringConstDecl: " << Value() << std::endl;
+    }
 
     void CompoundConstDecl::dump() const
     {

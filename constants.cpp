@@ -1,7 +1,11 @@
 #include "constants.h"
 #include "expr.h"
 #include "token.h"
+
+#include <cmath>
 #include <iostream>
+#include <sstream>
+
 #include <llvm/Support/Casting.h>
 
 namespace Constants
@@ -249,6 +253,184 @@ namespace Constants
 	    return ErrorConst("Invalid operand for /");
 	}
 	return v;
+    }
+
+    template<typename T>
+    static const Constants::ConstDecl* UpdateValueSameType(const Constants::ConstDecl* cd, T func)
+    {
+	if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
+	{
+	    return new Constants::IntConstDecl(intConst->Loc(), func(intConst->Value()));
+	}
+	if (auto enumConst = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
+	{
+	    return new Constants::EnumConstDecl(enumConst->Type(), enumConst->Loc(),
+	                                        func(enumConst->Value()));
+	}
+	return 0;
+    }
+
+    using ConstArgs = std::vector<const Constants::ConstDecl*>;
+    using Func = std::function<const Constants::ConstDecl*(const ConstArgs&)>;
+    struct EvaluableFunc
+    {
+	const char* name;
+	size_t      minArgs;
+	size_t      maxArgs;
+	Func        func;
+    };
+
+    static std::vector<EvaluableFunc> evaluableFunctions = {
+	{ "chr", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
+	      {
+	          return new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
+	      }
+	      return 0;
+	  } },
+	{ "succ", 1, 2,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      int n = 1;
+	      if (args.size() > 1)
+	      {
+	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          {
+		      n = intConst->Value();
+	          }
+	          else
+	          {
+		      return ErrorConst("Expected integer as second argument to 'succ'");
+	          }
+	      }
+	      return UpdateValueSameType(args[0], [n](int64_t v) { return v + n; });
+	  } },
+	{ "pred", 1, 2,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      int n = 1;
+	      if (args.size() > 1)
+	      {
+	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          {
+		      n = intConst->Value();
+	          }
+	          else
+	          {
+		      return ErrorConst("Expected integer as second argument to 'pred'");
+	          }
+	      }
+	      return UpdateValueSameType(args[0], [n](int64_t v) { return v - n; });
+	  } },
+	{ "ord", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  { return new Constants::IntConstDecl(args[0]->Loc(), ToInt(args[0])); } },
+	{ "length", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto strConst = llvm::dyn_cast<Constants::StringConstDecl>(args[0]))
+	      {
+	          return new Constants::IntConstDecl(strConst->Loc(), strConst->Value().length());
+	      }
+	      return 0;
+	  } },
+	{ "sin", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), sin(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "cos", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), cos(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "ln", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          // Yes, we want log here, log10 is Pascal type log
+	          return new Constants::RealConstDecl(rc->Loc(), log(rc->Value()));
+	      }
+	      return 0;
+	  } },
+	{ "exp", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::RealConstDecl(rc->Loc(), exp(rc->Value()));
+	      }
+	      return 0;
+	  } },
+    };
+
+    static EvaluableFunc* FindEvaluableFunc(std::string name)
+    {
+	strlower(name);
+	auto func = std::find_if(evaluableFunctions.begin(), evaluableFunctions.end(),
+	                         [&](auto it) { return name == it.name; });
+
+	if (func != evaluableFunctions.end())
+	{
+	    return &*func;
+	}
+	return 0;
+    }
+
+    const ConstDecl* EvalFunction(const std::string& name, const std::vector<const ConstDecl*>& args)
+    {
+	EvaluableFunc* func = FindEvaluableFunc(name);
+	if (func->minArgs > args.size() || func->maxArgs < args.size())
+	{
+	    std::stringstream ss;
+	    ss << "Incorrect number of arguments for " << name << " expected " << func->minArgs;
+	    if (func->maxArgs != func->minArgs)
+	    {
+		ss << ".." << func->maxArgs;
+	    }
+	    ss << " arguments.";
+	    return ErrorConst(ss.str());
+	}
+	return func->func(args);
+    }
+
+    bool IsEvaluableFunc(const std::string& name)
+    {
+	return FindEvaluableFunc(name) != 0;
+    }
+
+    int64_t ToInt(const ConstDecl* c)
+    {
+	if (auto ci = llvm::dyn_cast<IntConstDecl>(c))
+	{
+	    return ci->Value();
+	}
+	if (auto cc = llvm::dyn_cast<CharConstDecl>(c))
+	{
+	    return cc->Value();
+	}
+	if (auto ce = llvm::dyn_cast<EnumConstDecl>(c))
+	{
+	    return ce->Value();
+	}
+	if (auto cb = llvm::dyn_cast<BoolConstDecl>(c))
+	{
+	    return cb->Value();
+	}
+	c->dump();
+	assert(0 && "Didn't expect to get here");
+	return -1;
     }
 
 } // namespace Constants

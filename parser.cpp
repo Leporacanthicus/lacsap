@@ -111,7 +111,7 @@ public:
     Constants::ConstDecl*       ParseConstEval(const Constants::ConstDecl* lhs, const Token& binOp,
                                                const Constants::ConstDecl* rhs);
     const Constants::ConstDecl* ParseConstTerm(const Location& loc);
-    const Constants::ConstDecl* ParseConstFunction(std::string name);
+    const Constants::ConstDecl* ParseConstFunction(const std::string& name);
     const Constants::ConstDecl* ParseConstSetExpr();
 
     Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
@@ -549,29 +549,6 @@ Token Parser::TranslateToken(const Token& token)
     return token;
 }
 
-static int64_t ConstDeclToInt(const Constants::ConstDecl* c)
-{
-    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
-    {
-	return ci->Value();
-    }
-    if (auto cc = llvm::dyn_cast<Constants::CharConstDecl>(c))
-    {
-	return cc->Value();
-    }
-    if (auto ce = llvm::dyn_cast<Constants::EnumConstDecl>(c))
-    {
-	return ce->Value();
-    }
-    if (auto cb = llvm::dyn_cast<Constants::BoolConstDecl>(c))
-    {
-	return cb->Value();
-    }
-    c->dump();
-    assert(0 && "Didn't expect to get here");
-    return -1;
-}
-
 int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 {
     bool negative = false;
@@ -608,7 +585,7 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	if (const Constants::ConstDecl* cd = GetConstDecl(name))
 	{
 	    type = cd->Type();
-	    result = ConstDeclToInt(cd);
+	    result = Constants::ToInt(cd);
 	}
 	else if (const EnumDef* ed = GetEnumValue(name))
 	{
@@ -713,8 +690,8 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	return 0;
     }
 
-    int64_t start = ConstDeclToInt(startC);
-    int64_t end = ConstDeclToInt(endC);
+    int64_t start = Constants::ToInt(startC);
+    int64_t end = Constants::ToInt(endC);
 
     type = startC->Type();
     assert(type == endC->Type() && "Expect same type on both sides");
@@ -767,139 +744,19 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
     return 0;
 }
 
-template<typename T>
-static const Constants::ConstDecl* UpdateValueSameType(const Constants::ConstDecl* cd, T func)
-{
-    if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
-    {
-	return new Constants::IntConstDecl(intConst->Loc(), func(intConst->Value()));
-    }
-    if (auto enumConst = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
-    {
-	return new Constants::EnumConstDecl(enumConst->Type(), enumConst->Loc(), func(enumConst->Value()));
-    }
-    return 0;
-}
-
 // Note: name is not const ref, because we call strlower on it.
-const Constants::ConstDecl* Parser::ParseConstFunction(std::string name)
+const Constants::ConstDecl* Parser::ParseConstFunction(const std::string& name)
 {
     // Don't even try if the next token to come isn't a left paren.
     if (PeekToken() != Token::LeftParen)
     {
 	return 0;
     }
-    using ConstArgs = std::vector<const Constants::ConstDecl*>;
-    using Func = std::function<const Constants::ConstDecl*(const ConstArgs&)>;
-    struct NameFunc
-    {
-	const char* name;
-	size_t      minArgs;
-	size_t      maxArgs;
-	Func        func;
-    };
-    std::vector<NameFunc> names = {
-	{ "chr", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
-	      {
-	          return new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
-	      }
-	      return 0;
-	  } },
-	{ "succ", 1, 2,
-	  [this](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      int n = 1;
-	      if (args.size() > 1)
-	      {
-	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
-	          {
-		      n = intConst->Value();
-	          }
-	          else
-	          {
-		      return Error("Expected integer as second argument to 'succ'");
-	          }
-	      }
-	      return UpdateValueSameType(args[0], [n](int64_t v) { return v + n; });
-	  } },
-	{ "pred", 1, 2,
-	  [this](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      int n = 1;
-	      if (args.size() > 1)
-	      {
-	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
-	          {
-		      n = intConst->Value();
-	          }
-	          else
-	          {
-		      return Error("Expected integer as second argument to 'pred'");
-	          }
-	      }
-	      return UpdateValueSameType(args[0], [n](int64_t v) { return v - n; });
-	  } },
-	{ "ord", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  { return new Constants::IntConstDecl(args[0]->Loc(), ConstDeclToInt(args[0])); } },
-	{ "length", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto strConst = llvm::dyn_cast<Constants::StringConstDecl>(args[0]))
-	      {
-	          return new Constants::IntConstDecl(strConst->Loc(), strConst->Value().length());
-	      }
-	      return 0;
-	  } },
-	{ "sin", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
-	      {
-	          return new Constants::RealConstDecl(rc->Loc(), sin(rc->Value()));
-	      }
-	      return 0;
-	  } },
-	{ "cos", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
-	      {
-	          return new Constants::RealConstDecl(rc->Loc(), cos(rc->Value()));
-	      }
-	      return 0;
-	  } },
-	{ "ln", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
-	      {
-	          // Yes, we want log here, log10 is Pascal type log
-	          return new Constants::RealConstDecl(rc->Loc(), log(rc->Value()));
-	      }
-	      return 0;
-	  } },
-	{ "exp", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
-	      {
-	          return new Constants::RealConstDecl(rc->Loc(), exp(rc->Value()));
-	      }
-	      return 0;
-	  } },
-    };
-
-    strlower(name);
-    if (auto func = std::find_if(names.begin(), names.end(), [&](auto it) { return name == it.name; });
-        func != names.end())
+    if (Constants::IsEvaluableFunc(name))
     {
 	NextToken();
 	AssertToken(Token::LeftParen);
-	ConstArgs args;
+	std::vector<const Constants::ConstDecl*> args;
 	for (;;)
 	{
 	    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Comma, Token::RightParen });
@@ -910,18 +767,7 @@ const Constants::ConstDecl* Parser::ParseConstFunction(std::string name)
 	    }
 	    else if (Expect(Token::RightParen, ExpectConsume))
 	    {
-		if (func->minArgs > args.size() || func->maxArgs < args.size())
-		{
-		    std::stringstream ss;
-		    ss << "Incorrect number of arguments for " << name << " expected " << func->minArgs;
-		    if (func->maxArgs != func->minArgs)
-		    {
-			ss << ".." << func->maxArgs;
-		    }
-		    ss << " arguments.";
-		    return Error(ss.str());
-		}
-		return func->func(args);
+		return Constants::EvalFunction(name, args);
 	    }
 	}
     }
@@ -948,8 +794,8 @@ public:
 		    {
 			return false;
 		    }
-		    int64_t start = ConstDeclToInt(cd);
-		    int64_t end = ConstDeclToInt(cde);
+		    int64_t start = Constants::ToInt(cd);
+		    int64_t end = Constants::ToInt(cde);
 		    cd = new Constants::RangeConstDecl(loc, type, Types::Range(start, end));
 		}
 		else
@@ -2730,7 +2576,7 @@ static ExprAST* CreateSetExprFromSetConst(const Constants::SetConstDecl* set)
 	}
 	else
 	{
-	    e = new IntegerExprAST(v->Loc(), ConstDeclToInt(v), v->Type());
+	    e = new IntegerExprAST(v->Loc(), Constants::ToInt(v), v->Type());
 	}
 	assert(e && "Expected to have an ExprAST now!");
 	setValues.push_back(e);
@@ -2937,7 +2783,7 @@ ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const
 	    }
 	    return Error("Real constant initializer from incompatible type");
 	}
-	return new IntegerExprAST(loc, ConstDeclToInt(c), c->Type());
+	return new IntegerExprAST(loc, Constants::ToInt(c), c->Type());
     }
     if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(c))
     {
@@ -2970,7 +2816,7 @@ public:
 	if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
 	        { Token::Comma, Token::Colon, Token::DotDot }))
 	{
-	    int  value = ConstDeclToInt(cd);
+	    int  value = Constants::ToInt(cd);
 	    int  end = 0;
 	    bool hasEnd = false;
 	    if (parser.AcceptToken(Token::DotDot))
@@ -2980,7 +2826,7 @@ public:
 		{
 		    return false;
 		}
-		end = ConstDeclToInt(cd);
+		end = Constants::ToInt(cd);
 		hasEnd = true;
 	    }
 	    parser.Expect(Token::Colon, Parser::ExpectConsume);
@@ -3790,7 +3636,7 @@ ExprAST* Parser::ParseCaseExpr()
 	else
 	{
 	    const Constants::ConstDecl* cd = ParseConstExpr({ Token::Comma, Token::Colon, Token::DotDot });
-	    int                         value = ConstDeclToInt(cd);
+	    int                         value = Constants::ToInt(cd);
 	    if (type)
 	    {
 		if (type != cd->Type())
@@ -3810,7 +3656,7 @@ ExprAST* Parser::ParseCaseExpr()
 		{
 		    return Error("Expected case labels to have same type");
 		}
-		end = ConstDeclToInt(cd);
+		end = Constants::ToInt(cd);
 		if (end <= value)
 		{
 		    return Error("Expected case label range to be low..high");

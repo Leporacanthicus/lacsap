@@ -154,6 +154,13 @@ namespace Constants
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
 
+    const ConstDecl* EvalFunction(const std::string& name, const std::vector<const ConstDecl*>& args);
+
+    // Yes, evaluable is the "more correct" word.
+    bool IsEvaluableFunc(const std::string& name);
+
+    int64_t ToInt(const ConstDecl* c);
+
 }; // namespace Constants
 
 #endif

@@ -145,6 +145,7 @@ namespace Types
 	bool HasLlvmType() const override { return false; }
 	bool SameAs(const TypeDecl* ty) const override { return false; }
 	void DoDump() const override { std::cerr << std::string("Forward ") << Name(); }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Forward; }
 
     protected:
 	llvm::Type* GetLlvmType() const override
@@ -435,6 +436,7 @@ namespace Types
 	void            DoDump() const override;
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Pointer; }
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	TypeDecl*       Clone() const override;
 
     protected:
 	llvm::Type*   GetLlvmType() const override;

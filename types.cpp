@@ -238,6 +238,17 @@ namespace Types
 	}
     }
 
+    TypeDecl* PointerDecl::Clone() const
+    {
+	if (auto fwd = llvm::dyn_cast<ForwardDecl>(baseType))
+	{
+	    return new PointerDecl(fwd);
+	}
+
+	assert(!forward && "Shouldn't be forward declared pointer here");
+	return new PointerDecl(SubType());
+    }
+
     const TypeDecl* PointerDecl::CompatibleType(const TypeDecl* ty) const
     {
 	if (SameAs(ty))

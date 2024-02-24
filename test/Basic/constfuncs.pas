@@ -19,6 +19,14 @@ const
    m = ord(Monday);
    n = succ(Monday);
    o = pred(n, 2);
+   p = 12/7;
+   q = 12 div 7;
+   r = 14 mod 3;
+   s = 11 and 5;
+   t = 11 or 5;
+   u = 11 xor 5;
+   v = 11 shl 3;
+   w = 4711 shr 4;
    
 begin
    writeln('a=', a);
@@ -36,4 +44,12 @@ begin
    writeln('m=', m);
    writeln('n=', ord(n));
    writeln('o=', ord(o));
+   writeln('p=', p:10:8);
+   writeln('q=', q);
+   writeln('r=', r);
+   writeln('s=', s);
+   writeln('t=', t);
+   writeln('u=', u);
+   writeln('v=', v);
+   writeln('w=', w);
 end.

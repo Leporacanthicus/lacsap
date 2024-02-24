@@ -157,6 +157,11 @@ namespace Constants
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator%(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator&(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator|(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator^(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator<<(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator>>(const ConstDecl& lhs, const ConstDecl& rhs);
 
     const ConstDecl* EvalFunction(const std::string& name, const std::vector<const ConstDecl*>& args);
 

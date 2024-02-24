@@ -255,14 +255,51 @@ namespace Constants
 	return v;
     }
 
+    template<typename FN>
+    static ConstDecl* IntegerOrErrorMath(const ConstDecl& lhs, const ConstDecl& rhs, FN func,
+                                         const std::string& oper)
+    {
+	if (ConstDecl* v = DoIntegerMath(lhs, rhs, func))
+	{
+	    return v;
+	}
+	return ErrorConst("Invalid operand for " + oper);
+    }
+
     ConstDecl* operator%(const ConstDecl& lhs, const ConstDecl& rhs)
     {
-	ConstDecl* v = DoIntegerMath(lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv % rv; });
-	if (!v)
-	{
-	    return ErrorConst("Invalid operand for %");
-	}
-	return v;
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv % rv; }, "mod");
+    }
+
+    ConstDecl* operator&(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv & rv; }, "and");
+    }
+
+    ConstDecl* operator|(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv | rv; }, "or");
+    }
+
+    ConstDecl* operator^(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv ^ rv; }, "xor");
+    }
+
+    ConstDecl* operator<<(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv << rv; }, "shl");
+    }
+
+    ConstDecl* operator>>(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	return IntegerOrErrorMath(
+	    lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv >> rv; }, "shr");
     }
 
     template<typename T>

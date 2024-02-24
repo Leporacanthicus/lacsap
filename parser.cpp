@@ -2540,40 +2540,41 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 
     if (const auto w = llvm::dyn_cast<WithDef>(def))
     {
-	expr = llvm::dyn_cast<AddressableAST>(w->Actual());
+	return llvm::dyn_cast<AddressableAST>(w->Actual());
     }
-    else
+    if (const auto m = llvm::dyn_cast<MembFuncDef>(def))
     {
-	if (const auto m = llvm::dyn_cast<MembFuncDef>(def))
+	Types::ClassDecl*      od = llvm::dyn_cast<Types::ClassDecl>(type);
+	Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index());
+	type = mf->Proto()->Type();
+    }
+    else if (const auto ty = llvm::dyn_cast<TypeDef>(def))
+    {
+	if (llvm::isa<Types::ClassDecl>(ty->Type()))
 	{
-	    Types::ClassDecl*      od = llvm::dyn_cast<Types::ClassDecl>(type);
-	    Types::MemberFuncDecl* mf = od->GetMembFunc(m->Index());
-	    type = mf->Proto()->Type();
+	    expr = ParseStaticMember(ty, type);
 	}
-	else if (const auto ty = llvm::dyn_cast<TypeDef>(def))
+    }
+    if (!expr)
+    {
+	if (auto fd = llvm::dyn_cast<Types::FunctionDecl>(type))
 	{
-	    if (llvm::isa<Types::ClassDecl>(ty->Type()))
+	    type = fd->Proto()->Type();
+	}
+	if (auto cd = llvm::dyn_cast<ConstDef>(def))
+	{
+	    if (auto cc = llvm::dyn_cast<Constants::CompoundConstDecl>(cd->ConstValue()))
 	    {
-		expr = ParseStaticMember(ty, type);
+		expr = cc->Value();
 	    }
 	}
 	if (!expr)
 	{
-	    if (auto fd = llvm::dyn_cast<Types::FunctionDecl>(type))
+	    if (!llvm::isa<VarDef>(def) && !llvm::isa<FuncDef>(def) && !llvm::isa<MembFuncDef>(def))
 	    {
-		type = fd->Proto()->Type();
+		return Error("Expected variable");
 	    }
-	    if (auto cd = llvm::dyn_cast<ConstDef>(def))
-	    {
-		if (auto cc = llvm::dyn_cast<Constants::CompoundConstDecl>(cd->ConstValue()))
-		{
-		    expr = cc->Value();
-		}
-	    }
-	    if (!expr)
-	    {
-		expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
-	    }
+	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
 	}
     }
 

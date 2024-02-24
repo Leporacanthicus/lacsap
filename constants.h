@@ -24,6 +24,8 @@ namespace Constants
     {
     public:
 	ConstDecl(Types::TypeDecl* t, ConstKind k, const Location& w) : type(t), kind(k), loc(w) {}
+	ConstDecl() = delete;
+	ConstDecl(const ConstDecl&) = delete;
 	virtual ~ConstDecl() {}
 	virtual Token    Translate() const = 0;
 	ConstKind        getKind() const { return kind; }
@@ -63,6 +65,7 @@ namespace Constants
 	    : ConstDecl(t, CK_EnumConstDecl, w), value(v)
 	{
 	}
+	EnumConstDecl(const EnumConstDecl&) = delete;
 	Token       Translate() const override;
 	uint64_t    Value() const { return value; }
 	static bool classof(const ConstDecl* e) { return e->getKind() == CK_EnumConstDecl; }
@@ -153,6 +156,7 @@ namespace Constants
     ConstDecl* operator-(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator*(const ConstDecl& lhs, const ConstDecl& rhs);
     ConstDecl* operator/(const ConstDecl& lhs, const ConstDecl& rhs);
+    ConstDecl* operator%(const ConstDecl& lhs, const ConstDecl& rhs);
 
     const ConstDecl* EvalFunction(const std::string& name, const std::vector<const ConstDecl*>& args);
 
@@ -160,6 +164,7 @@ namespace Constants
     bool IsEvaluableFunc(const std::string& name);
 
     int64_t ToInt(const ConstDecl* c);
+    const ConstDecl* ToRealConstDecl(const ConstDecl* c);
 
 }; // namespace Constants
 

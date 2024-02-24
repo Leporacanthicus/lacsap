@@ -736,7 +736,31 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
 	return *lhs * *rhs;
 
     case Token::Divide:
-	return *lhs / *rhs;
+    {
+	const Constants::ConstDecl* tmpL = Constants::ToRealConstDecl(lhs);
+	const Constants::ConstDecl* tmpR = Constants::ToRealConstDecl(rhs);
+	if (tmpL && tmpR)
+	{
+	    return *tmpL / *tmpR;
+	}
+    }
+
+    case Token::Div:
+    {
+	if (llvm::isa<Constants::IntConstDecl>(lhs) && llvm::isa<Constants::IntConstDecl>(rhs))
+	{
+	    return *lhs / *rhs;
+	}
+	return Error("Expected integer constants for 'div' operation");
+    }
+
+    case Token::Mod:
+    {
+	if (llvm::isa<Constants::IntConstDecl>(lhs) && llvm::isa<Constants::IntConstDecl>(rhs))
+	{
+	    return *lhs % *rhs;
+	}
+    }
 
     default:
 	break;

@@ -255,6 +255,16 @@ namespace Constants
 	return v;
     }
 
+    ConstDecl* operator%(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	ConstDecl* v = DoIntegerMath(lhs, rhs, [](uint64_t lv, uint64_t rv) { return lv % rv; });
+	if (!v)
+	{
+	    return ErrorConst("Invalid operand for %");
+	}
+	return v;
+    }
+
     template<typename T>
     static const Constants::ConstDecl* UpdateValueSameType(const Constants::ConstDecl* cd, T func)
     {
@@ -431,6 +441,19 @@ namespace Constants
 	c->dump();
 	assert(0 && "Didn't expect to get here");
 	return -1;
+    }
+
+    const ConstDecl* ToRealConstDecl(const ConstDecl* c)
+    {
+	if (llvm::isa<RealConstDecl>(c))
+	{
+	    return c;
+	}
+	if (auto ic = llvm::dyn_cast<IntConstDecl>(c))
+	{
+	    return new RealConstDecl(ic->Loc(), ic->Value());
+	}
+	return ErrorConst("Expected an integer constant");
     }
 
 } // namespace Constants

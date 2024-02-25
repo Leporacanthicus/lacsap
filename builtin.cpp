@@ -124,6 +124,14 @@ namespace Builtin
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
     };
 
+    class FunctionIntConvert : public FunctionReal
+    {
+    public:
+	using FunctionReal::FunctionReal;
+	ErrorType    Semantics() override;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+    };
+
     class FunctionRandom : public FunctionReal
     {
     public:
@@ -698,6 +706,31 @@ namespace Builtin
     {
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::RealDecl>()->LlvmType(), {}, "__random");
 	return builder.CreateCall(f, {}, "calltmp");
+    }
+
+    ErrorType FunctionIntConvert::Semantics()
+    {
+	if (args.size() != 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (!llvm::isa<Types::RealDecl>(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+	return ErrorType::Ok;
+    }
+
+    llvm::Value* FunctionIntConvert::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::Value*         orig = args[0]->CodeGen();
+	llvm::Type*          ty = args[0]->Type()->LlvmType();
+	llvm::FunctionCallee fnAbs = GetFunction(ty, { ty }, "llvm.fabs.f64");
+	llvm::Value*         abs = builder.CreateCall(fnAbs, orig, "abs");
+	llvm::FunctionCallee fnFloor = GetFunction(ty, { ty }, "llvm.floor.f64");
+	llvm::Value*         floor = builder.CreateCall(fnFloor, abs, "floor");
+	llvm::FunctionCallee fnCopySign = GetFunction(ty, { ty, ty }, "llvm.copysign.f64");
+	return builder.CreateCall(fnCopySign, { floor, orig }, "int");
     }
 
     ErrorType FunctionRandom::Semantics()
@@ -1852,5 +1885,6 @@ namespace Builtin
 	AddBIFCreator("arg", NEW(CmplxToReal));
 	AddBIFCreator("polar", NEW(Polar));
 	AddBIFCreator("frac", NEW2(Float, "__frac"));
+	AddBIFCreator("int", NEW(IntConvert));
     }
 } // namespace Builtin

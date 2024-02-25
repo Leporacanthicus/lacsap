@@ -11,10 +11,14 @@ trunc(2.610)=2
 trunc(-2.610)=-2
 round(2.610)=3
 round(-2.610)=-3
+int(2.610)=2.000
+int(-2.610)=-2.000
 trunc(6.200)=6
 trunc(-6.200)=-6
 round(6.200)=6
 round(-6.200)=-6
+int(6.200)=6.000
+int(-6.200)=-6.000
 In procedure with no args
 testIntToFloat(12)=12.000
 sqr(16)=256

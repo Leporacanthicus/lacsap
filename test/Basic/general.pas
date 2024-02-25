@@ -83,6 +83,8 @@ begin
    writeln('trunc(', -r:1:3, ')=', trunc(-r));
    writeln('round(', r:1:3, ')=', round(r));
    writeln('round(', -r:1:3, ')=', round(-r));
+   writeln('int(', r:1:3, ')=', int(r):1:3);
+   writeln('int(', -r:1:3, ')=', int(-r):1:3);
 end; { testRoundTrunc }
    
 procedure testProcWithNoArgs;

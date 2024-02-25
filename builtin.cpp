@@ -1851,5 +1851,6 @@ namespace Builtin
 	AddBIFCreator("im", NEW2(ReIm, 1));
 	AddBIFCreator("arg", NEW(CmplxToReal));
 	AddBIFCreator("polar", NEW(Polar));
+	AddBIFCreator("frac", NEW2(Float, "__frac"));
     }
 } // namespace Builtin

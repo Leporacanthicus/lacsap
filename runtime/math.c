@@ -23,15 +23,10 @@ static unsigned urand()
 double __random(void)
 {
     return urand() / (double)UINT_MAX;
-    ;
 }
 
-double __arctan2(double x, double y)
+double __frac(double x)
 {
-    return atan2(x, y);
-}
-
-double __fmod(double x, double y)
-{
-    return fmod(x, y);
+    double intpart;
+    return modf(x, &intpart);
 }

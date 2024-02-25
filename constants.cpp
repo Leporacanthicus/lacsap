@@ -420,6 +420,58 @@ namespace Constants
 	      }
 	      return 0;
 	  } },
+	{ "frac", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          double intpart;
+	          return new Constants::RealConstDecl(rc->Loc(), modf(rc->Value(), &intpart));
+	      }
+	      return 0;
+	  } },
+
+	{ "int", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          double r = rc->Value();
+	          return new Constants::RealConstDecl(rc->Loc(), copysign(floor(std::abs(r)), r));
+	      }
+	      return 0;
+	  } },
+
+	{ "trunc", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::IntConstDecl(rc->Loc(), (int64_t)(rc->Value()));
+	      }
+	      return 0;
+	  } },
+
+	{ "round", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      {
+	          return new Constants::IntConstDecl(rc->Loc(), (int64_t)(round(rc->Value())));
+	      }
+	      return 0;
+	  } },
+
+	{ "odd", 1, 1,
+	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  {
+	      if (auto rc = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
+	      {
+	          return new Constants::BoolConstDecl(rc->Loc(), rc->Value() & 1);
+	      }
+	      return 0;
+	  } },
+
     };
 
     static EvaluableFunc* FindEvaluableFunc(std::string name)

@@ -27,6 +27,13 @@ const
    u = 11 xor 5;
    v = 11 shl 3;
    w = 4711 shr 4;
+   x = 9.875;
+   y = frac(x);
+   z = round(x);
+   aa = trunc(x);
+   ab = int(x);
+   ac = int(-x);
+   ad = odd(trunc(x));
    
 begin
    writeln('a=', a);
@@ -52,4 +59,11 @@ begin
    writeln('u=', u);
    writeln('v=', v);
    writeln('w=', w);
+   writeln('x=', x:10:8);
+   writeln('y=', y:10:8);
+   writeln('z=', z);
+   writeln('aa=', aa);
+   writeln('ab=', ab:10:8);
+   writeln('ac=', ac:10:8);
+   writeln('ad=', ad);
 end.

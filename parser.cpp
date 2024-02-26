@@ -157,6 +157,7 @@ public:
     // Helper functions for identifier access/checking
     const EnumDef*              GetEnumValue(const std::string& name);
     Types::TypeDecl*            GetTypeDecl(const std::string& name);
+    Types::TypeDecl*            GetTypeFromExpression();
     const Constants::ConstDecl* GetConstDecl(const std::string& name);
     bool AddType(const std::string& name, Types::TypeDecl* type, bool restricted = false);
     bool AddConst(const std::string& name, const Constants::ConstDecl* cd);
@@ -375,6 +376,24 @@ Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
     return 0;
 }
 
+Types::TypeDecl* Parser::GetTypeFromExpression()
+{
+    std::string name = GetIdentifier(NoExpectConsume);
+    if (!name.empty())
+    {
+	if (Types::TypeDecl* ty = GetTypeDecl(name))
+	{
+	    AssertToken(Token::Identifier);
+	    return ty;
+	}
+    }
+    if (ExprAST* e = ParseExpression())
+    {
+	return e->Type();
+    }
+    return 0;
+}
+
 ExprAST* Parser::ParseSizeOfExpr()
 {
     AssertToken(Token::SizeOf);
@@ -382,22 +401,12 @@ ExprAST* Parser::ParseSizeOfExpr()
     {
 	return 0;
     }
-    ExprAST*    expr = 0;
-    std::string name = GetIdentifier(NoExpectConsume);
-    if (!name.empty())
+
+    ExprAST*         expr = 0;
+    Types::TypeDecl* ty = GetTypeFromExpression();
+    if (ty)
     {
-	if (Types::TypeDecl* ty = GetTypeDecl(name))
-	{
-	    expr = new SizeOfExprAST(CurrentToken().Loc(), ty);
-	    AssertToken(Token::Identifier);
-	}
-    }
-    if (!expr)
-    {
-	if (ExprAST* e = ParseExpression())
-	{
-	    expr = new SizeOfExprAST(CurrentToken().Loc(), e->Type());
-	}
+	expr = new SizeOfExprAST(CurrentToken().Loc(), ty);
     }
     if (!Expect(Token::RightParen, ExpectConsume))
     {
@@ -549,6 +558,7 @@ Token Parser::TranslateToken(const Token& token)
     return token;
 }
 
+// Used for case-labels in variant records only
 int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 {
     bool negative = false;
@@ -944,6 +954,32 @@ const Constants::ConstDecl* Parser::ParseConstTerm(const Location& loc)
 	cd = new Constants::CharConstDecl(loc, (char)CurrentToken().GetIntVal());
 	NextToken();
 	break;
+
+    case Token::SizeOf:
+    {
+	AssertToken(Token::SizeOf);
+	if (!Expect(Token::LeftParen, ExpectConsume))
+	{
+	    return 0;
+	}
+
+	Types::TypeDecl* ty = GetTypeFromExpression();
+	if (!Expect(Token::RightParen, ExpectConsume))
+	{
+	    return 0;
+	}
+
+	if (!ty)
+	{
+	    return Error("Invalid expression in sizeof");
+	}
+	if (auto fc = llvm::dyn_cast_or_null<Types::FieldCollection>(ty))
+	{
+	    fc->EnsureSized();
+	}
+	cd = new Constants::IntConstDecl(loc, ty->Size() * mul);
+	break;
+    }
 
     case Token::Identifier:
     {

@@ -2923,6 +2923,10 @@ llvm::Value* WriteAST::CodeGen()
 		}
 		argsV.push_back(p);
 	    }
+	    else
+	    {
+		assert(!arg.precision && "Expected no precision for types other than REAL");
+	    }
 	}
 	else
 	{

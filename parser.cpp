@@ -1180,10 +1180,9 @@ void Parser::ParseTypeDef()
 	bool restricted = AcceptToken(Token::Restricted);
 	if (Types::TypeDecl* ty = ParseType(name, AllowForwarding))
 	{
-	    ExprAST* init = 0;
-	    if (AcceptToken(Token::Value))
+	    if (CurrentToken().GetToken() == Token::LeftSquare || AcceptToken(Token::Value))
 	    {
-		init = ParseInitValue(ty);
+		ExprAST* init = ParseInitValue(ty);
 		if (!init)
 		{
 		    return;
@@ -1873,7 +1872,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 
     AcceptToken(Token::Bindable);
 
-    tt = TranslateToken(CurrentToken()).GetToken();
+    tt = CurrentToken().GetToken();
 
     switch (tt)
     {
@@ -2983,6 +2982,8 @@ private:
 
 ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 {
+    TRACE();
+
     const Location loc = CurrentToken().Loc();
     if (llvm::isa<Types::SetDecl>(ty))
     {

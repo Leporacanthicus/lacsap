@@ -910,6 +910,47 @@ void TypeCheckVisitor::Check(IfExprAST* i)
     }
 }
 
+template<>
+void TypeCheckVisitor::Check(InitArrayAST* a)
+{
+    std::vector<int> indices;
+    auto             CheckDups = [&](int x)
+    {
+	if (std::find(indices.begin(), indices.end(), x) != indices.end())
+	{
+	    Error(a, "Duplicate initializer " + std::to_string(x));
+	}
+    };
+    bool hasOtherwise = false;
+
+    for (auto v : a->values)
+    {
+	switch (v.Kind())
+	{
+	case ArrayInit::InitKind::Range:
+	    for (int i = v.Start(); i <= v.End(); i++)
+	    {
+		CheckDups(i);
+		indices.push_back(i);
+	    }
+	    break;
+	case ArrayInit::InitKind::Single:
+	    CheckDups(v.Start());
+	    indices.push_back(v.Start());
+	    break;
+	case ArrayInit::InitKind::Otherwise:
+	    if (hasOtherwise)
+	    {
+		Error(a, "More than one otherwise in initializer");
+	    }
+	    hasOtherwise = true;
+	    break;
+	default:
+	    llvm_unreachable("Unexpected initalizer kind");
+	}
+    }
+}
+
 void Semantics::AddFixup(SemaFixup* f)
 {
     TRACE();
@@ -960,6 +1001,7 @@ void TypeCheckVisitor::visit(ExprAST* expr)
     MaybeCheck<WhileExprAST>(expr);
     MaybeCheck<RepeatExprAST>(expr);
     MaybeCheck<IfExprAST>(expr);
+    MaybeCheck<InitArrayAST>(expr);
 }
 
 void Semantics::Analyse(Source& src, ExprAST* ast)

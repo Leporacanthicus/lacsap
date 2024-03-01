@@ -6,7 +6,7 @@ type
    c = char value '*';
    e = (green, blue, red) value blue;
    aa = array [1..20] of real;
-   bb = aa[1..20: 7.125];
+   bb = aa[1..10: 7.125 otherwise 9.5];
    
 var
    n : t;
@@ -23,6 +23,6 @@ begin
    writeln("a=", a, " b=", b);
    writeln("v=", ord(v), " w=", ord(w));
    if v <> w then writeln("Good");
-   writeln("xx[1]=", xx[1]:8:4, " xx[11]=", xx[11]:8:4, " xx[19]=", xx[19]:8:4,
+   writeln("xx[1]=", xx[1]:8:4, " xx[10]=", xx[10]:8:4, " xx[11]=", xx[11]:8:4, " xx[19]=", xx[19]:8:4,
 	   " xx[20]=", xx[20]:8:4);
 end.

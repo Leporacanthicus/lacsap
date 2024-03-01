@@ -4260,22 +4260,37 @@ llvm::Value* InitArrayAST::CodeGen()
     Types::Range*                range = aty->Ranges()[0]->GetRange();
     size_t                       size = range->Size();
     std::vector<llvm::Constant*> initArr(size);
-
+    llvm::Constant*              otherwise = 0;
     for (auto v : values)
     {
 	auto c = llvm::dyn_cast<llvm::Constant>(v.Value()->CodeGen());
-	if (v.IsRange())
+	switch (v.Kind())
 	{
+	case ArrayInit::InitKind::Range:
 	    for (int i = v.Start(); i <= v.End(); i++)
 	    {
 		initArr[i - range->Start()] = c;
 	    }
-	}
-	else
-	{
+	    break;
+	case ArrayInit::InitKind::Single:
 	    initArr[v.Start() - range->Start()] = c;
+	    break;
+	case ArrayInit::InitKind::Otherwise:
+	    assert(!otherwise && "Expected only one otherwise initializer");
+	    otherwise = c;
+	    break;
+	default:
+	    llvm_unreachable("Unknown initializer kind");
 	}
     }
+    for (auto& i : initArr)
+    {
+	if (!i)
+	{
+	    i = otherwise;
+	}
+    }
+
     auto arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
 
     llvm::Constant* init = llvm::ConstantArray::get(arrty,

@@ -21,10 +21,17 @@ extern llvm::LLVMContext theContext;
 class ArrayInit
 {
 public:
-    ArrayInit(int s, int e, ExprAST* v) : start{ s }, end{ e }, value{ v }, isRange{ true } {}
-    ArrayInit(int s, ExprAST* v) : start{ s }, end{ 0 }, value{ v }, isRange{ false } {}
+    enum class InitKind
+    {
+	Single,
+	Range,
+	Otherwise
+    };
+    ArrayInit(int s, int e, ExprAST* v) : start{ s }, end{ e }, value{ v }, kind{ InitKind::Range } {}
+    ArrayInit(int s, ExprAST* v) : start{ s }, end{ 0 }, value{ v }, kind{ InitKind::Single } {}
+    ArrayInit(ExprAST* v) : start{ 0 }, end{ 0 }, value{ v }, kind{ InitKind::Otherwise } {}
 
-    bool     IsRange() const { return isRange; }
+    InitKind Kind() const { return kind; }
     ExprAST* Value() const { return value; }
     int      Start() const { return start; }
     int      End() const { return end; }
@@ -33,7 +40,7 @@ private:
     int      start;
     int      end;
     ExprAST* value;
-    bool     isRange;
+    InitKind kind;
 };
 
 class RecordInit
@@ -1038,6 +1045,8 @@ private:
 
 class InitArrayAST : public ExprAST
 {
+    friend class TypeCheckVisitor;
+
 public:
     InitArrayAST(const Location& w, Types::TypeDecl* ty, const std::vector<ArrayInit>& v)
         : ExprAST(w, EK_InitArray, ty), values(v)

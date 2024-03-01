@@ -23,7 +23,21 @@
 #include <string>
 #include <vector>
 
-using TerminatorList = std::vector<Token::TokenType>;
+enum ExpectConsuming
+{
+    NoExpectConsume,
+    ExpectConsume
+};
+
+struct Terminator
+{
+    Terminator(Token::TokenType tok, ExpectConsuming exp = ExpectConsume) : token{ tok }, expect{ exp } {}
+
+    Token::TokenType token;
+    ExpectConsuming  expect;
+};
+
+using TerminatorList = std::vector<Terminator>;
 
 class Parser : public ParserInterface
 {
@@ -32,11 +46,6 @@ public:
     {
 	NoForwarding,
 	AllowForwarding
-    };
-    enum ExpectConsuming
-    {
-	NoExpectConsume,
-	ExpectConsume
     };
 
     Parser(Source& source);
@@ -196,12 +205,25 @@ static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
 {
     for (auto i : list)
     {
-	if (t == i)
+	if (t == i.token)
 	{
 	    return true;
 	}
     }
     return false;
+}
+
+static ExpectConsuming ShouldConsume(Token::TokenType t, const TerminatorList& list)
+{
+    for (auto i : list)
+    {
+	if (t == i.token)
+	{
+	    return i.expect;
+	}
+    }
+    assert(0 && "Someone looked for a token that isn't in the list?");
+    return NoExpectConsume;
 }
 
 class ListConsumer
@@ -446,7 +468,7 @@ ExprAST* Parser::ParseDefaultExpr()
     return expr;
 }
 
-bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
+static bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 {
     bool done = lc.allowEmpty == ListConsumer::AllowEmpty::Yes &&
                 IsOneOf(parser.CurrentToken().GetToken(), lc.terminators);
@@ -464,14 +486,20 @@ bool ParseSeparatedList(Parser& parser, ListConsumer& lc)
 	else
 	{
 	    bool good = IsOneOf(parser.CurrentToken().GetToken(), lc.separators);
-	    parser.NextToken();
 	    if (!good)
 	    {
 		return false;
 	    }
+	    if (ShouldConsume(parser.CurrentToken().GetToken(), lc.separators) == ExpectConsume)
+	    {
+		parser.NextToken();
+	    }
 	}
     }
-    parser.NextToken();
+    if (ShouldConsume(parser.CurrentToken().GetToken(), lc.terminators) == ExpectConsume)
+    {
+	parser.NextToken();
+    }
     return true;
 }
 
@@ -1238,7 +1266,7 @@ public:
     CCNames(Token::TokenType e) : ListConsumer{ Token::Comma, e, ListConsumer::AllowEmpty::No } {}
     bool Consume(Parser& parser)
     {
-	std::string name = parser.GetIdentifier(Parser::ExpectConsume);
+	std::string name = parser.GetIdentifier(ExpectConsume);
 	if (!name.empty())
 	{
 	    names.push_back(name);
@@ -1262,7 +1290,7 @@ public:
 	{
 	    val = parser.CurrentToken().GetIntVal();
 	}
-	return parser.Expect(Token::Integer, Parser::ExpectConsume);
+	return parser.Expect(Token::Integer, ExpectConsume);
     }
     bool Consume(Parser& parser) override
     {
@@ -1634,10 +1662,9 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		assert(!ccv.Names().empty() && "Should have some names here...");
 		if (Types::TypeDecl* ty = ParseType("", NoForwarding))
 		{
-		    ExprAST* init = 0;
 		    if (AcceptToken(Token::Value))
 		    {
-			init = ParseInitValue(ty);
+			ExprAST* init = ParseInitValue(ty);
 			if (!init)
 			{
 			    return 0;
@@ -2872,7 +2899,7 @@ class CCArrayInitList : public ListConsumer
 {
 public:
     CCArrayInitList(Types::ArrayDecl* ty)
-        : ListConsumer{ { Token::Comma, Token::Semicolon },
+        : ListConsumer{ { Token::Comma, Token::Semicolon, { Token::Otherwise, NoExpectConsume } },
 	                { Token::RightSquare },
 	                ListConsumer::AllowEmpty::Yes }
         , type(ty)
@@ -2880,9 +2907,14 @@ public:
     }
     bool Consume(Parser& parser) override
     {
-
-	if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
-	        { Token::Comma, Token::Colon, Token::DotDot }))
+	if (parser.AcceptToken(Token::Otherwise))
+	{
+	    ExprAST* e = parser.ParseInitValue(type->SubType());
+	    list.push_back({ e });
+	    return true;
+	}
+	else if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
+	             { Token::Comma, Token::Colon, Token::DotDot, Token::Otherwise }))
 	{
 	    int  value = Constants::ToInt(cd);
 	    int  end = 0;
@@ -2897,7 +2929,7 @@ public:
 		end = Constants::ToInt(cd);
 		hasEnd = true;
 	    }
-	    parser.Expect(Token::Colon, Parser::ExpectConsume);
+	    parser.Expect(Token::Colon, ExpectConsume);
 	    ExprAST* e = parser.ParseInitValue(type->SubType());
 	    if (!e)
 	    {
@@ -2936,7 +2968,7 @@ public:
 	std::vector<int> elems;
 	do
 	{
-	    std::string fieldName = parser.GetIdentifier(Parser::ExpectConsume);
+	    std::string fieldName = parser.GetIdentifier(ExpectConsume);
 	    if (fieldName.empty())
 	    {
 		return false;
@@ -2964,7 +2996,7 @@ public:
 	    }
 	    if (!parser.AcceptToken(Token::Comma))
 	    {
-		parser.Expect(Token::Colon, Parser::ExpectConsume);
+		parser.Expect(Token::Colon, ExpectConsume);
 		if (ExprAST* e = parser.ParseInitValue(fty->SubType()))
 		{
 		    list.push_back({ elems, e });
@@ -3030,7 +3062,7 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	}
     }
     if (const Constants::ConstDecl* cd = ParseConstExpr(
-            { Token::Comma, Token::Semicolon, Token::Colon, Token::RightSquare }))
+            { Token::Comma, Token::Semicolon, Token::Colon, Token::RightSquare, Token::Otherwise }))
     {
 	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, ty, cd) });
     }
@@ -3250,7 +3282,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	{
 	    resultName = GetIdentifier(ExpectConsume);
 	}
-	if (!Expect(Token::Colon, Parser::ExpectConsume) || !(resultType = ParseSimpleType(true)))
+	if (!Expect(Token::Colon, ExpectConsume) || !(resultType = ParseSimpleType(true)))
 	{
 	    return 0;
 	}
@@ -3824,7 +3856,7 @@ public:
     {
 	nameStack.NewLevel();
 	levels++;
-	if (parser.Expect(Token::Identifier, Parser::NoExpectConsume))
+	if (parser.Expect(Token::Identifier, NoExpectConsume))
 	{
 	    ExprAST* e = parser.ParseIdentifierExpr(parser.CurrentToken());
 	    if (auto v = llvm::dyn_cast_or_null<AddressableAST>(e))
@@ -4143,7 +4175,7 @@ class CCProgram : public ListConsumer
 {
 public:
     CCProgram() : ListConsumer{ Token::Comma, Token::RightParen, ListConsumer::AllowEmpty::No } {}
-    bool Consume(Parser& parser) override { return parser.Expect(Token::Identifier, Parser::ExpectConsume); }
+    bool Consume(Parser& parser) override { return parser.Expect(Token::Identifier, ExpectConsume); }
 };
 
 bool Parser::ParseProgram(ParserType type)

@@ -2920,6 +2920,12 @@ public:
 	else if (const Constants::ConstDecl* cd = parser.ParseConstExpr(
 	             { Token::Comma, Token::Colon, Token::DotDot, Token::Otherwise }))
 	{
+	    if (!llvm::isa<Constants::IntConstDecl, Constants::EnumConstDecl, Constants::CharConstDecl,
+	                   Constants::BoolConstDecl>(cd))
+	    {
+		parser.Error("Initializer index should be an integral type");
+		return false;
+	    }
 	    int  value = Constants::ToInt(cd);
 	    int  end = 0;
 	    bool hasEnd = false;
@@ -2928,6 +2934,12 @@ public:
 		cd = parser.ParseConstExpr({ Token::Colon });
 		if (!cd)
 		{
+		    return false;
+		}
+		if (!llvm::isa<Constants::IntConstDecl, Constants::EnumConstDecl, Constants::CharConstDecl,
+		               Constants::BoolConstDecl>(cd))
+		{
+		    parser.Error("Initializer index should be an integral type");
 		    return false;
 		}
 		end = Constants::ToInt(cd);

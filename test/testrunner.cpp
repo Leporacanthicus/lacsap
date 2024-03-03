@@ -513,6 +513,8 @@ TestEntry negativeCaseList[] = {
     { 0, "CompErr", "Bad while-stmt", "badrepeat.pas", "" },
     { 0, "CompErr", "Type where variable expected", "typeasvar.pas", "" },
     { 0, "CompErr", "Precision on integer in write", "writeprecision.pas", "" },
+    { 0, "CompErr", "Non-integer index", "non-int-index.pas", "" },
+    { 0, "CompErr", "Non-integer index v2", "non-int-index2.pas", "" },
 };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)

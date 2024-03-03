@@ -331,7 +331,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    {
 		Error(b, "Exponent for ** operator should not be a complex value");
 	    }
-	    if (!llvm::isa<Types::RealDecl>(lty) && !llvm::isa<Types::ComplexDecl>(lty))
+	    if (!llvm::isa<Types::RealDecl, Types::ComplexDecl>(lty))
 	    {
 		Error(b, "Left hand side is wrong type (not possible to convert to real or complex)");
 	    }
@@ -619,7 +619,7 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
 
 	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
 	{
-	    if (parg[idx].IsRef() && !(llvm::isa<AddressableAST>(a) || llvm::isa<ClosureAST>(a)))
+	    if (parg[idx].IsRef() && !llvm::isa<AddressableAST, ClosureAST>(a))
 	    {
 		Error(c, "Expect variable for 'var' parameter");
 	    }

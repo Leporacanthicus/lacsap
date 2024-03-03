@@ -576,8 +576,8 @@ Token Parser::TranslateToken(const Token& token)
     {
 	if (const Constants::ConstDecl* cd = GetConstDecl(token.GetIdentName()))
 	{
-	    if (!llvm::isa<Constants::CompoundConstDecl>(cd) && !llvm::isa<Constants::SetConstDecl>(cd) &&
-	        !llvm::isa<Constants::EnumConstDecl>(cd))
+	    if (!llvm::isa<Constants::CompoundConstDecl, Constants::SetConstDecl, Constants::EnumConstDecl>(
+	            cd))
 	    {
 		return cd->Translate();
 	    }
@@ -2489,7 +2489,7 @@ bool Parser::IsCall(const NamedObject* def)
 	    return true;
 	}
     }
-    if ((llvm::isa<Types::FunctionDecl>(type) || llvm::isa<Types::MemberFuncDecl>(type)) &&
+    if (llvm::isa<Types::FunctionDecl, Types::MemberFuncDecl>(type) &&
         CurrentToken().GetToken() != Token::Assign)
     {
 	return true;
@@ -2640,7 +2640,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	}
 	if (!expr)
 	{
-	    if (!llvm::isa<VarDef>(def) && !llvm::isa<FuncDef>(def) && !llvm::isa<MembFuncDef>(def))
+	    if (!llvm::isa<VarDef, FuncDef, MembFuncDef>(def))
 	    {
 		return Error("Expected variable");
 	    }
@@ -3853,7 +3853,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	else
 	{
 	    ExprAST* e;
-	    if (llvm::isa<Types::RecordDecl>(fields) || llvm::isa<Types::ClassDecl>(fields))
+	    if (llvm::isa<Types::RecordDecl, Types::ClassDecl>(fields))
 	    {
 		e = new FieldExprAST(CurrentToken().Loc(), v, i, ty);
 	    }

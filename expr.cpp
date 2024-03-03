@@ -171,7 +171,7 @@ llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::T
 
 static bool IsConstant(ExprAST* e)
 {
-    return llvm::isa<IntegerExprAST>(e) || llvm::isa<CharExprAST>(e);
+    return llvm::isa<IntegerExprAST, CharExprAST>(e);
 }
 
 size_t AlignOfType(llvm::Type* ty)
@@ -2778,7 +2778,7 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	argTypes.push_back(intTy);
 	suffix = "bool";
     }
-    else if (llvm::isa<Types::IntegerDecl>(ty) || llvm::isa<Types::Int64Decl>(ty))
+    else if (llvm::isa<Types::IntegerDecl, Types::Int64Decl>(ty))
     {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
@@ -2871,7 +2871,7 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    else if (Types::IsCharArray(type))
 	    {
-		if (llvm::isa<StringExprAST>(arg.expr) || llvm::isa<BuiltinExprAST>(arg.expr))
+		if (llvm::isa<StringExprAST, BuiltinExprAST>(arg.expr))
 		{
 		    v = arg.expr->CodeGen();
 		}
@@ -2993,7 +2993,7 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty,
     {
 	suffix = "chr";
     }
-    else if (llvm::isa<Types::IntegerDecl>(ty) || llvm::isa<Types::Int64Decl>(ty))
+    else if (llvm::isa<Types::IntegerDecl, Types::Int64Decl>(ty))
     {
 	suffix = "int" + std::to_string(ty->Bits());
     }

@@ -2892,6 +2892,10 @@ ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const
     {
 	return new StringExprAST(loc, sc->Value(), sc->Type());
     }
+    if (auto cd = llvm::dyn_cast<Constants::CompoundConstDecl>(c))
+    {
+	return cd->Value();
+    }
     return Error("Unexpected constant type");
 }
 
@@ -3035,6 +3039,21 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
     }
     if (auto arrTy = llvm::dyn_cast<Types::ArrayDecl>(ty))
     {
+	std::string name = GetIdentifier(NoExpectConsume);
+	if (!name.empty())
+	{
+	    if (const Constants::ConstDecl* cd = GetConstDecl(name))
+	    {
+		const Types::TypeDecl* tt = ty->AssignableType(cd->Type());
+		if (!tt)
+		{
+		    return Error("Incompatible type");
+		}
+		NextToken();
+		return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, ty, cd) });
+	    }
+	    return Error("Unexpected identifier");
+	}
 	if (AcceptToken(Token::LeftSquare))
 	{
 	    CCArrayInitList cca(arrTy);

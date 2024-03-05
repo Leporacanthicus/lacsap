@@ -4267,7 +4267,7 @@ llvm::Value* InitArrayAST::CodeGen()
 	switch (v.Kind())
 	{
 	case ArrayInit::InitKind::Range:
-	    for (int i = v.Start(); i <= v.End(); i++)
+	    for (int64_t i = v.Start(); i <= v.End(); i++)
 	    {
 		initArr[i - range->Start()] = c;
 	    }
@@ -4350,7 +4350,7 @@ llvm::Value* ArraySliceAST::Address()
     llvm::Type*  elemTy = aty->SubType()->LlvmType();
     llvm::Value* v = MakeAddressable(expr);
     llvm::Value* low = range->Low();
-    int          start = aty->Ranges()[0]->Start();
+    int64_t      start = aty->Ranges()[0]->Start();
     llvm::Value* index = builder.CreateSub(low, MakeIntegerConstant(start));
     llvm::Value* ptr = builder.CreateGEP(elemTy, v, index);
 

@@ -27,18 +27,18 @@ public:
 	Range,
 	Otherwise
     };
-    ArrayInit(int s, int e, ExprAST* v) : start{ s }, end{ e }, value{ v }, kind{ InitKind::Range } {}
-    ArrayInit(int s, ExprAST* v) : start{ s }, end{ 0 }, value{ v }, kind{ InitKind::Single } {}
+    ArrayInit(int64_t s, int64_t e, ExprAST* v) : start{ s }, end{ e }, value{ v }, kind{ InitKind::Range } {}
+    ArrayInit(int64_t s, ExprAST* v) : start{ s }, end{ 0 }, value{ v }, kind{ InitKind::Single } {}
     ArrayInit(ExprAST* v) : start{ 0 }, end{ 0 }, value{ v }, kind{ InitKind::Otherwise } {}
 
     InitKind Kind() const { return kind; }
     ExprAST* Value() const { return value; }
-    int      Start() const { return start; }
-    int      End() const { return end; }
+    int64_t  Start() const { return start; }
+    int64_t  End() const { return end; }
 
 private:
-    int      start;
-    int      end;
+    int64_t  start;
+    int64_t  end;
     ExprAST* value;
     InitKind kind;
 };

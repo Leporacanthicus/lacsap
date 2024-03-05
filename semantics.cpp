@@ -913,8 +913,8 @@ void TypeCheckVisitor::Check(IfExprAST* i)
 template<>
 void TypeCheckVisitor::Check(InitArrayAST* a)
 {
-    std::vector<int> indices;
-    auto             CheckDups = [&](int x)
+    std::vector<int64_t> indices;
+    auto                 CheckDups = [&](int64_t x)
     {
 	if (std::find(indices.begin(), indices.end(), x) != indices.end())
 	{
@@ -928,7 +928,7 @@ void TypeCheckVisitor::Check(InitArrayAST* a)
 	switch (v.Kind())
 	{
 	case ArrayInit::InitKind::Range:
-	    for (int i = v.Start(); i <= v.End(); i++)
+	    for (int64_t i = v.Start(); i <= v.End(); i++)
 	    {
 		CheckDups(i);
 		indices.push_back(i);

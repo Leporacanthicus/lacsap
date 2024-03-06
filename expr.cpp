@@ -2045,7 +2045,6 @@ void FunctionAST::accept(ASTVisitor& v)
     {
 	i->accept(v);
     }
-    v.visit(this);
 }
 
 static llvm::DISubroutineType* CreateFunctionType(DebugInfo& di, PrototypeAST* proto)

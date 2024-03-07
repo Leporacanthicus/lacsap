@@ -259,12 +259,8 @@ public:
         : AddressableAST(w, EK_VariableExpr, ty), name(nm)
     {
     }
-    VariableExprAST(const Location& w, ExprKind k, const std::string& nm, Types::TypeDecl* ty)
-        : AddressableAST(w, k, ty), name(nm)
-    {
-    }
-    VariableExprAST(const Location& w, ExprKind k, const VariableExprAST* v, Types::TypeDecl* ty)
-        : AddressableAST(w, k, ty), name(v->name)
+    VariableExprAST(const Location& w, const NamedObject* obj)
+        : AddressableAST{ w, EK_VariableExpr, obj->Type() }, name{ obj->Name() }
     {
     }
     void              DoDump() const override;
@@ -602,11 +598,11 @@ private:
     Location                  endLoc;
 };
 
-class FunctionExprAST : public VariableExprAST
+class FunctionExprAST : public ExprAST
 {
 public:
     FunctionExprAST(const Location& w, const PrototypeAST* p)
-        : VariableExprAST(w, EK_FunctionExpr, p->Name(), p->Type()), proto(p)
+        : ExprAST(w, EK_FunctionExpr, p->Type()), proto(p)
     {
     }
 

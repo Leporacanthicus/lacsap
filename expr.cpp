@@ -635,7 +635,7 @@ void FilePointerExprAST::accept(ASTVisitor& v)
 
 void FunctionExprAST::DoDump() const
 {
-    std::cerr << "Function " << name;
+    std::cerr << "Function " << proto->Name();
 }
 
 llvm::Value* FunctionExprAST::CodeGen()

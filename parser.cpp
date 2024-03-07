@@ -160,7 +160,7 @@ public:
 
     // Helper functions for expression evaluation
     bool     IsCall(const NamedObject* def);
-    ExprAST* MakeCallExpr(const NamedObject* def, const std::string& funcName, std::vector<ExprAST*>& args);
+    ExprAST* MakeCallExpr(const NamedObject* def, std::vector<ExprAST*>& args);
     ExprAST* MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args);
     ExprAST* MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
                           std::vector<ExprAST*>& args);
@@ -2244,8 +2244,7 @@ ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::v
     return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
 }
 
-ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcName,
-                              std::vector<ExprAST*>& args)
+ExprAST* Parser::MakeCallExpr(const NamedObject* def, std::vector<ExprAST*>& args)
 {
     TRACE();
 
@@ -2261,18 +2260,18 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, const std::string& funcNam
 	if (auto fp = llvm::dyn_cast<Types::FuncPtrDecl>(def->Type()))
 	{
 	    proto = fp->Proto();
-	    expr = new VariableExprAST(CurrentToken().Loc(), funcName, def->Type());
+	    expr = new VariableExprAST(CurrentToken().Loc(), def);
 	}
 	else
 	{
 	    return Error("Expected function pointer");
 	}
     }
-    else if (const auto m = llvm::dyn_cast_or_null<MembFuncDef>(def))
+    else if (const auto m = llvm::dyn_cast<MembFuncDef>(def))
     {
 	auto                   cd = llvm::dyn_cast<Types::ClassDecl>(m->Type());
 	Types::MemberFuncDecl* mf = cd->GetMembFunc(m->Index());
-	VariableExprAST*       self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
+	auto                   self = new VariableExprAST(CurrentToken().Loc(), "self", cd);
 	return MakeSelfCall(self, mf, cd, args);
     }
     else
@@ -2297,7 +2296,6 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
     }
     else
     {
-	std::string fname = mf->LongName();
 	expr = new FunctionExprAST(CurrentToken().Loc(), proto);
     }
     if (proto->HasSelf())
@@ -2546,7 +2544,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 			{
 			    if (llvm::isa<Types::FuncPtrDecl>(vd->Type()))
 			    {
-				arg = new VariableExprAST(CurrentToken().Loc(), idName, argDef->Type());
+				arg = new VariableExprAST(CurrentToken().Loc(), argDef);
 			    }
 			}
 		    }
@@ -2625,6 +2623,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	if (llvm::isa<Types::ClassDecl>(ty->Type()))
 	{
 	    expr = ParseStaticMember(ty, type);
+	    assert(expr);
 	}
     }
     if (!expr)
@@ -2728,7 +2727,7 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
 
     if (def)
     {
-	if (ExprAST* expr = MakeCallExpr(def, idName, args))
+	if (ExprAST* expr = MakeCallExpr(def, args))
 	{
 	    return expr;
 	}
@@ -3646,7 +3645,7 @@ ExprAST* Parser::ParseForExpr()
     {
 	return Error("Loop induction must be a variable");
     }
-    VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), varName, def->Type());
+    VariableExprAST* varExpr = new VariableExprAST(CurrentToken().Loc(), def);
     if (AcceptToken(Token::Assign))
     {
 	if (ExprAST* start = ParseExpression())
@@ -3963,7 +3962,7 @@ VariableExprAST* Parser::GetOutput(const Location& loc)
 	{
 	    return Error("Expect 'output' to be a text variable");
 	}
-	return new VariableExprAST(loc, var->Name(), var->Type());
+	return new VariableExprAST(loc, var);
     }
     return Error("Expected 'output' to be a variable");
 }
@@ -3981,7 +3980,7 @@ VariableExprAST* Parser::GetInput(const Location& loc)
 	{
 	    return Error("Expect 'input' to be a text variable");
 	}
-	return new VariableExprAST(loc, var->Name(), var->Type());
+	return new VariableExprAST(loc, var);
     }
     return Error("Expected 'input' to be a variable");
 }

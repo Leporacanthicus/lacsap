@@ -91,6 +91,8 @@ public:
     ExprAST* ParseGoto();
 
     // I/O functions
+    VariableExprAST* GetOutput(const Location& loc);
+    VariableExprAST* GetInput(const Location& loc);
     ExprAST* ParseWrite();
     ExprAST* ParseRead();
 
@@ -3948,6 +3950,42 @@ ExprAST* Parser::ParseWithBlock()
     return 0;
 }
 
+VariableExprAST* Parser::GetOutput(const Location& loc)
+{
+    const NamedObject* def = nameStack.FindBaseLevel("output");
+    if (!def)
+    {
+	return Error("Output not available");
+    }
+    if (auto var = llvm::dyn_cast<VarDef>(def))
+    {
+	if (!llvm::isa<Types::TextDecl>(var->Type()))
+	{
+	    return Error("Expect 'output' to be a text variable");
+	}
+	return new VariableExprAST(loc, var->Name(), var->Type());
+    }
+    return Error("Expected 'output' to be a variable");
+}
+
+VariableExprAST* Parser::GetInput(const Location& loc)
+{
+    const NamedObject* def = nameStack.FindBaseLevel("input");
+    if (!def)
+    {
+	return Error("Input not available");
+    }
+    if (auto var = llvm::dyn_cast<VarDef>(def))
+    {
+	if (!llvm::isa<Types::TextDecl>(var->Type()))
+	{
+	    return Error("Expect 'input' to be a text variable");
+	}
+	return new VariableExprAST(loc, var->Name(), var->Type());
+    }
+    return Error("Expected 'input' to be a variable");
+}
+
 class CCWrite : public ListConsumer
 {
 public:
@@ -3956,6 +3994,7 @@ public:
     bool Consume(Parser& parser) override
     {
 	WriteAST::WriteArg wa;
+	Location           loc = parser.CurrentToken().Loc();
 	if ((wa.expr = parser.ParseExpression()))
 	{
 	    if (!dest)
@@ -3975,8 +4014,7 @@ public:
 		}
 		if (!dest)
 		{
-		    dest = new VariableExprAST(parser.CurrentToken().Loc(), "output",
-		                               Types::Get<Types::TextDecl>());
+		    dest = parser.GetOutput(loc);
 		}
 	    }
 	    if (parser.AcceptToken(Token::Colon))
@@ -4041,7 +4079,7 @@ ExprAST* Parser::ParseWrite()
 	{
 	    return Error("Write or WriteStr must have arguments.");
 	}
-	dest = new VariableExprAST(loc, "output", Types::Get<Types::TextDecl>());
+	dest = GetOutput(loc);
     }
     else
     {
@@ -4088,8 +4126,7 @@ public:
 		}
 		if (!src)
 		{
-		    src = new VariableExprAST(parser.CurrentToken().Loc(), "input",
-		                              Types::Get<Types::TextDecl>());
+		    src = parser.GetInput(parser.CurrentToken().Loc());
 		}
 	    }
 	    args.push_back(expr);
@@ -4137,7 +4174,7 @@ ExprAST* Parser::ParseRead()
 	{
 	    return Error("Read must have arguments.");
 	}
-	src = new VariableExprAST(loc, "input", Types::Get<Types::TextDecl>());
+	src = GetInput(loc);
     }
     else
     {
@@ -4479,15 +4516,12 @@ ExprAST* Parser::Parse(ParserType type)
     TIME_TRACE();
 
     NextToken();
-    if (type == ParserType::Program)
-    {
-	VarDef input("input", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
-	VarDef output("output", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
-	nameStack.Add(new VarDef(input));
-	nameStack.Add(new VarDef(output));
-	std::vector<VarDef> varList{ input, output };
-	ast.push_back(new VarDeclAST(Location(), varList));
-    }
+    VarDef input("input", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
+    VarDef output("output", Types::Get<Types::TextDecl>(), VarDef::Flags::External);
+    nameStack.Add(new VarDef(input));
+    nameStack.Add(new VarDef(output));
+    std::vector<VarDef> varList{ input, output };
+    ast.push_back(new VarDeclAST(Location(), varList));
 
     return ParseUnit(type);
 }

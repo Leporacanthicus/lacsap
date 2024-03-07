@@ -792,6 +792,7 @@ void TypeCheckVisitor::Check<ReadAST>(ReadAST* r)
 template<>
 void TypeCheckVisitor::Check<WriteAST>(WriteAST* w)
 {
+    TRACE();
     bool isText = llvm::isa<Types::TextDecl>(w->dest->Type()) || w->kind == WriteAST::WriteKind::WriteStr;
 
     if (w->kind == WriteAST::WriteKind::WriteStr)

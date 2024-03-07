@@ -32,48 +32,42 @@ public:
 
     void DropLevel() { stack.pop_back(); }
 
-    /* Returns false on failure */
-    bool Add(std::string name, const T& v)
+    static void LowerIfNeeded(std::string& name)
     {
 	if (caseInsensitive)
 	{
 	    strlower(name);
 	}
-	MapIter it = stack.back().find(name);
-	if (it == stack.back().end())
+    }
+
+    /* Returns false on failure */
+    bool Add(std::string name, const T& v)
+    {
+	LowerIfNeeded(name);
+	const auto [it, inserted] = stack.back().insert({ name, v });
+	if (verbosity > 1 && inserted)
 	{
-	    if (verbosity > 1)
-	    {
-		std::cerr << "Adding value: " << name << std::endl;
-	    }
-	    stack.back()[name] = v;
-	    return true;
+	    std::cerr << "Adding value: " << name << std::endl;
 	}
-	return false;
+	return inserted;
     }
     // Alternative version, used with NamedObject
     bool Add(const T& v) { return Add(v->Name(), v); }
 
-    T Find(std::string name, size_t& level) const
+    T Find(std::string name) const
     {
-	int lvl = MaxLevel();
 	if (verbosity > 1)
 	{
 	    std::cerr << "Finding value: " << name << std::endl;
 	}
-	if (caseInsensitive)
+	LowerIfNeeded(name);
+	for (StackRIter s = stack.rbegin(); s != stack.rend(); s++)
 	{
-	    strlower(name);
-	}
-	for (StackRIter s = stack.rbegin(); s != stack.rend(); s++, lvl--)
-	{
-	    MapIter it = s->find(name);
-	    if (it != s->end())
+	    if (MapIter it = s->find(name); it != s->end())
 	    {
-		level = lvl;
 		if (verbosity > 1)
 		{
-		    std::cerr << "Found at lvl " << lvl << std::endl;
+		    std::cerr << "Found it" << std::endl;
 		}
 		return it->second;
 	    }
@@ -88,20 +82,20 @@ public:
 	return 0;
     }
 
-    T Find(const std::string& name)
-    {
-	size_t dummy;
-	return Find(name, dummy);
-    }
-
     T FindTopLevel(std::string name)
     {
-	if (caseInsensitive)
+	LowerIfNeeded(name);
+	if (auto it = stack.back().find(name); it != stack.back().end())
 	{
-	    strlower(name);
+	    return it->second;
 	}
-	MapIter it = stack.back().find(name);
-	if (it != stack.back().end())
+	return 0;
+    }
+
+    T FindBaseLevel(std::string name)
+    {
+	LowerIfNeeded(name);
+	if (auto it = stack.front().find(name); it != stack.front().end())
 	{
 	    return it->second;
 	}

@@ -429,11 +429,8 @@ void VariableExprAST::DoDump() const
 llvm::Value* VariableExprAST::Address()
 {
     TRACE();
-    size_t level;
-    if (llvm::Value* v = variables.Find(name, level))
+    if (llvm::Value* v = variables.Find(name))
     {
-	assert((level == 0 || level == variables.MaxLevel()) &&
-	       "Expected variable to either be local or global");
 	EnsureSized();
 	return v;
     }
@@ -3218,7 +3215,10 @@ llvm::Value* VarDeclAST::CodeGen()
 	}
 	if (!variables.Add(var.Name(), v))
 	{
-	    return Error(this, "Duplicate name " + var.Name() + "!");
+	    if (func || (var.Name() != "output" && var.Name() != "input"))
+	    {
+		return Error(this, "Duplicate name " + var.Name() + "!");
+	    }
 	}
     }
     return v;

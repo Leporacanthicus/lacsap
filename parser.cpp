@@ -93,6 +93,7 @@ public:
     // I/O functions
     VariableExprAST* GetOutput(const Location& loc);
     VariableExprAST* GetInput(const Location& loc);
+    VariableExprAST* GetGlobalTextByName(const Location& loc, const std::string& name);
     ExprAST* ParseWrite();
     ExprAST* ParseRead();
 
@@ -3933,40 +3934,32 @@ ExprAST* Parser::ParseWithBlock()
     return 0;
 }
 
-VariableExprAST* Parser::GetOutput(const Location& loc)
+VariableExprAST* Parser::GetGlobalTextByName(const Location& loc, const std::string& name)
 {
-    const NamedObject* def = nameStack.FindBaseLevel("output");
+    const NamedObject* def = nameStack.FindBaseLevel(name);
     if (!def)
     {
-	return Error("Output not available");
+	return Error("Variable '" + name + "' not available");
     }
     if (auto var = llvm::dyn_cast<VarDef>(def))
     {
 	if (!llvm::isa<Types::TextDecl>(var->Type()))
 	{
-	    return Error("Expect 'output' to be a text variable");
+	    return Error("Expect '" + name + "' to be a text variable");
 	}
 	return new VariableExprAST(loc, var);
     }
-    return Error("Expected 'output' to be a variable");
+    return Error("Expected '" + name + "' to be a variable");
+}
+
+VariableExprAST* Parser::GetOutput(const Location& loc)
+{
+    return GetGlobalTextByName(loc, "output");
 }
 
 VariableExprAST* Parser::GetInput(const Location& loc)
 {
-    const NamedObject* def = nameStack.FindBaseLevel("input");
-    if (!def)
-    {
-	return Error("Input not available");
-    }
-    if (auto var = llvm::dyn_cast<VarDef>(def))
-    {
-	if (!llvm::isa<Types::TextDecl>(var->Type()))
-	{
-	    return Error("Expect 'input' to be a text variable");
-	}
-	return new VariableExprAST(loc, var);
-    }
-    return Error("Expected 'input' to be a variable");
+    return GetGlobalTextByName(loc, "input");
 }
 
 class CCWrite : public ListConsumer

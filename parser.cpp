@@ -2604,7 +2604,6 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 {
     TRACE();
 
-    ExprAST*         expr = 0;
     Types::TypeDecl* type = def->Type();
     assert(type && "Expect type here...");
 
@@ -2622,37 +2621,25 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
     {
 	if (llvm::isa<Types::ClassDecl>(ty->Type()))
 	{
-	    expr = ParseStaticMember(ty, type);
-	    assert(expr);
+	    return ParseStaticMember(ty, type);
 	}
     }
-    if (!expr)
+    if (auto fd = llvm::dyn_cast<Types::FunctionDecl>(type))
     {
-	if (auto fd = llvm::dyn_cast<Types::FunctionDecl>(type))
+	type = fd->Proto()->Type();
+    }
+    if (auto cd = llvm::dyn_cast<ConstDef>(def))
+    {
+	if (auto cc = llvm::dyn_cast<Constants::CompoundConstDecl>(cd->ConstValue()))
 	{
-	    type = fd->Proto()->Type();
-	}
-	if (auto cd = llvm::dyn_cast<ConstDef>(def))
-	{
-	    if (auto cc = llvm::dyn_cast<Constants::CompoundConstDecl>(cd->ConstValue()))
-	    {
-		expr = cc->Value();
-	    }
-	}
-	if (!expr)
-	{
-	    if (!llvm::isa<VarDef, FuncDef, MembFuncDef>(def))
-	    {
-		return Error("Expected variable");
-	    }
-	    expr = new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
+	    return cc->Value();
 	}
     }
-
-    assert(expr && "Expected expression here");
-    assert(type && "Type is supposed to be set here");
-
-    return expr;
+    if (!llvm::isa<VarDef, FuncDef, MembFuncDef>(def))
+    {
+	return Error("Expected variable");
+    }
+    return new VariableExprAST(CurrentToken().Loc(), def->Name(), type);
 }
 
 static ExprAST* CreateSetExprFromSetConst(const Constants::SetConstDecl* set)
@@ -2709,12 +2696,9 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
     {
 	return Error("Undefined name '" + idName + "'");
     }
-    if (def)
+    if (def && !IsCall(def))
     {
-	if (!IsCall(def))
-	{
-	    return ParseVariableExpr(def);
-	}
+	return ParseVariableExpr(def);
     }
 
     // Have to check twice for `def` as we need args for both

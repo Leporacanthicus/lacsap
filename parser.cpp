@@ -162,7 +162,7 @@ public:
     // Helper functions for expression evaluation
     bool     IsCall(const NamedObject* def);
     ExprAST* MakeCallExpr(const NamedObject* def, std::vector<ExprAST*>& args);
-    ExprAST* MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args);
+    ExprAST* MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, const std::vector<ExprAST*>& args);
     ExprAST* MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::ClassDecl* cd,
                           std::vector<ExprAST*>& args);
 
@@ -2238,7 +2238,7 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
     return expr;
 }
 
-ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, std::vector<ExprAST*>& args)
+ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, const std::vector<ExprAST*>& args)
 {
     assert(expr && "Expect to get an expression here");
     assert(proto && "Prototype should have been found here...");

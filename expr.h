@@ -238,7 +238,7 @@ class SetExprAST : public AddressableAST
     friend class TypeCheckVisitor;
 
 public:
-    SetExprAST(const Location& w, std::vector<ExprAST*> v, Types::TypeDecl* ty)
+    SetExprAST(const Location& w, const std::vector<ExprAST*>& v, Types::TypeDecl* ty)
         : AddressableAST(w, EK_SetExpr, ty), values(v)
     {
     }
@@ -463,7 +463,7 @@ private:
 class BlockAST : public ExprAST
 {
 public:
-    BlockAST(const Location& w, std::vector<ExprAST*> block) : ExprAST(w, EK_Block), content(block) {}
+    BlockAST(const Location& w, const std::vector<ExprAST*>& block) : ExprAST(w, EK_Block), content(block) {}
     void                   DoDump() const override;
     llvm::Value*           CodeGen() override;
     bool                   IsEmpty() { return content.size() == 0; }
@@ -503,7 +503,7 @@ class FunctionAST;
 class VarDeclAST : public ExprAST
 {
 public:
-    VarDeclAST(const Location& w, std::vector<VarDef> v) : ExprAST(w, EK_VarDecl), vars(v), func(0) {}
+    VarDeclAST(const Location& w, const std::vector<VarDef>& v) : ExprAST(w, EK_VarDecl), vars(v), func(0) {}
     void                       DoDump() const override;
     llvm::Value*               CodeGen() override;
     void                       SetFunction(FunctionAST* f) { func = f; }
@@ -512,6 +512,9 @@ public:
     const std::vector<VarDef>& Vars() { return vars; }
 
 private:
+    llvm::Value* CodeGenGlobal(VarDef var);
+    llvm::Value* CodeGenLocal(VarDef var);
+
     std::vector<VarDef> vars;
     FunctionAST*        func;
 };
@@ -620,7 +623,7 @@ class CallExprAST : public ExprAST
     friend class TypeCheckVisitor;
 
 public:
-    CallExprAST(const Location& w, ExprAST* c, std::vector<ExprAST*> a, const PrototypeAST* p)
+    CallExprAST(const Location& w, ExprAST* c, const std::vector<ExprAST*>& a, const PrototypeAST* p)
         : ExprAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
     {
 	assert(proto && "Should have prototype!");

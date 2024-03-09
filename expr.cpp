@@ -3097,6 +3097,115 @@ void VarDeclAST::DoDump() const
     }
 }
 
+llvm::Value* VarDeclAST::CodeGenGlobal(VarDef var)
+{
+    llvm::Type*  ty = var.Type()->LlvmType();
+    llvm::Value* v = 0;
+    if (auto fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
+    {
+	fc->EnsureSized();
+    }
+
+    assert(ty && "Type should have a value");
+    llvm::Constant*   init;
+    llvm::Constant*   nullValue = llvm::Constant::getNullValue(ty);
+    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
+    if (cd && cd->VTableType(true))
+    {
+	llvm::GlobalVariable*        gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
+	auto                         sty = llvm::dyn_cast<llvm::StructType>(ty);
+	std::vector<llvm::Constant*> vtable(sty->getNumElements());
+	vtable[0] = gv;
+	unsigned i = 1;
+	while (llvm::Constant* c = nullValue->getAggregateElement(i))
+	{
+	    vtable[i] = c;
+	    i++;
+	}
+	init = llvm::ConstantStruct::get(sty, vtable);
+    }
+    else if (ExprAST* iv = var.Init())
+    {
+	init = llvm::dyn_cast<llvm::Constant>(iv->CodeGen());
+    }
+    else
+    {
+	init = nullValue;
+    }
+    llvm::GlobalValue::LinkageTypes linkage = (var.IsExternal() ? llvm::GlobalValue::ExternalLinkage
+                                                                : llvm::Function::InternalLinkage);
+
+    llvm::GlobalVariable*  gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init, var.Name());
+    const llvm::DataLayout dl(theModule);
+    size_t                 al = std::max(size_t(4), dl.getPrefTypeAlign(ty).value());
+    gv->setAlignment(llvm::Align(al));
+    v = gv;
+    if (debugInfo)
+    {
+	DebugInfo&    di = GetDebugInfo();
+	llvm::DIType* debugType = var.Type()->DebugType(di.builder);
+	if (!debugType)
+	{
+	    // Ugly hack until we have all debug types.
+	    std::cerr << "Skipping unknown debug type element." << std::endl;
+	    var.Type()->dump();
+	}
+	else
+	{
+	    int            lineNum = this->Loc().LineNumber();
+	    llvm::DIScope* scope = di.cu;
+	    llvm::DIFile*  unit = scope->getFile();
+
+	    di.builder->createGlobalVariableExpression(scope, var.Name(), var.Name(), unit, lineNum,
+	                                               debugType, gv->hasInternalLinkage());
+	}
+    }
+    return v;
+}
+
+llvm::Value* VarDeclAST::CodeGenLocal(VarDef var)
+{
+    llvm::Value* v = CreateAlloca(func->Proto()->LlvmFunction(), var);
+    auto         cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
+    if (cd && cd->VTableType(true))
+    {
+	llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
+	llvm::Type*           ty = Types::GetVoidPtrType();
+	llvm::Value*          dest = builder.CreateGEP(ty, v, MakeIntegerConstant(0), "vtable");
+	builder.CreateStore(gv, dest);
+    }
+    else if (ExprAST* iv = var.Init())
+    {
+	llvm::Value* init = iv->CodeGen();
+	builder.CreateStore(init, v);
+    }
+    if (debugInfo)
+    {
+	DebugInfo& di = GetDebugInfo();
+	assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
+	llvm::DIScope* sp = di.lexicalBlocks.back();
+	llvm::DIType*  debugType = var.Type()->DebugType(di.builder);
+	if (!debugType)
+	{
+	    // Ugly hack until we have all debug types.
+	    std::cerr << "Skipping unknown debug type element." << std::endl;
+	    var.Type()->dump();
+	}
+	else
+	{
+	    // Create a debug descriptor for the variable.
+	    int                    lineNum = this->Loc().LineNumber();
+	    llvm::DIFile*          unit = sp->getFile();
+	    llvm::DILocalVariable* dv = di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
+	                                                               debugType, true);
+	    llvm::DILocation*      diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
+	    di.builder->insertDeclare(v, dv, di.builder->createExpression(), llvm::DebugLoc(diloc),
+	                              ::builder.GetInsertBlock());
+	}
+    }
+    return v;
+}
+
 llvm::Value* VarDeclAST::CodeGen()
 {
     TRACE();
@@ -3107,111 +3216,13 @@ llvm::Value* VarDeclAST::CodeGen()
     for (auto var : vars)
     {
 	// Are we declaring global variables  - no function!
-	llvm::Type* ty = var.Type()->LlvmType();
 	if (!func)
 	{
-	    if (auto fc = llvm::dyn_cast<Types::FieldCollection>(var.Type()))
-	    {
-		fc->EnsureSized();
-	    }
-
-	    assert(ty && "Type should have a value");
-	    llvm::Constant*   init;
-	    llvm::Constant*   nullValue = llvm::Constant::getNullValue(ty);
-	    Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
-	    if (cd && cd->VTableType(true))
-	    {
-		llvm::GlobalVariable*        gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
-		auto                         sty = llvm::dyn_cast<llvm::StructType>(ty);
-		std::vector<llvm::Constant*> vtable(sty->getNumElements());
-		vtable[0] = gv;
-		unsigned i = 1;
-		while (llvm::Constant* c = nullValue->getAggregateElement(i))
-		{
-		    vtable[i] = c;
-		    i++;
-		}
-		init = llvm::ConstantStruct::get(sty, vtable);
-	    }
-	    else if (ExprAST* iv = var.Init())
-	    {
-		init = llvm::dyn_cast<llvm::Constant>(iv->CodeGen());
-	    }
-	    else
-	    {
-		init = nullValue;
-	    }
-	    llvm::GlobalValue::LinkageTypes linkage = (var.IsExternal() ? llvm::GlobalValue::ExternalLinkage
-	                                                                : llvm::Function::InternalLinkage);
-
-	    llvm::GlobalVariable*  gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init,
-	                                                         var.Name());
-	    const llvm::DataLayout dl(theModule);
-	    size_t                 al = dl.getPrefTypeAlign(ty).value();
-	    al = std::max(size_t(4), al);
-	    gv->setAlignment(llvm::Align(al));
-	    v = gv;
-	    if (debugInfo)
-	    {
-		DebugInfo&    di = GetDebugInfo();
-		llvm::DIType* debugType = var.Type()->DebugType(di.builder);
-		if (!debugType)
-		{
-		    // Ugly hack until we have all debug types.
-		    std::cerr << "Skipping unknown debug type element." << std::endl;
-		    var.Type()->dump();
-		}
-		else
-		{
-		    int            lineNum = this->Loc().LineNumber();
-		    llvm::DIScope* scope = di.cu;
-		    llvm::DIFile*  unit = scope->getFile();
-
-		    di.builder->createGlobalVariableExpression(scope, var.Name(), var.Name(), unit, lineNum,
-		                                               debugType, gv->hasInternalLinkage());
-		}
-	    }
+	    v = CodeGenGlobal(var);
 	}
 	else
 	{
-	    v = CreateAlloca(func->Proto()->LlvmFunction(), var);
-	    auto cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
-	    if (cd && cd->VTableType(true))
-	    {
-		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
-		llvm::Type*           ty = Types::GetVoidPtrType();
-		llvm::Value*          dest = builder.CreateGEP(ty, v, MakeIntegerConstant(0), "vtable");
-		builder.CreateStore(gv, dest);
-	    }
-	    else if (ExprAST* iv = var.Init())
-	    {
-		llvm::Value* init = iv->CodeGen();
-		builder.CreateStore(init, v);
-	    }
-	    if (debugInfo)
-	    {
-		DebugInfo& di = GetDebugInfo();
-		assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
-		llvm::DIScope* sp = di.lexicalBlocks.back();
-		llvm::DIType*  debugType = var.Type()->DebugType(di.builder);
-		if (!debugType)
-		{
-		    // Ugly hack until we have all debug types.
-		    std::cerr << "Skipping unknown debug type element." << std::endl;
-		    var.Type()->dump();
-		}
-		else
-		{
-		    // Create a debug descriptor for the variable.
-		    int                    lineNum = this->Loc().LineNumber();
-		    llvm::DIFile*          unit = sp->getFile();
-		    llvm::DILocalVariable* dv = di.builder->createAutoVariable(sp, var.Name(), unit, lineNum,
-		                                                               debugType, true);
-		    llvm::DILocation*      diloc = llvm::DILocation::get(sp->getContext(), lineNum, 0, sp);
-		    di.builder->insertDeclare(v, dv, di.builder->createExpression(), llvm::DebugLoc(diloc),
-		                              ::builder.GetInsertBlock());
-		}
-	    }
+	    v = CodeGenLocal(var);
 	}
 	if (!variables.Add(var.Name(), v))
 	{

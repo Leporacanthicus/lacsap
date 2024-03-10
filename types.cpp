@@ -26,7 +26,7 @@ namespace Types
 
     Range* TypeDecl::GetRange() const
     {
-	assert(IsIntegral());
+	assert(IsIntegral(this));
 	switch (kind)
 	{
 	case TK_Char:
@@ -367,7 +367,8 @@ namespace Types
 	    return 0;
 	}
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), bd, subsArray);
+	return builder->createArrayType(baseType->Size() * CHAR_BIT, baseType->AlignSize() * CHAR_BIT, bd,
+	                                subsArray);
     }
 
     bool ArrayDecl::SameAs(const TypeDecl* ty) const
@@ -508,23 +509,6 @@ namespace Types
 	return 0;
     }
 
-    static unsigned BitsNeeded(uint64_t s)
-    {
-	unsigned b = 1;
-	uint64_t x = 1;
-	while (s > x)
-	{
-	    x <<= 1;
-	    b++;
-	}
-	return b;
-    }
-
-    unsigned RangeDecl::Bits() const
-    {
-	return baseType->Bits();
-    }
-
     void DynRangeDecl::DoDump() const
     {
 	std::cerr << "DynRangeDecl: ";
@@ -572,11 +556,6 @@ namespace Types
 	    return false;
 	}
 	return true;
-    }
-
-    unsigned EnumDecl::Bits() const
-    {
-	return BitsNeeded(values.size());
     }
 
     llvm::DIType* EnumDecl::GetDIType(llvm::DIBuilder* builder) const
@@ -768,7 +747,7 @@ namespace Types
 	{
 	    if (auto pf = llvm::dyn_cast_or_null<PointerDecl>(f->SubType()))
 	    {
-		if (pf->IsIncomplete() || !f->HasLlvmType())
+		if (pf->IsIncomplete() || !HasLlvmType(f))
 		{
 		    if (!opaqueType)
 		    {
@@ -1131,7 +1110,7 @@ namespace Types
 	    {
 		if (auto pd = llvm::dyn_cast<PointerDecl>(f->SubType()))
 		{
-		    if (pd->IsIncomplete() && !pd->HasLlvmType())
+		    if (pd->IsIncomplete() && !HasLlvmType(pd))
 		    {
 			if (!opaqueType)
 			{
@@ -1184,7 +1163,7 @@ namespace Types
 	for (auto v : proto->Args())
 	{
 	    llvm::Type* ty = v.Type()->LlvmType();
-	    if (v.IsRef() || v.Type()->IsCompound())
+	    if (v.IsRef() || IsCompound(v.Type()))
 	    {
 		ty = llvm::PointerType::getUnqual(ty);
 	    }
@@ -1282,7 +1261,8 @@ namespace Types
 	subscripts.push_back(builder->getOrCreateSubrange(rr->Start(), rr->End()));
 	llvm::DIType*     bd = builder->createBasicType("INTEGER", 32, llvm::dwarf::DW_ATE_unsigned);
 	llvm::DINodeArray subsArray = builder->getOrCreateArray(subscripts);
-	return builder->createArrayType(baseType->Bits(), baseType->AlignSize(), bd, subsArray);
+	return builder->createArrayType(baseType->Size() * CHAR_BIT, baseType->AlignSize() * CHAR_BIT, bd,
+	                                subsArray);
     }
 
     void SetDecl::DoDump() const
@@ -1389,6 +1369,107 @@ namespace Types
 	    return true;
 	default:
 	    return false;
+	}
+    }
+
+    bool IsStringLike(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_Char:
+	case TypeDecl::TK_String:
+	    return true;
+	    break;
+
+	case TypeDecl::TK_Array:
+	    return IsCharArray(t);
+
+	default:
+	    return false;
+	}
+    }
+
+    bool IsIntegral(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_Char:
+	case TypeDecl::TK_Integer:
+	case TypeDecl::TK_LongInt:
+	case TypeDecl::TK_Range:
+	case TypeDecl::TK_DynRange:
+	case TypeDecl::TK_Enum:
+	case TypeDecl::TK_Boolean:
+	    return true;
+
+	default:
+	    return false;
+	}
+    }
+
+    bool IsUnsigned(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_Char:
+	case TypeDecl::TK_Enum:
+	case TypeDecl::TK_Boolean:
+	    return true;
+	case TypeDecl::TK_Range:
+	{
+	    auto r = llvm::cast<RangeDecl>(t);
+	    return r->Start() >= 0;
+	}
+	default:
+	    return false;
+	}
+    }
+
+    bool IsCompound(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_Array:
+	case TypeDecl::TK_String:
+	case TypeDecl::TK_DynArray:
+	case TypeDecl::TK_Record:
+	case TypeDecl::TK_Class:
+	    return true;
+
+	default:
+	    return false;
+	}
+    }
+
+    bool HasLlvmType(const TypeDecl* t)
+    {
+	switch (t->Type())
+	{
+	case TypeDecl::TK_MemberFunc:
+	case TypeDecl::TK_Forward:
+	case TypeDecl::TK_Function:
+	    return false;
+
+	case TypeDecl::TK_Variant:
+	case TypeDecl::TK_Record:
+	case TypeDecl::TK_Class:
+	    return t->lType;
+
+	case TypeDecl::TK_String:
+	case TypeDecl::TK_FuncPtr:
+	case TypeDecl::TK_File:
+	case TypeDecl::TK_Text:
+	case TypeDecl::TK_Set:
+	case TypeDecl::TK_Array:
+	case TypeDecl::TK_Field:
+	case TypeDecl::TK_Pointer:
+	{
+	    auto p = llvm::cast<CompoundDecl>(t);
+	    return HasLlvmType(p->SubType());
+	}
+
+	default:
+	    return true;
 	}
     }
 

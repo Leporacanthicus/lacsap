@@ -87,7 +87,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
 	r = sty->SubType()->GetRange();
     }
 
-    if (ty->IsIntegral())
+    if (IsIntegral(ty))
     {
 	base = ty;
     }
@@ -207,7 +207,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 
     if (op == Token::In)
     {
-	if (!lty->IsIntegral())
+	if (!IsIntegral(lty))
 	{
 	    Error(b, "Left hand of 'in' expression should be integral type.");
 	}
@@ -274,8 +274,8 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 
     if (!ty && (op == Token::Div || op == Token::Mod || op == Token::Pow))
     {
-	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !lty->IsIntegral() ||
-	    !rty->IsIntegral())
+	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !IsIntegral(lty) ||
+	    !IsIntegral(rty))
 	{
 	    Error(b, "Types for DIV, MOD and POW should be integer");
 	}
@@ -314,7 +314,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    ty = Types::Get<Types::RealDecl>();
 	}
 
-	if (lty->IsIntegral())
+	if (IsIntegral(lty))
 	{
 	    b->lhs = Recast(b->lhs, ty);
 	    lty = ty;
@@ -322,7 +322,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	// TODO: Add support for complex / real and real / complex.
 	if (op == Token::Power)
 	{
-	    if (rty->IsIntegral())
+	    if (IsIntegral(rty))
 	    {
 		b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
 		rty = Types::Get<Types::RealDecl>();
@@ -338,7 +338,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	}
 	else
 	{
-	    if (rty->IsIntegral())
+	    if (IsIntegral(rty))
 	    {
 		b->rhs = Recast(b->rhs, ty);
 		rty = ty;
@@ -381,7 +381,7 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
     {
 	if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
 	{
-	    if (!ty->IsCompound())
+	    if (!IsCompound(ty))
 	    {
 		b->lhs = Recast(b->lhs, ty);
 		b->rhs = Recast(b->rhs, ty);
@@ -403,7 +403,7 @@ void TypeCheckVisitor::Check<UnaryExprAST>(UnaryExprAST* u)
     Types::TypeDecl* ty = u->rhs->Type();
     if (u->oper.GetToken() == Token::Not)
     {
-	if (!ty->IsIntegral() || llvm::isa<Types::CharDecl>(ty))
+	if (!IsIntegral(ty) || llvm::isa<Types::CharDecl>(ty))
 	{
 	    Error(u, "Expect integral argument to NOT");
 	}
@@ -534,7 +534,7 @@ void TypeCheckVisitor::Check<ArrayExprAST>(ArrayExprAST* a)
     for (size_t i = 0; i < a->indices.size(); i++)
     {
 	ExprAST* e = a->indices[i];
-	if (!e->Type()->IsIntegral() || llvm::isa<RangeExprAST>(e))
+	if (!IsIntegral(e->Type()) || llvm::isa<RangeExprAST>(e))
 	{
 	    Error(e, "Index should be an integral type");
 	}
@@ -562,7 +562,7 @@ void TypeCheckVisitor::Check<DynArrayExprAST>(DynArrayExprAST* d)
     TRACE();
 
     ExprAST* e = d->index;
-    if (!e->Type()->IsIntegral() || llvm::isa<RangeExprAST>(e))
+    if (!IsIntegral(e->Type()) || llvm::isa<RangeExprAST>(e))
     {
 	Error(e, "Index should be an integral type");
     }
@@ -672,7 +672,7 @@ void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
     TRACE();
     // Check start + end and cast if necessary. Fail if incompatible types.
     Types::TypeDecl* vty = f->variable->Type();
-    bool             bad = !vty->IsIntegral();
+    bool             bad = !IsIntegral(vty);
     if (bad)
     {
 	Error(f->variable, "Loop iteration variable must be integral type");
@@ -750,7 +750,7 @@ void TypeCheckVisitor::Check<ReadAST>(ReadAST* r)
 	    {
 		Error(arg, "Invalid argument for Read/ReadLN - must be a variable-expression");
 	    }
-	    if (arg->Type()->IsCompound())
+	    if (IsCompound(arg->Type()))
 	    {
 		bool bad = true;
 		if (llvm::isa<Types::ArrayDecl>(arg->Type()))
@@ -818,7 +818,7 @@ void TypeCheckVisitor::Check<WriteAST>(WriteAST* w)
 	for (auto arg : w->args)
 	{
 	    ExprAST* e = arg.expr;
-	    if (e->Type()->IsCompound())
+	    if (IsCompound(e->Type()))
 	    {
 		bool bad = true;
 		if (IsCharArray(e->Type()))
@@ -862,7 +862,7 @@ template<>
 void TypeCheckVisitor::Check<CaseExprAST>(CaseExprAST* c)
 {
     TRACE();
-    if (!c->expr->Type()->IsIntegral())
+    if (!IsIntegral(c->expr->Type()))
     {
 	Error(c, "Case selection must be integral type");
     }

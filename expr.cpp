@@ -143,17 +143,6 @@ static llvm::BasicBlock* CreateGotoTarget(int label)
     return bb;
 }
 
-std::string ShortName(const std::string& name)
-{
-    std::string            shortname = name;
-    std::string::size_type pos = name.find_last_of('$');
-    if (pos != std::string::npos)
-    {
-	shortname = shortname.substr(pos + 1);
-    }
-    return shortname;
-}
-
 llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type*>& args,
                                  const std::string& name)
 {
@@ -161,8 +150,8 @@ llvm::FunctionCallee GetFunction(llvm::Type* resTy, const std::vector<llvm::Type
     return theModule->getOrInsertFunction(name, ft);
 }
 
-llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
-                                 llvm::Value* callee)
+static llvm::FunctionCallee GetFunction(Types::TypeDecl* res, const std::vector<llvm::Type*>& args,
+                                        llvm::Value* callee)
 {
     llvm::Type*         resTy = res->LlvmType();
     llvm::FunctionType* ft = llvm::FunctionType::get(resTy, args, false);
@@ -878,7 +867,7 @@ Types::TypeDecl* BinaryExprAST::Type() const
 llvm::Value* BinaryExprAST::SetCodeGen()
 {
     TRACE();
-    if (lhs->Type() && lhs->Type()->IsIntegral() && oper.GetToken() == Token::In)
+    if (lhs->Type() && IsIntegral(lhs->Type()) && oper.GetToken() == Token::In)
     {
 	llvm::Value*     l = lhs->CodeGen();
 	llvm::Value*     setV = MakeAddressable(rhs);
@@ -1460,7 +1449,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (rty->isIntegerTy())
     {
-	bool isUnsigned = rhs->Type()->IsUnsigned();
+	bool isUnsigned = IsUnsigned(rhs->Type());
 	if (auto v = IntegerBinExpr(l, r, oper, Type(), isUnsigned))
 	{
 	    return v;
@@ -1562,7 +1551,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 		}
 		if (!v)
 		{
-		    if (i->Type()->IsCompound())
+		    if (IsCompound(i->Type()))
 		    {
 			if (vi)
 			{
@@ -1630,7 +1619,7 @@ static llvm::AttributeList CreateAttrList(const std::vector<VarDef>& args)
 	}
 	else
 	{
-	    if (!i.IsRef() && i.Type()->IsCompound())
+	    if (!i.IsRef() && IsCompound(i.Type()))
 	    {
 		llvm::AttrBuilder ab(ctx);
 		ab.addByValAttr(i.Type()->LlvmType());
@@ -1650,7 +1639,7 @@ static std::vector<llvm::Type*> CreateArgTypes(const std::vector<VarDef>& args)
 	assert(i.Type() && "Invalid type for argument");
 	llvm::Type* argTy = i.Type()->LlvmType();
 
-	if (i.IsRef() || i.Type()->IsCompound())
+	if (i.IsRef() || IsCompound(i.Type()))
 	{
 	    argTy = llvm::PointerType::getUnqual(argTy);
 	}
@@ -1857,7 +1846,7 @@ void PrototypeAST::CreateArgumentAlloca()
     for (unsigned idx = offset; idx < args.size(); idx++, ai++)
     {
 	llvm::Value* a;
-	if (args[idx].IsRef() || args[idx].Type()->IsCompound())
+	if (args[idx].IsRef() || IsCompound(args[idx].Type()))
 	{
 	    a = &*ai;
 	    if (auto dty = llvm::dyn_cast<Types::DynArrayDecl>(args[idx].Type()))
@@ -2540,7 +2529,7 @@ llvm::Value* ForExprAST::CodeGen()
 
     llvm::Value* endCond;
 
-    if (start->Type()->IsUnsigned())
+    if (IsUnsigned(start->Type()))
     {
 	if (stepDown)
 	{
@@ -2574,7 +2563,7 @@ llvm::Value* ForExprAST::CodeGen()
 	return 0;
     }
 
-    if (start->Type()->IsUnsigned())
+    if (IsUnsigned(start->Type()))
     {
 	if (stepDown)
 	{
@@ -2778,7 +2767,7 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     {
 	argTypes.push_back(ty->LlvmType());
 	argTypes.push_back(intTy);
-	suffix = "int" + std::to_string(ty->Bits());
+	suffix = "int" + std::to_string(ty->Size() * CHAR_BIT);
     }
     else if (llvm::isa<Types::RealDecl>(ty))
     {
@@ -2991,7 +2980,7 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty,
     }
     else if (llvm::isa<Types::IntegerDecl, Types::Int64Decl>(ty))
     {
-	suffix = "int" + std::to_string(ty->Bits());
+	suffix = "int" + std::to_string(ty->Size() * CHAR_BIT);
     }
     else if (llvm::isa<Types::RealDecl>(ty))
     {
@@ -3678,7 +3667,7 @@ llvm::Value* RangeReduceAST::CodeGen()
 {
     TRACE();
 
-    assert(expr->Type()->IsIntegral() && "Index is supposed to be integral type");
+    assert(IsIntegral(expr->Type()) && "Index is supposed to be integral type");
     llvm::Value* index = expr->CodeGen();
 
     llvm::Type* ty = index->getType();
@@ -3699,7 +3688,7 @@ llvm::Value* RangeReduceAST::CodeGen()
 	llvm::Type* intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 	if (ty->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
 	{
-	    if (expr->Type()->IsUnsigned())
+	    if (IsUnsigned(expr->Type()))
 	    {
 		index = builder.CreateZExt(index, intTy, "zext");
 	    }
@@ -3741,7 +3730,7 @@ llvm::Value* RangeCheckAST::CodeGen()
     }
     if (index->getType()->getPrimitiveSizeInBits() < intTy->getPrimitiveSizeInBits())
     {
-	if (expr->Type()->IsUnsigned())
+	if (IsUnsigned(expr->Type()))
 	{
 	    index = builder.CreateZExt(index, intTy, "zext");
 	    orig_index = builder.CreateZExt(orig_index, intTy, "zext");
@@ -3859,9 +3848,9 @@ llvm::Value* TypeCastAST::CodeGen()
 	return builder.CreateSIToFP(expr->CodeGen(), type->LlvmType(), "tofp");
     }
 
-    if (type->IsIntegral() && current->IsIntegral())
+    if (IsIntegral(type) && IsIntegral(current))
     {
-	if (type->IsUnsigned())
+	if (IsUnsigned(type))
 	{
 	    return builder.CreateZExt(expr->CodeGen(), type->LlvmType());
 	}
@@ -3910,7 +3899,7 @@ llvm::Value* TypeCastAST::Address()
 	llvm::Constant* zero = MakeIntegerConstant(0);
 	llvm::Constant* one = MakeIntegerConstant(1);
 
-	if (current->IsIntegral())
+	if (IsIntegral(current))
 	{
 	    re = builder.CreateSIToFP(expr->CodeGen(), realTy, "tofp");
 	}
@@ -4233,7 +4222,7 @@ llvm::Value* InitValueAST::CodeGen()
 
 	return llvm::ConstantDataArray::getRaw(str, size, sd->SubType()->LlvmType());
     }
-    if (type->IsStringLike() && llvm::isa<Types::ArrayDecl>(type))
+    if (IsStringLike(type) && llvm::isa<Types::ArrayDecl>(type))
     {
 	auto                         arrty = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
 	llvm::Type*                  ty = arrty->getElementType();

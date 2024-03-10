@@ -204,6 +204,17 @@ private:
 
 using NameWrapper = StackWrapper<const NamedObject*>;
 
+static std::string ShortName(const std::string& name)
+{
+    std::string            shortname = name;
+    std::string::size_type pos = name.find_last_of('$');
+    if (pos != std::string::npos)
+    {
+	shortname = shortname.substr(pos + 1);
+    }
+    return shortname;
+}
+
 static bool IsOneOf(Token::TokenType t, const TerminatorList& list)
 {
     for (auto i : list)
@@ -749,7 +760,7 @@ Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Toke
     std::string name = GetIdentifier(NoExpectConsume);
     if ((type = GetTypeDecl(name)))
     {
-	if (!type->IsIntegral())
+	if (!IsIntegral(type))
 	{
 	    return Error("Type used as index specification should be integral type");
 	}
@@ -1247,7 +1258,7 @@ void Parser::ParseTypeDef()
 	std::string name = p->SubType()->Name();
 	if (Types::TypeDecl* ty = GetTypeDecl(name))
 	{
-	    if (ty->IsIncomplete())
+	    if (llvm::isa<Types::ForwardDecl>(ty))
 	    {
 		Error("Forward declared type '" + name + "' is incomplete.");
 		return;
@@ -1450,7 +1461,7 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
     {
 	return 0;
     }
-    if (!markerTy->IsIntegral())
+    if (!IsIntegral(markerTy))
     {
 	return Error("Expect variant selector to be integral type");
     }
@@ -2854,7 +2865,7 @@ ExprAST* Parser::ParseSetExpr(Types::TypeDecl* setType)
 
 ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const Constants::ConstDecl* c)
 {
-    if (c->Type()->IsIntegral())
+    if (IsIntegral(c->Type()))
     {
 	if (llvm::isa<Types::RealDecl>(ty))
 	{
@@ -3061,7 +3072,7 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	    }
 	    return 0;
 	}
-	else if (!ty->IsStringLike())
+	else if (!IsStringLike(ty))
 	{
 	    return 0;
 	}

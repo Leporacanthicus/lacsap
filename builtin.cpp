@@ -13,7 +13,7 @@ namespace Builtin
 	if (!llvm::isa<Types::RealDecl>(arg->Type()))
 	{
 	    // Implicit typecast.
-	    if (!arg->Type()->IsIntegral())
+	    if (!IsIntegral(arg->Type()))
 	    {
 		return false;
 	    }
@@ -571,11 +571,11 @@ namespace Builtin
 	}
 
 	llvm::Value* a = args[0]->CodeGen();
-	if (args[0]->Type()->IsUnsigned())
+	if (IsUnsigned(args[0]->Type()))
 	{
 	    return a;
 	}
-	if (args[0]->Type()->IsIntegral())
+	if (IsIntegral(args[0]->Type()))
 	{
 	    llvm::Value* neg = builder.CreateNeg(a, "neg");
 	    llvm::Value* cmp = builder.CreateICmpSGE(a, MakeIntegerConstant(0), "abscond");
@@ -598,7 +598,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type()))
+	if (!IsIntegral(args[0]->Type()) || llvm::isa<Types::CharDecl>(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -629,7 +629,7 @@ namespace Builtin
 	    return builder.CreateLoad(cplxTy, res);
 	}
 	llvm::Value* a = args[0]->CodeGen();
-	if (args[0]->Type()->IsIntegral())
+	if (IsIntegral(args[0]->Type()))
 	{
 	    return builder.CreateMul(a, a, "sqr");
 	}
@@ -754,7 +754,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type()))
+	if (!IsIntegral(args[0]->Type()) || llvm::isa<Types::CharDecl>(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -773,7 +773,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral())
+	if (!IsIntegral(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -794,7 +794,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral())
+	if (!IsIntegral(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -873,8 +873,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (args.size() == 1 &&
-	    (!args[0]->Type()->IsIntegral() || llvm::isa<Types::CharDecl>(args[0]->Type())))
+	if (args.size() == 1 && (!IsIntegral(args[0]->Type()) || llvm::isa<Types::CharDecl>(args[0]->Type())))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -901,7 +900,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral() || !llvm::isa<AddressableAST>(args[0]))
+	if (!IsIntegral(args[0]->Type()) || !llvm::isa<AddressableAST>(args[0]))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -941,7 +940,7 @@ namespace Builtin
 	auto* t2 = llvm::dyn_cast<Types::ArrayDecl>(args[2]->Type());
 	if (t0 && t2)
 	{
-	    if (args[1]->Type()->IsIntegral() && args[1]->Type()->AssignableType(t0->Ranges()[0]))
+	    if (IsIntegral(args[1]->Type()) && args[1]->Type()->AssignableType(t0->Ranges()[0]))
 	    {
 		if (t0->SubType() != t2->SubType())
 		{
@@ -995,7 +994,7 @@ namespace Builtin
 	auto t1 = llvm::dyn_cast<Types::ArrayDecl>(args[1]->Type());
 	if (t0 && t1)
 	{
-	    if (args[2]->Type()->IsIntegral() && args[2]->Type()->AssignableType(t1->Ranges()[0]))
+	    if (IsIntegral(args[2]->Type()) && args[2]->Type()->AssignableType(t1->Ranges()[0]))
 	    {
 		if (t0->SubType() != t1->SubType())
 		{
@@ -1005,7 +1004,7 @@ namespace Builtin
 		{
 		    return ErrorType::WrongArgType;
 		}
-		if (t0->Ranges().size() != 1 || t1->Ranges().size() != 1 || !args[2]->Type()->IsIntegral())
+		if (t0->Ranges().size() != 1 || t1->Ranges().size() != 1 || !IsIntegral(args[2]->Type()))
 		{
 		    return ErrorType::WrongArgType;
 		}
@@ -1044,7 +1043,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike())
+	if (!IsStringLike(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1193,7 +1192,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgType;
 	}
-	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->IsStringLike())
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !IsStringLike(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1231,7 +1230,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike() || !llvm::isa<Types::IntegerDecl>(args[1]->Type()))
+	if (!IsStringLike(args[0]->Type()) || !llvm::isa<Types::IntegerDecl>(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1258,7 +1257,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike())
+	if (!IsStringLike(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1282,7 +1281,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike() || !args[1]->Type()->IsStringLike())
+	if (!IsStringLike(args[0]->Type()) || !IsStringLike(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1320,7 +1319,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike())
+	if (!IsStringLike(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1331,7 +1330,7 @@ namespace Builtin
     {
 	Types::TypeDecl* type = args[0]->Type();
 	std::string      name = "llvm.ctpop.i";
-	if (type->IsIntegral())
+	if (IsIntegral(type))
 	{
 	    name += std::to_string(type->Size() * 8);
 	    llvm::Type*          ty = type->LlvmType();
@@ -1365,7 +1364,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsIntegral() && !llvm::isa<Types::SetDecl>(args[0]->Type()))
+	if (!IsIntegral(args[0]->Type()) && !llvm::isa<Types::SetDecl>(args[0]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1422,8 +1421,9 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (args[0]->Type()->IsIntegral())
+	if (!IsIntegral(args[0]->Type()))
 	{
+	    return ErrorType::WrongArgType;
 	}
 	return ErrorType::Ok;
     }
@@ -1455,7 +1455,7 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 	llvm::Value* sel;
-	if (args[0]->Type()->IsUnsigned() || args[1]->Type()->IsUnsigned())
+	if (IsUnsigned(args[0]->Type()) || IsUnsigned(args[1]->Type()))
 	{
 	    sel = builder.CreateICmpUGT(a, b, "sel");
 	}
@@ -1476,7 +1476,7 @@ namespace Builtin
 	llvm::Value* a = args[0]->CodeGen();
 	llvm::Value* b = args[1]->CodeGen();
 	llvm::Value* sel;
-	if (args[0]->Type()->IsUnsigned() || args[1]->Type()->IsUnsigned())
+	if (IsUnsigned(args[0]->Type()) || IsUnsigned(args[1]->Type()))
 	{
 	    sel = builder.CreateICmpULT(a, b, "sel");
 	}
@@ -1514,7 +1514,7 @@ namespace Builtin
 	    llvm::Value* res = builder.CreateSelect(sel1, one, zero, "sgn1");
 	    return builder.CreateSelect(sel2, mone, res, "sgn2");
 	}
-	if (args[0]->Type()->IsUnsigned())
+	if (IsUnsigned(args[0]->Type()))
 	{
 	    llvm::Value* sel1 = builder.CreateICmpUGT(v, zero, "gt");
 	    return builder.CreateSelect(sel1, one, zero, "sgn1");
@@ -1650,7 +1650,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!args[0]->Type()->IsStringLike() || !args[1]->Type()->IsStringLike())
+	if (!IsStringLike(args[0]->Type()) || !IsStringLike(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
@@ -1669,7 +1669,7 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !args[1]->Type()->IsIntegral())
+	if (!llvm::isa<Types::FileDecl>(args[0]->Type()) || !IsIntegral(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}

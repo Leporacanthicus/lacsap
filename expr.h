@@ -420,6 +420,7 @@ public:
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_UnaryExpr; }
+    void         UpdateType(Types::TypeDecl* ty);
     void         accept(ASTVisitor& v) override
     {
 	rhs->accept(v);
@@ -925,11 +926,16 @@ private:
 class SizeOfExprAST : public ExprAST
 {
 public:
-    SizeOfExprAST(const Location& w, Types::TypeDecl* t) : ExprAST(w, EK_SizeOfExpr, t) {}
+    SizeOfExprAST(const Location& w, Types::TypeDecl* t)
+        : ExprAST{ w, EK_SizeOfExpr, Types::Get<Types::IntegerDecl>() }, typeToSize{ t }
+    {
+    }
     void             DoDump() const override;
     llvm::Value*     CodeGen() override;
-    Types::TypeDecl* Type() const override { return Types::Get<Types::IntegerDecl>(); }
     static bool      classof(const ExprAST* e) { return e->getKind() == EK_SizeOfExpr; }
+
+private:
+    const Types::TypeDecl* typeToSize;
 };
 
 class VTableAST : public ExprAST

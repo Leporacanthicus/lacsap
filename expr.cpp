@@ -1510,6 +1510,16 @@ llvm::Value* UnaryExprAST::CodeGen()
     return Error(this, "Unknown operation: " + oper.ToString());
 }
 
+void UnaryExprAST::UpdateType(Types::TypeDecl* ty)
+{
+    if (type != ty)
+    {
+	assert(!type && "Type shouldn't be update more than once");
+	assert(ty && "Must supply a valid type");
+	type = ty;
+    }
+}
+
 void CallExprAST::DoDump() const
 {
     std::cerr << "call: " << proto->Name() << "(";
@@ -3945,7 +3955,7 @@ llvm::Value* SizeOfExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    return MakeIntegerConstant(type->Size());
+    return MakeIntegerConstant(typeToSize->Size());
 }
 
 void SizeOfExprAST::DoDump() const

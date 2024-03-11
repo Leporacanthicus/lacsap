@@ -13,6 +13,7 @@ public:
 
 private:
     Types::TypeDecl* BinarySetUpdate(BinaryExprAST* b);
+    Types::TypeDecl* BinaryExprType(BinaryExprAST* b);
     template<typename T>
     void Check(T* t);
     template<typename T>
@@ -126,23 +127,21 @@ ExprAST* Recast(ExprAST* a, const Types::TypeDecl* ty)
 
 Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
-    auto lty = llvm::dyn_cast<Types::SetDecl>(b->lhs->Type());
-    auto rty = llvm::dyn_cast<Types::SetDecl>(b->rhs->Type());
+    auto lty = llvm::cast<Types::SetDecl>(b->lhs->Type());
+    auto rty = llvm::cast<Types::SetDecl>(b->rhs->Type());
     assert(lty && rty && "Expect set declarations on both side!");
     if (auto s = llvm::dyn_cast<SetExprAST>(b->lhs))
     {
 	if (s->values.empty() && rty->SubType())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(lty)->UpdateSubtype(
-	        llvm::dyn_cast<Types::SetDecl>(rty)->SubType());
+	    lty->UpdateSubtype(rty->SubType());
 	}
     }
     if (auto s = llvm::dyn_cast<SetExprAST>(b->rhs))
     {
-	if (s->values.empty() && lty->SubType())
+	if ((s->values.empty() || !rty->SubType()) && lty->SubType())
 	{
-	    llvm::dyn_cast<Types::SetDecl>(rty)->UpdateSubtype(
-	        llvm::dyn_cast<Types::SetDecl>(lty)->SubType());
+	    rty->UpdateSubtype(lty->SubType());
 	}
     }
     if (!lty->GetRange() && !rty->GetRange())
@@ -193,11 +192,8 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
     return rty;
 }
 
-template<>
-void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
+Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 {
-    TRACE();
-
     Types::TypeDecl* lty = b->lhs->Type();
     Types::TypeDecl* rty = b->rhs->Type();
     Types::TypeDecl* ty = 0;
@@ -236,69 +232,56 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	{
 	    Error(b, "Right hand of 'in' expression should be a set.");
 	}
-	ty = Types::Get<Types::BoolDecl>();
+	return Types::Get<Types::BoolDecl>();
     }
 
-    if (!ty && b->oper.IsCompare() &&
-        (llvm::isa<Types::StringDecl>(lty) || llvm::isa<Types::StringDecl>(rty)))
-    {
-	ty = Types::Get<Types::StringDecl>(255);
-	b->rhs = Recast(b->rhs, ty);
-	b->lhs = Recast(b->lhs, ty);
-	ty = Types::Get<Types::BoolDecl>();
-    }
-
-    if (!ty && b->oper.IsCompare() &&
-        (llvm::isa<Types::ComplexDecl>(lty) && llvm::isa<Types::ComplexDecl>(rty)))
-    {
-	if (b->oper.GetToken() != Token::Equal && b->oper.GetToken() != Token::NotEqual)
-	{
-	    Error(b, "Only = and <> comparison allowed for complex types");
-	}
-	ty = Types::Get<Types::BoolDecl>();
-    }
-
-    if (!ty && llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
+    if (llvm::isa<Types::SetDecl>(lty) && llvm::isa<Types::SetDecl>(rty))
     {
 	ty = BinarySetUpdate(b);
+	if (b->oper.IsCompare())
+	{
+	    return Types::Get<Types::BoolDecl>();
+	}
+	return ty;
     }
 
-    if (!ty && (op == Token::And_Then || op == Token::Or_Else))
+    if (b->oper.IsCompare())
     {
-	ty = Types::Get<Types::BoolDecl>();
+	if (llvm::isa<Types::ComplexDecl>(lty) && llvm::isa<Types::ComplexDecl>(rty))
+	{
+	    if (b->oper.GetToken() != Token::Equal && b->oper.GetToken() != Token::NotEqual)
+	    {
+		Error(b, "Only = and <> comparison allowed for complex types");
+	    }
+	    return Types::Get<Types::BoolDecl>();
+	}
+	if (llvm::isa<Types::StringDecl>(lty) || llvm::isa<Types::StringDecl>(rty))
+	{
+	    auto ty = Types::Get<Types::StringDecl>(255);
+	    b->rhs = Recast(b->rhs, ty);
+	    b->lhs = Recast(b->lhs, ty);
+	    return Types::Get<Types::BoolDecl>();
+	}
+    }
+
+    if (op == Token::And_Then || op == Token::Or_Else)
+    {
 	if (!llvm::isa<Types::BoolDecl>(lty) || !llvm::isa<Types::BoolDecl>(rty))
 	{
 	    Error(b, "Types for And_Then and Or_Else should be boolean");
 	}
+	return Types::Get<Types::BoolDecl>();
     }
 
-    if (!ty && (op == Token::Div || op == Token::Mod || op == Token::Pow))
-    {
-	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !IsIntegral(lty) ||
-	    !IsIntegral(rty))
-	{
-	    Error(b, "Types for DIV, MOD and POW should be integer");
-	}
-    }
-
-    if (!ty && (op == Token::Plus))
+    if (op == Token::Plus)
     {
 	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
 	{
-	    ty = Types::Get<Types::StringDecl>(255);
+	    return Types::Get<Types::StringDecl>(255);
 	}
     }
 
-    if (!ty && (op == Token::Minus || op == Token::Multiply || op == Token::And || op == Token::Xor ||
-                op == Token::Or))
-    {
-	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
-	{
-	    Error(b, "Types for binary operation should not be CHARACTER");
-	}
-    }
-
-    if (!ty && (op == Token::Divide || op == Token::Power))
+    if (op == Token::Divide || op == Token::Power)
     {
 	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
 	{
@@ -348,37 +331,67 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 		Error(b, "Incompatible type for divide");
 	    }
 	}
+	return ty;
     }
 
-    if (!ty &&
-        ((llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(b->rhs)) ||
+    if (((llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(b->rhs)) ||
          (llvm::isa<Types::PointerDecl>(rty) && llvm::isa<NilExprAST>(b->lhs))) &&
         (op == Token::Equal || op == Token::NotEqual))
     {
 	if (llvm::isa<NilExprAST>(b->rhs))
 	{
-	    ty = lty;
-	    b->rhs = Recast(b->rhs, ty);
+	    b->rhs = Recast(b->rhs, lty);
+	    return lty;
 	}
-	else
-	{
-	    ty = rty;
-	    b->lhs = Recast(b->lhs, ty);
-	}
+
+	b->lhs = Recast(b->lhs, rty);
+	return rty;
     }
 
-    if (!ty && llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(b->rhs))
+    if (llvm::isa<Types::RangeDecl>(lty) && llvm::isa<IntegerExprAST>(b->rhs))
     {
-	ty = lty;
+	return lty;
     }
 
     if (llvm::isa<Types::RangeDecl>(rty) && llvm::isa<IntegerExprAST>(b->lhs))
     {
-	ty = rty;
+	return rty;
     }
+
+    return 0;
+}
+
+template<>
+void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
+{
+    TRACE();
+
+    Types::TypeDecl* ty = BinaryExprType(b);
 
     if (!ty)
     {
+	Types::TypeDecl* lty = b->lhs->Type();
+	Types::TypeDecl* rty = b->rhs->Type();
+	Token::TokenType op = b->oper.GetToken();
+
+	if ((op == Token::Div || op == Token::Mod || op == Token::Pow))
+	{
+	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !IsIntegral(lty) ||
+	        !IsIntegral(rty))
+	    {
+		Error(b, "Types for DIV, MOD and POW should be integer");
+	    }
+	}
+
+	if (op == Token::Minus || op == Token::Multiply || op == Token::And || op == Token::Xor ||
+	    op == Token::Or)
+	{
+	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
+	    {
+		Error(b, "Types for binary operation should not be CHARACTER");
+	    }
+	}
+
 	if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
 	{
 	    if (!IsCompound(ty))
@@ -415,6 +428,7 @@ void TypeCheckVisitor::Check<UnaryExprAST>(UnaryExprAST* u)
 	    Error(u, "Expect numeric type (Real, Integer) argument to unary '-'");
 	}
     }
+    u->UpdateType(ty);
 }
 
 template<>

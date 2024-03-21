@@ -3899,6 +3899,11 @@ llvm::Value* TypeCastAST::Address()
     llvm::Value*     v = 0;
     Types::TypeDecl* current = expr->Type();
 
+    if (current == type)
+    {
+	return MakeAddressable(expr);
+    }
+
     if (llvm::isa<Types::ComplexDecl>(type))
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());

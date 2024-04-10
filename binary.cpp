@@ -101,7 +101,7 @@ static void CreateObject(llvm::Module* module, const std::string& objname)
 
     llvm::raw_pwrite_stream* OS = &Out->os();
 
-    if (tm->addPassesToEmitFile(PM, *OS, nullptr, llvm::CodeGenFileType::CGFT_ObjectFile, false))
+    if (tm->addPassesToEmitFile(PM, *OS, nullptr, llvm::CodeGenFileType::ObjectFile, false))
     {
 	std::cerr << objname
 	          << ": target does not support generation of this"

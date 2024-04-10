@@ -569,7 +569,7 @@ namespace Types
 	}
 	llvm::DINodeArray eltArray = builder->getOrCreateArray(enumerators);
 	int               line = 0;
-	return builder->createEnumerationType(0, "", 0, line, size, align, eltArray, 0, "");
+	return builder->createEnumerationType(0, "", 0, line, size, align, eltArray, 0);
     }
 
     FunctionDecl::FunctionDecl(PrototypeAST* p) : CompoundDecl(TK_Function, p->Type()), proto(p) {}

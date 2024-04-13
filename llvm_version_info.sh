@@ -1,6 +1,6 @@
 #!/bin/bash
 # Note: Change this to match your local setup
-SRCDIR=../llvm-github
+SRCDIR=../llvm-project
 pushd $SRCDIR > /dev/null
 SHA=$(git rev-list -1 HEAD)
 REMOTE=$(git remote get-url origin)

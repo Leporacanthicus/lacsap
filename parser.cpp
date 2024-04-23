@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "namedobject.h"
 #include "options.h"
+#include "schema.h"
 #include "source.h"
 #include "stack.h"
 #include "trace.h"
@@ -127,13 +128,15 @@ public:
     const Constants::ConstDecl* ParseConstSetExpr();
 
     Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                     Token::TokenType altToken);
+                                     Token::TokenType altToken, Types::Schema* schema = 0);
     Types::RangeBaseDecl* ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                                 Token::TokenType altToken);
+    Types::Schema*        ParseSchemaVars();
+    Types::TypeDecl*      ExpandSchema(Types::TypeDecl* ty);
 
     Types::TypeDecl*    ParseSimpleType(bool errOnNoType);
     Types::ClassDecl*   ParseClassDecl(const std::string& name);
-    Types::TypeDecl*    ParseType(const std::string& name, Forwarding maybeForwarded);
+    Types::TypeDecl* ParseType(const std::string& name, Forwarding maybeForwarded, Types::Schema* schema = 0);
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType(Forwarding maybeForwarded);
     Types::TypeDecl*    ParseArrayDecl();
@@ -676,7 +679,7 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 }
 
 Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                         Token::TokenType altToken)
+                                         Token::TokenType altToken, Types::Schema* schema)
 {
     TRACE();
     const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
@@ -736,6 +739,16 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	return Error("Expected constant name");
     }
 
+    if (schema)
+    {
+	std::string name = GetIdentifier(ExpectConsume);
+	if (const VarDef* def = schema->FindVar(name))
+	{
+	    type = startC->Type();
+	    assert(type == def->Type() && "Expect same type on both sides");
+	    return new Types::SchemaRange(Constants::ToInt(startC), name, type, schema);
+	}
+    }
     const Constants::ConstDecl* endC = ParseConstExpr({ endToken, altToken });
     if (!endC)
     {
@@ -1203,6 +1216,51 @@ void Parser::ParseConstDef()
     } while (CurrentToken().GetToken() == Token::Identifier);
 }
 
+Types::Schema* Parser::ParseSchemaVars()
+{
+    std::vector<std::string> names;
+    std::vector<VarDef>      args;
+    while (!AcceptToken(Token::RightParen))
+    {
+	std::string arg = GetIdentifier(ExpectConsume);
+	if (arg.empty())
+	{
+	    return 0;
+	}
+
+	names.push_back(arg);
+	if (AcceptToken(Token::Colon))
+	{
+	    if (Types::TypeDecl* type = ParseType("", NoForwarding))
+	    {
+		for (auto n : names)
+		{
+		    VarDef v(n, type);
+		    args.push_back(v);
+		}
+		names.clear();
+		if (CurrentToken().GetToken() != Token::RightParen &&
+		    !Expect(Token::Semicolon, ExpectConsume))
+		{
+		    return 0;
+		}
+	    }
+	    else
+	    {
+		return 0;
+	    }
+	}
+	else
+	{
+	    if (!Expect(Token::Comma, ExpectConsume))
+	    {
+		return 0;
+	    }
+	}
+    }
+    return new Types::Schema(args);
+}
+
 // Deal with type name = ... defintions
 void Parser::ParseTypeDef()
 {
@@ -1215,39 +1273,51 @@ void Parser::ParseTypeDef()
 	{
 	    return;
 	}
+	Types::Schema* schema = 0;
+	if (AcceptToken(Token::LeftParen))
+	{
+	    if (!(schema = ParseSchemaVars()))
+	    {
+		return;
+	    }
+	}
 	if (!Expect(Token::Equal, ExpectConsume))
 	{
 	    return;
 	}
 	bool restricted = AcceptToken(Token::Restricted);
-	if (Types::TypeDecl* ty = ParseType(name, AllowForwarding))
+	Types::TypeDecl* ty = 0;
 	{
-	    if (CurrentToken().GetToken() == Token::LeftSquare || AcceptToken(Token::Value))
+	    if ((ty = ParseType(name, AllowForwarding, schema)))
 	    {
-		ExprAST* init = ParseInitValue(ty);
-		if (!init)
+		if (CurrentToken().GetToken() == Token::LeftSquare || AcceptToken(Token::Value))
+		{
+		    ExprAST* init = ParseInitValue(ty);
+		    if (!init)
+		    {
+			return;
+		    }
+		    ty = Types::CloneWithInit(ty, init);
+		}
+		auto pty = llvm::dyn_cast<Types::PointerDecl>(ty);
+		if (pty && pty->IsIncomplete())
+		{
+		    incomplete.push_back(pty);
+		}
+		if (!Expect(Token::Semicolon, ExpectConsume))
 		{
 		    return;
 		}
-		ty = Types::CloneWithInit(ty, init);
 	    }
-	    if (!AddType(name, ty, restricted))
-	    {
-		Error("Name " + name + " is already in use.");
-		return;
-	    }
-	    auto pty = llvm::dyn_cast<Types::PointerDecl>(ty);
-	    if (pty && pty->IsIncomplete())
-	    {
-		incomplete.push_back(pty);
-	    }
-	    if (!Expect(Token::Semicolon, ExpectConsume))
+	    else
 	    {
 		return;
 	    }
 	}
-	else
+	assert(ty && "Expect to have parsed a type here");
+	if (!AddType(name, ty, restricted))
 	{
+	    Error("Name " + name + " is already in use.");
 	    return;
 	}
     } while (CurrentToken().GetToken() == Token::Identifier);
@@ -1898,7 +1968,18 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
     return cd;
 }
 
-Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForwarded)
+Types::TypeDecl* Parser::ExpandSchema(Types::TypeDecl* ty)
+{
+    std::vector<int64_t> vals;
+    do
+    {
+	const Constants::ConstDecl* c = ParseConstExpr({ Token::Comma, Token::RightParen });
+	vals.push_back(ToInt(c));
+    } while (!AcceptToken(Token::RightParen));
+    return Types::Instantiate(vals, ty);
+}
+
+Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForwarded, Types::Schema* schema)
 {
     TRACE();
     Token::TokenType tt = CurrentToken().GetToken();
@@ -1944,6 +2025,10 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 	{
 	    if (Types::TypeDecl* ty = ParseSimpleType(false))
 	    {
+		if (Types::IsSchema(ty) and AcceptToken(Token::LeftParen))
+		{
+		    return ExpandSchema(ty);
+		}
 		return ty;
 	    }
 	}
@@ -1954,7 +2039,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
     case Token::Minus:
     {
 	Types::TypeDecl* type = 0;
-	return ParseRange(type, Token::Semicolon, Token::Of);
+	return ParseRange(type, Token::Semicolon, Token::Of, schema);
     }
 
     case Token::Array:

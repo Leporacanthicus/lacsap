@@ -76,6 +76,7 @@ namespace Types
 	    TK_DynArray,
 	    TK_Range,
 	    TK_DynRange,
+	    TK_SchRange,
 	    TK_Enum,
 	    TK_Boolean,
 	    TK_Pointer,
@@ -252,7 +253,7 @@ namespace Types
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
 	static bool     classof(const TypeDecl* e)
 	{
-	    return e->getKind() == TK_Range || e->getKind() == TK_DynRange;
+	    return e->getKind() == TK_Range || e->getKind() == TK_DynRange || e->getKind() == TK_SchRange;
 	}
     };
 

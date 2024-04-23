@@ -138,15 +138,17 @@ void Stack<T>::dump() const
 }
 #endif
 
+using NameStack = Stack<const NamedObject*>;
+
 class InterfaceList
 {
 public:
     InterfaceList(){};
-    bool                                      Add(const NamedObject* obj);
-    const Stack<const NamedObject*>::MapType& List() const { return list; }
+    bool                      Add(const NamedObject* obj);
+    const NameStack::MapType& List() const { return list; }
 
 private:
-    Stack<const NamedObject*>::MapType list;
+    NameStack::MapType list;
 };
 
 #endif

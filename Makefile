@@ -1,13 +1,17 @@
 OBJECTS = lexer.o source.o location.o token.o expr.o parser.o types.o constants.o builtin.o \
-	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o utils.o callgraph.o
-
-LLVM_DIR ?= /usr/local
-#LLVM_DIR = ../llvm-github/LLVM_Binaries
+	  binary.o lacsap.o namedobject.o semantics.o trace.o stack.o utils.o callgraph.o \
+	  schema.o
 
 # If not specified, use clang and enable 32-bit build - debug enabled
 USECLANG ?= 1
 M32 ?= 1
 NDEBUG ?= 0
+
+ifeq (${NDEBUG}, 0)
+  LLVM_DIR ?= /usr/local/llvm-debug-new
+else
+  LLVM_DIR ?= /usr/local/llvm-new
+endif
 
 ifeq (${USECLANG}, 1)
   CC = clang

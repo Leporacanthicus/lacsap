@@ -465,6 +465,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Const functions", "constfuncs.pas", "" },
     { 0, "Basic", "Init Pointer value", "ptrinit.pas", "" },
     { 0, "Basic", "Fraction", "frac.pas", "" },
+    { 0, "Basic", "Schema Range", "schema.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

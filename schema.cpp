@@ -46,12 +46,23 @@ namespace Types
 
     TypeDecl* SchemaRange::Instantiate(const std::vector<int64_t>& vals)
     {
-	int idx = schema->NameToIndex(name);
+	int64_t lowVal = start;
+	if (lowName != "")
+	{
+	    int idx = schema->NameToIndex(lowName);
+	    if (idx < 0)
+	    {
+		return 0;
+	    }
+	    lowVal = vals[idx];
+	}
+
+	int idx = schema->NameToIndex(highName);
 	if (idx < 0)
 	{
 	    return 0;
 	}
-	return new RangeDecl(new Range(start, vals[idx]), baseType);
+	return new RangeDecl(new Range(lowVal, vals[idx]), baseType);
     }
 
     bool IsSchema(const TypeDecl* ty)

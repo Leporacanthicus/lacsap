@@ -26,7 +26,11 @@ namespace Types
     {
     public:
 	SchemaRange(int s, const std::string& nm, TypeDecl* base, const Schema* sc)
-	    : RangeBaseDecl(TK_SchRange, base), start(s), name(nm), schema(sc)
+	    : RangeBaseDecl(TK_SchRange, base), start(s), lowName(""), highName(nm), schema(sc)
+	{
+	}
+	SchemaRange(const std::string& lnm, const std::string& hnm, TypeDecl* base, const Schema* sc)
+	    : RangeBaseDecl(TK_SchRange, base), start(0), lowName(lnm), highName(hnm), schema(sc)
 	{
 	}
 	void      DoDump() const override;
@@ -34,7 +38,8 @@ namespace Types
 
     private:
 	int64_t                        start;
-	std::string                    name;
+	std::string                    lowName;
+	std::string                    highName;
 	[[maybe_unused]] const Schema* schema;
     };
 }; // namespace Types

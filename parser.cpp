@@ -683,7 +683,28 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 {
     TRACE();
     const Constants::ConstDecl* startC = ParseConstExpr({ Token::DotDot });
-    if (!startC && Expect(Token::Identifier, NoExpectConsume) && PeekToken() == Token::DotDot)
+    if (startC)
+    {
+	if (!Expect(Token::DotDot, ExpectConsume))
+	{
+	    return Error("Expected '..' name");
+	}
+
+	if (const Constants::ConstDecl* endC = ParseConstExpr({ endToken, altToken }))
+	{
+	    int64_t start = Constants::ToInt(startC);
+	    int64_t end = Constants::ToInt(endC);
+
+	    type = startC->Type();
+	    assert(type == endC->Type() && "Expect same type on both sides");
+	    if (end <= start)
+	    {
+		return Error("Invalid range specification");
+	    }
+	    return new Types::RangeDecl(new Types::Range(start, end), type);
+	}
+    }
+    if (Expect(Token::Identifier, NoExpectConsume) && PeekToken() == Token::DotDot)
     {
 	std::string lowName = GetIdentifier(ExpectConsume);
 	if (!Expect(Token::DotDot, ExpectConsume) || !Expect(Token::Identifier, NoExpectConsume))
@@ -701,42 +722,36 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	    if ((type = GetTypeDecl(GetIdentifier(NoExpectConsume))))
 	    {
 		NextToken();
+		return new Types::DynRangeDecl(lowName, highName, type);
 	    }
 	}
-	else
+	if (schema)
 	{
-	    const VarDef* vardef = nullptr;
-	    if (const NamedObject* def = nameStack.Find(lowName))
+	    if (const VarDef* lowDef = schema->FindVar(lowName))
 	    {
-		if (!(vardef = llvm::dyn_cast<VarDef>(def)))
+		type = lowDef->Type();
+		if (const VarDef* highDef = schema->FindVar(highName))
 		{
-		    return Error("Expected variable name");
+		    if (highDef->Type() != lowDef->Type())
+		    {
+			return Error("Expected same type for both high and low variable");
+		    }
+		    return new Types::SchemaRange(lowName, highName, type, schema);
 		}
 	    }
-	    if (vardef)
-	    {
-		type = vardef->Type();
-	    }
-	    if (const NamedObject* def = nameStack.Find(highName))
-	    {
-		if (!(vardef = llvm::dyn_cast<VarDef>(def)))
-		{
-		    return Error("Expected variable name");
-		}
-	    }
-	    if (type != vardef->Type())
-	    {
-		return Error("Expected same type for both high and low variable");
-	    }
 	}
-	if (type)
+	if (const VarDef* vardef = llvm::dyn_cast_or_null<VarDef>(nameStack.Find(lowName)))
 	{
-	    return new Types::DynRangeDecl(lowName, highName, type);
+	    type = vardef->Type();
+	    if (const NamedObject* highDef = llvm::dyn_cast_or_null<VarDef>(nameStack.Find(highName)))
+	    {
+		if (type != highDef->Type())
+		{
+		    return Error("Expected same type for both high and low variable");
+		}
+		return new Types::DynRangeDecl(lowName, highName, type);
+	    }
 	}
-    }
-    if (!(startC && Expect(Token::DotDot, ExpectConsume)))
-    {
-	return Error("Expected constant name");
     }
 
     if (schema)
@@ -745,26 +760,15 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	if (const VarDef* def = schema->FindVar(name))
 	{
 	    type = startC->Type();
-	    assert(type == def->Type() && "Expect same type on both sides");
+	    if (type != def->Type())
+	    {
+		return Error("Expected same type for schema range");
+	    }
 	    return new Types::SchemaRange(Constants::ToInt(startC), name, type, schema);
 	}
     }
-    const Constants::ConstDecl* endC = ParseConstExpr({ endToken, altToken });
-    if (!endC)
-    {
-	return 0;
-    }
 
-    int64_t start = Constants::ToInt(startC);
-    int64_t end = Constants::ToInt(endC);
-
-    type = startC->Type();
-    assert(type == endC->Type() && "Expect same type on both sides");
-    if (end <= start)
-    {
-	return Error("Invalid range specification");
-    }
-    return new Types::RangeDecl(new Types::Range(start, end), type);
+    return 0;
 }
 
 Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
@@ -1975,6 +1979,7 @@ Types::TypeDecl* Parser::ExpandSchema(Types::TypeDecl* ty)
     {
 	const Constants::ConstDecl* c = ParseConstExpr({ Token::Comma, Token::RightParen });
 	vals.push_back(ToInt(c));
+	AcceptToken(Token::Comma);
     } while (!AcceptToken(Token::RightParen));
     return Types::Instantiate(vals, ty);
 }

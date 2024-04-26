@@ -180,17 +180,17 @@ public:
     std::vector<VarDef> CalculateUsedVars(FunctionAST* fn, const std::vector<const NamedObject*>& varsUsed,
                                           const Stack<const NamedObject*>& nameStack);
 
-    void PrintError(const Token& t, const std::string& msg);
+    void PrintError(const char* file, int line, const Token& t, const std::string& msg);
     template<typename T = std::nullptr_t>
-    T Error(const Token& t, const std::string& msg)
+    T Error(const char* file, int line, const Token& t, const std::string& msg)
     {
-	PrintError(t, msg);
+	PrintError(file, line, t, msg);
 	return T{};
     }
     template<typename T = std::nullptr_t>
-    T Error(const std::string& msg)
+    T Error(const char* file, int line, const std::string& msg)
     {
-	PrintError(CurrentToken(), msg);
+	PrintError(file, line, CurrentToken(), msg);
 	return T{};
     }
 
@@ -267,9 +267,14 @@ public:
     AllowEmpty     allowEmpty;
 };
 
-void Parser::PrintError(const Token& t, const std::string& msg)
+void Parser::PrintError(const char* file, int line, const Token& t, const std::string& msg)
 {
     const Location& loc = t.Loc();
+
+    if (verbosity)
+    {
+	std::cerr << file << ": " << line << ": Error Message" << std::endl;
+    }
     if (loc)
     {
 	std::cerr << loc << " ";
@@ -349,7 +354,8 @@ bool Parser::Expect(Token::TokenType type, ExpectConsuming consumption, const ch
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type);
-	return Error<bool>("Expected '" + t.TypeStr() + "', got '" + CurrentToken().TypeStr() + "'.");
+	return Error<bool>(file, line,
+	                   "Expected '" + t.TypeStr() + "', got '" + CurrentToken().TypeStr() + "'.");
     }
     if (consumption == ExpectConsume)
     {
@@ -375,7 +381,7 @@ void Parser::AssertToken(Token::TokenType type, const char* file, int line)
     if (CurrentToken().GetToken() != type)
     {
 	Token t(type);
-	Error("Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
+	Error(file, line, "Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
 	assert(0 && "Unexpected token");
     }
     NextToken(file, line);
@@ -405,6 +411,8 @@ bool Parser::AcceptToken(Token::TokenType type, const char* file, int line)
 #define AssertToken(t) AssertToken(t, __FILE__, __LINE__)
 #define AcceptToken(t) AcceptToken(t, __FILE__, __LINE__)
 #define GetIdentifier(a) GetIdentifier(__FILE__, __LINE__, a)
+#define Error(a, ...) Error(__FILE__, __LINE__, a __VA_OPT__(, ) __VA_ARGS__)
+#define ErrorT(T, a, ...) Error<T>(__FILE__, __LINE__, a __VA_OPT__(, ) __VA_ARGS__)
 
 Types::TypeDecl* Parser::GetTypeDecl(const std::string& name)
 {
@@ -564,7 +572,7 @@ bool Parser::AddConst(const std::string& name, const Constants::ConstDecl* cd)
     if (!nameStack.Add(new ConstDef(name, cd)))
     {
 	// TODO: Track location better.
-	return Error<bool>("Name " + name + " is already declared as a constant");
+	return ErrorT(bool, "Name " + name + " is already declared as a constant");
     }
     return true;
 }
@@ -650,19 +658,19 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	else
 	{
 	    tt = Token::Unknown;
-	    return Error<int>("Invalid constant, expected identifier for enumerated type");
+	    return ErrorT(int, "Invalid constant, expected identifier for enumerated type");
 	}
 	break;
     }
     default:
 	tt = Token::Unknown;
-	return Error<int>("Invalid constant value, expected char, integer or enum value");
+	return ErrorT(int, "Invalid constant value, expected char, integer or enum value");
     }
 
     if (oldtt != Token::Unknown && oldtt != tt)
     {
 	tt = Token::Unknown;
-	return Error<int>("Expected token to match type");
+	return ErrorT(int, "Expected token to match type");
     }
 
     NextToken();
@@ -671,7 +679,7 @@ int64_t Parser::ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type)
 	if (tt != Token::Integer)
 	{
 	    tt = Token::Unknown;
-	    return Error<int>("Invalid negative constant");
+	    return ErrorT(int, "Invalid negative constant");
 	}
 	result = -result;
     }
@@ -1222,6 +1230,7 @@ void Parser::ParseConstDef()
 
 Types::Schema* Parser::ParseSchemaVars()
 {
+    TRACE();
     std::vector<std::string> names;
     std::vector<VarDef>      args;
     while (!AcceptToken(Token::RightParen))
@@ -1469,6 +1478,7 @@ Types::PointerDecl* Parser::ParsePointerType(Forwarding maybeForwarded)
 
 Types::TypeDecl* Parser::ParseArrayDecl()
 {
+    TRACE();
     AssertToken(Token::Array);
     if (Expect(Token::LeftSquare, ExpectConsume))
     {
@@ -1766,7 +1776,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 			    if (n == f->Name())
 			    {
 				// TODO: Needs better location.
-				return Error<bool>("Duplicate field name '" + n + "' in record");
+				return ErrorT(bool, "Duplicate field name '" + n + "' in record");
 			    }
 			}
 			bool isStatic = false;
@@ -1871,7 +1881,7 @@ unsigned Parser::ParseStringSize(Token::TokenType end)
 	    return is->Value();
 	}
     }
-    return Error<unsigned>("Invalid string size");
+    return ErrorT(unsigned, "Invalid string size");
 }
 
 Types::StringDecl* Parser::ParseStringDecl()
@@ -2256,7 +2266,7 @@ public:
 	    exprs.push_back(e);
 	    return true;
 	}
-	return parser.Error<bool>("Expected index expression");
+	return parser.ErrorT(bool, "Expected index expression");
     }
     std::vector<ExprAST*>& Exprs() { return exprs; }
 
@@ -2626,7 +2636,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		auto& funcArgs = proto->Args();
 		if (argNo >= funcArgs.size())
 		{
-		    return Error<bool>("Too many arguments");
+		    return ErrorT(bool, "Too many arguments");
 		}
 		isFuncArg = llvm::isa<Types::FuncPtrDecl>(funcArgs[argNo].Type());
 	    }
@@ -3084,7 +3094,7 @@ public:
 		{
 		    if (fty != type->GetElement(elem))
 		    {
-			return parser.Error<bool>("Should be same types for field initializers");
+			return parser.ErrorT(bool, "Should be same types for field initializers");
 		    }
 		}
 		else
@@ -3095,7 +3105,7 @@ public:
 	    }
 	    else
 	    {
-		return parser.Error<bool>("Unknown record field: " + fieldName);
+		return parser.ErrorT(bool, "Unknown record field: " + fieldName);
 	    }
 	    if (!parser.AcceptToken(Token::Comma))
 	    {
@@ -3989,12 +3999,12 @@ public:
 		}
 		else
 		{
-		    return parser.Error<bool>("Type for with statement should be a record type");
+		    return parser.ErrorT(bool, "Type for with statement should be a record type");
 		}
 	    }
 	    else
 	    {
-		return parser.Error<bool>("With statement must contain only variable expression");
+		return parser.ErrorT(bool, "With statement must contain only variable expression");
 	    }
 	    return true;
 	}
@@ -4099,7 +4109,7 @@ public:
 		wa.width = parser.ParseExpression();
 		if (!wa.width)
 		{
-		    return parser.Error<bool>("Invalid width expression");
+		    return parser.ErrorT(bool, "Invalid width expression");
 		}
 	    }
 	    if (parser.AcceptToken(Token::Colon))
@@ -4107,7 +4117,7 @@ public:
 		wa.precision = parser.ParseExpression();
 		if (!wa.precision)
 		{
-		    return parser.Error<bool>("Invalid precision expression");
+		    return parser.ErrorT(bool, "Invalid precision expression");
 		}
 	    }
 	    args.push_back(wa);
@@ -4429,7 +4439,7 @@ bool Parser::ParseInterface(InterfaceList& iList)
 	    FuncDef*         nmObj = new FuncDef(name, ty, proto);
 	    if (!nameStack.Add(nmObj))
 	    {
-		return Error<bool>("Interface name '" + name + "' already exists in...");
+		return ErrorT(bool, "Interface name '" + name + "' already exists in...");
 	    }
 	}
 	break;
@@ -4445,7 +4455,7 @@ bool Parser::ParseInterface(InterfaceList& iList)
 	    break;
 
 	default:
-	    return Error<bool>("Unexpected token");
+	    return ErrorT(bool, "Unexpected token");
 	    break;
 	}
     } while (CurrentToken().GetToken() != Token::Implementation);

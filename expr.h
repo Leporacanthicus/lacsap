@@ -278,7 +278,7 @@ class ArrayExprAST : public AddressableAST
 
 public:
     ArrayExprAST(const Location& w, ExprAST* v, const std::vector<ExprAST*>& inds,
-                 const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty);
+                 const std::vector<Types::RangeBaseDecl*>& r, Types::TypeDecl* ty);
     void DoDump() const override;
     // Don't need CodeGen, just calculate address and use parent CodeGen
     llvm::Value* Address() override;
@@ -288,7 +288,7 @@ public:
 private:
     ExprAST*                       expr;
     std::vector<ExprAST*>          indices;
-    std::vector<Types::RangeDecl*> ranges;
+    std::vector<Types::RangeBaseDecl*> ranges;
     std::vector<size_t>            indexmul;
 };
 

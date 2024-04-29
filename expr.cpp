@@ -427,14 +427,15 @@ llvm::Value* VariableExprAST::Address()
 }
 
 ArrayExprAST::ArrayExprAST(const Location& loc, ExprAST* v, const std::vector<ExprAST*>& inds,
-                           const std::vector<Types::RangeDecl*>& r, Types::TypeDecl* ty)
+                           const std::vector<Types::RangeBaseDecl*>& r, Types::TypeDecl* ty)
     : AddressableAST(loc, EK_ArrayExpr, ty), expr(v), indices(inds), ranges(r)
 {
     size_t mul = 1;
     for (auto j = ranges.end() - 1; j >= ranges.begin(); j--)
     {
 	indexmul.push_back(mul);
-	mul *= (*j)->GetRange()->Size();
+	auto r = llvm::dyn_cast<Types::RangeDecl>(*j);
+	mul *= r->GetRange()->Size();
     }
     std::reverse(indexmul.begin(), indexmul.end());
 }
@@ -1383,8 +1384,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	if (llvm::isa<Types::CharDecl>(al->SubType()) && llvm::isa<Types::CharDecl>(ar->SubType()))
 	{
 
-	    std::vector<Types::RangeDecl*> rr = ar->Ranges();
-	    std::vector<Types::RangeDecl*> rl = al->Ranges();
+	    std::vector<Types::RangeBaseDecl*> rr = ar->Ranges();
+	    std::vector<Types::RangeBaseDecl*> rl = al->Ranges();
 
 	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
 	    {
@@ -1599,8 +1600,9 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	    llvm::Value*    arrPtr = builder.CreateGEP(dynTy, x, { zero, zero });
 	    llvm::Value*    arrStart = builder.CreateGEP(ptrTy, v, zero);
 	    builder.CreateStore(arrStart, arrPtr);
-	    llvm::Value* low = MakeIntegerConstant(aty->Ranges()[0]->Start());
-	    llvm::Value* high = MakeIntegerConstant(aty->Ranges()[0]->End());
+	    auto         r = llvm::dyn_cast<Types::RangeDecl>(aty->Ranges()[0]);
+	    llvm::Value* low = MakeIntegerConstant(r->Start());
+	    llvm::Value* high = MakeIntegerConstant(r->End());
 	    llvm::Value* lPtr = builder.CreateGEP(dynTy, x, { zero, one });
 	    llvm::Value* hPtr = builder.CreateGEP(dynTy, x, { zero, two });
 	    builder.CreateStore(low, lPtr);
@@ -4364,7 +4366,8 @@ llvm::Value* ArraySliceAST::Address()
     llvm::Type*  elemTy = aty->SubType()->LlvmType();
     llvm::Value* v = MakeAddressable(expr);
     llvm::Value* low = range->Low();
-    int64_t      start = aty->Ranges()[0]->Start();
+    auto         r = llvm::dyn_cast<Types::RangeDecl>(aty->Ranges()[0]);
+    int64_t      start = r->Start();
     llvm::Value* index = builder.CreateSub(low, MakeIntegerConstant(start));
     llvm::Value* ptr = builder.CreateGEP(elemTy, v, index);
 

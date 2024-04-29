@@ -299,16 +299,17 @@ namespace Types
     class ArrayDecl : public CompoundDecl
     {
     public:
-	ArrayDecl(TypeDecl* b, const std::vector<RangeDecl*>& r) : CompoundDecl(TK_Array, b), ranges(r)
+	ArrayDecl(TypeDecl* b, const std::vector<RangeBaseDecl*>& r) : CompoundDecl(TK_Array, b), ranges(r)
 	{
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
-	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeDecl*>& r) : CompoundDecl(tk, b), ranges(r)
+	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeBaseDecl*>& r)
+	    : CompoundDecl(tk, b), ranges(r)
 	{
 	    assert(tk == TK_String && "Expected this to be a string...");
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
-	const std::vector<RangeDecl*>& Ranges() const { return ranges; }
+	const std::vector<RangeBaseDecl*>& Ranges() const { return ranges; }
 	void                           DoDump() const override;
 	bool                           SameAs(const TypeDecl* ty) const override;
 	const TypeDecl*                CompatibleType(const TypeDecl* ty) const override;
@@ -323,7 +324,7 @@ namespace Types
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
 
     private:
-	std::vector<RangeDecl*> ranges;
+	std::vector<RangeBaseDecl*> ranges;
     };
 
     class DynArrayDecl : public CompoundDecl
@@ -700,7 +701,7 @@ namespace Types
     public:
 	StringDecl(unsigned size)
 	    : ArrayDecl(TK_String, new CharDecl,
-	                std::vector<RangeDecl*>(
+	                std::vector<RangeBaseDecl*>(
 	                    1, new RangeDecl(new Range(0, size + 1), Get<Types::IntegerDecl>())))
 	{
 	    assert(size > 0 && "Zero size not allowed");

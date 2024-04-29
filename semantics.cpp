@@ -552,9 +552,11 @@ void TypeCheckVisitor::Check<ArrayExprAST>(ArrayExprAST* a)
 	{
 	    Error(e, "Index should be an integral type");
 	}
-	Types::RangeDecl* r = a->ranges[i];
+	auto r = llvm::dyn_cast<Types::RangeDecl>(a->ranges[i]);
 	if (llvm::isa<RangeReduceAST>(e))
+	{
 	    continue;
+	}
 	if (r->Type() != e->Type()->Type() && !e->Type()->CompatibleType(r))
 	{
 	    Error(a, "Incorrect index type");

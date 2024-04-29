@@ -1482,23 +1482,22 @@ Types::TypeDecl* Parser::ParseArrayDecl()
     AssertToken(Token::Array);
     if (Expect(Token::LeftSquare, ExpectConsume))
     {
-	std::vector<Types::RangeDecl*> rv;
+	std::vector<Types::RangeBaseDecl*> rv;
 	Types::DynRangeDecl*           dr = nullptr;
 	Types::TypeDecl*               type = 0;
 	while (!AcceptToken(Token::RightSquare))
 	{
 	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
 	    {
-		if (auto rr = llvm::dyn_cast<Types::RangeDecl>(r))
+		assert(type && "Uh? Type is supposed to be set now");
+		if (auto adr = llvm::dyn_cast<Types::DynRangeDecl>(r))
 		{
-		    assert(type && "Uh? Type is supposed to be set now");
-		    rv.push_back(rr);
+		    assert(!dr && "Expect only one dynamic range at this point");
+		    dr = adr;
 		}
 		else
 		{
-		    assert(!dr && "Expect only one dynamic range at this point");
-		    dr = llvm::dyn_cast<Types::DynRangeDecl>(r);
-		    assert(dr && "Expect to have a dynrange here");
+		    rv.push_back(r);
 		}
 	    }
 	    else
@@ -2111,8 +2110,8 @@ ExprAST* Parser::ParseIntegerExpr(const Token& token)
 ExprAST* Parser::ParseStringExpr(const Token& token)
 {
     int                            len = std::max(1, (int)(token.GetStrVal().length() - 1));
-    std::vector<Types::RangeDecl*> rv = { new Types::RangeDecl(new Types::Range(0, len),
-	                                                       Types::Get<Types::IntegerDecl>()) };
+    std::vector<Types::RangeBaseDecl*> rv = { new Types::RangeDecl(new Types::Range(0, len),
+	                                                           Types::Get<Types::IntegerDecl>()) };
     Types::ArrayDecl*              ty = new Types::ArrayDecl(Types::Get<Types::CharDecl>(), rv);
     NextToken();
     return new StringExprAST(token.Loc(), token.GetStrVal(), ty);

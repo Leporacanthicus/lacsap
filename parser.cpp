@@ -768,7 +768,7 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	if (const VarDef* def = schema->FindVar(name))
 	{
 	    type = startC->Type();
-	    if (type != def->Type())
+	    if (!type->CompatibleType(def->Type()))
 	    {
 		return Error("Expected same type for schema range");
 	    }

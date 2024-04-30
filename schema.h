@@ -40,7 +40,15 @@ namespace Types
 	int64_t                        start;
 	std::string                    lowName;
 	std::string                    highName;
-	[[maybe_unused]] const Schema* schema;
+	const Schema*                  schema;
+    };
+
+    class SchemaArrayDecl : public ArrayDecl
+    {
+    public:
+	SchemaArrayDecl(TypeDecl* b, const std::vector<RangeBaseDecl*>& r) : ArrayDecl(TK_SchArray, b, r) {}
+	// No need for DoDump, it should work with ArrayDecl::DoDump()
+	TypeDecl* Instantiate(const std::vector<int64_t>& vals);
     };
 }; // namespace Types
 #endif

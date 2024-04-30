@@ -71,6 +71,7 @@ namespace Types
 	    TK_Real,
 	    TK_Void,
 	    TK_Array,
+	    TK_SchArray,
 	    TK_String,
 	    TK_LastArray,
 	    TK_DynArray,
@@ -306,7 +307,8 @@ namespace Types
 	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeBaseDecl*>& r)
 	    : CompoundDecl(tk, b), ranges(r)
 	{
-	    assert(tk == TK_String && "Expected this to be a string...");
+	    assert((tk == TK_String || tk == TK_SchArray) &&
+	           "Expected this to be a string or schema array...");
 	    assert(r.size() > 0 && "Empty range not allowed");
 	}
 	const std::vector<RangeBaseDecl*>& Ranges() const { return ranges; }

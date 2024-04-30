@@ -130,7 +130,7 @@ public:
     Types::RangeBaseDecl* ParseRange(Types::TypeDecl*& type, Token::TokenType endToken,
                                      Token::TokenType altToken, Types::Schema* schema = 0);
     Types::RangeBaseDecl* ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                                Token::TokenType altToken);
+                                                Token::TokenType altToken, Types::Schema* schema = 0);
     Types::Schema*        ParseSchemaVars();
     Types::TypeDecl*      ExpandSchema(Types::TypeDecl* ty);
 
@@ -139,7 +139,7 @@ public:
     Types::TypeDecl* ParseType(const std::string& name, Forwarding maybeForwarded, Types::Schema* schema = 0);
     Types::EnumDecl*    ParseEnumDef();
     Types::PointerDecl* ParsePointerType(Forwarding maybeForwarded);
-    Types::TypeDecl*    ParseArrayDecl();
+    Types::TypeDecl*    ParseArrayDecl(Types::Schema* schema = 0);
     bool                ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantDecl*& variant,
                                     Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();
@@ -780,7 +780,7 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 }
 
 Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Token::TokenType endToken,
-                                                    Token::TokenType altToken)
+                                                    Token::TokenType altToken, Types::Schema* schema)
 {
     std::string name = GetIdentifier(NoExpectConsume);
     if ((type = GetTypeDecl(name)))
@@ -793,7 +793,7 @@ Types::RangeBaseDecl* Parser::ParseRangeOrTypeRange(Types::TypeDecl*& type, Toke
 	return new Types::RangeDecl(type->GetRange(), type);
     }
 
-    return ParseRange(type, endToken, altToken);
+    return ParseRange(type, endToken, altToken, schema);
 }
 
 Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, const Token& binOp,
@@ -1476,7 +1476,7 @@ Types::PointerDecl* Parser::ParsePointerType(Forwarding maybeForwarded)
     return 0;
 }
 
-Types::TypeDecl* Parser::ParseArrayDecl()
+Types::TypeDecl* Parser::ParseArrayDecl(Types::Schema* schema)
 {
     TRACE();
     AssertToken(Token::Array);
@@ -1487,7 +1487,8 @@ Types::TypeDecl* Parser::ParseArrayDecl()
 	Types::TypeDecl*               type = 0;
 	while (!AcceptToken(Token::RightSquare))
 	{
-	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma))
+	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma,
+	                                                        schema))
 	    {
 		assert(type && "Uh? Type is supposed to be set now");
 		if (auto adr = llvm::dyn_cast<Types::DynRangeDecl>(r))
@@ -1517,6 +1518,10 @@ Types::TypeDecl* Parser::ParseArrayDecl()
 		if (dr)
 		{
 		    return new Types::DynArrayDecl(ty, dr);
+		}
+		if (schema)
+		{
+		    return new Types::SchemaArrayDecl(ty, rv);
 		}
 		return new Types::ArrayDecl(ty, rv);
 	    }
@@ -2057,7 +2062,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
     }
 
     case Token::Array:
-	return ParseArrayDecl();
+	return ParseArrayDecl(schema);
 
     case Token::Record:
 	return ParseRecordDecl();

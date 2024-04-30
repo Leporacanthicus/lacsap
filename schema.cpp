@@ -25,11 +25,6 @@ namespace Types
 	return 0;
     }
 
-    void SchemaRange::DoDump() const
-    {
-	std::cerr << "SchemaRange " << start << ".." << name << std::endl;
-    }
-
     int Schema::NameToIndex(const std::string& nm) const
     {
 	int index = 0;
@@ -42,6 +37,11 @@ namespace Types
 	    index++;
 	}
 	return -1;
+    }
+
+    void SchemaRange::DoDump() const
+    {
+	std::cerr << "SchemaRange " << start << ".." << name << std::endl;
     }
 
     TypeDecl* SchemaRange::Instantiate(const std::vector<int64_t>& vals)
@@ -65,11 +65,31 @@ namespace Types
 	return new RangeDecl(new Range(lowVal, vals[idx]), baseType);
     }
 
+    TypeDecl* SchemaArrayDecl::Instantiate(const std::vector<int64_t>& vals)
+    {
+	std::vector<RangeBaseDecl*> rv;
+	for (auto r : Ranges())
+	{
+	    if (auto sr = llvm::dyn_cast<SchemaRange>(const_cast<RangeBaseDecl*>(r)))
+	    {
+		auto rr = llvm::dyn_cast<RangeBaseDecl>(sr->Instantiate(vals));
+		rv.push_back(rr);
+	    }
+	    else
+	    {
+		rv.push_back(const_cast<RangeBaseDecl*>(r));
+	    }
+	}
+	return new ArrayDecl(baseType, rv);
+    }
+
     bool IsSchema(const TypeDecl* ty)
     {
 	switch (ty->Type())
 	{
 	case TypeDecl::TK_SchRange:
+	    return true;
+	case TypeDecl::TK_SchArray:
 	    return true;
 	default:
 	    return false;
@@ -89,6 +109,8 @@ namespace Types
 	{
 	case TypeDecl::TK_SchRange:
 	    return Instantiate<SchemaRange>(vals, ty);
+	case TypeDecl::TK_SchArray:
+	    return Instantiate<SchemaArrayDecl>(vals, ty);
 	default:
 	    return 0;
 	}

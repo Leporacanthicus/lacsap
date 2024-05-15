@@ -243,12 +243,13 @@ static void skip_spaces(struct interface* intf)
 
 static int get_sign(struct interface* intf)
 {
-    if (intf->fncurrent(intf) == '-')
+    char ch = intf->fncurrent(intf);
+    if (ch == '-')
     {
 	intf->fngetnext(intf);
 	return -1;
     }
-    else if (intf->fncurrent(intf) == '+')
+    else if (ch == '+')
     {
 	intf->fngetnext(intf);
     }
@@ -293,10 +294,11 @@ static void readint64(struct interface* intf, int64_t* v)
 
     skip_spaces(intf);
     int sign = get_sign(intf);
-    while (isdigit(intf->fncurrent(intf)))
+    char ch;
+    while ((ch = intf->fncurrent(intf)) && isdigit(ch))
     {
 	n *= 10;
-	n += (intf->fncurrent(intf)) - '0';
+	n += ch - '0';
 	if (!intf->fngetnext(intf))
 	{
 	    break;

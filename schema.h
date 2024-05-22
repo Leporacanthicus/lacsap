@@ -35,6 +35,7 @@ namespace Types
 	}
 	void      DoDump() const override;
 	TypeDecl* Instantiate(const std::vector<int64_t>& vals);
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_SchRange; }
 
     private:
 	int64_t                        start;
@@ -48,6 +49,13 @@ namespace Types
     public:
 	SchemaArrayDecl(TypeDecl* b, const std::vector<RangeBaseDecl*>& r) : ArrayDecl(TK_SchArray, b, r) {}
 	// No need for DoDump, it should work with ArrayDecl::DoDump()
+	TypeDecl* Instantiate(const std::vector<int64_t>& vals);
+    };
+
+    class SchemaSetDecl : public SetDecl
+    {
+    public:
+	SchemaSetDecl(RangeBaseDecl* r, TypeDecl* ty) : SetDecl(TK_SchSet, r, ty) {}
 	TypeDecl* Instantiate(const std::vector<int64_t>& vals);
     };
 }; // namespace Types

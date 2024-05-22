@@ -83,13 +83,19 @@ namespace Types
 	return new ArrayDecl(baseType, rv);
     }
 
+    TypeDecl* SchemaSetDecl::Instantiate(const std::vector<int64_t>& vals)
+    {
+	auto rr = llvm::dyn_cast<SchemaRange>(range)->Instantiate(vals);
+	return new SetDecl(llvm::cast<RangeBaseDecl>(rr), baseType);
+    }
+
     bool IsSchema(const TypeDecl* ty)
     {
 	switch (ty->Type())
 	{
 	case TypeDecl::TK_SchRange:
-	    return true;
 	case TypeDecl::TK_SchArray:
+	case TypeDecl::TK_SchSet:
 	    return true;
 	default:
 	    return false;
@@ -109,6 +115,8 @@ namespace Types
 	{
 	case TypeDecl::TK_SchRange:
 	    return Instantiate<SchemaRange>(vals, ty);
+	case TypeDecl::TK_SchSet:
+	    return Instantiate<SchemaSetDecl>(vals, ty);
 	case TypeDecl::TK_SchArray:
 	    return Instantiate<SchemaArrayDecl>(vals, ty);
 	default:

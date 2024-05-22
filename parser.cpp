@@ -144,7 +144,7 @@ public:
                                     Token::TokenType type);
     Types::RecordDecl*  ParseRecordDecl();
     Types::FileDecl*    ParseFileDecl();
-    Types::SetDecl*     ParseSetDecl();
+    Types::SetDecl*     ParseSetDecl(Types::Schema* schema);
     Types::StringDecl*  ParseStringDecl();
     Types::VariantDecl* ParseVariantDecl(Types::FieldDecl*& markerField);
     int64_t             ParseConstantValue(Token::TokenType& tt, Types::TypeDecl*& type);
@@ -1519,6 +1519,7 @@ Types::TypeDecl* Parser::ParseArrayDecl(Types::Schema* schema)
 		{
 		    return new Types::DynArrayDecl(ty, dr);
 		}
+		// TODO: Check that rv is schemarange?
 		if (schema)
 		{
 		    return new Types::SchemaArrayDecl(ty, rv);
@@ -1855,14 +1856,14 @@ Types::FileDecl* Parser::ParseFileDecl()
     return 0;
 }
 
-Types::SetDecl* Parser::ParseSetDecl()
+Types::SetDecl* Parser::ParseSetDecl(Types::Schema* schema)
 {
     TRACE();
     AssertToken(Token::Set);
     if (Expect(Token::Of, ExpectConsume))
     {
 	Types::TypeDecl* type = 0;
-	if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown))
+	if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::Semicolon, Token::Unknown, schema))
 	{
 	    auto rd = llvm::dyn_cast<Types::RangeDecl>(r);
 	    if (rd && rd->GetRange()->Size() > Types::SetDecl::MaxSetSize)
@@ -1870,6 +1871,10 @@ Types::SetDecl* Parser::ParseSetDecl()
 		return Error("Set too large");
 	    }
 	    assert(type && "Uh? Type is supposed to be set");
+	    if (llvm::isa<Types::SchemaRange>(r))
+	    {
+		return new Types::SchemaSetDecl(r, type);
+	    }
 	    return new Types::SetDecl(rd, type);
 	}
     }
@@ -2074,7 +2079,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 	return ParseFileDecl();
 
     case Token::Set:
-	return ParseSetDecl();
+	return ParseSetDecl(schema);
 
     case Token::LeftParen:
 	return ParseEnumDef();

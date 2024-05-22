@@ -88,6 +88,7 @@ namespace Types
 	    TK_File,
 	    TK_Text,
 	    TK_Set,
+	    TK_SchSet,
 	    TK_Variant,
 	    TK_Class,
 	    TK_MemberFunc,
@@ -680,9 +681,10 @@ namespace Types
 	    SetMask = SetBits - 1,
 	    SetPow2Bits = 5
 	};
-	SetDecl(RangeDecl* r, TypeDecl* ty);
+	SetDecl(RangeBaseDecl* r, TypeDecl* ty) : SetDecl(TK_Set, r, ty) {}
+	SetDecl(TypeKind k, RangeBaseDecl* r, TypeDecl* ty);
 	void            DoDump() const override;
-	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_Set; }
+	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Set || e->getKind() == TK_SchSet; }
 	size_t          SetWords() const { return (range->GetRange()->Size() + SetMask) >> SetPow2Bits; }
 	Range*          GetRange() const override;
 	void            UpdateRange(RangeDecl* r) { range = r; }
@@ -693,9 +695,7 @@ namespace Types
     protected:
 	llvm::Type*   GetLlvmType() const override;
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
-
-    private:
-	RangeDecl* range;
+	RangeBaseDecl* range;
     };
 
     class StringDecl : public ArrayDecl

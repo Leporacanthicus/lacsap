@@ -1,6 +1,7 @@
 #include "types.h"
 #include "expr.h"
 #include "runtime/runtime.h"
+#include "schema.h"
 #include "trace.h"
 #include <climits>
 #include <llvm/IR/LLVMContext.h>
@@ -1234,12 +1235,12 @@ namespace Types
 	std::cerr << "Text ";
     }
 
-    SetDecl::SetDecl(RangeDecl* r, TypeDecl* ty) : CompoundDecl(TK_Set, ty), range(r)
+    SetDecl::SetDecl(TypeKind k, RangeBaseDecl* r, TypeDecl* ty) : CompoundDecl(k, ty), range(r)
     {
 	assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
 	assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
 	assert(SetMask == SetBits - 1 && "Set pow2 mismatch");
-	if (r)
+	if (r && !llvm::isa<SchemaRange>(r))
 	{
 	    assert(r->GetRange()->Size() <= MaxSetSize && "Set too large");
 	}

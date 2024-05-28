@@ -506,6 +506,7 @@ DynArrayExprAST::DynArrayExprAST(const Location& loc, ExprAST* v, ExprAST* idx, 
 
 llvm::Value* DynArrayExprAST::Address()
 {
+    TRACE();
     llvm::Value* v = MakeAddressable(expr);
     assert(v && "Expected variable to have an address");
     EnsureSized();
@@ -658,7 +659,7 @@ static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
     int lScore = StringishScore(lhs);
     int rScore = StringishScore(rhs);
 
-    return lScore && rScore && (lScore + rScore) >= 2;
+    return lScore && rScore;
 }
 
 void BinaryExprAST::DoDump() const

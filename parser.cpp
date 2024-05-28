@@ -3733,6 +3733,7 @@ ExprAST* Parser::ParseIfExpr()
 
 ExprAST* Parser::ParseForExpr()
 {
+    TRACE();
     AssertToken(Token::For);
     const Location loc = CurrentToken().Loc();
 

@@ -1477,7 +1477,12 @@ namespace Types
     bool IsCharArray(const TypeDecl* t)
     {
 	auto at = llvm::dyn_cast<ArrayDecl>(t);
-	return at && llvm::isa<CharDecl>(at->SubType());
+	if (at)
+	{
+	    return llvm::isa<CharDecl>(at->SubType());
+	}
+	auto dt = llvm::dyn_cast<DynArrayDecl>(t);
+	return dt && llvm::isa<CharDecl>(dt->SubType());
     }
 
     static RangeDecl* MakeRange(int64_t s, int64_t e)

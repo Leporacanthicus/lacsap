@@ -1232,11 +1232,11 @@ namespace Builtin
 	{
 	    return ErrorType::WrongArgCount;
 	}
-	if (!IsStringLike(args[0]->Type()) || !llvm::isa<Types::IntegerDecl>(args[1]->Type()))
+	if (!IsStringLike(args[0]->Type()) || !IsIntegral(args[1]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}
-	if (args.size() == 3 && !llvm::isa<Types::IntegerDecl>(args[2]->Type()))
+	if (args.size() == 3 && !IsIntegral(args[2]->Type()))
 	{
 	    return ErrorType::WrongArgType;
 	}

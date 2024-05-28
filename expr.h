@@ -440,7 +440,7 @@ public:
     RangeExprAST(const Location& w, ExprAST* l, ExprAST* h)
         : ExprAST(w, EK_RangeExpr, l->Type()), low(l), high(h)
     {
-	assert(l->Type() == h->Type() && "Expect same type here");
+	assert(*l->Type() == *h->Type() && "Expect same type here");
     }
     void         DoDump() const override;
     llvm::Value* Low() { return low->CodeGen(); }

@@ -2881,7 +2881,14 @@ llvm::Value* WriteAST::CodeGen()
 		    v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
 		}
 		argsV.push_back(v);
-		v = MakeIntegerConstant(type->Size());
+		if (auto slice = llvm::dyn_cast<ArraySliceAST>(arg.expr))
+		{
+		    v = slice->Size();
+		}
+		else
+		{
+		    v = MakeIntegerConstant(type->Size());
+		}
 	    }
 	    else
 	    {
@@ -4373,6 +4380,13 @@ llvm::Value* ArraySliceAST::Address()
     llvm::Value* ptr = builder.CreateGEP(elemTy, v, index);
 
     return builder.CreateBitCast(ptr, llvm::PointerType::getUnqual(type->LlvmType()));
+}
+
+llvm::Value* ArraySliceAST::Size()
+{
+    llvm::Value* low = range->Low();
+    llvm::Value* high = range->High();
+    return builder.CreateAdd(builder.CreateSub(high, low), MakeIntegerConstant(1));
 }
 
 void ArraySliceAST::DoDump() const

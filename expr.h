@@ -1108,6 +1108,7 @@ public:
     llvm::Value* Address() override;
     void         DoDump() const override;
     void         accept(ASTVisitor& v) override;
+    llvm::Value* Size();
 
 private:
     ExprAST*         expr;

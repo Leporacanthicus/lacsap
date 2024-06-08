@@ -221,6 +221,7 @@ llvm::Value* MakeAddressable(ExprAST* e)
     }
 
     llvm::Value* store = e->CodeGen();
+    assert(store && "Expected to get a store here");
     if (store->getType()->isPointerTy())
     {
 	return store;
@@ -280,33 +281,53 @@ static llvm::Constant* MakeCharConstant(int val)
     return MakeConstant(val, Types::Get<Types::CharDecl>());
 }
 
-static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
+template<typename FN>
+static llvm::Value* FillTempString(llvm::Value* dest, llvm::Value* rhs, size_t size, FN fn)
 {
     TRACE();
     llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
-    llvm::Value* dest1 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(0), "str_0");
+    llvm::Value* destLen = builder.CreateGEP(charTy, dest, MakeIntegerConstant(0), "str_len");
+    llvm::Value* destChars = builder.CreateGEP(charTy, dest, MakeIntegerConstant(1), "str_chars");
 
-    llvm::Value* dest2 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(1), "str_1");
+    builder.CreateStore(MakeCharConstant(size), destLen);
+    return fn(rhs, destChars, size);
+}
 
-    llvm::Value* v = rhs->CodeGen();
-    builder.CreateStore(MakeCharConstant(rhs->Str().size()), dest1);
+static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* rhs)
+{
+    auto func = [](llvm::Value* v, llvm::Value* chars, size_t size)
+    {
+	llvm::Align destAlign{ std::max(AlignOfType(chars->getType()), MIN_ALIGN) };
+	llvm::Align srcAlign{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
+	return builder.CreateMemCpy(chars, destAlign, v, srcAlign, size + 1);
+    };
 
-    llvm::Align dest_align{ std::max(AlignOfType(dest2->getType()), MIN_ALIGN) };
-    llvm::Align src_align{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
-    return builder.CreateMemCpy(dest2, dest_align, v, src_align, rhs->Str().size() + 1);
+    return FillTempString(dest, rhs->CodeGen(), rhs->Str().size(), func);
 }
 
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
     assert(llvm::isa<Types::CharDecl>(rhs->Type()) && "Expected char value");
-    llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
-    llvm::Value* dest1 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(0), "str_0");
 
-    llvm::Value* dest2 = builder.CreateGEP(charTy, dest, MakeIntegerConstant(1), "str_1");
+    auto func = [](llvm::Value* v, llvm::Value* chars, size_t size) { return builder.CreateStore(v, chars); };
+    return FillTempString(dest, rhs->CodeGen(), 1, func);
+}
 
-    builder.CreateStore(MakeCharConstant(1), dest1);
-    return builder.CreateStore(rhs->CodeGen(), dest2);
+static llvm::Value* TempStringFromCharArray(llvm::Value* dest, AddressableAST* rhs, size_t size)
+{
+    TRACE();
+    auto func = [](llvm::Value* v, llvm::Value* chars, size_t size)
+    {
+	llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
+	llvm::Value* src = builder.CreateGEP(charTy, v, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
+	                                     "src");
+	llvm::Align  destAlign{ std::max(AlignOfType(chars->getType()), MIN_ALIGN) };
+	llvm::Align  srcAlign{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
+	return builder.CreateMemCpy(chars, destAlign, src, srcAlign, size + 1);
+    };
+
+    return FillTempString(dest, rhs->Address(), size, func);
 }
 
 static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
@@ -315,9 +336,9 @@ static llvm::Value* LoadOrMemcpy(llvm::Value* src, Types::TypeDecl* ty)
     size_t       size = ty->Size();
     if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
     {
-	llvm::Align dest_align{ std::max(AlignOfType(dest->getType()), MIN_ALIGN) };
-	llvm::Align src_align{ std::max(AlignOfType(src->getType()), MIN_ALIGN) };
-	builder.CreateMemCpy(dest, dest_align, src, src_align, size);
+	llvm::Align destAlign{ std::max(AlignOfType(dest->getType()), MIN_ALIGN) };
+	llvm::Align srcAlign{ std::max(AlignOfType(src->getType()), MIN_ALIGN) };
+	builder.CreateMemCpy(dest, destAlign, src, srcAlign, size);
 	return dest;
     }
 
@@ -637,29 +658,22 @@ llvm::Value* FunctionExprAST::CodeGen()
     return proto->LlvmFunction();
 }
 
-static int StringishScore(ExprAST* e)
+static bool Stringish(ExprAST* e)
 {
-    if (llvm::isa<CharExprAST>(e) || llvm::isa<Types::CharDecl>(e->Type()))
+    if (llvm::isa<CharExprAST, StringExprAST>(e))
     {
-	return 1;
+	return true;
     }
-    if (llvm::isa<StringExprAST>(e))
+    if (llvm::isa<Types::CharDecl, Types::StringDecl>(e->Type()))
     {
-	return 2;
+	return true;
     }
-    if (llvm::isa<Types::StringDecl>(e->Type()))
-    {
-	return 3;
-    }
-    return 0;
+    return false;
 }
 
 static bool BothStringish(ExprAST* lhs, ExprAST* rhs)
 {
-    int lScore = StringishScore(lhs);
-    int rScore = StringishScore(rhs);
-
-    return lScore && rScore;
+    return Stringish(lhs) && Stringish(rhs);
 }
 
 void BinaryExprAST::DoDump() const
@@ -767,7 +781,7 @@ llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
     TRACE();
     if (llvm::isa<Types::CharDecl>(e->Type()))
     {
-	llvm::Value* v = CreateTempAlloca(Types::Get<Types::StringDecl>(255));
+	llvm::Value* v = CreateTempAlloca(Types::Get<Types::StringDecl>(1));
 	TempStringFromChar(v, e);
 	return v;
     }
@@ -778,7 +792,25 @@ llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 	return v;
     }
 
-    return MakeAddressable(e);
+    if (llvm::isa<Types::StringDecl>(e->Type()))
+    {
+	return MakeAddressable(e);
+    }
+
+    if (IsCharArray(e->Type()))
+    {
+	auto                               ea = llvm::dyn_cast<AddressableAST>(e);
+	auto                               at = llvm::dyn_cast<Types::ArrayDecl>(e->Type());
+	std::vector<Types::RangeBaseDecl*> r = at->Ranges();
+
+	assert(r.size() == 1);
+
+	llvm::Value* v = CreateTempAlloca(ty);
+	TempStringFromCharArray(v, ea, r[0]->RangeSize());
+	return v;
+    }
+
+    return Error(e, "Unable to convert to temporary string");
 }
 
 llvm::Value* CallStrFunc(const std::string& name, ExprAST* lhs, ExprAST* rhs, Types::TypeDecl* resTy,
@@ -1388,10 +1420,9 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    std::vector<Types::RangeBaseDecl*> rr = ar->Ranges();
 	    std::vector<Types::RangeBaseDecl*> rl = al->Ranges();
 
-	    if (rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size())
-	    {
-		return MakeStrCompare(oper.GetToken(), CallArrFunc("Compare", rr[0]->Size()));
-	    }
+	    assert(rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size());
+
+	    return MakeStrCompare(oper.GetToken(), CallArrFunc("Compare", rr[0]->RangeSize()));
 	}
     }
 

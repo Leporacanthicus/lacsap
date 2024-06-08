@@ -253,6 +253,7 @@ namespace Types
     public:
 	const TypeDecl* AssignableType(const TypeDecl* ty) const override;
 	const TypeDecl* CompatibleType(const TypeDecl* ty) const override;
+	virtual size_t  RangeSize() const = 0;
 	static bool     classof(const TypeDecl* e)
 	{
 	    return e->getKind() == TK_Range || e->getKind() == TK_DynRange || e->getKind() == TK_SchRange;
@@ -273,6 +274,7 @@ namespace Types
 	bool        SameAs(const TypeDecl* ty) const override;
 	int         Start() const { return range->Start(); }
 	int         End() const { return range->End(); }
+	size_t      RangeSize() const override { return range->Size(); }
 	TypeKind    Type() const override { return baseType->Type(); }
 	Range*      GetRange() const override { return range; }
 
@@ -290,6 +292,11 @@ namespace Types
 	static bool        classof(const TypeDecl* e) { return e->getKind() == TK_DynRange; }
 	const std::string& LowName() { return lowName; }
 	const std::string& HighName() { return highName; }
+	size_t             RangeSize() const override
+	{
+	    assert("Huh? Dynamic range size?");
+	    return 0;
+	}
 	TypeKind           Type() const override { return baseType->Type(); }
 	void               DoDump() const override;
 

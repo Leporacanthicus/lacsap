@@ -1476,8 +1476,7 @@ namespace Types
 
     bool IsCharArray(const TypeDecl* t)
     {
-	auto at = llvm::dyn_cast<ArrayDecl>(t);
-	if (at)
+	if (auto at = llvm::dyn_cast<ArrayDecl>(t))
 	{
 	    return llvm::isa<CharDecl>(at->SubType());
 	}

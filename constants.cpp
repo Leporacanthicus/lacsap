@@ -528,7 +528,7 @@ namespace Constants
 	    return cb->Value();
 	}
 	c->dump();
-	assert(0 && "Didn't expect to get here");
+	ICE("Unknown constant type");
 	return -1;
     }
 

@@ -239,8 +239,7 @@ static ExpectConsuming ShouldConsume(Token::TokenType t, const TerminatorList& l
 	    return i.expect;
 	}
     }
-    assert(0 && "Someone looked for a token that isn't in the list?");
-    return NoExpectConsume;
+    ICE("Someone looked for a token that isn't in the list?");
 }
 
 class ListConsumer
@@ -382,7 +381,7 @@ void Parser::AssertToken(Token::TokenType type, const char* file, int line)
     {
 	Token t(type);
 	Error(file, line, "Expected '" + t.TypeStr() + "', got '" + CurrentToken().ToString() + "'.");
-	assert(0 && "Unexpected token");
+	ICE("Unexpected token");
     }
     NextToken(file, line);
 }
@@ -2397,7 +2396,7 @@ ExprAST* Parser::MakeCallExpr(const NamedObject* def, std::vector<ExprAST*>& arg
     }
     else
     {
-	assert(0 && "Huh? Strange call");
+	ICE("Unsupported call type");
     }
     return MakeSimpleCall(expr, proto, args);
 }
@@ -2839,13 +2838,8 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
     }
 
     assert(isBuiltin && "Should be a builtin function by now...");
-    if (Builtin::FunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args))
-    {
-	return new BuiltinExprAST(CurrentToken().Loc(), bif);
-    }
-
-    assert(0 && "Should not get here");
-    return 0;
+    Builtin::FunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args);
+    return new BuiltinExprAST(CurrentToken().Loc(), bif);
 }
 
 ExprAST* Parser::ParseIdentifierExpr(const Token& token)
@@ -2899,7 +2893,7 @@ ExprAST* Parser::ParseIdentifierExpr(const Token& token)
 	    break;
 
 	default:
-	    assert(0);
+	    ICE("Unsupported token");
 	}
 	tt = CurrentToken().GetToken();
     }
@@ -4647,7 +4641,7 @@ Parser::Parser(Source& source) : lexer(source), nextTokenValid(false), errCnt(0)
           AddConst("minreal", new Constants::RealConstDecl(unknownLoc, minReal)) &&
           AddConst("epsreal", new Constants::RealConstDecl(unknownLoc, 0x1.0p-52))))
     {
-	assert(0 && "Failed to add builtin constants");
+	ICE("Failed to add builtin constants and types");
     }
 }
 

@@ -7,6 +7,8 @@
 #include <llvm/IR/Type.h>
 #include <string>
 
+#include "utils.h"
+
 class PrototypeAST;
 class ExprAST;
 
@@ -122,11 +124,7 @@ namespace Types
 	    assert(!init && "Don't set init twice");
 	    init = i;
 	};
-	virtual TypeDecl* Clone() const
-	{
-	    assert(0 && "Unimplemented clone");
-	    return 0;
-	}
+	virtual TypeDecl* Clone() const { ICE("Unimplemented clone of type"); }
 
     protected:
 	virtual llvm::Type*   GetLlvmType() const = 0;
@@ -149,15 +147,10 @@ namespace Types
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Forward; }
 
     protected:
-	llvm::Type* GetLlvmType() const override
-	{
-	    assert(0 && "No llvm type for forward decls");
-	    return 0;
-	}
+	llvm::Type*   GetLlvmType() const override { ICE("No llvm type for forward decls"); }
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override
 	{
-	    assert(0 && "No debug type for forward decls");
-	    return 0;
+	    ICE("No debug type for forward decls");
 	}
     };
 

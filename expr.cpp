@@ -704,7 +704,7 @@ static llvm::Value* SetOperation(const std::string& name, llvm::Value* res, llvm
 	src = builder.CreateNot(src);
 	return builder.CreateAnd(res, src);
     }
-    return 0;
+    ICE("Unknown set operation");
 }
 
 llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name)
@@ -982,7 +982,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	}
 
 	default:
-	    return Error(this, "Unknown operator on set");
+	    ICE("Unknown operator on set");
 	}
     }
     return Error(this, "Invalid arguments in set operation");
@@ -1012,7 +1012,7 @@ llvm::Value* MakeStrCompare(Token::TokenType oper, llvm::Value* v)
 	return builder.CreateICmpSLT(v, zero, "lt");
 
     default:
-	return Error(0, "Invalid operand for char arrays");
+	ICE("Invalid operand for char arrays");
     }
 }
 
@@ -1205,7 +1205,7 @@ static llvm::Value* IntegerBinExpr(llvm::Value* l, llvm::Value* r, const Token& 
     default:
 	break;
     }
-    return 0;
+    ICE("Unknown operation: " + oper.ToString());
 }
 
 static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper, Types::TypeDecl* type)
@@ -1245,7 +1245,7 @@ static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& o
     default:
 	break;
     }
-    return 0;
+    ICE("Unknown operation: " + oper.ToString());
 }
 
 template<typename FN>
@@ -1368,10 +1368,9 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
     }
 
     default:
-	assert(0 && "Unexpected complex expression");
 	break;
     }
-    return 0;
+    ICE("Unexpected complex expression");
 }
 
 llvm::Value* BinaryExprAST::CodeGen()
@@ -1482,29 +1481,23 @@ llvm::Value* BinaryExprAST::CodeGen()
 
     if (rty->isIntegerTy())
     {
-	bool isUnsigned = IsUnsigned(rhs->Type());
-	if (auto v = IntegerBinExpr(l, r, oper, Type(), isUnsigned))
-	{
-	    return v;
-	}
-	return Error(this, "Unknown token: " + oper.ToString());
+	auto v = IntegerBinExpr(l, r, oper, Type(), IsUnsigned(rhs->Type()));
+	assert(v && "Binary expression should be valid");
+	return v;
     }
     if (rty->isDoubleTy())
     {
-	if (auto v = DoubleBinExpr(l, r, oper, Type()))
-	{
-	    return v;
-	}
-	return Error(this, "Unknown token: " + oper.ToString());
+	auto v = DoubleBinExpr(l, r, oper, Type());
+	assert(v && "Binary expression should be valid");
+	return v;
     }
 
 #if !NDEBUG
     l->dump();
     oper.dump();
     r->dump();
-    assert(0 && "Should not get here!");
 #endif
-    return 0;
+    ICE("Could not process binary expression");
 }
 
 void UnaryExprAST::DoDump() const
@@ -1813,7 +1806,7 @@ static llvm::Function* CreateFunction(const std::string& name, const std::vector
 	framePointer = "all";
 	break;
     default:
-	assert(0 && "Expected to have a case to cover this option");
+	ICE("Unknown frame pointer type");
 	break;
     }
     if (!framePointer.empty())
@@ -2100,7 +2093,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 
     if (!theFunction)
     {
-	return 0;
+	ICE("Failed to create function");
     }
     if (!body)
     {
@@ -2158,7 +2151,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     llvm::Value* block = body->CodeGen();
     if (!block && !body->IsEmpty())
     {
-	return 0;
+	ICE("Failed to generate function body");
     }
 
     // Mark end of function!
@@ -2377,7 +2370,7 @@ llvm::Value* IfExprAST::CodeGen()
     llvm::Value* condV = cond->CodeGen();
     if (!condV)
     {
-	return 0;
+	ICE("Condition codegen failed");
     }
 
     llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
@@ -2457,8 +2450,7 @@ llvm::Value* ForExprAST::ForInGen()
     }
     else
     {
-	assert(0 && "Hmnm, shouldn't we have a SetDecl here?");
-	return 0;
+	ICE("Expceted to have a SetDecl here");
     }
 
     llvm::Value* one = MakeIntegerConstant(1);
@@ -2521,7 +2513,7 @@ llvm::Value* ForExprAST::ForInGen()
 
     if (!body->CodeGen())
     {
-	return 0;
+	ICE("Failed to generate loop body");
     }
     bitset = builder.CreateAnd(phi, builder.CreateNot(builder.CreateShl(one, pos)));
     isZero = builder.CreateICmpEQ(bitset, zero);
@@ -2604,7 +2596,7 @@ llvm::Value* ForExprAST::CodeGen()
 
     if (!body->CodeGen())
     {
-	return 0;
+	ICE("Failed body codegen");
     }
 
     if (IsUnsigned(start->Type()))
@@ -2674,7 +2666,7 @@ llvm::Value* WhileExprAST::CodeGen()
     builder.SetInsertPoint(bodyBB);
     if (!body->CodeGen())
     {
-	return 0;
+	ICE("Failed body codegeneration");
     }
     BasicDebugInfo(this);
     builder.CreateBr(preBodyBB);
@@ -2713,9 +2705,13 @@ llvm::Value* RepeatExprAST::CodeGen()
     builder.SetInsertPoint(bodyBB);
     if (!body->CodeGen())
     {
-	return 0;
+	ICE("Failed body codegen");
     }
     llvm::Value* condv = cond->CodeGen();
+    if (!condv)
+    {
+	ICE("Failed condition codegen");
+    }
     llvm::Value* endCond = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "untilcond");
     BasicDebugInfo(this);
     builder.CreateCondBr(endCond, afterBB, bodyBB);
@@ -2837,9 +2833,10 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
     }
     else
     {
+#if !NDEBUG
 	ty->dump();
-	assert(0);
-	return Error(0, "Invalid type argument for write");
+#endif
+	ICE("Invalid type argument for write");
     }
     std::string extra = "";
     if (kind == WriteAST::WriteKind::WriteStr)
@@ -2883,7 +2880,7 @@ llvm::Value* WriteAST::CodeGen()
 	    assert(type && "Expected type here");
 	    if (!(fn = CreateWriteFunc(type, dstTy, kind)))
 	    {
-		return 0;
+		ICE("Failed to generate write function");
 	    }
 	    if (llvm::isa<Types::StringDecl>(type))
 	    {
@@ -3089,7 +3086,10 @@ llvm::Value* ReadAST::CodeGen()
 
 	Types::TypeDecl* ty = vexpr->Type();
 	v = vexpr->Address();
-	assert(v && "Could not evaluate address of expression for read");
+	if (!v)
+	{
+	    ICE("Could not evaluate address of expression for read");
+	}
 
 	llvm::FunctionCallee fn;
 	if (isText)
@@ -3104,10 +3104,9 @@ llvm::Value* ReadAST::CodeGen()
 
 	argsV.push_back(v);
 
-	assert(fn && "Expected function to be defined here");
 	if (!fn)
 	{
-	    return 0;
+	    ICE("Failed to generate function");
 	}
 	v = builder.CreateCall(fn, argsV, "");
     }
@@ -3930,9 +3929,10 @@ llvm::Value* TypeCastAST::CodeGen()
     {
 	return builder.CreateLoad(current->LlvmType(), Address(), "set");
     }
+#if !NDEBUG
     dump();
-    assert(0 && "Expected to get something out of this function");
-    return 0;
+#endif
+    ICE("Expected to get something out of this function");
 }
 
 llvm::Value* TypeCastAST::Address()
@@ -4175,7 +4175,7 @@ llvm::Value* UnitAST::CodeGen()
     {
 	if (!a->CodeGen())
 	{
-	    return 0;
+	    ICE("Failed to generate code for unit body");
 	}
     }
     if (initFunc)

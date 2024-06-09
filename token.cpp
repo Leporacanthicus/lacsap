@@ -201,8 +201,7 @@ static const TokenEntry* FindToken(Token::TokenType type)
 	    return &i;
 	}
     }
-    assert(0 && "Expect to find token!");
-    return 0;
+    ICE("Could not find token!");
 }
 
 static const TokenEntry* FindToken(std::string kw)

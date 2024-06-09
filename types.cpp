@@ -35,8 +35,7 @@ namespace Types
 	case TK_Integer:
 	    return new Range(INT_MIN, INT_MAX);
 	default:
-	    assert(0 && "Hmm. Range not known");
-	    return 0;
+	    ICE("Range on unsupported type");
 	}
     }
 

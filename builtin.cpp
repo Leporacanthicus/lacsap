@@ -1079,8 +1079,7 @@ namespace Builtin
 	}
 	else
 	{
-	    assert(0 && "What happened here?");
-	    return 0;
+	    ICE("Unknown type for 'val'");
 	}
 	llvm::Value*         res = var1->Address();
 	llvm::Type*          ty0 = str->getType();
@@ -1801,7 +1800,7 @@ namespace Builtin
 	{
 	    return it->second(name, args);
 	}
-	return 0;
+	ICE("Builtin function should be found here");
     }
 
 #define NEW(name)                                                                                            \

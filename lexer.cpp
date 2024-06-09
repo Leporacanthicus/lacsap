@@ -177,7 +177,7 @@ Token Lexer::NumberToken()
 	    break;
 
 	default:
-	    assert(0 && "Huh? We should not be here...");
+	    ICE("Error in floating point lexer");
 	    break;
 	}
 

@@ -3,6 +3,7 @@
 
 #include "token.h"
 #include "types.h"
+#include "utils.h"
 
 namespace Constants
 {
@@ -98,11 +99,7 @@ namespace Constants
 	    : ConstDecl(ty, CK_CompoundConstDecl, w), expr(e)
 	{
 	}
-	Token Translate() const override
-	{
-	    assert(0 && "Should not call this");
-	    return Token(Token::Unknown, loc);
-	}
+	Token       Translate() const override { ICE("Translate called on Compound"); }
 	ExprAST*    Value() const { return expr; }
 	static bool classof(const ConstDecl* e) { return e->getKind() == CK_CompoundConstDecl; }
 	void        dump() const override;
@@ -121,11 +118,7 @@ namespace Constants
 	static bool  classof(const ConstDecl* e) { return e->getKind() == CK_RangeConstDecl; }
 	Types::Range Value() const { return range; }
 	void         dump() const override;
-	Token        Translate() const override
-	{
-	    assert(0 && "Should not call this");
-	    return Token(Token::Unknown, loc);
-	}
+	Token        Translate() const override { ICE("Translate called on Range"); }
 
     private:
 	Types::Range range;
@@ -141,11 +134,7 @@ namespace Constants
 	static bool classof(const ConstDecl* e) { return e->getKind() == CK_SetConstDecl; }
 	const std::vector<const ConstDecl*>& Value() const { return set; }
 	void                                 dump() const override;
-	Token                                Translate() const override
-	{
-	    assert(0 && "Should not call this");
-	    return Token(Token::Unknown, loc);
-	}
+	Token                                Translate() const override { ICE("Translate called on Set"); }
 
     private:
 	std::vector<const ConstDecl*> set;

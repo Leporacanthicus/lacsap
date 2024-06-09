@@ -124,11 +124,7 @@ public:
     void                 dump() const;
     virtual void         DoDump() const = 0;
     void                 accept(ASTVisitor& v) override { v.visit(this); }
-    virtual llvm::Value* CodeGen()
-    {
-	assert(0 && "Need to implement");
-	return 0;
-    }
+    virtual llvm::Value*     CodeGen() { ICE("CodeGen Not Implemented"); }
     ExprKind                 getKind() const { return kind; }
     void                     SetType(Types::TypeDecl* ty) { type = ty; }
     virtual Types::TypeDecl* Type() const { return type; }
@@ -203,11 +199,7 @@ class AddressableAST : public ExprAST
 {
 public:
     AddressableAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : ExprAST(w, k, ty) {}
-    virtual llvm::Value* Address()
-    {
-	assert(0 && "Needs implementing");
-	return 0;
-    }
+    virtual llvm::Value*      Address() { ICE("Address needs implementing"); }
     llvm::Value*              CodeGen() override;
     virtual const std::string Name() const { return ""; }
     static bool               classof(const ExprAST* e)

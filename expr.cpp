@@ -1411,6 +1411,10 @@ llvm::Value* BinaryExprAST::CodeGen()
     auto al = llvm::dyn_cast<Types::ArrayDecl>(lhs->Type());
     if (al && ar)
     {
+	if (oper.GetToken() == Token::Plus)
+	{
+	    return CallStrCat(lhs, rhs);
+	}
 	// Comparison operators are allowed for old style Pascal strings (char arrays)
 	// But only if they are the same size.
 	if (llvm::isa<Types::CharDecl>(al->SubType()) && llvm::isa<Types::CharDecl>(ar->SubType()))

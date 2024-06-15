@@ -85,11 +85,11 @@ String __StrTrim(String* str)
 	s++;
     }
     unsigned char* e = end - 1;
-    while (e > s && *s <= ' ')
+    while (e > s && *e <= ' ')
     {
-	end--;
+	e--;
     }
-    int    len = e - s;
+    int    len = (e - s) + 1;
     String result = { len, "" };
     memcpy(result.str, s, len);
     return result;

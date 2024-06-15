@@ -221,14 +221,14 @@ llvm::Value* MakeAddressable(ExprAST* e)
     }
 
     llvm::Value* store = e->CodeGen();
-    assert(store && "Expected to get a store here");
+    ICE_IF(!store, "Code generation failed");
     if (store->getType()->isPointerTy())
     {
 	return store;
     }
 
     llvm::Value* v = CreateTempAlloca(e->Type());
-    assert(v && "Expect address to be non-zero");
+    ICE_IF(!v, "Code generation failed");
     builder.CreateStore(store, v);
     return v;
 }
@@ -1281,18 +1281,14 @@ llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
     case Token::Plus:
     {
 	return GenerateComplexBinExpr(
-	    l, r,
-	    [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri) {
-	        return std::tuple{ builder.CreateFAdd(lr, rr, "addr"), builder.CreateFAdd(li, ri, "addi") };
-	    });
+	    l, r, [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri)
+	    { return std::tuple{ builder.CreateFAdd(lr, rr, "addr"), builder.CreateFAdd(li, ri, "addi") }; });
     }
     case Token::Minus:
     {
 	return GenerateComplexBinExpr(
-	    l, r,
-	    [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri) {
-	        return std::tuple{ builder.CreateFSub(lr, rr, "subr"), builder.CreateFSub(li, ri, "subi") };
-	    });
+	    l, r, [](llvm::Value* lr, llvm::Value* li, llvm::Value* rr, llvm::Value* ri)
+	    { return std::tuple{ builder.CreateFSub(lr, rr, "subr"), builder.CreateFSub(li, ri, "subi") }; });
     }
     case Token::Multiply:
     {
@@ -1601,7 +1597,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 			{
 			    v = CreateTempAlloca(i->Type());
 			    llvm::Value* x = i->CodeGen();
-			    assert(x && "Expected CodeGen to work");
+			    ICE_IF(!x, "Expected CodeGen to work");
 			    builder.CreateStore(x, v);
 			}
 		    }
@@ -2095,10 +2091,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     assert(namePrefix != "" && "Prefix should not be empty");
     llvm::Function* theFunction = proto->Create(namePrefix);
 
-    if (!theFunction)
-    {
-	ICE("Failed to create function");
-    }
+    ICE_IF(!theFunction, "Failed to create function");
     if (!body)
     {
 	return theFunction;
@@ -2153,10 +2146,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     }
     builder.SetInsertPoint(bb, ip);
     llvm::Value* block = body->CodeGen();
-    if (!block && !body->IsEmpty())
-    {
-	ICE("Failed to generate function body");
-    }
+    ICE_IF(!block && !body->IsEmpty(), "Failed to generate function body");
 
     // Mark end of function!
     if (debugInfo)
@@ -2372,10 +2362,7 @@ llvm::Value* IfExprAST::CodeGen()
     assert(llvm::isa<Types::BoolDecl>(cond->Type()) && "Only boolean expressions allowed in if-statement");
 
     llvm::Value* condV = cond->CodeGen();
-    if (!condV)
-    {
-	ICE("Condition codegen failed");
-    }
+    ICE_IF(!condV, "Condition codegen failed");
 
     llvm::Function*   theFunction = builder.GetInsertBlock()->getParent();
     llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(theContext, "then", theFunction);
@@ -2515,10 +2502,8 @@ llvm::Value* ForExprAST::ForInGen()
     llvm::Value* sumT = builder.CreateTrunc(sumVar, variable->Type()->LlvmType());
     builder.CreateStore(sumT, var);
 
-    if (!body->CodeGen())
-    {
-	ICE("Failed to generate loop body");
-    }
+    ICE_IF(!body->CodeGen(), "Failed to generate loop body");
+
     bitset = builder.CreateAnd(phi, builder.CreateNot(builder.CreateShl(one, pos)));
     isZero = builder.CreateICmpEQ(bitset, zero);
     phi->addIncoming(bitset, loopBB);
@@ -2598,10 +2583,7 @@ llvm::Value* ForExprAST::CodeGen()
     llvm::PHINode* phi = builder.CreatePHI(ty, 2, "phi");
     phi->addIncoming(curVar, beforeBB);
 
-    if (!body->CodeGen())
-    {
-	ICE("Failed body codegen");
-    }
+    ICE_IF(!body->CodeGen(), "Failed body codegen");
 
     if (IsUnsigned(start->Type()))
     {
@@ -2668,10 +2650,7 @@ llvm::Value* WhileExprAST::CodeGen()
     builder.CreateCondBr(endCond, afterBB, bodyBB);
 
     builder.SetInsertPoint(bodyBB);
-    if (!body->CodeGen())
-    {
-	ICE("Failed body codegeneration");
-    }
+    ICE_IF(!body->CodeGen(), "Failed body codegeneration");
     BasicDebugInfo(this);
     builder.CreateBr(preBodyBB);
 
@@ -2707,15 +2686,9 @@ llvm::Value* RepeatExprAST::CodeGen()
 
     builder.CreateBr(bodyBB);
     builder.SetInsertPoint(bodyBB);
-    if (!body->CodeGen())
-    {
-	ICE("Failed body codegen");
-    }
+    ICE_IF(!body->CodeGen(), "Failed body codegen");
     llvm::Value* condv = cond->CodeGen();
-    if (!condv)
-    {
-	ICE("Failed condition codegen");
-    }
+    ICE_IF(!condv, "Failed condition codegen");
     llvm::Value* endCond = builder.CreateICmpNE(condv, MakeBooleanConstant(0), "untilcond");
     BasicDebugInfo(this);
     builder.CreateCondBr(endCond, afterBB, bodyBB);
@@ -2881,11 +2854,9 @@ llvm::Value* WriteAST::CodeGen()
 	{
 	    Types::TypeDecl* type = arg.expr->Type();
 	    llvm::Type*      charTy = Types::Get<Types::CharDecl>()->LlvmType();
-	    assert(type && "Expected type here");
-	    if (!(fn = CreateWriteFunc(type, dstTy, kind)))
-	    {
-		ICE("Failed to generate write function");
-	    }
+	    ICE_IF(!type, "Expected type here");
+	    fn = CreateWriteFunc(type, dstTy, kind);
+	    ICE_IF(!fn, "Failed to generate write function");
 	    if (llvm::isa<Types::StringDecl>(type))
 	    {
 		if (auto a = llvm::dyn_cast<AddressableAST>(arg.expr))
@@ -3090,10 +3061,7 @@ llvm::Value* ReadAST::CodeGen()
 
 	Types::TypeDecl* ty = vexpr->Type();
 	v = vexpr->Address();
-	if (!v)
-	{
-	    ICE("Could not evaluate address of expression for read");
-	}
+	ICE_IF(!v, "Could not evaluate address of expression for read");
 
 	llvm::FunctionCallee fn;
 	if (isText)
@@ -3108,10 +3076,7 @@ llvm::Value* ReadAST::CodeGen()
 
 	argsV.push_back(v);
 
-	if (!fn)
-	{
-	    ICE("Failed to generate function");
-	}
+	ICE_IF(!fn, "Failed to generate function");
 	v = builder.CreateCall(fn, argsV, "");
     }
     if (kind == ReadKind::ReadLn)
@@ -4177,10 +4142,7 @@ llvm::Value* UnitAST::CodeGen()
 
     for (auto a : code)
     {
-	if (!a->CodeGen())
-	{
-	    ICE("Failed to generate code for unit body");
-	}
+	ICE_IF(!a->CodeGen(), "Failed to generate code for unit body");
     }
     if (initFunc)
     {

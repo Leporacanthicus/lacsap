@@ -16,3 +16,10 @@ void InternalCompilerError(const char* file, int line, const std::string& msg)
     std::cerr << "Internal compiler error at " << file << ":" << line << ":\n" << msg << "\n" << std::endl;
     std::abort();
 }
+
+void InternalCompilerError(const char* file, int line, const std::string& condStr, const std::string& msg)
+{
+    std::cerr << "Condition failed: " << condStr << "\n";
+    std::cerr << "Internal compiler error at " << file << ":" << line << ":\n" << msg << "\n" << std::endl;
+    std::abort();
+}

@@ -816,7 +816,7 @@ namespace Builtin
     llvm::Value* FunctionNew::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto pd = llvm::dyn_cast<Types::PointerDecl>(args[0]->Type());
-	assert(pd && "The argument to new should be a PointerDecl!");
+	ICE_IF(!pd, "The argument to new should be a PointerDecl!");
 	const Types::TypeDecl* elemTy = pd->SubType();
 	size_t                 size = elemTy->Size();
 	llvm::Type*            ty = Types::Get<Types::IntegerDecl>()->LlvmType();
@@ -910,7 +910,7 @@ namespace Builtin
     llvm::Value* FunctionInc::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(var && "Expected variable here... Semantics not working?");
+	ICE_IF(!var, "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Type*  ty = var->Type()->LlvmType();
 	llvm::Value* a = builder.CreateLoad(ty, pA, "inc");
@@ -921,7 +921,7 @@ namespace Builtin
     llvm::Value* FunctionDec::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto var = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(var && "Expected variable here... Semantics not working?");
+	ICE_IF(!var, "Expected variable here... Semantics not working?");
 	llvm::Value* pA = var->Address();
 	llvm::Type*  ty = var->Type()->LlvmType();
 	llvm::Value* a = builder.CreateLoad(ty, pA, "dec");
@@ -1092,7 +1092,7 @@ namespace Builtin
     llvm::Value* FunctionFile::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(fvar && "Should be a variable here");
+	ICE_IF(!fvar, "Should be a variable here");
 	llvm::Value*         faddr = fvar->Address();
 	llvm::FunctionCallee f = GetFunction(Type()->LlvmType(), { faddr->getType() }, "__" + name);
 
@@ -1115,7 +1115,7 @@ namespace Builtin
     llvm::Value* FunctionFileInfo::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(fvar && "Should be a variable here");
+	ICE_IF(!fvar, "Should be a variable here");
 	llvm::Value*             faddr = fvar->Address();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), Types::Get<Types::IntegerDecl>()->LlvmType(),
 	                                      Types::Get<Types::BoolDecl>()->LlvmType() };
@@ -1636,7 +1636,7 @@ namespace Builtin
     llvm::Value* FunctionBind::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(fvar && "Should be a variable here");
+	ICE_IF(!fvar, "Should be a variable here");
 	llvm::Value*             faddr = fvar->Address();
 	llvm::Value*             binding = args[1]->CodeGen();
 	std::vector<llvm::Type*> argTypes = { faddr->getType(), Types::GetBindingType()->LlvmType() };
@@ -1680,7 +1680,7 @@ namespace Builtin
     llvm::Value* FunctionSeek::CodeGen(llvm::IRBuilder<>& builder)
     {
 	auto fvar = llvm::dyn_cast<AddressableAST>(args[0]);
-	assert(fvar && "Should be a variable here");
+	ICE_IF(!fvar, "Should be a variable here");
 	llvm::Value* faddr = fvar->Address();
 	llvm::Value* pos = Recast(args[1], Types::Get<Types::Int64Decl>())->CodeGen();
 
@@ -1782,7 +1782,7 @@ namespace Builtin
 
     void AddBIFCreator(const std::string& name, CreateBIFObject createFunc)
     {
-	assert(BIFMap.find(name) == BIFMap.end() && "Already registered function");
+	ICE_IF(BIFMap.find(name) != BIFMap.end(), "Already registered function");
 	BIFMap[name] = createFunc;
     }
 

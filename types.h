@@ -46,7 +46,7 @@ namespace Types
     public:
 	Range(int64_t s, int64_t e) : start(s), end(e)
 	{
-	    assert((e - s) > 0 && "Range should have start before end.");
+	    ICE_IF((e - s) <= 0, "Range should have start before end.");
 	}
 
     public:
@@ -121,7 +121,7 @@ namespace Types
 	ExprAST*                Init() { return init; }
 	void                    SetInit(ExprAST* i)
 	{
-	    assert(!init && "Don't set init twice");
+	    ICE_IF(init, "Don't set init twice");
 	    init = i;
 	};
 	virtual TypeDecl* Clone() const { ICE("Unimplemented clone of type"); }
@@ -258,7 +258,7 @@ namespace Types
     public:
 	RangeDecl(Range* r, TypeDecl* base) : RangeBaseDecl(TK_Range, base), range(r)
 	{
-	    assert(r && "Range should be specified");
+	    ICE_IF(!r, "Range should be specified");
 	}
 
     public:
@@ -287,7 +287,7 @@ namespace Types
 	const std::string& HighName() { return highName; }
 	size_t             RangeSize() const override
 	{
-	    assert("Huh? Dynamic range size?");
+	    ICE("Huh? Dynamic range size?");
 	    return 0;
 	}
 	TypeKind           Type() const override { return baseType->Type(); }
@@ -303,14 +303,13 @@ namespace Types
     public:
 	ArrayDecl(TypeDecl* b, const std::vector<RangeBaseDecl*>& r) : CompoundDecl(TK_Array, b), ranges(r)
 	{
-	    assert(r.size() > 0 && "Empty range not allowed");
+	    ICE_IF(r.empty(), "Empty range not allowed");
 	}
 	ArrayDecl(TypeKind tk, TypeDecl* b, const std::vector<RangeBaseDecl*>& r)
 	    : CompoundDecl(tk, b), ranges(r)
 	{
-	    assert((tk == TK_String || tk == TK_SchArray) &&
-	           "Expected this to be a string or schema array...");
-	    assert(r.size() > 0 && "Empty range not allowed");
+	    ICE_IF(tk != TK_String && tk != TK_SchArray, "Expected this to be a string or schema array...");
+	    ICE_IF(r.empty(), "Empty range not allowed");
 	}
 	const std::vector<RangeBaseDecl*>& Ranges() const { return ranges; }
 	void                           DoDump() const override;
@@ -362,7 +361,7 @@ namespace Types
     public:
 	EnumDecl(TypeKind tk, const std::vector<std::string>& nmv, TypeDecl* ty) : CompoundDecl(tk, ty)
 	{
-	    assert(nmv.size() && "Must have names in the enum type.");
+	    ICE_IF(nmv.empty(), "Must have names in the enum type.");
 	    SetValues(nmv);
 	}
 	EnumDecl(const std::vector<std::string>& nmv, TypeDecl* ty) : EnumDecl(TK_Enum, nmv, ty) {}
@@ -410,7 +409,7 @@ namespace Types
     public:
 	void SetSubType(TypeDecl* t)
 	{
-	    assert(t && "Type should be non-NULL");
+	    ICE_IF(!t, "Type should be non-NULL");
 	    baseType = t;
 	    incomplete = false;
 	}
@@ -490,7 +489,7 @@ namespace Types
 	virtual int              Element(const std::string& name) const;
 	virtual const FieldDecl* GetElement(unsigned int n) const
 	{
-	    assert(n < fields.size() && "Out of range field");
+	    ICE_IF(n >= fields.size(), "Out of range field");
 	    return fields[n];
 	}
 	void        EnsureSized() const;
@@ -706,7 +705,7 @@ namespace Types
 	                std::vector<RangeBaseDecl*>(
 	                    1, new RangeDecl(new Range(0, size + 1), Get<Types::IntegerDecl>())))
 	{
-	    assert(size > 0 && "Zero size not allowed");
+	    ICE_IF(!size, "Zero size not allowed");
 	}
 	static bool     classof(const TypeDecl* e) { return e->getKind() == TK_String; }
 	void            DoDump() const override;

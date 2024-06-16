@@ -432,7 +432,7 @@ public:
     RangeExprAST(const Location& w, ExprAST* l, ExprAST* h)
         : ExprAST(w, EK_RangeExpr, l->Type()), low(l), high(h)
     {
-	assert(*l->Type() == *h->Type() && "Expect same type here");
+	ICE_IF(*l->Type() != *h->Type(), "Expect same type here");
     }
     void         DoDump() const override;
     llvm::Value* Low() { return low->CodeGen(); }
@@ -529,7 +529,7 @@ public:
         , hasSelf(false)
         , llvmFunc(0)
     {
-	assert(resTy && "Type must not be null!");
+	ICE_IF(!resTy, "Type must not be null!");
     }
     void                       DoDump() const override;
     llvm::Function*            Create(const std::string& namePrefix);
@@ -619,7 +619,7 @@ public:
     CallExprAST(const Location& w, ExprAST* c, const std::vector<ExprAST*>& a, const PrototypeAST* p)
         : ExprAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
     {
-	assert(proto && "Should have prototype!");
+	ICE_IF(!proto, "Should have prototype!");
     }
     void                   DoDump() const override;
     llvm::Value*           CodeGen() override;
@@ -726,8 +726,7 @@ class RepeatExprAST : public ExprAST
 public:
     RepeatExprAST(const Location& w, ExprAST* c, ExprAST* b) : ExprAST(w, EK_RepeatExpr), cond(c), body(b)
     {
-	assert(body && "Expect body");
-	assert(cond && "Expect condition");
+	ICE_IF(!body || !cond, "Expect body");
     }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;

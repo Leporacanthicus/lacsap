@@ -169,7 +169,7 @@ bool CreateBinary(llvm::Module* module, const std::string& filename, EmitType em
 	}
 	return true;
     }
-    assert(emit == LlvmIr && "Expect LLVM IR here..");
+    ICE_IF(emit != LlvmIr, "Expect LLVM IR here..");
 
     std::string                           irName = replace_ext(filename, ".pas", ".ll");
     std::unique_ptr<llvm::ToolOutputFile> Out(GetOutputStream(irName));
@@ -208,7 +208,7 @@ llvm::Module* CreateModule()
     std::string                          mcpu = llvm::codegen::getMCPU();
     std::unique_ptr<llvm::TargetMachine> tm(
         target->createTargetMachine(triple.getTriple(), mcpu, FeaturesStr, options, llvm::Reloc::Static));
-    assert(tm && "Could not create TargetMachine");
+    ICE_IF(!tm, "Could not create TargetMachine");
     const llvm::DataLayout dl = tm->createDataLayout();
     module->setDataLayout(dl);
     return module;

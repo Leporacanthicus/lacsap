@@ -53,7 +53,7 @@ public:
     VarDef(const std::string& nm, Types::TypeDecl* ty, Flags f = Flags::None)
         : NamedObject(NK_Var, nm, ty), flags(f), init(0)
     {
-	assert(ty && "Expect a type!");
+	ICE_IF(!ty, "Expect a type!");
     }
     bool        IsRef() const;
     bool        IsExternal() const;
@@ -112,7 +112,7 @@ public:
     FuncDef(const std::string& nm, Types::TypeDecl* ty, PrototypeAST* p)
         : NamedObject(NK_Func, nm, ty), proto(p)
     {
-	assert(p && "Need to pass a prototype for funcdef");
+	ICE_IF(!p, "Need to pass a prototype for funcdef");
     }
     PrototypeAST* Proto() const { return proto; }
     static bool   classof(const NamedObject* e) { return e->getKind() == NK_Func; }

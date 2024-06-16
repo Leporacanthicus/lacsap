@@ -34,7 +34,7 @@ namespace Constants
     template<>
     Token RealConstDecl::Translate() const
     {
-	return Token(Token::Real, loc, value);
+	return Token(loc, value);
     }
     template<>
     void RealConstDecl::dump() const

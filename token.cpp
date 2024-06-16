@@ -1,7 +1,6 @@
 #include "token.h"
 #include "utils.h"
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <sstream>
 
@@ -9,26 +8,23 @@ Token::Token(TokenType t, const Location& w) : type(t), where(w)
 {
     if (where)
     {
-	assert(t != Token::Identifier && t != Token::StringLiteral && t != Token::Integer &&
-	       t != Token::Real);
+	ICE_IF(t == Token::Identifier || t == Token::StringLiteral || t == Token::Integer || t == Token::Real,
+	       "Incorrect token type");
     }
 }
 
 Token::Token(TokenType t, const Location& w, const std::string& str) : type(t), where(w), strVal(str)
 {
-    assert((t == Token::Identifier || t == Token::StringLiteral) && "Invalid token for string argument");
-    assert((t == Token::StringLiteral || str != "") && "String should not be empty for identifier");
+    ICE_IF(t != Token::Identifier && t != Token::StringLiteral, "Invalid token for string argument");
+    ICE_IF(t == Token::Identifier && str.empty(), "String should not be empty for identifier");
 }
 
 Token::Token(TokenType t, const Location& w, uint64_t v) : type(t), where(w), intVal(v)
 {
-    assert(t == Token::Integer || t == Token::Char);
+    ICE_IF(t != Token::Integer && t != Token::Char, "Invalid token construction");
 }
 
-Token::Token(TokenType t, const Location& w, double v) : type(t), where(w), realVal(v)
-{
-    assert(t == Token::Real);
-}
+Token::Token(const Location& w, double v) : type(Token::Real), where(w), realVal(v) {}
 
 std::string Token::ToString() const
 {
@@ -67,6 +63,7 @@ void Token::dump(std::ostream& out) const
     case Token::Boolean:
 	out << std::boolalpha << (bool)intVal << " ";
 	break;
+
     default:
 	break;
     }

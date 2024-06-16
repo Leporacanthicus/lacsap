@@ -149,7 +149,7 @@ public:
 		    return;
 		}
 	    }
-	    assert(v->Name() != "");
+	    ICE_IF(v->Name().empty(), "Expect a name");
 	    uses.insert(v->Name());
 	}
 	if (auto c = llvm::dyn_cast<CallExprAST>(a))
@@ -172,7 +172,7 @@ void CallGraphClosureCollector::AddVarDecls(const std::vector<VarDef>& vars, Fun
     VarMap& dm = declMap[f];
     for (auto d : vars)
     {
-	assert(d.Name() != "");
+	ICE_IF(d.Name().empty(), "Variables should have a name");
 	dm.insert(std::pair<std::string, VarDef>(d.Name(), d));
     }
 }

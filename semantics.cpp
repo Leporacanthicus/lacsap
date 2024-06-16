@@ -80,7 +80,7 @@ static Types::RangeDecl* GetRangeDecl(Types::TypeDecl* ty)
     auto             sty = llvm::dyn_cast<Types::SetDecl>(ty);
     if (!r)
     {
-	assert(sty && "Should be a set");
+	ICE_IF(!sty, "Should be a set");
 	if (!sty->SubType())
 	{
 	    return 0;
@@ -129,7 +129,7 @@ Types::TypeDecl* TypeCheckVisitor::BinarySetUpdate(BinaryExprAST* b)
 {
     auto lty = llvm::cast<Types::SetDecl>(b->lhs->Type());
     auto rty = llvm::cast<Types::SetDecl>(b->rhs->Type());
-    assert(lty && rty && "Expect set declarations on both side!");
+    ICE_IF(!lty || !rty, "Expect set declarations on both side!");
     if (auto s = llvm::dyn_cast<SetExprAST>(b->lhs))
     {
 	if (s->values.empty() && rty->SubType())
@@ -199,7 +199,7 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
     Types::TypeDecl* ty = 0;
     Token::TokenType op = b->oper.GetToken();
 
-    assert(rty && lty && "Expect to have types here");
+    ICE_IF(!rty || !lty, "Expect to have types here");
 
     if (op == Token::In)
     {
@@ -218,7 +218,7 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	}
 	if (auto sd = llvm::dyn_cast<Types::SetDecl>(rty))
 	{
-	    assert(sd->SubType() && "Should have a subtype");
+	    ICE_IF(!sd->SubType(), "Should have a subtype");
 	    if (*lty != *sd->SubType())
 	    {
 		Error(b, "Left hand type does not match constituent parts of set");
@@ -449,7 +449,7 @@ void TypeCheckVisitor::Check<AssignExprAST>(AssignExprAST* a)
     auto rsty = llvm::dyn_cast<Types::SetDecl>(rty);
     if (lsty && rsty)
     {
-	assert(lsty->GetRange() && lsty->SubType() && "Expected left type to be well defined.");
+	ICE_IF(!lsty->GetRange() || !lsty->SubType(), "Expected left type to be well defined.");
 
 	if (!rsty->GetRange())
 	{
@@ -653,7 +653,7 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
 	else if (auto argTy = llvm::dyn_cast<Types::FuncPtrDecl>(parg[idx].Type()))
 	{
 	    auto fnArg = llvm::dyn_cast<FunctionExprAST>(a);
-	    assert(fnArg && "Expected argument to be FunctionExprAST");
+	    ICE_IF(!fnArg, "Expected argument to be FunctionExprAST");
 
 	    if (fnArg->Proto()->IsMatchWithoutClosure(argTy->Proto()))
 	    {

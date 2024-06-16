@@ -36,7 +36,7 @@ namespace Types
 	void      DoDump() const override;
 	size_t    RangeSize() const override
 	{
-	    assert("Huh? Schema range size?");
+	    ICE("Huh? Schema range size?");
 	    return 0;
 	}
 	TypeDecl* Instantiate(const std::vector<int64_t>& vals);

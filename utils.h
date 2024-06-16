@@ -24,6 +24,6 @@ inline void iceIf(const char* file, int line, bool cond, const std::string& cond
 }
 
 #define ICE(msg) InternalCompilerError(__FILE__, __LINE__, msg)
-#define ICE_IF(cond, msg) (__FILE__, __LINE__, cond, #cond, msg)
+#define ICE_IF(cond, msg) iceIf(__FILE__, __LINE__, cond, #cond, msg)
 
 #endif

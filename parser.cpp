@@ -16,7 +16,6 @@
 #include <llvm/Support/MathExtras.h>
 
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -374,7 +373,7 @@ bool Parser::ExpectSemicolonOrEnd(const char* file, int line)
 }
 
 // Skip token, and check that it's matching what we expect.
-// This is used when we (should) have already checked the token, so asserting is fine.
+// This is used when we (should) have already checked the token, so ICE is fine.
 void Parser::AssertToken(Token::TokenType type, const char* file, int line)
 {
     if (CurrentToken().GetToken() != type)
@@ -703,7 +702,7 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 	    int64_t end = Constants::ToInt(endC);
 
 	    type = startC->Type();
-	    assert(type == endC->Type() && "Expect same type on both sides");
+	    ICE_IF(type != endC->Type(), "Expect same type on both sides");
 	    if (end <= start)
 	    {
 		return Error("Invalid range specification");
@@ -1326,7 +1325,7 @@ void Parser::ParseTypeDef()
 		return;
 	    }
 	}
-	assert(ty && "Expect to have parsed a type here");
+	ICE_IF(!ty, "Expect to have parsed a type here");
 	if (!AddType(name, ty, restricted))
 	{
 	    Error("Name " + name + " is already in use.");
@@ -1443,7 +1442,7 @@ Types::EnumDecl* Parser::ParseEnumDef()
 
 Types::PointerDecl* Parser::ParsePointerType(Forwarding maybeForwarded)
 {
-    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) &&
+    ICE_IF((CurrentToken().GetToken() != Token::Uparrow && CurrentToken().GetToken() != Token::At),
            "Expected @ or ^ token...");
     NextToken();
     // If the name is an identifier then it may be name of a not yet declared type.
@@ -1489,10 +1488,10 @@ Types::TypeDecl* Parser::ParseArrayDecl(Types::Schema* schema)
 	    if (Types::RangeBaseDecl* r = ParseRangeOrTypeRange(type, Token::RightSquare, Token::Comma,
 	                                                        schema))
 	    {
-		assert(type && "Uh? Type is supposed to be set now");
+		ICE_IF(!type, "Uh? Type is supposed to be set now");
 		if (auto adr = llvm::dyn_cast<Types::DynRangeDecl>(r))
 		{
-		    assert(!dr && "Expect only one dynamic range at this point");
+		    ICE_IF(dr, "Expect only one dynamic range at this point");
 		    dr = adr;
 		}
 		else
@@ -1761,7 +1760,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		{
 		    return false;
 		}
-		assert(!ccv.Names().empty() && "Should have some names here...");
+		ICE_IF(ccv.Names().empty(), "Should have some names here...");
 		if (Types::TypeDecl* ty = ParseType("", NoForwarding))
 		{
 		    if (AcceptToken(Token::Value))
@@ -1869,7 +1868,7 @@ Types::SetDecl* Parser::ParseSetDecl(Types::Schema* schema)
 	    {
 		return Error("Set too large");
 	    }
-	    assert(type && "Uh? Type is supposed to be set");
+	    ICE_IF(!type, "Uh? Type is supposed to be set");
 	    if (llvm::isa<Types::SchemaRange>(r))
 	    {
 		return new Types::SchemaSetDecl(r, type);
@@ -2228,8 +2227,8 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 
 ExprAST* Parser::ParseUnaryOp()
 {
-    assert((CurrentToken().GetToken() == Token::Minus || CurrentToken().GetToken() == Token::Plus ||
-            CurrentToken().GetToken() == Token::Not) &&
+    ICE_IF(CurrentToken().GetToken() != Token::Minus && CurrentToken().GetToken() != Token::Plus &&
+               CurrentToken().GetToken() != Token::Not,
            "Expected only minus at this time as a unary operator");
 
     Token oper = CurrentToken();
@@ -2336,7 +2335,7 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 		expr = new ArrayExprAST(CurrentToken().Loc(), expr, indices, adecl->Ranges(),
 		                        adecl->SubType());
 		type = adecl->SubType();
-		assert(type && "Expected a type here!");
+		ICE_IF(!type, "Expected a type here!");
 		indices = cce.Exprs();
 		indices.erase(indices.begin(), indices.begin() + taken);
 		if (!(adecl = llvm::dyn_cast<Types::ArrayDecl>(type)))
@@ -2359,8 +2358,7 @@ ExprAST* Parser::ParseArrayExpr(ExprAST* expr, Types::TypeDecl*& type)
 
 ExprAST* Parser::MakeSimpleCall(ExprAST* expr, const PrototypeAST* proto, const std::vector<ExprAST*>& args)
 {
-    assert(expr && "Expect to get an expression here");
-    assert(proto && "Prototype should have been found here...");
+    ICE_IF(!expr || !proto, "Expect to get an expression and a prototype here");
     return new CallExprAST(CurrentToken().Loc(), expr, args, proto);
 }
 
@@ -2420,7 +2418,7 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
     }
     if (proto->HasSelf())
     {
-	assert(self && "Should have a 'self' expression here");
+	ICE_IF(!self, "Should have a 'self' expression here");
 	args.insert(args.begin(), self);
     }
     return MakeSimpleCall(expr, proto, args);
@@ -2440,7 +2438,7 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 	if (fd->Name() == "")
 	{
 	    auto r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
-	    assert(r && "Expect record declarataion");
+	    ICE_IF(!r, "Expect record declarataion");
 	    elem = r->Element(name);
 	    if (elem >= 0)
 	    {
@@ -2458,7 +2456,7 @@ ExprAST* Parser::FindVariant(ExprAST* expr, Types::TypeDecl*& type, int fc, Type
 	{
 	    e = new VariantFieldExprAST(CurrentToken().Loc(), expr, fc, type);
 	    const auto r = llvm::dyn_cast<Types::RecordDecl>(fd->SubType());
-	    assert(r && "Expect record declarataion");
+	    ICE_IF(!r, "Expect record declarataion");
 	    if ((elem = r->Element(name)) >= 0)
 	    {
 		e = new FieldExprAST(CurrentToken().Loc(), e, elem, type);
@@ -2577,7 +2575,7 @@ ExprAST* Parser::ParseFieldExpr(ExprAST* expr, Types::TypeDecl*& type)
 
 ExprAST* Parser::ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type)
 {
-    assert((CurrentToken().GetToken() == Token::Uparrow || CurrentToken().GetToken() == Token::At) &&
+    ICE_IF(CurrentToken().GetToken() != Token::Uparrow && CurrentToken().GetToken() != Token::At,
            "Expected @ or ^ token...");
     NextToken();
     if (auto fd = llvm::dyn_cast<Types::FileDecl>(type))
@@ -2595,7 +2593,7 @@ ExprAST* Parser::ParsePointerExpr(ExprAST* expr, Types::TypeDecl*& type)
 
 bool Parser::IsCall(const NamedObject* def)
 {
-    assert(def && "Expected def to be non-NULL");
+    ICE_IF(!def, "Expected def to be non-NULL");
 
     Types::TypeDecl* type = def->Type();
     if (llvm::isa<Types::FuncPtrDecl>(type))
@@ -2725,7 +2723,7 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
     TRACE();
 
     Types::TypeDecl* type = def->Type();
-    assert(type && "Expect type here...");
+    ICE_IF(!type, "Expect type here...");
 
     if (const auto w = llvm::dyn_cast<WithDef>(def))
     {
@@ -2781,7 +2779,7 @@ static ExprAST* CreateSetExprFromSetConst(const Constants::SetConstDecl* set)
 	{
 	    e = new IntegerExprAST(v->Loc(), Constants::ToInt(v), v->Type());
 	}
-	assert(e && "Expected to have an ExprAST now!");
+	ICE_IF(!e, "Expected to have an ExprAST now!");
 	setValues.push_back(e);
     }
     return new SetExprAST(set->Loc(), setValues, set->Type());
@@ -2837,7 +2835,7 @@ ExprAST* Parser::ParseCallOrVariableExpr(const Token& token)
 	}
     }
 
-    assert(isBuiltin && "Should be a builtin function by now...");
+    ICE_IF(!isBuiltin, "Should be a builtin function by now...");
     Builtin::FunctionBase* bif = Builtin::CreateBuiltinFunction(idName, args);
     return new BuiltinExprAST(CurrentToken().Loc(), bif);
 }
@@ -2856,7 +2854,7 @@ ExprAST* Parser::ParseIdentifierExpr(const Token& token)
     Token::TokenType tt = CurrentToken().GetToken();
     while (tt == Token::LeftSquare || tt == Token::Uparrow || tt == Token::At || tt == Token::Period)
     {
-	assert(type && "Expect to have a type here...");
+	ICE_IF(!type, "Expect to have a type here...");
 	switch (tt)
 	{
 	case Token::LeftSquare:
@@ -3256,7 +3254,7 @@ VarDeclAST* Parser::ParseVarDecls()
 //   procedure classname.name{ args... }
 PrototypeAST* Parser::ParsePrototype(bool unnamed)
 {
-    assert((CurrentToken().GetToken() == Token::Procedure || CurrentToken().GetToken() == Token::Function) &&
+    ICE_IF(CurrentToken().GetToken() != Token::Procedure && CurrentToken().GetToken() != Token::Function,
            "Expected function or procedure token");
 
     bool                   isFunction = CurrentToken().GetToken() == Token::Function;
@@ -3433,7 +3431,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	return fwdProto;
     }
 
-    assert(!od && "Expect no object here");
+    ICE_IF(od, "Expect no object here");
     PrototypeAST* proto = new PrototypeAST(CurrentToken().Loc(), funcName, args, resultType, resultName, 0);
     return proto;
 }
@@ -3590,14 +3588,14 @@ FunctionAST* Parser::ParseDefinition(int level)
     NameWrapper wrapper(nameStack);
     if (proto->HasSelf())
     {
-	assert(proto->BaseObj() && "Expect base object!");
+	ICE_IF(!proto->BaseObj(), "Expect base object!");
 	VariableExprAST* v = new VariableExprAST(Location(), "self", proto->BaseObj());
 	ExpandWithNames(proto->BaseObj(), v, 0);
     }
 
     if (shortname != "" && proto->ResName() != shortname)
     {
-	assert(nmObj);
+	ICE_IF(!nmObj, "Named object expected");
 	VarDef* vd = new VarDef(proto->ResName(), proto->Type());
 	nameStack.Add(vd);
     }
@@ -3665,7 +3663,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 	case Token::Begin:
 	{
 	    Location endLoc;
-	    assert(!body && "Multiple body declarations for function?");
+	    ICE_IF(body, "Multiple body declarations for function?");
 
 	    if (!(body = ParseBlock(endLoc)) || !Expect(Token::Semicolon, ExpectConsume))
 	    {
@@ -3943,7 +3941,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
 	if (f->Name() == "")
 	{
 	    auto rd = llvm::dyn_cast<Types::RecordDecl>(ty);
-	    assert(rd && "Expected record declarataion here!");
+	    ICE_IF(!rd, "Expected record declarataion here!");
 	    ExprAST* vv = new VariantFieldExprAST(CurrentToken().Loc(), v, parentCount, ty);
 	    ExpandWithNames(rd, vv, 0);
 	    if (rd->Variant())

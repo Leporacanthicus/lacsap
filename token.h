@@ -2,8 +2,8 @@
 #define TOKEN_H
 
 #include "location.h"
+#include "utils.h"
 
-#include <cassert>
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -141,34 +141,33 @@ public:
     Token(TokenType t = Unknown, const Location& w = { "", 0, 0 });
     Token(TokenType t, const Location& w, const std::string& str);
     Token(TokenType t, const Location& w, uint64_t v);
-    Token(TokenType t, const Location& w, double v);
+    Token(const Location& w, double v);
 
     static TokenType KeyWordToToken(const std::string& str);
 
     TokenType   GetToken() const { return type; }
     std::string GetIdentName() const
     {
-	assert(type == Token::Identifier && "Incorrect type for identname");
-	assert(strVal.size() != 0 && "String should not be empty!");
+	ICE_IF(type != Token::Identifier, "Incorrect type for identname");
+	ICE_IF(strVal.empty(), "String should not be empty!");
 	return strVal;
     }
 
     uint64_t GetIntVal() const
     {
-	assert((type == Token::Integer || type == Token::Char) &&
-	       "Request for integer value from wrong type???");
+	ICE_IF(type != Token::Integer && type != Token::Char, "Request for integer value from wrong type???");
 	return intVal;
     }
 
     double GetRealVal() const
     {
-	assert(type == Token::Real && "Request for real from wrong type???");
+	ICE_IF(type != Token::Real, "Request for real from wrong type???");
 	return realVal;
     }
 
     std::string GetStrVal() const
     {
-	assert(type == Token::StringLiteral && "Request for string from wrong type???");
+	ICE_IF(type != Token::StringLiteral, "Request for string from wrong type???");
 	return strVal;
     }
 

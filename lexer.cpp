@@ -2,7 +2,6 @@
 #include "constants.h"
 #include "types.h"
 
-#include <cassert>
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
@@ -54,7 +53,7 @@ static Token ConvertFloat(const std::string& num, const Location& w)
     {
 	return Token(Token::Overflow, w);
     }
-    return Token(Token::Real, w, v);
+    return Token(w, v);
 }
 
 template<typename T, typename FN>
@@ -146,7 +145,7 @@ Token Lexer::NumberToken()
 	    break;
 
 	case Fraction:
-	    assert(ch == '.' && "Fraction should start with '.'");
+	    ICE_IF(ch != '.', "Fraction should start with '.'");
 	    if (PeekChar() == '.' || PeekChar() == ')')
 	    {
 		break;
@@ -161,7 +160,7 @@ Token Lexer::NumberToken()
 
 	case Exponent:
 	    isFloat = true;
-	    assert((ch == 'e' || ch == 'E') && "Fraction should start with '.'");
+	    ICE_IF(ch != 'e' && ch != 'E', "Fraction should start with '.'");
 	    num += ch;
 	    ch = NextChar();
 	    if (ch == '+' || ch == '-')
@@ -177,7 +176,7 @@ Token Lexer::NumberToken()
 	    break;
 
 	default:
-	    ICE("Error in floating point lexer");
+	    ICE("Error, unknown state in floating point lexer");
 	    break;
 	}
 

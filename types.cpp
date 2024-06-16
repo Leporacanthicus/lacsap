@@ -27,7 +27,7 @@ namespace Types
 
     Range* TypeDecl::GetRange() const
     {
-	assert(IsIntegral(this));
+	ICE_IF(!IsIntegral(this), "Expected integral type for GetRange");
 	switch (kind)
 	{
 	case TK_Char:
@@ -245,7 +245,7 @@ namespace Types
 	    return new PointerDecl(fwd);
 	}
 
-	assert(!forward && "Shouldn't be forward declared pointer here");
+	ICE_IF(forward, "Shouldn't be forward declared pointer here");
 	return new PointerDecl(SubType());
     }
 
@@ -339,17 +339,17 @@ namespace Types
 
     llvm::Type* ArrayDecl::GetLlvmType() const
     {
-	assert(ranges.size() && "Expect ranges to contain something");
+	ICE_IF(!ranges.size(), "Expect ranges to contain something");
 	size_t nelems = 1;
 	for (auto r : ranges)
 	{
-	    assert(r->GetRange()->Size() && "Expectig range to have a non-zero size!");
+	    ICE_IF(!r->GetRange()->Size(), "Expectig range to have a non-zero size!");
 	    nelems *= r->GetRange()->Size();
 	}
 
 	llvm::Type* ty = baseType->LlvmType();
-	assert(nelems && "Expect number of elements to be non-zero!");
-	assert(ty && "Expected to get a type back!");
+	ICE_IF(!nelems, "Expect number of elements to be non-zero!");
+	ICE_IF(!ty, "Expected to get a type back!");
 	return llvm::ArrayType::get(ty, nelems);
     }
 
@@ -656,12 +656,8 @@ namespace Types
 	if (opaqueType && opaqueType->isOpaque())
 	{
 	    [[maybe_unused]] llvm::Type* ty = GetLlvmType();
-	    assert(ty == opaqueType && "Expect opaqueType to be returned");
-	    assert(!opaqueType->isOpaque() && "Expect opaqueness to have gone away");
-	    if (opaqueType->isOpaque())
-	    {
-		llvm_unreachable("Unexpected opaque type");
-	    }
+	    ICE_IF(ty != opaqueType, "Expect opaqueType to be returned");
+	    ICE_IF(opaqueType->isOpaque(), "Expect opaqueness to have gone away");
 	}
     }
 
@@ -676,7 +672,7 @@ namespace Types
 	    if (f->Name() == "")
 	    {
 		auto rd = llvm::dyn_cast<RecordDecl>(f->SubType());
-		assert(rd && "Expected record declarataion here!");
+		ICE_IF(!rd, "Expected record declarataion here!");
 		if (rd->Element(name) >= 0)
 		{
 		    return i;
@@ -823,7 +819,7 @@ namespace Types
 	    if (!d)
 	    {
 		d = f->DebugType(builder);
-		assert(d && "Expected debug type here");
+		ICE_IF(!d, "Expected debug type here");
 	    }
 	    size = f->Size() * CHAR_BIT;
 	    align = f->AlignSize() * CHAR_BIT;
@@ -944,7 +940,7 @@ namespace Types
 
     MemberFuncDecl* ClassDecl::GetMembFunc(size_t index) const
     {
-	assert(index < membfuncs.size() && "Expected index to be in range");
+	ICE_IF(index >= membfuncs.size(), "Expected index to be in range");
 	return membfuncs[index];
     }
 
@@ -1017,7 +1013,7 @@ namespace Types
 	}
 	if (!opaque)
 	{
-	    assert(vt.size() && "Expected some functions here...");
+	    ICE_IF(vt.empty(), "Expected some functions here...");
 	    vtableType->setBody(vt);
 	}
 	return vtableType;
@@ -1047,7 +1043,7 @@ namespace Types
 	{
 	    return baseobj->GetElement(n, objname);
 	}
-	assert(n <= b + fields.size() && "Out of range field");
+	ICE_IF(n > b + fields.size(), "Out of range field");
 	objname = Name();
 	return fields[n - (b + (VTableType(true) ? 1 : 0))];
     }
@@ -1104,7 +1100,7 @@ namespace Types
 	{
 	    const FieldDecl* f = GetElement(i + vtableoffset);
 
-	    assert(!llvm::isa<MemberFuncDecl>(f->SubType()) && "Should not have member functions now");
+	    ICE_IF(llvm::isa<MemberFuncDecl>(f->SubType()), "Should not have member functions");
 
 	    if (!f->IsStatic())
 	    {
@@ -1183,12 +1179,10 @@ namespace Types
     {
 	if (const auto fty = llvm::dyn_cast<FuncPtrDecl>(ty))
 	{
-	    assert(fty && "Expect to convert to function pointer!");
 	    return *proto == *fty->proto;
 	}
 	if (const auto fty = llvm::dyn_cast<FunctionDecl>(ty))
 	{
-	    assert(fty && "Expect to convert to function declaration");
 	    return *proto == *fty->Proto();
 	}
 	return false;
@@ -1236,20 +1230,21 @@ namespace Types
 
     SetDecl::SetDecl(TypeKind k, RangeBaseDecl* r, TypeDecl* ty) : CompoundDecl(k, ty), range(r)
     {
-	assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
-	assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
-	assert(SetMask == SetBits - 1 && "Set pow2 mismatch");
+	static_assert(sizeof(ElemType) * CHAR_BIT == SetBits && "Set bits mismatch");
+	static_assert(1 << SetPow2Bits == SetBits && "Set pow2 mismatch");
+	static_assert(SetMask == SetBits - 1 && "Set pow2 mismatch");
 	if (r && !llvm::isa<SchemaRange>(r))
 	{
-	    assert(r->GetRange()->Size() <= MaxSetSize && "Set too large");
+	    ICE_IF(r->GetRange()->Size() > MaxSetSize, "Set too large");
 	}
     }
 
     llvm::Type* SetDecl::GetLlvmType() const
     {
-	assert(range);
-	assert(range->GetRange()->Size() <= MaxSetSize && "Set too large");
+	ICE_IF(!range, "Range not set");
+	ICE_IF(range->GetRange()->Size() > MaxSetSize, "Set too large");
 	auto        ity = llvm::dyn_cast<llvm::IntegerType>(Get<IntegerDecl>()->LlvmType());
+	ICE_IF(!ity, "Couldn't make llvm-type");
 	llvm::Type* ty = llvm::ArrayType::get(ity, SetWords());
 	return ty;
     }
@@ -1280,7 +1275,7 @@ namespace Types
 
     void SetDecl::UpdateSubtype(TypeDecl* ty)
     {
-	assert(!baseType && "Expected to not have a subtype yet...");
+	ICE_IF(baseType, "Expected to not have a subtype yet...");
 	baseType = ty;
     }
 
@@ -1506,8 +1501,8 @@ namespace Types
 		new FieldDecl("MicroSecond", MakeRange(0, 999999), false),
 	    };
 	    timeStampType = new RecordDecl(fields, nullptr);
-	    assert(sizeof(TimeStamp) == timeStampType->Size() &&
-	           "Runtime and Pascal type should match in size");
+	    ICE_IF(sizeof(TimeStamp) != timeStampType->Size(),
+	           "Runtime and Pascal TimeStamp type should match in size");
 	}
 	return timeStampType;
     }
@@ -1522,8 +1517,8 @@ namespace Types
 		new FieldDecl("Name", Get<StringDecl>(255), false),
 	    };
 	    bindingType = new RecordDecl(fields, nullptr);
-	    assert(sizeof(BindingType) == bindingType->Size() &&
-	           "Runtime and Pascal type should match in size");
+	    ICE_IF(sizeof(BindingType) != bindingType->Size(),
+	           "Runtime and Pascal Binding type should match in size");
 	}
 	return bindingType;
     }

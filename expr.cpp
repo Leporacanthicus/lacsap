@@ -87,7 +87,7 @@ static std::vector<DebugInfo*> debugStack;
 
 static DebugInfo& GetDebugInfo()
 {
-    assert(!debugStack.empty() && "Debugstack should not be empty!");
+    ICE_IF(debugStack.empty(), "Debugstack should not be empty!");
     return *debugStack.back();
 }
 
@@ -178,7 +178,7 @@ static llvm::AllocaInst* CreateNamedAlloca(llvm::Function* fn, Types::TypeDecl* 
 
     llvm::IRBuilder<> bld(&fn->getEntryBlock(), fn->getEntryBlock().begin());
 
-    assert(ty && "Must have type passed in");
+    ICE_IF(!ty, "Must have type passed in");
     llvm::Type* type = ty->LlvmType();
 
     llvm::AllocaInst* a = bld.CreateAlloca(type, 0, name);
@@ -216,7 +216,7 @@ llvm::Value* MakeAddressable(ExprAST* e)
     if (auto ea = llvm::dyn_cast<AddressableAST>(e))
     {
 	llvm::Value* v = ea->Address();
-	assert(v && "Expect addressable object to have address");
+	ICE_IF(!v, "Expect addressable object to have address");
 	return v;
     }
 
@@ -308,7 +308,7 @@ static llvm::Value* TempStringFromStringExpr(llvm::Value* dest, StringExprAST* r
 static llvm::Value* TempStringFromChar(llvm::Value* dest, ExprAST* rhs)
 {
     TRACE();
-    assert(llvm::isa<Types::CharDecl>(rhs->Type()) && "Expected char value");
+    ICE_IF(!llvm::isa<Types::CharDecl>(rhs->Type()), "Expected char value");
 
     auto func = [](llvm::Value* v, llvm::Value* chars, size_t size) { return builder.CreateStore(v, chars); };
     return FillTempString(dest, rhs->CodeGen(), 1, func);
@@ -425,7 +425,7 @@ llvm::Value* AddressableAST::CodeGen()
     BasicDebugInfo(this);
 
     llvm::Value* v = Address();
-    assert(v && "Expected to get an address");
+    ICE_IF(!v, "Expected to get an address");
     llvm::Type* ty = Type()->LlvmType();
     return builder.CreateLoad(ty, v, Name());
 }
@@ -482,15 +482,15 @@ llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
     llvm::Value* v = MakeAddressable(expr);
-    assert(v && "Expected variable to have an address");
+    ICE_IF(!v, "Expected variable to have an address");
     EnsureSized();
     llvm::Value* totalIndex = 0;
     for (size_t i = 0; i < indices.size(); i++)
     {
 	auto range = llvm::dyn_cast<RangeReduceAST>(indices[i]);
-	assert(range && "Expected a range here");
+	ICE_IF(!range, "Expected a range here");
 	llvm::Value* index = range->CodeGen();
-	assert(index && "Expression failed for index");
+	ICE_IF(!index, "Expression failed for index");
 	if (indexmul[i] != 1)
 	{
 	    index = builder.CreateMul(index, MakeConstant(indexmul[i], range->Type()));
@@ -529,7 +529,7 @@ llvm::Value* DynArrayExprAST::Address()
 {
     TRACE();
     llvm::Value* v = MakeAddressable(expr);
-    assert(v && "Expected variable to have an address");
+    ICE_IF(!v, "Expected variable to have an address");
     EnsureSized();
     llvm::Value* idx = index->CodeGen();
 
@@ -568,7 +568,7 @@ llvm::Value* FieldExprAST::Address()
     TRACE();
     EnsureSized();
     llvm::Value* v = MakeAddressable(expr);
-    assert(v && "Expected MakeAddressable to have a value");
+    ICE_IF(!v, "Expected MakeAddressable to have a value");
     llvm::Type* ty = expr->Type()->LlvmType();
     return builder.CreateGEP(ty, v, { MakeIntegerConstant(0), MakeIntegerConstant(element) }, "valueindex");
 }
@@ -630,7 +630,7 @@ llvm::Value* FilePointerExprAST::Address()
 {
     TRACE();
     auto vptr = llvm::dyn_cast<VariableExprAST>(pointer);
-    assert(vptr && "Expected variable expression!");
+    ICE_IF(!vptr, "Expected variable expression!");
     llvm::Value* v = vptr->Address();
     llvm::Type*  fileTy = pointer->Type()->LlvmType();
     llvm::Type*  ptrTy = llvm::PointerType::getUnqual(Type()->LlvmType());
@@ -652,7 +652,7 @@ void FunctionExprAST::DoDump() const
 
 llvm::Value* FunctionExprAST::CodeGen()
 {
-    assert(proto->Function());
+    ICE_IF(!proto->Function(), "Expected a function!");
 
     BasicDebugInfo(this);
     return proto->LlvmFunction();
@@ -713,12 +713,12 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name)
     {
 	Types::TypeDecl* type = rhs->Type();
 
-	assert(*type == *lhs->Type() && "Expect same types");
+	ICE_IF(*type != *lhs->Type(), "Expect same types");
 	llvm::Value* rV = MakeAddressable(rhs);
 	llvm::Value* lV = MakeAddressable(lhs);
 
 	size_t words = llvm::dyn_cast<Types::SetDecl>(type)->SetWords();
-	assert(rV && lV && "Should have generated values for left and right set");
+	ICE_IF(!rV || !lV, "Should have generated values for left and right set");
 
 	llvm::Type* ty = Types::Get<Types::IntegerDecl>()->LlvmType();
 
@@ -749,12 +749,12 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     }
 
     auto type = llvm::dyn_cast<Types::SetDecl>(rhs->Type());
-    assert(*type == *lhs->Type() && "Expect both sides to have same type");
-    assert(type && "Expect to get a type");
+    ICE_IF(*type != *lhs->Type(), "Expect both sides to have same type");
+    ICE_IF(!type, "Expect to get a type");
 
     llvm::Value* rV = MakeAddressable(rhs);
     llvm::Value* lV = MakeAddressable(lhs);
-    assert(rV && lV && "Should have generated values for left and right set");
+    ICE_IF(!rV || !lV, "Should have generated values for left and right set");
 
     llvm::Type*  setTy = type->LlvmType();
     llvm::Type*  pty = llvm::PointerType::getUnqual(setTy);
@@ -803,7 +803,7 @@ llvm::Value* MakeStringFromExpr(ExprAST* e, Types::TypeDecl* ty)
 	auto                               at = llvm::dyn_cast<Types::ArrayDecl>(e->Type());
 	std::vector<Types::RangeBaseDecl*> r = at->Ranges();
 
-	assert(r.size() == 1);
+	ICE_IF(r.size() != 1, "Expect 1D array here");
 
 	llvm::Value* v = CreateTempAlloca(ty);
 	TempStringFromCharArray(v, ea, r[0]->RangeSize());
@@ -854,7 +854,7 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
     llvm::Value* rV = MakeAddressable(rhs);
     llvm::Value* lV = MakeAddressable(lhs);
 
-    assert(rV && lV && "Expect to get values here...");
+    ICE_IF(!rV || !lV, "Expect to get values here...");
 
     // Result is integer.
     llvm::Type* resTy = Types::Get<Types::IntegerDecl>()->LlvmType();
@@ -873,8 +873,8 @@ void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
 {
     if (type != ty)
     {
-	assert(!type && "Type shouldn't be updated more than once");
-	assert(ty && "Must supply valid type");
+	ICE_IF(type, "Type shouldn't be updated more than once");
+	ICE_IF(!ty, "Must supply valid type");
 
 	type = ty;
     }
@@ -892,7 +892,7 @@ Types::TypeDecl* BinaryExprAST::Type() const
 	return type;
     }
 
-    assert(lhs->Type() && "Should have types here...");
+    ICE_IF(!lhs->Type(), "Should have types here...");
 
     // Last resort, return left type.
     return lhs->Type();
@@ -1175,7 +1175,7 @@ static llvm::Value* IntegerBinExpr(llvm::Value* l, llvm::Value* r, const Token& 
     case Token::Or:
 	return builder.CreateOr(l, r, "or");
     case Token::Pow:
-	assert(ty && "Execpted to have a type here");
+	ICE_IF(!ty, "Execpted to have a type here");
 	return PowerInt(l, r, ty);
 
     case Token::LessThan:
@@ -1387,7 +1387,7 @@ llvm::Value* BinaryExprAST::CodeGen()
 	return SetCodeGen();
     }
 
-    assert(lhs->Type() && rhs->Type() && "Huh? Both sides of expression should have type");
+    ICE_IF(!lhs->Type() || !rhs->Type(), "Huh? Both sides of expression should have type");
 
     if (BothStringish(lhs, rhs))
     {
@@ -1419,7 +1419,8 @@ llvm::Value* BinaryExprAST::CodeGen()
 	    std::vector<Types::RangeBaseDecl*> rr = ar->Ranges();
 	    std::vector<Types::RangeBaseDecl*> rl = al->Ranges();
 
-	    assert(rr.size() == 1 && rl.size() == 1 && rr[0]->Size() == rl[0]->Size());
+	    ICE_IF(rr.size() != 1 || rl.size() != 1 || rr[0]->RangeSize() != rl[0]->RangeSize(),
+	           "Expect both sides to have 1D arrays, and the same size");
 
 	    return MakeStrCompare(oper.GetToken(), CallArrFunc("Compare", rr[0]->RangeSize()));
 	}
@@ -1459,11 +1460,11 @@ llvm::Value* BinaryExprAST::CodeGen()
     llvm::Value* l = lhs->CodeGen();
     llvm::Value* r = rhs->CodeGen();
 
-    assert(l && r && "Should have a value for both sides");
+    ICE_IF(!l || !r, "Should have a value for both sides");
 
     [[maybe_unused]] llvm::Type* lty = l->getType();
     llvm::Type*                  rty = r->getType();
-    assert(rty == lty && "Expect same types");
+    ICE_IF(rty != lty, "Expect same types");
 
     // Can compare for (in)equality with pointers and integers
     if (rty->isIntegerTy() || rty->isPointerTy())
@@ -1482,13 +1483,13 @@ llvm::Value* BinaryExprAST::CodeGen()
     if (rty->isIntegerTy())
     {
 	auto v = IntegerBinExpr(l, r, oper, Type(), IsUnsigned(rhs->Type()));
-	assert(v && "Binary expression should be valid");
+	ICE_IF(!v, "Binary expression should be valid");
 	return v;
     }
     if (rty->isDoubleTy())
     {
 	auto v = DoubleBinExpr(l, r, oper, Type());
-	assert(v && "Binary expression should be valid");
+	ICE_IF(!v, "Binary expression should be valid");
 	return v;
     }
 
@@ -1540,8 +1541,8 @@ void UnaryExprAST::UpdateType(Types::TypeDecl* ty)
 {
     if (type != ty)
     {
-	assert(!type && "Type shouldn't be update more than once");
-	assert(ty && "Must supply a valid type");
+	ICE_IF(type, "Type shouldn't be update more than once");
+	ICE_IF(!ty, "Must supply a valid type");
 	type = ty;
     }
 }
@@ -1575,7 +1576,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 	    auto vi = llvm::dyn_cast<AddressableAST>(i);
 	    if (vdef[index].IsRef())
 	    {
-		assert(vi && "This should be an addressable value");
+		ICE_IF(!vi, "This should be an addressable value");
 		v = vi->Address();
 	    }
 	    else
@@ -1583,7 +1584,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 		if (llvm::isa<Types::FuncPtrDecl>(vdef[index].Type()))
 		{
 		    v = i->CodeGen();
-		    assert(v && "Expected CodeGen to work");
+		    ICE_IF(!v, "Expected CodeGen to work");
 		}
 		if (!v)
 		{
@@ -1608,7 +1609,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 		}
 	    }
 	}
-	assert(v && "Expect argument here");
+	ICE_IF(!v, "Expect argument here");
 	if (llvm::isa<Types::DynArrayDecl>(vdef[index].Type()))
 	{
 	    auto        aty = llvm::dyn_cast<Types::ArrayDecl>(i->Type());
@@ -1617,7 +1618,7 @@ static std::vector<llvm::Value*> CreateArgList(const std::vector<ExprAST*>& args
 
 	    llvm::Type* dynTy = Types::DynArrayDecl::GetArrayType(aty->SubType());
 
-	    assert(aty && "This should be an array declaration");
+	    ICE_IF(!aty, "This should be an array declaration");
 	    llvm::Constant* zero = MakeIntegerConstant(0);
 	    llvm::Constant* one = MakeIntegerConstant(1);
 	    llvm::Constant* two = MakeIntegerConstant(2);
@@ -1649,7 +1650,7 @@ static llvm::AttributeList CreateAttrList(const std::vector<VarDef>& args)
 	llvm::LLVMContext& ctx = theModule->getContext();
 	if (i.IsClosure())
 	{
-	    assert(index == 0 && "Expect argument index to be zero");
+	    ICE_IF(index != 0, "Expect argument index to be zero");
 	    llvm::AttrBuilder ab(ctx);
 	    ab.addAttribute(llvm::Attribute::Nest);
 	    attrList = attrList.addParamAttributes(ctx, index, ab);
@@ -1673,7 +1674,7 @@ static std::vector<llvm::Type*> CreateArgTypes(const std::vector<VarDef>& args)
     std::vector<llvm::Type*> argTypes;
     for (auto i : args)
     {
-	assert(i.Type() && "Invalid type for argument");
+	ICE_IF(!i.Type(), "Invalid type for argument");
 	llvm::Type* argTy = i.Type()->LlvmType();
 
 	if (i.IsRef() || IsCompound(i.Type()))
@@ -1689,15 +1690,15 @@ static std::vector<llvm::Type*> CreateArgTypes(const std::vector<VarDef>& args)
 llvm::Value* CallExprAST::CodeGen()
 {
     TRACE();
-    assert(proto && "Function prototype should be set");
+    ICE_IF(!proto, "Function prototype should be set");
 
     BasicDebugInfo(this);
 
     llvm::Value* calleF = callee->CodeGen();
-    assert(calleF && "Expected function to generate some code");
+    ICE_IF(!calleF, "Expected function to generate some code");
 
     const std::vector<VarDef>& vdef = proto->Args();
-    assert(vdef.size() == args.size() && "Incorrect number of arguments for function");
+    ICE_IF(vdef.size() != args.size(), "Incorrect number of arguments for function");
 
     std::vector<llvm::Type*>  argTypes = CreateArgTypes(vdef);
     std::vector<llvm::Value*> argsV = CreateArgList(args, vdef);
@@ -1752,7 +1753,7 @@ llvm::Value* BlockAST::CodeGen()
     for (auto e : content)
     {
 	[[maybe_unused]] llvm::Value* v = e->CodeGen();
-	assert(v && "Expect codegen to work!");
+	ICE_IF(!v, "Expect codegen to work!");
     }
     return NoOpValue();
 }
@@ -1777,13 +1778,13 @@ static llvm::Function* CreateFunction(const std::string& name, const std::vector
     llvm::Type*          resTy = resultType->LlvmType();
     llvm::FunctionCallee fc = GetFunction(resTy, argTypes, name);
     auto                 llvmFunc = llvm::dyn_cast<llvm::Function>(fc.getCallee());
-    assert(llvmFunc && "Should have found a function here!");
+    ICE_IF(!llvmFunc, "Should have found a function here!");
     if (!llvmFunc->empty())
     {
 	return Error(nullptr, "redefinition of function: " + name);
     }
 
-    assert(llvmFunc->arg_size() == args.size() && "Expect number of arguments to match");
+    ICE_IF(llvmFunc->arg_size() != args.size(), "Expect number of arguments to match");
 
     auto a = args.begin();
     for (auto& arg : llvmFunc->args())
@@ -1820,7 +1821,7 @@ llvm::Function* PrototypeAST::Create(const std::string& namePrefix)
 {
     TRACE();
 
-    assert(namePrefix != "" && "Prefix should never be empty");
+    ICE_IF(namePrefix.empty(), "Prefix should never be empty");
     if (llvmFunc)
     {
 	return llvmFunc;
@@ -1860,12 +1861,12 @@ void PrototypeAST::CreateArgumentAlloca()
     llvm::Function::arg_iterator ai = llvmFunc->arg_begin();
     if (Types::TypeDecl* closureType = Function()->ClosureType())
     {
-	assert(closureType == args[0].Type() && "Expect type to match here");
+	ICE_IF(closureType != args[0].Type(), "Expect type to match here");
 	// Skip over the closure argument in the loop below.
 	offset = 1;
 
 	auto rd = llvm::dyn_cast<Types::RecordDecl>(closureType);
-	assert(rd && "Expected a record for closure type!");
+	ICE_IF(!rd, "Expected a record for closure type!");
 	for (int i = 0; i < rd->FieldCount(); i++)
 	{
 	    const Types::FieldDecl* f = rd->GetElement(i);
@@ -1919,7 +1920,7 @@ void PrototypeAST::CreateArgumentAlloca()
 	if (debugInfo)
 	{
 	    DebugInfo& di = GetDebugInfo();
-	    assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
+	    ICE_IF(di.lexicalBlocks.empty(), "Should not have empty lexicalblocks here!");
 	    llvm::DIScope* sp = di.lexicalBlocks.back();
 	    llvm::DIType*  debugType = args[idx].Type()->DebugType(di.builder);
 	    if (!debugType)
@@ -1953,7 +1954,7 @@ void PrototypeAST::CreateArgumentAlloca()
 
 void PrototypeAST::SetIsForward(bool v)
 {
-    assert(!function && "Can't make a real function prototype forward");
+    ICE_IF(function, "Can't make a real function prototype forward");
     isForward = v;
 }
 
@@ -2034,7 +2035,7 @@ FunctionAST::FunctionAST(const Location& w, PrototypeAST* prot, const std::vecto
                          BlockAST* b)
     : ExprAST(w, EK_Function), proto(prot), varDecls(v), body(b), parent(0), closureType(0)
 {
-    assert((proto->IsForward() || body) && "Function should have body");
+    ICE_IF(!proto->IsForward() && !body, "Function should be forward declared or have body");
     if (!proto->IsForward())
     {
 	proto->SetFunction(this);
@@ -2088,7 +2089,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     TRACE();
     VarStackWrapper w(variables);
     LabelWrapper    l(labels);
-    assert(namePrefix != "" && "Prefix should not be empty");
+    ICE_IF(namePrefix.empty(), "Prefix should not be empty");
     llvm::Function* theFunction = proto->Create(namePrefix);
 
     ICE_IF(!theFunction, "Failed to create function");
@@ -2162,7 +2163,7 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     {
 	std::string  shortname = proto->ResName();
 	llvm::Value* v = variables.Find(shortname);
-	assert(v && "Expect function result 'variable' to exist");
+	ICE_IF(!v, "Expect function result 'variable' to exist");
 	llvm::Type*  ty = proto->Type()->LlvmType();
 	llvm::Value* retVal = builder.CreateLoad(ty, v, shortname);
 	builder.CreateRet(retVal);
@@ -2177,7 +2178,10 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
     if (!debugInfo && body && emitType != LlvmIr)
     {
 	llvm::raw_os_ostream err(std::cerr);
-	assert(!verifyFunction(*theFunction, &err) && "Something went wrong in code generation");
+#if !NDEBUG
+	// Verify doesn't work on release builds.
+	ICE_IF(verifyFunction(*theFunction, &err), "Something went wrong in code generation");
+#endif
     }
 
     return theFunction;
@@ -2243,8 +2247,8 @@ llvm::Value* AssignExprAST::AssignStr()
 {
     TRACE();
     auto lhsv = llvm::dyn_cast<AddressableAST>(lhs);
-    assert(lhsv && "Expect variable in lhs");
-    assert(llvm::isa<Types::StringDecl>(lhsv->Type()) && "Expect string type in lhsv->Type()");
+    ICE_IF(!lhsv, "Expect variable in lhs");
+    ICE_IF(!llvm::isa<Types::StringDecl>(lhsv->Type()), "Expect string type in lhsv->Type()");
 
     if (auto srhs = llvm::dyn_cast<StringExprAST>(rhs))
     {
@@ -2252,7 +2256,7 @@ llvm::Value* AssignExprAST::AssignStr()
 	return TempStringFromStringExpr(dest, srhs);
     }
 
-    assert(llvm::isa<Types::StringDecl>(rhs->Type()));
+    ICE_IF(!llvm::isa<Types::StringDecl>(rhs->Type()), "Expect string for rhs expression");
     return CallStrFunc("Assign", lhs, rhs, Types::Get<Types::VoidDecl>(), "");
 }
 
@@ -2261,8 +2265,8 @@ llvm::Value* AssignExprAST::AssignSet()
     llvm::Value* v = rhs->CodeGen();
     auto         lhsv = llvm::dyn_cast<AddressableAST>(lhs);
     llvm::Value* dest = lhsv->Address();
-    assert(*lhs->Type() == *rhs->Type() && "Types should match?");
-    assert(dest && "Expected address from lhsv!");
+    ICE_IF(*lhs->Type() != *rhs->Type(), "Types should match?");
+    ICE_IF(!dest, "Expected address from lhsv!");
     builder.CreateStore(v, dest);
     return v;
 }
@@ -2274,7 +2278,7 @@ llvm::Value* AssignExprAST::CodeGen()
     BasicDebugInfo(this);
 
     auto lhsv = llvm::dyn_cast<AddressableAST>(lhs);
-    assert(lhsv && "Execpted addressable lhs");
+    ICE_IF(!lhsv, "Execpted addressable lhs");
 
     if (llvm::isa<const Types::StringDecl>(lhsv->Type()))
     {
@@ -2289,7 +2293,7 @@ llvm::Value* AssignExprAST::CodeGen()
     if (llvm::isa<StringExprAST>(rhs) && Types::IsCharArray(lhs->Type()))
     {
 	auto str = llvm::dyn_cast<StringExprAST>(rhs);
-	assert(rhs && "Expected string to convert correctly");
+	ICE_IF(!rhs, "Expected string to convert correctly");
 	llvm::Value* dest = lhsv->Address();
 	llvm::Type*  ty = Types::Get<Types::CharDecl>()->LlvmType();
 	llvm::Value* dest1 = builder.CreateGEP(ty, dest, MakeIntegerConstant(0), "str_0");
@@ -2358,8 +2362,8 @@ llvm::Value* IfExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    assert(cond->Type() && "Expect type here");
-    assert(llvm::isa<Types::BoolDecl>(cond->Type()) && "Only boolean expressions allowed in if-statement");
+    ICE_IF(!cond->Type(), "Expect type here");
+    ICE_IF(!llvm::isa<Types::BoolDecl>(cond->Type()), "Only boolean expressions allowed in if-statement");
 
     llvm::Value* condV = cond->CodeGen();
     ICE_IF(!condV, "Condition codegen failed");
@@ -2380,18 +2384,18 @@ llvm::Value* IfExprAST::CodeGen()
     if (then)
     {
 	[[maybe_unused]] llvm::Value* thenV = then->CodeGen();
-	assert(thenV && "Expect 'then' to generate code");
+	ICE_IF(!thenV, "Expect 'then' to generate code");
     }
 
     builder.CreateBr(mergeBB);
 
     if (other)
     {
-	assert(elseBB != mergeBB && "ElseBB should be different from MergeBB");
+	ICE_IF(elseBB == mergeBB, "ElseBB should be different from MergeBB");
 	builder.SetInsertPoint(elseBB);
 
-	[[maybe_unused]] llvm::Value* elseV = other->CodeGen();
-	assert(elseV && "Expect 'else' to generate code");
+	llvm::Value* elseV = other->CodeGen();
+	ICE_IF(!elseV, "Expect 'else' to generate code");
 	builder.CreateBr(mergeBB);
     }
     builder.SetInsertPoint(mergeBB);
@@ -2448,7 +2452,7 @@ llvm::Value* ForExprAST::ForInGen()
     llvm::Value* zero = MakeIntegerConstant(0);
     llvm::Value* shift = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
     llvm::Value* var = variable->Address();
-    assert(var && "Expected variable here");
+    ICE_IF(!var, "Expected variable here");
 
     llvm::BasicBlock* beforeBB = llvm::BasicBlock::Create(theContext, "before", theFunction);
     llvm::BasicBlock* preOuterLoopBB = llvm::BasicBlock::Create(theContext, "outerloop", theFunction);
@@ -2532,12 +2536,12 @@ llvm::Value* ForExprAST::CodeGen()
 
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
     llvm::Value*    var = variable->Address();
-    assert(var && "Expected variable here");
+    ICE_IF(!var, "Expected variable here");
 
     llvm::Value* startV = start->CodeGen();
-    assert(startV && "Expected start to generate code");
+    ICE_IF(!startV, "Expected start to generate code");
     llvm::Value* endV = end->CodeGen();
-    assert(endV && "Expected end to generate code");
+    ICE_IF(!endV, "Expected end to generate code");
     llvm::Value* stepVal = MakeConstant((stepDown) ? -1 : 1, start->Type());
     builder.CreateStore(startV, var);
 
@@ -2879,7 +2883,7 @@ llvm::Value* WriteAST::CodeGen()
 		else
 		{
 		    auto a = llvm::dyn_cast<AddressableAST>(arg.expr);
-		    assert(a && "Expected addressable value");
+		    ICE_IF(!a, "Expected addressable value");
 		    v = a->Address();
 		    v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
 		}
@@ -2906,7 +2910,7 @@ llvm::Value* WriteAST::CodeGen()
 	    if (arg.width)
 	    {
 		w = arg.width->CodeGen();
-		assert(w && "Expect width expression to generate code ok");
+		ICE_IF(!w, "Expect width expression to generate code ok");
 	    }
 
 	    if (!w->getType()->isIntegerTy())
@@ -2933,7 +2937,7 @@ llvm::Value* WriteAST::CodeGen()
 	    }
 	    else
 	    {
-		assert(!arg.precision && "Expected no precision for types other than REAL");
+		ICE_IF(arg.precision, "Expected no precision for types other than REAL");
 	    }
 	}
 	else
@@ -3057,7 +3061,7 @@ llvm::Value* ReadAST::CodeGen()
     {
 	std::vector<llvm::Value*> argsV = { sc };
 	auto                      vexpr = llvm::dyn_cast<AddressableAST>(arg);
-	assert(vexpr && "Argument for read/readln should be a variable");
+	ICE_IF(!vexpr, "Argument for read/readln should be a variable");
 
 	Types::TypeDecl* ty = vexpr->Type();
 	v = vexpr->Address();
@@ -3081,7 +3085,7 @@ llvm::Value* ReadAST::CodeGen()
     }
     if (kind == ReadKind::ReadLn)
     {
-	assert(isText && "File is not text for readln");
+	ICE_IF(!isText, "File is not text for readln");
 	llvm::FunctionCallee fn = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { srcTy },
 	                                      "__read_nl");
 	v = builder.CreateCall(fn, sc, "");
@@ -3114,7 +3118,7 @@ llvm::Value* VarDeclAST::CodeGenGlobal(VarDef var)
 	fc->EnsureSized();
     }
 
-    assert(ty && "Type should have a value");
+    ICE_IF(!ty, "Type should have a value");
     llvm::Constant*   init;
     llvm::Constant*   nullValue = llvm::Constant::getNullValue(ty);
     Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
@@ -3190,7 +3194,7 @@ llvm::Value* VarDeclAST::CodeGenLocal(VarDef var)
     if (debugInfo)
     {
 	DebugInfo& di = GetDebugInfo();
-	assert(!di.lexicalBlocks.empty() && "Should not have empty lexicalblocks here!");
+	ICE_IF(di.lexicalBlocks.empty(), "Should not have empty lexicalblocks here!");
 	llvm::DIScope* sp = di.lexicalBlocks.back();
 	llvm::DIType*  debugType = var.Type()->DebugType(di.builder);
 	if (!debugType)
@@ -3269,8 +3273,8 @@ llvm::Value* LabelExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    assert(!stmt && "Expected no statement for 'goto' label expression");
-    assert(labelValues.size() == 1 && labelValues[0].first == labelValues[0].second);
+    ICE_IF(stmt, "Expected no statement for 'goto' label expression");
+    ICE_IF(labelValues.size() != 1 || labelValues[0].first != labelValues[0].second, "Label mismatch");
     llvm::BasicBlock* labelBB = CreateGotoTarget(labelValues[0].first);
     // Make LLVM-IR valid by jumping to the neew block!
     llvm::Value* v = builder.CreateBr(labelBB);
@@ -3285,7 +3289,7 @@ llvm::Value* LabelExprAST::CodeGen(llvm::BasicBlock* caseBB, llvm::BasicBlock* a
 
     BasicDebugInfo(this);
 
-    assert(stmt && "Expected a statement for 'case' label expression");
+    ICE_IF(!stmt, "Expected a statement for 'case' label expression");
     builder.SetInsertPoint(caseBB);
     stmt->CodeGen();
     builder.CreateBr(afterBB);
@@ -3335,7 +3339,7 @@ void CaseExprAST::accept(ASTVisitor& v)
 
 static uint64_t Distance(std::pair<int, int> p)
 {
-    assert(p.first <= p.second && "Expect ordered pair");
+    ICE_IF(p.first > p.second, "Expect ordered pair");
     if (p.first > 0)
     {
 	return p.second - p.first;
@@ -3505,7 +3509,7 @@ llvm::Value* SetExprAST::MakeConstantSet()
 {
     static int  index = 1;
     llvm::Type* ty = type->LlvmType();
-    assert(ty && "Expect type for set to work");
+    ICE_IF(!ty, "Expect type for set to work");
 
     llvm::Constant* init = MakeConstantSetArray();
 
@@ -3519,9 +3523,9 @@ llvm::Value* SetExprAST::Address()
 {
     TRACE();
 
-    assert(type && "No type supplied");
+    ICE_IF(!type, "No type supplied");
 
-    assert(type->GetRange()->Size() <= Types::SetDecl::MaxSetSize && "Size too large?");
+    ICE_IF(type->GetRange()->Size() > Types::SetDecl::MaxSetSize, "Size too large?");
 
     // Check if ALL the values involved are constants.
     bool allConstants = true;
@@ -3551,7 +3555,7 @@ llvm::Value* SetExprAST::Address()
     }
 
     llvm::Value* setV = CreateTempAlloca(type);
-    assert(setV && "Expect CreateTempAlloca() to work");
+    ICE_IF(!setV, "Expect CreateTempAlloca() to work");
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 
@@ -3571,7 +3575,7 @@ llvm::Value* SetExprAST::Address()
 	{
 	    llvm::Value* low = r->Low();
 	    llvm::Value* high = r->High();
-	    assert(high && low && "Expected expressions to evalueate");
+	    ICE_IF(!high || !low, "Expected expressions to evalueate");
 
 	    llvm::Function* fn = builder.GetInsertBlock()->getParent();
 
@@ -3627,7 +3631,7 @@ llvm::Value* SetExprAST::Address()
 	    Types::Range* range = type->GetRange();
 	    llvm::Value*  rangeStart = MakeIntegerConstant(range->Start());
 	    llvm::Value*  x = v->CodeGen();
-	    assert(x && "Expect codegen to work!");
+	    ICE_IF(!x, "Expect codegen to work!");
 	    x = builder.CreateZExt(x, intTy, "zext");
 	    x = builder.CreateSub(x, rangeStart);
 
@@ -3686,7 +3690,7 @@ llvm::Value* RangeReduceAST::CodeGen()
 {
     TRACE();
 
-    assert(IsIntegral(expr->Type()) && "Index is supposed to be integral type");
+    ICE_IF(!IsIntegral(expr->Type()), "Index is supposed to be integral type");
     llvm::Value* index = expr->CodeGen();
 
     llvm::Type* ty = index->getType();
@@ -3699,7 +3703,7 @@ llvm::Value* RangeReduceAST::CodeGen()
     else
     {
 	auto rr = llvm::dyn_cast<Types::RangeDecl>(range);
-	assert(rr && "This should be a RangeDecl");
+	ICE_IF(!rr, "This should be a RangeDecl");
 	if (int start = rr->Start())
 	{
 	    index = builder.CreateSub(index, MakeConstant(start, expr->Type()));
@@ -3734,14 +3738,14 @@ llvm::Value* RangeCheckAST::CodeGen()
     TRACE();
 
     llvm::Value* index = expr->CodeGen();
-    assert(index && "Expected expression to generate code");
-    assert(index->getType()->isIntegerTy() && "Index is supposed to be integral type");
+    ICE_IF(!index, "Expected expression to generate code");
+    ICE_IF(!index->getType()->isIntegerTy(), "Index is supposed to be integral type");
 
     llvm::Value* orig_index = index;
     llvm::Type*  intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
 
     auto rr = llvm::dyn_cast<Types::RangeDecl>(range);
-    assert(rr && "Expect a rangedecl here");
+    ICE_IF(rr, "Expect a rangedecl here");
     int start = rr->Start();
     if (start)
     {
@@ -3803,7 +3807,7 @@ static llvm::Value* ConvertSet(ExprAST* expr, Types::TypeDecl* type)
 
     llvm::Value* dest = CreateTempAlloca(type);
 
-    assert(lty && rty && "Expect types on both sides");
+    ICE_IF(!lty || !rty, "Expect types on both sides");
     Types::Range* rrange = rty->GetRange();
     Types::Range* lrange = lty->GetRange();
 
@@ -3955,7 +3959,7 @@ llvm::Value* TypeCastAST::Address()
 	}
     }
 
-    assert(v && "Expected to get a value here...");
+    ICE_IF(!v, "Expected to get a value here...");
     if (llvm::isa<Types::CharDecl>(type))
     {
 	return builder.CreateGEP(type->LlvmType(), v, MakeIntegerConstant(1));
@@ -4014,7 +4018,7 @@ llvm::Value* VTableAST::CodeGen()
     TRACE();
 
     auto ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
-    assert(ty && "Huh? No vtable?");
+    ICE_IF(!ty, "Huh? No vtable?");
     std::vector<llvm::Constant*> vtInit = GetInitializer();
 
     std::string     name = "vtable_" + classDecl->Name();
@@ -4053,7 +4057,7 @@ void VTableAST::Fixup()
 {
     auto                         ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(true));
     std::vector<llvm::Constant*> vtInit = GetInitializer();
-    assert(vtInit.size() && "Should have something to initialize here");
+    ICE_IF(vtInit.empty(), "Should have something to initialize here");
 
     llvm::Constant* init = llvm::ConstantStruct::get(ty, vtInit);
     vtable->setInitializer(init);
@@ -4062,7 +4066,7 @@ void VTableAST::Fixup()
 VirtFunctionAST::VirtFunctionAST(const Location& w, ExprAST* slf, int idx, Types::TypeDecl* ty)
     : AddressableAST(w, EK_VirtFunction, ty), index(idx), self(slf)
 {
-    assert(index >= 0 && "Index should not be negative!");
+    ICE_IF(index < 0, "Index should not be negative!");
 }
 
 void VirtFunctionAST::DoDump() const
@@ -4234,7 +4238,7 @@ llvm::Value* InitValueAST::CodeGen()
 	auto        se = llvm::dyn_cast<StringExprAST>(values[0]);
 	std::string str;
 	str.resize(size);
-	assert(se && "Expected this to be a string expression");
+	ICE_IF(!se, "Expected this to be a string expression");
 	const std::string& val = se->Str();
 	str[0] = val.size();
 	for (size_t i = 1; i <= val.size(); i++)
@@ -4276,8 +4280,8 @@ void InitValueAST::DoDump() const
 llvm::Value* InitArrayAST::CodeGen()
 {
     auto aty = llvm::dyn_cast<Types::ArrayDecl>(type);
-    assert(aty && "Expected array type here");
-    assert(aty->Ranges().size() == 1 && "Expect only 1D arrays right now");
+    ICE_IF(!aty, "Expected array type here");
+    ICE_IF(aty->Ranges().size() != 1, "Expect only 1D arrays right now");
     Types::Range*                range = aty->Ranges()[0]->GetRange();
     size_t                       size = range->Size();
     std::vector<llvm::Constant*> initArr(size);
@@ -4297,7 +4301,7 @@ llvm::Value* InitArrayAST::CodeGen()
 	    initArr[v.Start() - range->Start()] = c;
 	    break;
 	case ArrayInit::InitKind::Otherwise:
-	    assert(!otherwise && "Expected only one otherwise initializer");
+	    ICE_IF(otherwise, "Expected only one otherwise initializer");
 	    otherwise = c;
 	    break;
 	default:
@@ -4332,7 +4336,7 @@ void InitArrayAST::DoDump() const
 llvm::Value* InitRecordAST::CodeGen()
 {
     auto fty = llvm::dyn_cast<Types::FieldCollection>(type);
-    assert(fty && "Expected field collection type here");
+    ICE_IF(!fty, "Expected field collection type here");
     std::vector<llvm::Constant*> initArr(fty->FieldCount());
 
     for (auto v : values)
@@ -4406,7 +4410,7 @@ static void BuildUnitInitList()
     for (auto v : unitInit)
     {
 	llvm::Function* fn = theModule->getFunction("P." + v->Proto()->Name());
-	assert(fn && "Expected to find the function!");
+	ICE_IF(!fn, "Expected to find the function!");
 	unitList[index] = llvm::ConstantExpr::getBitCast(fn, vp);
 	index++;
     }
@@ -4415,7 +4419,7 @@ static void BuildUnitInitList()
     llvm::Constant*               init = llvm::ConstantArray::get(arr, unitList);
     [[maybe_unused]] llvm::Value* unitInitList = new llvm::GlobalVariable(
         *theModule, arr, true, llvm::GlobalValue::ExternalLinkage, init, "UnitIniList");
-    assert(unitInitList && "Unit Initializer List not built correctly?");
+    ICE_IF(!unitInitList, "Unit Initializer List not built correctly?");
 }
 
 void BackPatch()

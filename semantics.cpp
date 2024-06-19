@@ -275,7 +275,7 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 
     if (op == Token::Plus)
     {
-	if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
+	if (Types::IsStringLike(lty) && Types::IsStringLike(rty))
 	{
 	    return Types::Get<Types::StringDecl>(255);
 	}
@@ -383,26 +383,47 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    }
 	}
 
-	if (op == Token::Minus || op == Token::Multiply || op == Token::And || op == Token::Xor ||
-	    op == Token::Or)
+	if (op == Token::And || op == Token::Xor || op == Token::Or)
 	{
+	    if (llvm::isa<Types::BoolDecl>(lty) && llvm::isa<Types::BoolDecl>(rty))
+	    {
+		ty = Types::Get<Types::BoolDecl>();
+	    }
+	    if (!IsIntegral(lty) || !IsIntegral(rty))
+	    {
+		Error(b, "Expression must be integral types on both sides");
+	    }
 	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
 	    {
 		Error(b, "Types for binary operation should not be CHARACTER");
 	    }
 	}
 
-	if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
+	if (op == Token::Minus || op == Token::Multiply || op == Token::Plus)
 	{
-	    if (!IsCompound(ty))
+	    if (!IsNumeric(lty) || !IsNumeric(rty))
 	    {
-		b->lhs = Recast(b->lhs, ty);
-		b->rhs = Recast(b->rhs, ty);
+		Error(b, "Expression must be numeric types on both sides");
+	    }
+	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty))
+	    {
+		Error(b, "Types for binary operation should not be CHARACTER");
 	    }
 	}
-	else
+	if (!ty)
 	{
-	    Error(b, "Incompatible type in expression");
+	    if ((ty = const_cast<Types::TypeDecl*>(lty->CompatibleType(rty))))
+	    {
+		if (!IsCompound(ty))
+		{
+		    b->lhs = Recast(b->lhs, ty);
+		    b->rhs = Recast(b->rhs, ty);
+		}
+	    }
+	    else
+	    {
+		Error(b, "Incompatible type in expression");
+	    }
 	}
     }
     b->UpdateType(ty);

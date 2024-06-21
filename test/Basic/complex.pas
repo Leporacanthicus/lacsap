@@ -61,7 +61,8 @@ begin
    print_complex("c-d", c-d);
    print_complex("c*d", c*d);
    print_complex("c/d", c/d);
-   print_complex("c**3", c**3);
+   print_complex("c**3.5", c**3.5);
+   print_complex("c POW 3", c POW 3);
    WriteLn;
    print_bool("c=d", c=d);
    print_bool("c=c", c=c);

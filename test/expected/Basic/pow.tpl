@@ -42,3 +42,5 @@
     -2 pow 3 = -8 should be -8
     -6 pow 2 = 36 should be 36
   1000 pow 3 = 1000000000 should be 1000000000
+   -3.5 pow 4 =                150.06250000 should be -150.0625
+    7.5 pow 2 =                 56.25000000 should be 56.25

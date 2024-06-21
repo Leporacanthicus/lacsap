@@ -1220,6 +1220,7 @@ static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& o
 	return builder.CreateFMul(l, r, "multmp");
     case Token::Divide:
 	return builder.CreateFDiv(l, r, "divtmp");
+    case Token::Pow:
     case Token::Power:
     {
 	llvm::Type*               ty = type->LlvmType();
@@ -1328,6 +1329,7 @@ static llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& 
 	                              });
     }
 
+    case Token::Pow:
     case Token::Power:
     {
 	llvm::Value* res = CreateTempAlloca(Types::Get<Types::ComplexDecl>());

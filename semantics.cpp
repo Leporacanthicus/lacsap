@@ -281,11 +281,24 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	}
     }
 
+    if (op == Token::Pow)
+    {
+	if (llvm::isa<Types::ComplexDecl>(lty))
+	{
+	    if (!Types::IsIntegral(rty) || llvm::isa<Types::CharDecl>(rty))
+	    {
+		Error(b, "Expect integer exponent in POW");
+	    }
+	    ty = lty;
+	    b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
+	    return ty;
+	}
+    }
     if (op == Token::Divide || op == Token::Power)
     {
 	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
 	{
-	    Error(b, "Invalid (non-numeric) type for divide");
+	    Error(b, "Invalid (non-numeric) type for divide or power");
 	}
 
 	if (llvm::isa<Types::ComplexDecl>(lty))
@@ -374,12 +387,24 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	Types::TypeDecl* rty = b->rhs->Type();
 	Token::TokenType op = b->oper.GetToken();
 
-	if ((op == Token::Div || op == Token::Mod || op == Token::Pow))
+	if (op == Token::Pow)
+	{
+	    if (!IsNumeric(lty))
+	    {
+		Error(b, "Left hand side of POW should be numeric type");
+	    }
+	    if (llvm::isa<Types::CharDecl>(rty) || !IsIntegral(rty))
+	    {
+		Error(b, "Right hand side of POW should be an integer");
+	    }
+	}
+
+	if ((op == Token::Div || op == Token::Mod))
 	{
 	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !IsIntegral(lty) ||
 	        !IsIntegral(rty))
 	    {
-		Error(b, "Types for DIV, MOD and POW should be integer");
+		Error(b, "Types for DIV and MOD should be integer");
 	    }
 	}
 

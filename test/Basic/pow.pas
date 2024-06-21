@@ -46,4 +46,7 @@ begin
    writeln("-2 pow 3 = ":15, -2 pow 3, " should be -8");
    writeln("-6 pow 2 = ":15, -6 pow 2, " should be 36");
    writeln("1000 pow 3 = ":15, 1000 pow 3, " should be 1000000000");
+
+   writeln("-3.5 pow 4 =":15, -3.5 pow 4:28:8, " should be -150.0625");
+   writeln("7.5 pow 2 =":15, 7.5 pow 2:28:8, " should be 56.25");
 end.

@@ -1269,7 +1269,7 @@ static llvm::Value* GenerateComplexBinExpr(llvm::Value* l, llvm::Value* r, FN fu
     return builder.CreateLoad(cmplxTy, res);
 }
 
-llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
+static llvm::Value* ComplexBinExpr(llvm::Value* l, llvm::Value* r, const Token& oper)
 {
     llvm::Constant* zero = MakeIntegerConstant(0);
     llvm::Constant* one = MakeIntegerConstant(1);

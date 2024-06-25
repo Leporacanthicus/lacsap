@@ -2753,7 +2753,12 @@ ExprAST* Parser::ParseVariableExpr(const NamedObject* def)
 	    return cc->Value();
 	}
     }
-    if (!llvm::isa<VarDef, FuncDef, MembFuncDef>(def))
+    if (llvm::isa<VarDef>(def))
+    {
+	return new VariableExprAST(CurrentToken().Loc(), def);
+    }
+
+    if (!llvm::isa<FuncDef, MembFuncDef>(def))
     {
 	return Error("Expected variable");
     }
@@ -3600,9 +3605,9 @@ FunctionAST* Parser::ParseDefinition(int level)
 	nameStack.Add(vd);
     }
 
-    for (auto v : proto->Args())
+    for (auto& v : proto->Args())
     {
-	if (!nameStack.Add(new VarDef(v.Name(), v.Type())))
+	if (!nameStack.Add(&v))
 	{
 	    return Error("Duplicate name '" + v.Name() + "'.");
 	}

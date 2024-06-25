@@ -54,11 +54,13 @@ public:
         : NamedObject(NK_Var, nm, ty), flags(f), init(0)
     {
 	ICE_IF(!ty, "Expect a type!");
+	ICE_IF((static_cast<int>(flags) & ~static_cast<int>(Flags::All)) != 0, "Unexpected flags set");
     }
     bool        IsRef() const;
     bool        IsExternal() const;
     bool        IsProtected() const;
     bool        IsClosure() const;
+    Flags       GetFlags() const { return flags; }
     ExprAST*    Init() { return init; }
     void        SetInit(ExprAST* i) { init = i; }
     static bool classof(const NamedObject* e) { return e->getKind() == NK_Var; }

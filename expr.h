@@ -248,20 +248,26 @@ class VariableExprAST : public AddressableAST
 {
 public:
     VariableExprAST(const Location& w, const std::string& nm, Types::TypeDecl* ty)
-        : AddressableAST(w, EK_VariableExpr, ty), name(nm)
+        : AddressableAST(w, EK_VariableExpr, ty), name(nm), flags(VarDef::Flags::None)
     {
     }
     VariableExprAST(const Location& w, const NamedObject* obj)
         : AddressableAST{ w, EK_VariableExpr, obj->Type() }, name{ obj->Name() }
     {
+	if (auto vd = llvm::dyn_cast<VarDef>(obj))
+	{
+	    flags = vd->GetFlags();
+	}
     }
     void              DoDump() const override;
     const std::string Name() const override { return name; }
     llvm::Value*      Address() override;
     static bool       classof(const ExprAST* e) { return e->getKind() == EK_VariableExpr; }
+    bool              IsProtected() { return (flags & VarDef::Flags::Protected) == VarDef::Flags::Protected; }
 
 protected:
     std::string name;
+    VarDef::Flags flags;
 };
 
 class ArrayExprAST : public AddressableAST

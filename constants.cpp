@@ -317,6 +317,49 @@ namespace Constants
 	return 0;
     }
 
+    template<typename T>
+    static T PowerToInt(T x, int y)
+    {
+	if (y == 0)
+	{
+	    return 1;
+	}
+	if (y < 0)
+	{
+	    return 1 / PowerToInt(x, -y);
+	}
+	ICE_IF(y <= 0, "Expect y > 0");
+	T res = 1;
+	do
+	{
+	    res *= x;
+	    y--;
+	} while (y > 0);
+	return res;
+    }
+
+    ConstDecl* Pow(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	auto intConst = llvm::dyn_cast<IntConstDecl>(&rhs);
+	if (!intConst)
+	{
+	    return 0;
+	}
+	int y = intConst->Value();
+	if (auto ic = llvm::dyn_cast<IntConstDecl>(&lhs))
+	{
+	    int x = ic->Value();
+	    return new IntConstDecl(ic->Loc(), PowerToInt(x, y));
+	}
+
+	if (auto rc = llvm::dyn_cast<RealConstDecl>(&lhs))
+	{
+	    double x = rc->Value();
+	    return new RealConstDecl(rc->Loc(), PowerToInt(x, y));
+	}
+	return 0;
+    }
+
     using ConstArgs = std::vector<const Constants::ConstDecl*>;
     using Func = std::function<const Constants::ConstDecl*(const ConstArgs&)>;
     struct EvaluableFunc
@@ -371,8 +414,7 @@ namespace Constants
 	      }
 	      return UpdateValueSameType(args[0], [n](int64_t v) { return v - n; });
 	  } },
-	{ "ord", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	{ "ord", 1, 1, [](const ConstArgs& args) -> const Constants::ConstDecl*
 	  { return new Constants::IntConstDecl(args[0]->Loc(), ToInt(args[0])); } },
 	{ "length", 1, 1,
 	  [](const ConstArgs& args) -> const Constants::ConstDecl*
@@ -471,7 +513,6 @@ namespace Constants
 	      }
 	      return 0;
 	  } },
-
     };
 
     static EvaluableFunc* FindEvaluableFunc(std::string name)

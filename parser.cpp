@@ -845,6 +845,13 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
     case Token::Shr:
 	return *lhs >> *rhs;
 
+    case Token::Pow:
+	if (llvm::isa<Constants::IntConstDecl>(rhs))
+	{
+	    return Constants::Pow(*lhs, *rhs);
+	}
+	return Error("Expected integer exponent for 'pow' operation");
+
     default:
 	break;
     }

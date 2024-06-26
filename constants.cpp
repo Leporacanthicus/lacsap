@@ -359,6 +359,15 @@ namespace Constants
 	return 0;
     }
 
+    ConstDecl* Power(const ConstDecl& lhs, const ConstDecl& rhs)
+    {
+	const RealConstDecl* l = llvm::cast<RealConstDecl>(ToRealConstDecl(&lhs));
+	const RealConstDecl* r = llvm::cast<RealConstDecl>(ToRealConstDecl(&rhs));
+	double               x = l->Value();
+	double               y = r->Value();
+	return new RealConstDecl(l->Loc(), exp(log(x) * y));
+    }
+
     using ConstArgs = std::vector<const ConstDecl*>;
     using Func = std::function<const ConstDecl*(const ConstArgs&)>;
     struct EvaluableFunc

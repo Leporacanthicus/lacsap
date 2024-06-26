@@ -852,6 +852,9 @@ Constants::ConstDecl* Parser::ParseConstEval(const Constants::ConstDecl* lhs, co
 	}
 	return Error("Expected integer exponent for 'pow' operation");
 
+    case Token::Power:
+	return Constants::Power(*lhs, *rhs);
+
     default:
 	break;
     }

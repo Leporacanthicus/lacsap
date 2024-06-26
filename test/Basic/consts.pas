@@ -32,6 +32,11 @@ const
    z = y pow w;
    ff = y pow -w;
    gg = -y pow w;
+   hh = 2.5;
+   ii = v ** hh;
+   jj = v ** hh;
+   kk = v ** -hh;
+   ll = y ** hh;
       
 begin
    writeln('a=', a:3, ' b=', b:3, ' c=', c:3, ' d=', d:3, ' bb=', bb, ' cc=', cc);
@@ -44,4 +49,8 @@ begin
    writeln('z=', z:10:5);
    writeln('ff=', ff:10:5);
    writeln('gg=', gg:10:5);
+   writeln('ii=', ii:10:5);
+   writeln('jj=', jj:10:5);
+   writeln('kk=', kk:10:5);
+   writeln('ll=', ll:10:5);
 end.

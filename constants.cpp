@@ -303,16 +303,15 @@ namespace Constants
     }
 
     template<typename T>
-    static const Constants::ConstDecl* UpdateValueSameType(const Constants::ConstDecl* cd, T func)
+    static const ConstDecl* UpdateValueSameType(const ConstDecl* cd, T func)
     {
-	if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(cd))
+	if (auto intConst = llvm::dyn_cast<IntConstDecl>(cd))
 	{
-	    return new Constants::IntConstDecl(intConst->Loc(), func(intConst->Value()));
+	    return new IntConstDecl(intConst->Loc(), func(intConst->Value()));
 	}
-	if (auto enumConst = llvm::dyn_cast<Constants::EnumConstDecl>(cd))
+	if (auto enumConst = llvm::dyn_cast<EnumConstDecl>(cd))
 	{
-	    return new Constants::EnumConstDecl(enumConst->Type(), enumConst->Loc(),
-	                                        func(enumConst->Value()));
+	    return new EnumConstDecl(enumConst->Type(), enumConst->Loc(), func(enumConst->Value()));
 	}
 	return 0;
     }
@@ -360,8 +359,8 @@ namespace Constants
 	return 0;
     }
 
-    using ConstArgs = std::vector<const Constants::ConstDecl*>;
-    using Func = std::function<const Constants::ConstDecl*(const ConstArgs&)>;
+    using ConstArgs = std::vector<const ConstDecl*>;
+    using Func = std::function<const ConstDecl*(const ConstArgs&)>;
     struct EvaluableFunc
     {
 	const char* name;
@@ -372,21 +371,21 @@ namespace Constants
 
     static std::vector<EvaluableFunc> evaluableFunctions = {
 	{ "chr", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
+	      if (auto intConst = llvm::dyn_cast<IntConstDecl>(args[0]))
 	      {
-	          return new Constants::CharConstDecl(intConst->Loc(), (char)intConst->Value());
+	          return new CharConstDecl(intConst->Loc(), (char)intConst->Value());
 	      }
 	      return 0;
 	  } },
 	{ "succ", 1, 2,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
 	      int n = 1;
 	      if (args.size() > 1)
 	      {
-	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          if (auto intConst = llvm::dyn_cast<IntConstDecl>(args[1]))
 	          {
 		      n = intConst->Value();
 	          }
@@ -398,12 +397,12 @@ namespace Constants
 	      return UpdateValueSameType(args[0], [n](int64_t v) { return v + n; });
 	  } },
 	{ "pred", 1, 2,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
 	      int n = 1;
 	      if (args.size() > 1)
 	      {
-	          if (auto intConst = llvm::dyn_cast<Constants::IntConstDecl>(args[1]))
+	          if (auto intConst = llvm::dyn_cast<IntConstDecl>(args[1]))
 	          {
 		      n = intConst->Value();
 	          }
@@ -414,102 +413,102 @@ namespace Constants
 	      }
 	      return UpdateValueSameType(args[0], [n](int64_t v) { return v - n; });
 	  } },
-	{ "ord", 1, 1, [](const ConstArgs& args) -> const Constants::ConstDecl*
-	  { return new Constants::IntConstDecl(args[0]->Loc(), ToInt(args[0])); } },
+	{ "ord", 1, 1, [](const ConstArgs& args) -> const ConstDecl*
+	  { return new IntConstDecl(args[0]->Loc(), ToInt(args[0])); } },
 	{ "length", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto strConst = llvm::dyn_cast<Constants::StringConstDecl>(args[0]))
+	      if (auto strConst = llvm::dyn_cast<StringConstDecl>(args[0]))
 	      {
-	          return new Constants::IntConstDecl(strConst->Loc(), strConst->Value().length());
+	          return new IntConstDecl(strConst->Loc(), strConst->Value().length());
 	      }
 	      return 0;
 	  } },
 	{ "sin", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
-	          return new Constants::RealConstDecl(rc->Loc(), sin(rc->Value()));
+	          return new RealConstDecl(rc->Loc(), sin(rc->Value()));
 	      }
 	      return 0;
 	  } },
 	{ "cos", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
-	          return new Constants::RealConstDecl(rc->Loc(), cos(rc->Value()));
+	          return new RealConstDecl(rc->Loc(), cos(rc->Value()));
 	      }
 	      return 0;
 	  } },
 	{ "ln", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
 	          // Yes, we want log here, log10 is Pascal type log
-	          return new Constants::RealConstDecl(rc->Loc(), log(rc->Value()));
+	          return new RealConstDecl(rc->Loc(), log(rc->Value()));
 	      }
 	      return 0;
 	  } },
 	{ "exp", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
-	          return new Constants::RealConstDecl(rc->Loc(), exp(rc->Value()));
+	          return new RealConstDecl(rc->Loc(), exp(rc->Value()));
 	      }
 	      return 0;
 	  } },
 	{ "frac", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
 	          double intpart;
-	          return new Constants::RealConstDecl(rc->Loc(), modf(rc->Value(), &intpart));
+	          return new RealConstDecl(rc->Loc(), modf(rc->Value(), &intpart));
 	      }
 	      return 0;
 	  } },
 
 	{ "int", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
 	          double r = rc->Value();
-	          return new Constants::RealConstDecl(rc->Loc(), copysign(floor(std::abs(r)), r));
+	          return new RealConstDecl(rc->Loc(), copysign(floor(std::abs(r)), r));
 	      }
 	      return 0;
 	  } },
 
 	{ "trunc", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
-	          return new Constants::IntConstDecl(rc->Loc(), (int64_t)(rc->Value()));
+	          return new IntConstDecl(rc->Loc(), (int64_t)(rc->Value()));
 	      }
 	      return 0;
 	  } },
 
 	{ "round", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::RealConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<RealConstDecl>(args[0]))
 	      {
-	          return new Constants::IntConstDecl(rc->Loc(), (int64_t)(round(rc->Value())));
+	          return new IntConstDecl(rc->Loc(), (int64_t)(round(rc->Value())));
 	      }
 	      return 0;
 	  } },
 
 	{ "odd", 1, 1,
-	  [](const ConstArgs& args) -> const Constants::ConstDecl*
+	  [](const ConstArgs& args) -> const ConstDecl*
 	  {
-	      if (auto rc = llvm::dyn_cast<Constants::IntConstDecl>(args[0]))
+	      if (auto rc = llvm::dyn_cast<IntConstDecl>(args[0]))
 	      {
-	          return new Constants::BoolConstDecl(rc->Loc(), rc->Value() & 1);
+	          return new BoolConstDecl(rc->Loc(), rc->Value() & 1);
 	      }
 	      return 0;
 	  } },

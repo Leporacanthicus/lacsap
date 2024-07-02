@@ -1638,6 +1638,15 @@ Types::VariantDecl* Parser::ParseVariantDecl(Types::FieldDecl*& markerField)
 
 		    if (Types::TypeDecl* ty = ParseType("", NoForwarding))
 		    {
+			if (AcceptToken(Token::Value))
+			{
+			    ExprAST* init = ParseInitValue(ty);
+			    if (!init)
+			    {
+				return 0;
+			    }
+			    ty = Types::CloneWithInit(ty, init);
+			}
 			for (auto n : names)
 			{
 			    for (auto f : fields)
@@ -3205,8 +3214,9 @@ ExprAST* Parser::ParseInitValue(Types::TypeDecl* ty)
 	    return 0;
 	}
     }
-    if (const Constants::ConstDecl* cd = ParseConstExpr(
-            { Token::Comma, Token::Semicolon, Token::Colon, Token::RightSquare, Token::Otherwise }))
+    if (const Constants::ConstDecl* cd = ParseConstExpr({ Token::Comma, Token::Semicolon, Token::Colon,
+                                                          Token::RightSquare, Token::Otherwise,
+                                                          Token::RightParen }))
     {
 	return new InitValueAST(loc, ty, { ConstDeclToExpr(loc, ty, cd) });
     }

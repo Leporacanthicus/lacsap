@@ -4307,7 +4307,7 @@ llvm::Value* InitArrayAST::CodeGen()
 	    otherwise = c;
 	    break;
 	default:
-	    llvm_unreachable("Unknown initializer kind");
+	    ICE("Unknown initializer kind");
 	}
     }
     for (auto& i : initArr)
@@ -4330,7 +4330,21 @@ void InitArrayAST::DoDump() const
     std::cerr << "InitArray: ";
     for (auto v : values)
     {
-	std::cerr << v.Start() << ".." << v.End() << ":";
+	switch (v.Kind())
+	{
+	case ArrayInit::InitKind::Range:
+	    std::cerr << v.Start() << ".." << v.End() << ":";
+	    break;
+	case ArrayInit::InitKind::Single:
+	    std::cerr << v.Start() << ":";
+	    break;
+	case ArrayInit::InitKind::Otherwise:
+	    std::cerr << "otherwise:";
+	    break;
+	default:
+	    std::cerr << "Uknown initializer kinde" << int(v.Kind()) << ":";
+	    break;
+	}
 	v.Value()->DoDump();
     }
 }

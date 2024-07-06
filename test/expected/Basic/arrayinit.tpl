@@ -1,0 +1,9 @@
+Hydrogen  
+Helium    
+Lithium   
+Beryllium 
+Boron     
+Carbon    
+Nitrogen  
+Oxygen    
+Fluorine  

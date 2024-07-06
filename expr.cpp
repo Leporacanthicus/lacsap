@@ -320,8 +320,7 @@ static llvm::Value* TempStringFromCharArray(llvm::Value* dest, AddressableAST* r
     auto func = [](llvm::Value* v, llvm::Value* chars, size_t size)
     {
 	llvm::Type*  charTy = Types::Get<Types::CharDecl>()->LlvmType();
-	llvm::Value* src = builder.CreateGEP(charTy, v, { MakeIntegerConstant(0), MakeIntegerConstant(0) },
-	                                     "src");
+	llvm::Value* src = builder.CreateGEP(charTy, v, { MakeIntegerConstant(0) }, "src");
 	llvm::Align  destAlign{ std::max(AlignOfType(chars->getType()), MIN_ALIGN) };
 	llvm::Align  srcAlign{ std::max(AlignOfType(v->getType()), MIN_ALIGN) };
 	return builder.CreateMemCpy(chars, destAlign, src, srcAlign, size + 1);
@@ -2225,7 +2224,7 @@ llvm::Value* StringExprAST::CodeGen()
 
     BasicDebugInfo(this);
 
-    return builder.CreateGlobalStringPtr(val, "_string", 0, theModule);
+    return builder.CreateGlobalString(val, "_string", 0, theModule);
 }
 
 llvm::Value* StringExprAST::Address()
@@ -3141,6 +3140,7 @@ llvm::Value* VarDeclAST::CodeGenGlobal(VarDef var)
     else if (ExprAST* iv = var.Init())
     {
 	init = llvm::dyn_cast<llvm::Constant>(iv->CodeGen());
+	ICE_IF(!init, "Expected intializer to be constant");
     }
     else
     {
@@ -4228,6 +4228,29 @@ void TrampolineAST::accept(ASTVisitor& v)
     v.visit(this);
 }
 
+static llvm::Constant* MakeCharArray(Types::TypeDecl* type, const ExprAST* value)
+{
+    auto se = llvm::dyn_cast<StringExprAST>(value);
+    assert(se && "£xpect this to be a string");
+    const std::string& val = se->Str();
+
+    auto        arrTy = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
+    llvm::Type* eltTy = arrTy->getElementType();
+    size_t      size = type->Size();
+
+    std::vector<llvm::Constant*> initArr(size);
+    for (size_t i = 0; i < val.size(); i++)
+    {
+	initArr[i] = llvm::ConstantInt::get(eltTy, val[i]);
+    }
+    for (size_t i = val.size(); i < size; i++)
+    {
+	initArr[i] = llvm::ConstantInt::get(eltTy, ' ');
+    }
+
+    return llvm::ConstantArray::get(arrTy, llvm::ArrayRef<llvm::Constant*>(initArr));
+}
+
 llvm::Value* InitValueAST::CodeGen()
 {
     if (auto set = llvm::dyn_cast<SetExprAST>(values[0]))
@@ -4249,6 +4272,11 @@ llvm::Value* InitValueAST::CodeGen()
 	}
 
 	return llvm::ConstantDataArray::getRaw(str, size, sd->SubType()->LlvmType());
+    }
+    if (IsCharArray(type))
+    {
+	llvm::Constant* init = MakeCharArray(type, values[0]);
+	return init;
     }
     if (IsStringLike(type) && llvm::isa<Types::ArrayDecl>(type))
     {

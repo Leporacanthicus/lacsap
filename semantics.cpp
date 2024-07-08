@@ -269,25 +269,25 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	}
     }
 
-    if (op == Token::And_Then || op == Token::Or_Else)
+    switch (op)
     {
+    case Token::And_Then:
+    case Token::Or_Else:
 	if (!llvm::isa<Types::BoolDecl>(lty) || !llvm::isa<Types::BoolDecl>(rty))
 	{
 	    Error(b, "Types for And_Then and Or_Else should be boolean");
 	}
 	return Types::Get<Types::BoolDecl>();
-    }
+	break;
 
-    if (op == Token::Plus)
-    {
+    case Token::Plus:
 	if (Types::IsStringLike(lty) && Types::IsStringLike(rty))
 	{
 	    return Types::Get<Types::StringDecl>(255);
 	}
-    }
+	break;
 
-    if (op == Token::Pow)
-    {
+    case Token::Pow:
 	if (llvm::isa<Types::ComplexDecl>(lty))
 	{
 	    if (!Types::IsIntegral(rty) || llvm::isa<Types::CharDecl>(rty))
@@ -298,9 +298,10 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	    b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
 	    return ty;
 	}
-    }
-    if (op == Token::Divide || op == Token::Power)
-    {
+	break;
+
+    case Token::Divide:
+    case Token::Power:
 	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
 	{
 	    Error(b, "Invalid (non-numeric) type for divide or power");
@@ -320,7 +321,7 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	    b->lhs = Recast(b->lhs, ty);
 	    lty = ty;
 	}
-	// TODO: Add support for complex / real and real / complex.
+
 	if (op == Token::Power)
 	{
 	    if (IsIntegral(rty))
@@ -350,6 +351,9 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	    }
 	}
 	return ty;
+	break;
+    default:
+	break;
     }
 
     if (((llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(b->rhs)) ||
@@ -392,8 +396,9 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	Types::TypeDecl* rty = b->rhs->Type();
 	Token::TokenType op = b->oper.GetToken();
 
-	if (op == Token::Pow)
+	switch (op)
 	{
+	case Token::Pow:
 	    if (!IsNumeric(lty))
 	    {
 		Error(b, "Left hand side of POW should be numeric type");
@@ -402,19 +407,20 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    {
 		Error(b, "Right hand side of POW should be an integer");
 	    }
-	}
+	    break;
 
-	if ((op == Token::Div || op == Token::Mod))
-	{
+	case Token::Div:
+	case Token::Mod:
 	    if (llvm::isa<Types::CharDecl>(lty) || llvm::isa<Types::CharDecl>(rty) || !IsIntegral(lty) ||
 	        !IsIntegral(rty))
 	    {
 		Error(b, "Types for DIV and MOD should be integer");
 	    }
-	}
+	    break;
 
-	if (op == Token::And || op == Token::Xor || op == Token::Or)
-	{
+	case Token::And:
+	case Token::Xor:
+	case Token::Or:
 	    if (llvm::isa<Types::BoolDecl>(lty) && llvm::isa<Types::BoolDecl>(rty))
 	    {
 		ty = Types::Get<Types::BoolDecl>();
@@ -427,10 +433,11 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    {
 		Error(b, "Types for binary operation should not be CHARACTER");
 	    }
-	}
+	    break;
 
-	if (op == Token::Minus || op == Token::Multiply || op == Token::Plus)
-	{
+	case Token::Minus:
+	case Token::Multiply:
+	case Token::Plus:
 	    if (!IsNumeric(lty) || !IsNumeric(rty))
 	    {
 		Error(b, "Expression must be numeric types on both sides");
@@ -439,6 +446,10 @@ void TypeCheckVisitor::Check<BinaryExprAST>(BinaryExprAST* b)
 	    {
 		Error(b, "Types for binary operation should not be CHARACTER");
 	    }
+	    break;
+
+	default:
+	    break;
 	}
 	if (!ty)
 	{

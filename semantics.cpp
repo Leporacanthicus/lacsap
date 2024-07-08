@@ -301,6 +301,32 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	break;
 
     case Token::Divide:
+	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
+	{
+	    Error(b, "Invalid (non-numeric) type for divide or power");
+	}
+
+	if (llvm::isa<Types::ComplexDecl>(lty) || llvm::isa<Types::ComplexDecl>(rty))
+	{
+	    ty = Types::Get<Types::ComplexDecl>();
+	}
+	else
+	{
+	    ty = Types::Get<Types::RealDecl>();
+	}
+
+	b->lhs = Recast(b->lhs, ty);
+	lty = ty;
+
+	b->rhs = Recast(b->rhs, ty);
+	rty = ty;
+
+	if (!lty->CompatibleType(rty))
+	{
+	    Error(b, "Incompatible type for divide");
+	}
+	return ty;
+
     case Token::Power:
 	if (!Types::IsNumeric(lty) || !Types::IsNumeric(rty))
 	{
@@ -316,42 +342,23 @@ Types::TypeDecl* TypeCheckVisitor::BinaryExprType(BinaryExprAST* b)
 	    ty = Types::Get<Types::RealDecl>();
 	}
 
-	if (IsIntegral(lty))
+	b->lhs = Recast(b->lhs, ty);
+	lty = ty;
+
+	if (llvm::isa<Types::ComplexDecl>(rty))
 	{
-	    b->lhs = Recast(b->lhs, ty);
-	    lty = ty;
+	    Error(b, "Exponent for ** operator should not be a complex value");
 	}
 
-	if (op == Token::Power)
+	b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
+	rty = Types::Get<Types::RealDecl>();
+
+	if (!llvm::isa<Types::RealDecl, Types::ComplexDecl>(lty))
 	{
-	    if (IsIntegral(rty))
-	    {
-		b->rhs = Recast(b->rhs, Types::Get<Types::RealDecl>());
-		rty = Types::Get<Types::RealDecl>();
-	    }
-	    if (llvm::isa<Types::ComplexDecl>(rty))
-	    {
-		Error(b, "Exponent for ** operator should not be a complex value");
-	    }
-	    if (!llvm::isa<Types::RealDecl, Types::ComplexDecl>(lty))
-	    {
-		Error(b, "Left hand side is wrong type (not possible to convert to real or complex)");
-	    }
-	}
-	else
-	{
-	    if (IsIntegral(rty))
-	    {
-		b->rhs = Recast(b->rhs, ty);
-		rty = ty;
-	    }
-	    if (!lty->CompatibleType(rty))
-	    {
-		Error(b, "Incompatible type for divide");
-	    }
+	    Error(b, "Left hand side is wrong type (not possible to convert to real or complex)");
 	}
 	return ty;
-	break;
+
     default:
 	break;
     }

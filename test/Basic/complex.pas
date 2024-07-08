@@ -35,6 +35,20 @@ begin
    print_complex("8 * c", res);
 end;
 
+procedure divs;
+
+var
+   res :  complex;
+
+begin
+   res := 1 / c;
+   print_complex("1 / c", res);
+   res := c / 2;
+   print_complex("c / 2", res);
+   res := c / 0.5;
+   print_complex("c / 0.5", res);
+end;
+
 procedure exprs;
 
 var
@@ -84,6 +98,8 @@ begin
    print_complex("Polar:", Polar(2, 3));
    WriteLn;
    mults;
+   WriteLn;
+   divs;
    WriteLn;
    exprs;
 end.

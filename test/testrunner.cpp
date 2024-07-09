@@ -469,6 +469,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "String Slice", "strslice.pas", "" },
     { 0, "Basic", "Compare Array", "comparr.pas", "" },
     { 0, "Basic", "Array Init", "arrayinit.pas", "" },
+    { 0, "Basic", "Read Boolean", "readbool.pas", " < readbool.txt" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

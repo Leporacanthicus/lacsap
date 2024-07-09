@@ -534,3 +534,65 @@ void __read_S_chars(String* str, char* v)
 
     readchars(intf, v);
 }
+
+static void upstr(char* s)
+{
+    char* t = s;
+    while (*t)
+    {
+	*t = toupper(*t);
+	t++;
+    }
+}
+
+static void readbool(struct interface* intf, int* b)
+{
+    intf->fnpreread(intf);
+    skip_spaces(intf);
+    char     str[100];
+    unsigned count = 0;
+    char     ch;
+    for (;;)
+    {
+	ch = intf->fncurrent(intf);
+	if (isspace(ch) || count >= sizeof(str) - 1)
+	{
+	    break;
+	}
+	str[count++] = ch;
+	intf->fngetnext(intf);
+    }
+    str[count] = 0;
+    upstr(str);
+    if (strcmp("TRUE", str) == 0)
+    {
+	*b = 1;
+	return;
+    }
+    else if (strcmp("FALSE", str) == 0)
+    {
+	*b = 0;
+	return;
+    }
+    *b = -1;
+}
+
+void __read_bool(File* file, int* b)
+{
+    if (file->handle >= MaxPascalFiles)
+    {
+	return;
+    }
+    struct interface intf;
+    initFile(file, &intf);
+
+    readbool(&intf, b);
+}
+
+void __read_S_bool(String* str, int* b)
+{
+    struct interface* intf = findInterface(str);
+    assert(intf && "Expected to find an interface");
+
+    readbool(intf, b);
+}

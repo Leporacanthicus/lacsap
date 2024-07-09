@@ -3014,6 +3014,10 @@ static llvm::FunctionCallee CreateReadFunc(Types::TypeDecl* ty, llvm::Type* fty,
     {
 	suffix = "real";
     }
+    else if (llvm::isa<Types::BoolDecl>(ty))
+    {
+	suffix = "bool";
+    }
     else if (llvm::isa<Types::StringDecl>(ty))
     {
 	suffix = "str";

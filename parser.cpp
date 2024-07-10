@@ -2175,7 +2175,7 @@ ExprAST* Parser::ParseExprElement()
 
     case Token::Real:
 	NextToken();
-	return new RealExprAST(token.Loc(), token.GetRealVal(), Types::Get<Types::RealDecl>());
+	return new RealExprAST(token.Loc(), token.GetRealVal());
 
     case Token::Integer:
 	return ParseIntegerExpr(token);
@@ -2996,7 +2996,7 @@ ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const
 	{
 	    if (auto ci = llvm::dyn_cast<Constants::IntConstDecl>(c))
 	    {
-		return new RealExprAST(loc, ci->Value(), ty);
+		return new RealExprAST(loc, ci->Value());
 	    }
 	    return Error("Real constant initializer from incompatible type");
 	}
@@ -3008,7 +3008,7 @@ ExprAST* Parser::ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const
 	{
 	    return Error("Real constant initializer into incompatible type");
 	}
-	return new RealExprAST(loc, rc->Value(), rc->Type());
+	return new RealExprAST(loc, rc->Value());
     }
     if (auto sc = llvm::dyn_cast<Constants::StringConstDecl>(c))
     {

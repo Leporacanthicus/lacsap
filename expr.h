@@ -142,7 +142,9 @@ protected:
 class RealExprAST : public ExprAST
 {
 public:
-    RealExprAST(const Location& w, double v, Types::TypeDecl* ty) : ExprAST(w, EK_RealExpr, ty), val(v) {}
+    RealExprAST(const Location& w, double v) : ExprAST(w, EK_RealExpr, Types::Get<Types::RealDecl>()), val(v)
+    {
+    }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_RealExpr; }

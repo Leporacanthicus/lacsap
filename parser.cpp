@@ -2182,7 +2182,7 @@ ExprAST* Parser::ParseExprElement()
 
     case Token::Char:
 	NextToken();
-	return new CharExprAST(token.Loc(), token.GetIntVal(), Types::Get<Types::CharDecl>());
+	return new CharExprAST(token.Loc(), token.GetIntVal());
 
     case Token::StringLiteral:
 	return ParseStringExpr(token);

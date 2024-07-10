@@ -179,7 +179,9 @@ protected:
 class CharExprAST : public IntegerExprAST
 {
 public:
-    CharExprAST(const Location& w, char v, Types::TypeDecl* ty) : IntegerExprAST(w, EK_CharExpr, v, ty) {}
+    CharExprAST(const Location& w, char v) : IntegerExprAST(w, EK_CharExpr, v, Types::Get<Types::CharDecl>())
+    {
+    }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
     static bool  classof(const ExprAST* e) { return e->getKind() == EK_CharExpr; }

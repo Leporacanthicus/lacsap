@@ -3483,8 +3483,7 @@ ExprAST* Parser::ParseStatement()
 	    if (AcceptToken(Token::Assign))
 	    {
 		const Location loc = CurrentToken().Loc();
-		ExprAST*       rhs = ParseExpression();
-		if (rhs)
+		if (ExprAST* rhs = ParseExpression())
 		{
 		    expr = new AssignExprAST(loc, expr, rhs);
 		}

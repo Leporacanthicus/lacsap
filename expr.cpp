@@ -4117,6 +4117,11 @@ llvm::Value* GotoAST::CodeGen()
 void UnitAST::DoDump() const
 {
     std::cerr << "Unit " << std::endl;
+    for (auto a : code)
+    {
+	a->dump();
+    }
+    initFunc->dump();
 }
 
 void UnitAST::accept(ASTVisitor& v)

@@ -7,6 +7,7 @@ enum EmitType
 {
     Exe, // Default
     LlvmIr,
+    AST,
 };
 
 enum OptLevel

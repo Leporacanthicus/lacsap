@@ -54,7 +54,8 @@ static llvm::cl::opt<OptLevel, true> OptimizationLevel(
 
 static llvm::cl::opt<EmitType, true> EmitSelection(
     "emit", llvm::cl::desc("Choose output:"),
-    llvm::cl::values(clEnumValN(Exe, "exe", "Executable file"), clEnumValN(LlvmIr, "llvm", "LLVM IR file")),
+    llvm::cl::values(clEnumValN(Exe, "exe", "Executable file"), clEnumValN(LlvmIr, "llvm", "LLVM IR file"),
+                     clEnumValN(AST, "ast", "AST file")),
     llvm::cl::location(emitType));
 
 static llvm::cl::opt<bool, true> TimetraceEnable("tt", llvm::cl::desc("Enable timetrace"),
@@ -157,6 +158,12 @@ static int Compile(const std::string& fileName)
     {
 	std::cerr << "Errors in analysis: " << e << ".\nExiting..." << std::endl;
 	return 1;
+    }
+
+    if (emitType == AST)
+    {
+	ast->dump();
+	return 0;
     }
 
     if (callGraph)

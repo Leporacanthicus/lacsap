@@ -84,6 +84,7 @@ public:
 	EK_FunctionExpr,
 	EK_TypeCastExpr,
 	EK_ArraySlice,
+	EK_CallExpr,
 	EK_LastAddressable,
 
 	EK_BinaryExpr,
@@ -94,7 +95,6 @@ public:
 	EK_VarDecl,
 	EK_Function,
 	EK_Prototype,
-	EK_CallExpr,
 	EK_BuiltinExpr,
 	EK_IfExpr,
 	EK_ForExpr,
@@ -160,16 +160,18 @@ public:
         : ExprAST(w, EK_IntegerExpr, ty), val(v)
     {
     }
-    IntegerExprAST(const Location& w, ExprKind ek, uint64_t v, Types::TypeDecl* ty)
-        : ExprAST(w, ek, ty), val(v)
-    {
-    }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
     uint64_t     Int() { return val; }
     static bool  classof(const ExprAST* e)
     {
 	return e->getKind() == EK_IntegerExpr || e->getKind() == EK_CharExpr;
+    }
+
+protected:
+    IntegerExprAST(const Location& w, ExprKind ek, uint64_t v, Types::TypeDecl* ty)
+        : ExprAST(w, ek, ty), val(v)
+    {
     }
 
 protected:
@@ -202,7 +204,7 @@ public:
 class AddressableAST : public ExprAST
 {
 public:
-    AddressableAST(const Location& w, ExprKind k, Types::TypeDecl* ty) : ExprAST(w, k, ty) {}
+    using ExprAST::ExprAST;
     virtual llvm::Value*      Address() { ICE("Address needs implementing"); }
     llvm::Value*              CodeGen() override;
     virtual const std::string Name() const { return ""; }
@@ -621,13 +623,13 @@ private:
     const PrototypeAST* proto;
 };
 
-class CallExprAST : public ExprAST
+class CallExprAST : public AddressableAST
 {
     friend class TypeCheckVisitor;
 
 public:
     CallExprAST(const Location& w, ExprAST* c, const std::vector<ExprAST*>& a, const PrototypeAST* p)
-        : ExprAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
+        : AddressableAST(w, EK_CallExpr, p->Type()), proto(p), callee(c), args(a)
     {
 	ICE_IF(!proto, "Should have prototype!");
     }

@@ -477,13 +477,29 @@ void ArrayExprAST::DoDump() const
     }
 }
 
+static Types::TypeDecl* FindIndexType(const std::vector<ExprAST*>& indices)
+{
+    ICE_IF(indices.size() == 0, "Expect at least one index");
+    Types::TypeDecl* type = indices[0]->Type();
+    size_t           size = type->Size();
+    for (size_t i = 1; i < indices.size(); i++)
+    {
+	if (size < indices[i]->Type()->Size())
+	{
+	    type = indices[i]->Type();
+	}
+    }
+    return type;
+}
+
 llvm::Value* ArrayExprAST::Address()
 {
     TRACE();
     llvm::Value* v = MakeAddressable(expr);
     ICE_IF(!v, "Expected variable to have an address");
     EnsureSized();
-    llvm::Value* totalIndex = 0;
+    llvm::Value*     totalIndex = 0;
+    Types::TypeDecl* indexType = FindIndexType(indices);
     for (size_t i = 0; i < indices.size(); i++)
     {
 	auto range = llvm::dyn_cast<RangeReduceAST>(indices[i]);
@@ -492,7 +508,7 @@ llvm::Value* ArrayExprAST::Address()
 	ICE_IF(!index, "Expression failed for index");
 	if (indexmul[i] != 1)
 	{
-	    index = builder.CreateMul(index, MakeConstant(indexmul[i], range->Type()));
+	    index = builder.CreateMul(index, MakeConstant(indexmul[i], indexType));
 	}
 	if (!totalIndex)
 	{

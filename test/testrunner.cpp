@@ -385,6 +385,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Array", "arr.pas", "" },
     { 0, "Basic", "Array 2", "arr2.pas", "" },
     { 0, "Basic", "Array 3", "arr3.pas", "" },
+    { 0, "Basic", "Array 4", "arr4.pas", "" },
     { LACSAP_ONLY, "Basic", "param", "param.pas", "1 fun \"quoted string\"" },
     { LACSAP_ONLY, "Basic", "pi", "pi.pas", "" },
     // Sizes of types are different.

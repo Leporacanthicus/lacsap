@@ -2323,12 +2323,12 @@ llvm::Value* AssignExprAST::CodeGen()
     llvm::Value* dest = lhsv->Address();
 
     // If rhs is a simple variable, and "large", then use memcpy on it!
-    if (auto rhsv = llvm::dyn_cast<AddressableAST>(rhs))
+    size_t size = rhs->Type()->Size();
+    if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
     {
-	if (rhsv->Type() == lhsv->Type())
+	if (auto rhsv = llvm::dyn_cast<AddressableAST>(rhs))
 	{
-	    size_t size = rhsv->Type()->Size();
-	    if (!disableMemcpyOpt && size >= MEMCPY_THRESHOLD)
+	    if (rhsv->Type() == lhsv->Type())
 	    {
 		llvm::Value* src = rhsv->Address();
 		llvm::Align  dest_align{ std::max(AlignOfType(dest->getType()), MIN_ALIGN) };

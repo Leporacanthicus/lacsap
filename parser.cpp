@@ -2196,6 +2196,7 @@ ExprAST* Parser::ParseExprElement()
     case Token::Minus:
     case Token::Plus:
     case Token::Not:
+    case Token::At:
 	return ParseUnaryOp();
 
     case Token::SizeOf:
@@ -2211,6 +2212,7 @@ ExprAST* Parser::ParseExprElement()
 
 ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 {
+    TRACE();
     for (;;)
     {
 	Token binOp = CurrentToken();
@@ -2246,17 +2248,30 @@ ExprAST* Parser::ParseBinOpRHS(int exprPrec, ExprAST* lhs)
 
 ExprAST* Parser::ParseUnaryOp()
 {
-    ICE_IF(CurrentToken().GetToken() != Token::Minus && CurrentToken().GetToken() != Token::Plus &&
-               CurrentToken().GetToken() != Token::Not,
-           "Expected only minus at this time as a unary operator");
-
     Token oper = CurrentToken();
+    Token::TokenType tt = oper.GetToken();
+    ICE_IF(tt != Token::Minus && tt != Token::Plus && tt != Token::Not && tt != Token::At,
+           "Expected a valid unary operator");
+
     NextToken();
+
+    if (tt == Token::At)
+    {
+	std::string nm = GetIdentifier(ExpectConsume);
+	if (nm.empty())
+	{
+	    return Error("Expected function name");
+	}
+	if (const auto funcDef = llvm::dyn_cast_or_null<const FuncDef>(nameStack.Find(nm)))
+	{
+	    (void)funcDef;
+	}
+    }
 
     if (ExprAST* rhs = ParseExprElement())
     {
 	// unary + = no change, so just return the expression.
-	if (oper.GetToken() == Token::Plus)
+	if (tt == Token::Plus)
 	{
 	    return rhs;
 	}
@@ -2617,6 +2632,10 @@ bool Parser::IsCall(const NamedObject* def)
     Types::TypeDecl* type = def->Type();
     if (llvm::isa<Types::FuncPtrDecl>(type))
     {
+	if (CurrentToken().GetToken() == Token::Equal && PeekToken() == Token::At)
+	{
+	    return false;
+	}
 	return true;
     }
     if (llvm::isa<Types::ClassDecl>(type) && llvm::isa<MembFuncDef>(def))
@@ -2653,6 +2672,7 @@ bool Parser::ParseArgs(const NamedObject* def, std::vector<ExprAST*>& args)
 		proto = fp->Proto();
 	    }
 	}
+
 	while (!AcceptToken(Token::RightParen))
 	{
 	    bool isFuncArg = false;
@@ -3289,7 +3309,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 
     // Consume "function" or "procedure"
     NextToken();
-    std::string funcName = "noname";
+    std::string funcName = "$$unnamed";
     if (!unnamed)
     {
 	// Get function name.

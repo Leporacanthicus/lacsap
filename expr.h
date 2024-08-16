@@ -84,9 +84,9 @@ public:
 	EK_FunctionExpr,
 	EK_TypeCastExpr,
 	EK_ArraySlice,
-	EK_CallExpr,
 	EK_LastAddressable,
 
+	EK_CallExpr,
 	EK_BinaryExpr,
 	EK_UnaryExpr,
 	EK_RangeExpr,

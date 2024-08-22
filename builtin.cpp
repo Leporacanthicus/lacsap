@@ -128,14 +128,23 @@ namespace Builtin
     {
     public:
 	using FunctionReal::FunctionReal;
-	ErrorType    Semantics() override;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	ErrorType    Semantics() override;
     };
 
     class FunctionRandom : public FunctionReal
     {
     public:
 	using FunctionReal::FunctionReal;
+	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
+	Types::TypeDecl* Type() const override;
+	ErrorType        Semantics() override;
+    };
+
+    class FunctionRandomize : public FunctionVoid
+    {
+    public:
+	using FunctionVoid::FunctionVoid;
 	llvm::Value* CodeGen(llvm::IRBuilder<>& builder) override;
 	ErrorType    Semantics() override;
     };
@@ -702,12 +711,6 @@ namespace Builtin
 	return builder.CreateFPToSI(v, Types::Get<Types::IntegerDecl>()->LlvmType(), "to.int");
     }
 
-    llvm::Value* FunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
-    {
-	llvm::FunctionCallee f = GetFunction(Types::Get<Types::RealDecl>()->LlvmType(), {}, "__random");
-	return builder.CreateCall(f, {}, "calltmp");
-    }
-
     ErrorType FunctionIntConvert::Semantics()
     {
 	if (args.size() != 1)
@@ -735,11 +738,53 @@ namespace Builtin
 
     ErrorType FunctionRandom::Semantics()
     {
+	if (args.size() > 1)
+	{
+	    return ErrorType::WrongArgCount;
+	}
+	if (args.size() == 1 && !IsIntegral(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
+	}
+
+	return ErrorType::Ok;
+    }
+
+    Types::TypeDecl* FunctionRandom::Type() const
+    {
+	if (args.size() == 1)
+	{
+	    return Types::Get<Types::Int64Decl>();
+	}
+	return Types::Get<Types::RealDecl>();
+    }
+
+    llvm::Value* FunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	if (args.size() == 1)
+	{
+	    llvm::Type*          ty = Types::Get<Types::Int64Decl>()->LlvmType();
+	    llvm::Value*         v = Recast(args[0], Types::Get<Types::Int64Decl>())->CodeGen();
+	    llvm::FunctionCallee f = GetFunction(ty, { ty }, "__random_int");
+	    return builder.CreateCall(f, { v }, "ranint");
+	}
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::RealDecl>()->LlvmType(), {}, "__random");
+	return builder.CreateCall(f, {}, "random");
+    }
+
+    ErrorType FunctionRandomize::Semantics()
+    {
 	if (args.size() != 0)
 	{
 	    return ErrorType::WrongArgCount;
 	}
 	return ErrorType::Ok;
+    }
+
+    llvm::Value* FunctionRandomize::CodeGen(llvm::IRBuilder<>& builder)
+    {
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), {}, "__randomize");
+	return builder.CreateCall(f, {});
     }
 
     llvm::Value* FunctionChr::CodeGen(llvm::IRBuilder<>& builder)
@@ -1816,6 +1861,7 @@ namespace Builtin
 	AddBIFCreator("round", NEW(Round));
 	AddBIFCreator("trunc", NEW(Trunc));
 	AddBIFCreator("random", NEW(Random));
+	AddBIFCreator("randomize", NEW(Randomize));
 	AddBIFCreator("chr", NEW(Chr));
 	AddBIFCreator("ord", NEW(Ord));
 	AddBIFCreator("succ", NEW(Succ));

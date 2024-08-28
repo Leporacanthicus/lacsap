@@ -754,35 +754,50 @@ namespace Builtin
     {
 	if (args.size() == 1)
 	{
-	    return Types::Get<Types::Int64Decl>();
+	    return args[0]->Type();
 	}
 	return Types::Get<Types::RealDecl>();
     }
 
     llvm::Value* FunctionRandom::CodeGen(llvm::IRBuilder<>& builder)
     {
+	llvm::Type* resTy = Type()->LlvmType();
 	if (args.size() == 1)
 	{
 	    llvm::Type*          ty = Types::Get<Types::Int64Decl>()->LlvmType();
 	    llvm::Value*         v = Recast(args[0], Types::Get<Types::Int64Decl>())->CodeGen();
-	    llvm::FunctionCallee f = GetFunction(ty, { ty }, "__random_int");
+	    llvm::FunctionCallee f = GetFunction(resTy, { ty }, "__random_int");
 	    return builder.CreateCall(f, { v }, "ranint");
 	}
-	llvm::FunctionCallee f = GetFunction(Types::Get<Types::RealDecl>()->LlvmType(), {}, "__random");
+	ICE_IF(args.size(), "Expected no arguments here");
+	llvm::FunctionCallee f = GetFunction(resTy, {}, "__random");
 	return builder.CreateCall(f, {}, "random");
     }
 
     ErrorType FunctionRandomize::Semantics()
     {
-	if (args.size() != 0)
+	if (args.size() > 1)
 	{
 	    return ErrorType::WrongArgCount;
+	}
+	if (args.size() == 1 && !IsIntegral(args[0]->Type()))
+	{
+	    return ErrorType::WrongArgType;
 	}
 	return ErrorType::Ok;
     }
 
     llvm::Value* FunctionRandomize::CodeGen(llvm::IRBuilder<>& builder)
     {
+	if (args.size() == 1)
+	{
+	    llvm::Value*         v = Recast(args[0], Types::Get<Types::Int64Decl>())->CodeGen();
+	    llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
+	                                         { Types::Get<Types::Int64Decl>()->LlvmType() },
+	                                         "__random_set_seed");
+	    return builder.CreateCall(f, { v });
+	}
+	ICE_IF(args.size(), "Expected no arguments here");
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), {}, "__randomize");
 	return builder.CreateCall(f, {});
     }

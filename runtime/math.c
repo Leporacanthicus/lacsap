@@ -8,7 +8,7 @@
 /* Use our own random number gemerator, so that it is consistent regardless
  * of what host system is used. Using linear congruent generator.
  */
-static unsigned rand_seed = 12341193U;
+static uint64_t rand_seed = 8919118912341193UL;
 
 static const unsigned rand_mul = 1103515245U;
 static const unsigned rand_add = 12345;
@@ -24,7 +24,9 @@ static unsigned urand()
  */
 double __random(void)
 {
-    return urand() / (double)UINT_MAX;
+    uint64_t r = urand();
+    r &= UINT_MAX;
+    return r / (double)UINT_MAX;
 }
 
 int64_t __random_int(int64_t limit)
@@ -35,6 +37,11 @@ int64_t __random_int(int64_t limit)
 void __randomize(void)
 {
     rand_seed = time(NULL);
+}
+
+void __random_set_seed(int64_t seed)
+{
+    rand_seed = seed;
 }
 
 double __frac(double x)

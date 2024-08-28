@@ -346,6 +346,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Record Pass", "recpass.pas", "" },
     // Random numbers are diferent
     { LACSAP_ONLY, "Basic", "Random Number", "randtest.pas", "" },
+    { LACSAP_ONLY, "Basic", "Randomize random numbers", "randomize.pas", "" },
     { 0, "Basic", "Fact Bignum", "fact-bignum.pas", "" },
     { 0, "Basic", "Nested Funcs", "nestfunc.pas", "" },
     { 0, "Basic", "Nested Funcs2", "nestfunc2.pas", "" },

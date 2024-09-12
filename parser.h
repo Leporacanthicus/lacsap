@@ -7,7 +7,8 @@
 enum class ParserType
 {
     Program,
-    Unit
+    Unit,
+    Module,
 };
 
 class ParserInterface

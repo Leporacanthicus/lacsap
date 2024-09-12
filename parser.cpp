@@ -4381,11 +4381,26 @@ public:
 
 bool Parser::ParseProgram(ParserType type)
 {
-    Token::TokenType t = Token::Program;
-    if (type == ParserType::Unit)
+    Token::TokenType t = Token::Unknown;
+    switch (type)
     {
+    case ParserType::Program:
+	t = Token::Program;
+	break;
+
+    case ParserType::Unit:
 	t = Token::Unit;
+	break;
+
+    case ParserType::Module:
+	t = Token::Module;
+	break;
+
+    default:
+	ICE("Unknown parser type");
+	break;
     }
+
     if (Expect(t, ExpectConsume))
     {
 	moduleName = GetIdentifier(ExpectConsume);
@@ -4532,7 +4547,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
     // The "main" of the program - we call that "__PascalMain" so we can call it from C-code.
     std::string initName = "__PascalMain";
     // In a unit, we use the moduleName to form the "init functioin" name.
-    if (type == ParserType::Unit)
+    if (type == ParserType::Unit || type == ParserType::Module)
     {
 	initName = moduleName + ".init";
     }
@@ -4618,7 +4633,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	}
 
 	case Token::End:
-	    if (type != ParserType::Unit)
+	    if (type == ParserType::Program)
 	    {
 		return Error("Unexpected 'end' token");
 	    }

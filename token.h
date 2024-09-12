@@ -90,6 +90,7 @@ public:
 	End,
 	Program,
 	Unit,
+	Module,
 	Write,
 	Writeln,
 	WriteStr,

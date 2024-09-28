@@ -165,7 +165,7 @@ static bool IsConstant(ExprAST* e)
 
 size_t AlignOfType(llvm::Type* ty)
 {
-    const llvm::DataLayout dl(theModule);
+    const llvm::DataLayout& dl = theModule->getDataLayout();
     return dl.getPrefTypeAlign(ty).value();
 }
 
@@ -2249,7 +2249,7 @@ llvm::Value* StringExprAST::Address()
 
     BasicDebugInfo(this);
 
-    return builder.CreateGlobalStringPtr(val, "_string");
+    return builder.CreateGlobalString(val, "_string");
 }
 
 void AssignExprAST::DoDump() const
@@ -3170,7 +3170,7 @@ llvm::Value* VarDeclAST::CodeGenGlobal(VarDef var)
                                                                 : llvm::Function::InternalLinkage);
 
     llvm::GlobalVariable*  gv = new llvm::GlobalVariable(*theModule, ty, false, linkage, init, var.Name());
-    const llvm::DataLayout dl(theModule);
+    const llvm::DataLayout& dl = theModule->getDataLayout();
     size_t                 al = std::max(size_t(4), dl.getPrefTypeAlign(ty).value());
     gv->setAlignment(llvm::Align(al));
     v = gv;
@@ -3794,7 +3794,7 @@ llvm::Value* RangeCheckAST::CodeGen()
     builder.CreateCondBr(cmp, oorBlock, contBlock);
 
     builder.SetInsertPoint(oorBlock);
-    std::vector<llvm::Value*> args = { builder.CreateGlobalStringPtr(Loc().FileName()),
+    std::vector<llvm::Value*> args = { builder.CreateGlobalString(Loc().FileName()),
 	                               MakeIntegerConstant(Loc().LineNumber()), MakeIntegerConstant(start),
 	                               MakeIntegerConstant(end), orig_index };
     std::vector<llvm::Type*>  argTypes = {

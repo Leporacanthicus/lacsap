@@ -1,3 +1,0 @@
-git clone https://github.com/llvm/llvm-project.git llvm
-cd llvm
-git checkout 9931e7efc6505002e866ee553af5d812123c22f5

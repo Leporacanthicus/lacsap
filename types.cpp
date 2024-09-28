@@ -15,13 +15,13 @@ namespace Types
 
     size_t TypeDecl::Size() const
     {
-	const llvm::DataLayout dl(theModule);
+	const llvm::DataLayout& dl = theModule->getDataLayout();
 	return dl.getTypeAllocSize(LlvmType());
     }
 
     size_t TypeDecl::AlignSize() const
     {
-	const llvm::DataLayout dl(theModule);
+	const llvm::DataLayout& dl = theModule->getDataLayout();
 	return dl.getPrefTypeAlign(LlvmType()).value();
     }
 
@@ -597,7 +597,7 @@ namespace Types
 
     llvm::Type* VariantDecl::GetLlvmType() const
     {
-	const llvm::DataLayout dl(theModule);
+	const llvm::DataLayout& dl = theModule->getDataLayout();
 	size_t                 maxSize = 0;
 	size_t                 maxSizeElt = 0;
 	size_t                 maxAlign = 0;
@@ -781,7 +781,7 @@ namespace Types
 	int            index = 0;
 
 	llvm::StructType*         st = llvm::cast<llvm::StructType>(LlvmType());
-	const llvm::DataLayout    dl(theModule);
+	const llvm::DataLayout&   dl = theModule->getDataLayout();
 	const llvm::StructLayout* sl = 0;
 	if (!st->isOpaque())
 	{

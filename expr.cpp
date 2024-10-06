@@ -780,9 +780,8 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
 	                                     { pty, pty, pty, intTy }, "__Set" + name);
 
-	llvm::Value*              v = CreateTempAlloca(type);
-	std::vector<llvm::Value*> args = { v, lV, rV, setWords };
-	builder.CreateCall(f, args);
+	llvm::Value* v = CreateTempAlloca(type);
+	builder.CreateCall(f, { v, lV, rV, setWords });
 	return builder.CreateLoad(setTy, v, "set");
     }
 
@@ -880,8 +879,7 @@ llvm::Value* BinaryExprAST::CallArrFunc(const std::string& name, size_t size)
 
     llvm::FunctionCallee f = GetFunction(resTy, { pty, pty, resTy }, "__Arr" + name);
 
-    std::vector<llvm::Value*> args = { lV, rV, MakeIntegerConstant(size) };
-    return builder.CreateCall(f, args, "calltmp");
+    return builder.CreateCall(f, { lV, rV, MakeIntegerConstant(size) }, "calltmp");
 }
 
 void BinaryExprAST::UpdateType(Types::TypeDecl* ty)
@@ -1240,9 +1238,8 @@ static llvm::Value* DoubleBinExpr(llvm::Value* l, llvm::Value* r, const Token& o
     {
 	llvm::Type*               ty = type->LlvmType();
 	llvm::FunctionCallee      f = GetFunction(ty, { ty, ty }, "llvm.pow.f64");
-	std::vector<llvm::Value*> args = { l, r };
 
-	return builder.CreateCall(f, args, "powtmp");
+	return builder.CreateCall(f, { l, r }, "powtmp");
     }
 
     case Token::Equal:

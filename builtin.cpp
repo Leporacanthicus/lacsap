@@ -1185,9 +1185,7 @@ namespace Builtin
 	llvm::Value* sz = MakeIntegerConstant(fd->SubType()->Size());
 	llvm::Value* isText = MakeBooleanConstant(llvm::isa<Types::TextDecl>(fd));
 
-	std::vector<llvm::Value*> argList = { faddr, sz, isText };
-
-	return builder.CreateCall(f, argList);
+	return builder.CreateCall(f, { faddr, sz, isText });
     }
 
     // Used for eof/eoln, where no argument means the "input" file.
@@ -1239,8 +1237,7 @@ namespace Builtin
 
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__assign");
 
-	std::vector<llvm::Value*> argsV = { faddr, filename };
-	return builder.CreateCall(f, argsV);
+	return builder.CreateCall(f, { faddr, filename });
     }
 
     ErrorType FunctionAssign::Semantics()
@@ -1280,9 +1277,7 @@ namespace Builtin
 	llvm::Type*              strTy = Type()->LlvmType();
 	llvm::FunctionCallee     f = GetFunction(strTy, argTypes, "__StrCopy");
 
-	std::vector<llvm::Value*> argsV = { str, start, len };
-
-	return builder.CreateCall(f, argsV, "copy");
+	return builder.CreateCall(f, { str, start, len }, "copy");
     }
 
     ErrorType FunctionCopy::Semantics()

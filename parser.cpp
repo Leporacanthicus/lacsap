@@ -4620,8 +4620,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
 	    {
 		return 0;
 	    }
-	    PrototypeAST* proto = new PrototypeAST(loc, initName, std::vector<VarDef>(),
-	                                           Types::Get<Types::VoidDecl>(), "", 0);
+	    PrototypeAST* proto = new PrototypeAST(loc, initName, {}, Types::Get<Types::VoidDecl>(), "", 0);
 	    initFunction = new FunctionAST(loc, proto, {}, body);
 	    initFunction->EndLoc(endLoc);
 	    if (!Expect(Token::Period, ExpectConsume))

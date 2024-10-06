@@ -637,7 +637,7 @@ public:
     llvm::Value*           CodeGen() override;
     static bool            classof(const ExprAST* e) { return e->getKind() == EK_CallExpr; }
     const PrototypeAST*    Proto() { return proto; }
-    ExprAST*               Callee() const { return callee; }
+    const ExprAST*         Callee() const { return callee; }
     std::vector<ExprAST*>& Args() { return args; }
     void                   accept(ASTVisitor& v) override;
 

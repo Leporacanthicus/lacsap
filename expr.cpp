@@ -4252,9 +4252,18 @@ void TrampolineAST::accept(ASTVisitor& v)
 
 static llvm::Constant* MakeCharArray(Types::TypeDecl* type, const ExprAST* value)
 {
-    auto se = llvm::dyn_cast<StringExprAST>(value);
-    assert(se && "£xpect this to be a string");
-    const std::string& val = se->Str();
+    std::string val;
+    if (llvm::isa<Types::CharDecl>(value->Type()))
+    {
+	int v = llvm::cast<IntegerExprAST>(value)->Int();
+	val.resize(1, v);
+    }
+    else
+    {
+	auto se = llvm::dyn_cast<StringExprAST>(value);
+	assert(se && "Expect this to be a string");
+	val = se->Str();
+    }
 
     auto        arrTy = llvm::dyn_cast<llvm::ArrayType>(type->LlvmType());
     llvm::Type* eltTy = arrTy->getElementType();

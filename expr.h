@@ -162,7 +162,7 @@ public:
     }
     void         DoDump() const override;
     llvm::Value* CodeGen() override;
-    uint64_t     Int() { return val; }
+    uint64_t     Int() const { return val; }
     static bool  classof(const ExprAST* e)
     {
 	return e->getKind() == EK_IntegerExpr || e->getKind() == EK_CharExpr;

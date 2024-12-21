@@ -1,11 +1,9 @@
 #ifndef LEXER_H
 #define LEXER_H
 
-#include "constants.h"
 #include "location.h"
 #include "source.h"
 #include "token.h"
-#include "types.h"
 #include <exception>
 #include <fstream>
 #include <string>

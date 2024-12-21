@@ -1,10 +1,9 @@
 #include "lexer.h"
-#include "constants.h"
-#include "types.h"
 
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 Lexer::Lexer(Source& source) : source(source), curValid(0) {}
 

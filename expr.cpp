@@ -2928,16 +2928,7 @@ llvm::Value* WriteAST::CodeGen()
 	    ICE_IF(!fn, "Failed to generate write function");
 	    if (llvm::isa<Types::StringDecl>(type))
 	    {
-		if (auto a = llvm::dyn_cast<AddressableAST>(arg.expr))
-		{
-		    v = a->Address();
-		}
-		else
-		{
-		    v = MakeAddressable(arg.expr);
-		}
-
-		v = builder.CreateGEP(charTy, v, MakeIntegerConstant(0), "str_addr");
+		v = builder.CreateGEP(charTy, MakeAddressable(arg.expr), MakeIntegerConstant(0), "str_addr");
 	    }
 	    else if (Types::IsCharArray(type))
 	    {

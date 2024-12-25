@@ -516,6 +516,7 @@ namespace Types
 	std::cerr << "[" << lowName << ".." << highName << "]";
     }
 
+    int  EnumDecl::staticID = 0;
     void EnumDecl::SetValues(const std::vector<std::string>& nmv)
     {
 	unsigned int v = 0;
@@ -1392,6 +1393,7 @@ namespace Types
 	case TypeDecl::TK_Integer:
 	case TypeDecl::TK_LongInt:
 	case TypeDecl::TK_Range:
+	case TypeDecl::TK_SchRange:
 	case TypeDecl::TK_DynRange:
 	case TypeDecl::TK_Enum:
 	case TypeDecl::TK_Boolean:
@@ -1523,6 +1525,25 @@ namespace Types
 	return bindingType;
     }
 
+    TypeDecl* GetEnumToStrType()
+    {
+	static TypeDecl* enum2strType;
+	if (!enum2strType)
+	{
+	    const auto r = std::vector<RangeBaseDecl*>(1, new RangeDecl(new Range(1, 1), Get<IntegerDecl>()));
+
+	    std::vector<FieldDecl*> fields = {
+		new FieldDecl("strings", new PointerDecl(Get<CharDecl>()), false),
+		new FieldDecl("nelem", Get<IntegerDecl>(), false),
+		new FieldDecl("offset", new ArrayDecl(Get<IntegerDecl>(), r), false)
+	    };
+	    enum2strType = new RecordDecl(fields, nullptr);
+	    ICE_IF(sizeof(EnumToString) != enum2strType->Size(),
+	           "Runtime and EnumToString type should match in size");
+	}
+	return enum2strType;
+    }
+
     void Finalize(llvm::DIBuilder* builder)
     {
 	for (auto t : fwdMap)
@@ -1554,7 +1575,7 @@ bool operator==(const Types::Range& a, const Types::Range& b)
     return (a.Start() == b.Start() && a.End() == b.End());
 }
 
-bool operator==(const Types::EnumValue& a, const Types::EnumValue& b)
+bool operator==(const Types::EnumDecl::EnumValue& a, const Types::EnumDecl::EnumValue& b)
 {
     return (a.value == b.value && a.name == b.name);
 }

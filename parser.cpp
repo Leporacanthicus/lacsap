@@ -703,7 +703,7 @@ Types::RangeBaseDecl* Parser::ParseRange(Types::TypeDecl*& type, Token::TokenTyp
 
 	    type = startC->Type();
 	    ICE_IF(type != endC->Type(), "Expect same type on both sides");
-	    if (end <= start)
+	    if (end < start)
 	    {
 		return Error("Invalid range specification");
 	    }

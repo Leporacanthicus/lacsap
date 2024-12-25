@@ -2798,6 +2798,15 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	argTypes.push_back(intTy);
 	suffix = "bool";
     }
+    else if (llvm::isa<Types::EnumDecl>(ty))
+    {
+	argTypes.push_back(intTy);
+	argTypes.push_back(intTy);
+	Types::TypeDecl* e2sType = new Types::PointerDecl(Types::GetEnumToStrType());
+	llvm::Type*      e2sTy = e2sType->LlvmType();
+	argTypes.push_back(e2sTy);
+	suffix = "enum";
+    }
     else if (llvm::isa<Types::IntegerDecl, Types::Int64Decl>(ty))
     {
 	argTypes.push_back(ty->LlvmType());
@@ -2839,6 +2848,49 @@ static llvm::FunctionCallee CreateWriteFunc(Types::TypeDecl* ty, llvm::Type* fty
 	extra = "S_";
     }
     return GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), argTypes, "__write_" + extra + suffix);
+}
+
+static llvm::Value* MakeEnumToString(Types::EnumDecl* etype)
+{
+    const std::string     e2sName = "enum2str_" + std::to_string(etype->UniqueId());
+    llvm::GlobalVariable* gv = theModule->getGlobalVariable(e2sName, true);
+
+    if (gv)
+    {
+	return gv;
+    }
+
+    int                          nelems = etype->Values().size();
+    std::vector<llvm::Constant*> offsets;
+    int                          offset = 0;
+    std::string                  bigStr;
+    for (auto v : etype->Values())
+    {
+	std::string s = static_cast<char>(v.name.length()) + v.name;
+	offsets.push_back(MakeIntegerConstant(offset));
+	offset += v.name.length() + 1;
+	bigStr += s;
+    }
+
+    llvm::Constant* str = builder.CreateGlobalString(bigStr, "enumString", 0, theModule);
+
+    llvm::Type*       ptrTy = llvm::PointerType::getUnqual(Types::Get<Types::CharDecl>()->LlvmType());
+    llvm::Type*       intTy = Types::Get<Types::IntegerDecl>()->LlvmType();
+    llvm::ArrayType*  arrTy = llvm::ArrayType::get(intTy, nelems);
+    llvm::StructType* e2sTy = llvm::StructType::create({ ptrTy, intTy, arrTy });
+
+    llvm::Constant* arrInit = llvm::ConstantArray::get(arrTy, offsets);
+
+    std::vector<llvm::Constant*> initValues(3);
+    int                          i = 0;
+    initValues[i++] = str;
+    initValues[i++] = MakeIntegerConstant(nelems);
+    initValues[i++] = arrInit;
+    llvm::Constant* init = llvm::ConstantStruct::get(e2sTy, initValues);
+
+    llvm::GlobalValue::LinkageTypes linkage = llvm::GlobalValue::InternalLinkage;
+    llvm::GlobalVariable* newgv = new llvm::GlobalVariable(*theModule, e2sTy, false, linkage, init, e2sName);
+    return newgv;
 }
 
 llvm::Value* WriteAST::CodeGen()
@@ -2915,10 +2967,8 @@ llvm::Value* WriteAST::CodeGen()
 	    {
 		v = arg.expr->CodeGen();
 	    }
-	    if (!v)
-	    {
-		return Error(this, "Argument codegen failed");
-	    }
+	    ICE_IF(!v, "Argument codegen failed");
+
 	    argsV.push_back(v);
 	    llvm::Value* w = MakeIntegerConstant(0);
 	    if (arg.width)
@@ -2952,6 +3002,11 @@ llvm::Value* WriteAST::CodeGen()
 	    else
 	    {
 		ICE_IF(arg.precision, "Expected no precision for types other than REAL");
+	    }
+	    if (auto* etype = llvm::dyn_cast<Types::EnumDecl>(type))
+	    {
+		llvm::Value* e2s = MakeEnumToString(etype);
+		argsV.push_back(e2s);
 	    }
 	}
 	else

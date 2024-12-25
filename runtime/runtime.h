@@ -68,6 +68,14 @@ struct Complex
     double i;
 };
 
+// Used for printing enum values.
+struct EnumToString
+{
+    char* strings; // Stores as [len][string1][len][string2] ...
+    int   nelem;
+    int   offset[1]; // Offset to string1, string2, etc. Note variable length field.
+};
+
 /*******************************************
  * Local variables
  *******************************************

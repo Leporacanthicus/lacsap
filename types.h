@@ -31,6 +31,8 @@ namespace Types
 
     TypeDecl* GetTimeStampType();
     TypeDecl* GetBindingType();
+    // Internal type, used to write enum values as strings.
+    TypeDecl* GetEnumToStrType();
 
     bool IsNumeric(const TypeDecl* t);
     bool IsCharArray(const TypeDecl* t);
@@ -46,7 +48,7 @@ namespace Types
     public:
 	Range(int64_t s, int64_t e) : start(s), end(e)
 	{
-	    ICE_IF((e - s) <= 0, "Range should have start before end.");
+	    ICE_IF((e - s) < 0, "Range should have start before end.");
 	}
 
     public:
@@ -346,26 +348,32 @@ namespace Types
 	DynRangeDecl* range;
     };
 
-    struct EnumValue
-    {
-	EnumValue(const std::string& nm, int v) : name(nm), value(v) {}
-	EnumValue(const EnumValue& e) : name(e.name), value(e.value) {}
-	std::string name;
-	int         value;
-    };
-
-    using EnumValues = std::vector<EnumValue>;
-
     class EnumDecl : public CompoundDecl
     {
     public:
+	struct EnumValue
+	{
+	    EnumValue(const std::string& nm, int v) : name(nm), value(v) {}
+	    EnumValue(const EnumValue& e) : name(e.name), value(e.value) {}
+	    std::string name;
+	    int         value;
+	};
+
+	using EnumValues = std::vector<EnumValue>;
+	static int staticID;
 	EnumDecl(TypeKind tk, const std::vector<std::string>& nmv, TypeDecl* ty) : CompoundDecl(tk, ty)
 	{
 	    ICE_IF(nmv.empty(), "Must have names in the enum type.");
 	    SetValues(nmv);
 	}
-	EnumDecl(const std::vector<std::string>& nmv, TypeDecl* ty) : EnumDecl(TK_Enum, nmv, ty) {}
-	EnumDecl(TypeKind tk, const EnumValues& vals, TypeDecl* ty) : CompoundDecl(tk, ty), values(vals) {}
+	EnumDecl(const std::vector<std::string>& nmv, TypeDecl* ty) : EnumDecl(TK_Enum, nmv, ty)
+	{
+	    uniqueID = staticID++;
+	}
+	EnumDecl(TypeKind tk, const EnumValues& vals, TypeDecl* ty) : CompoundDecl(tk, ty), values(vals)
+	{
+	    uniqueID = staticID++;
+	}
 
     private:
 	void SetValues(const std::vector<std::string>& nmv);
@@ -377,12 +385,14 @@ namespace Types
 	static bool       classof(const TypeDecl* e) { return e->getKind() == TK_Enum; }
 	bool              SameAs(const TypeDecl* ty) const override;
 	TypeDecl*         Clone() const override { return new EnumDecl(kind, values, SubType()); }
+	int               UniqueId() { return uniqueID; }
 
     protected:
 	llvm::DIType* GetDIType(llvm::DIBuilder* builder) const override;
 
     private:
 	EnumValues values;
+	int        uniqueID;
     };
 
     class BoolDecl : public EnumDecl
@@ -662,7 +672,7 @@ namespace Types
     class TextDecl : public FileDecl
     {
     public:
-	TextDecl() : FileDecl(TK_Text, new CharDecl) {}
+	TextDecl() : FileDecl(TK_Text, Get<CharDecl>()) {}
 	void        DoDump() const override;
 	static bool classof(const TypeDecl* e) { return e->getKind() == TK_Text; }
     };
@@ -701,9 +711,9 @@ namespace Types
     {
     public:
 	StringDecl(unsigned size)
-	    : ArrayDecl(TK_String, new CharDecl,
-	                std::vector<RangeBaseDecl*>(
-	                    1, new RangeDecl(new Range(0, size + 1), Get<Types::IntegerDecl>())))
+	    : ArrayDecl(
+	          TK_String, Get<CharDecl>(),
+	          std::vector<RangeBaseDecl*>(1, new RangeDecl(new Range(0, size + 1), Get<IntegerDecl>())))
 	{
 	    ICE_IF(!size, "Zero size not allowed");
 	}
@@ -746,8 +756,8 @@ inline bool operator!=(const Types::Range& a, const Types::Range& b)
     return !(b == a);
 }
 
-bool        operator==(const Types::EnumValue& a, const Types::EnumValue& b);
-inline bool operator!=(const Types::EnumValue& a, const Types::EnumValue& b)
+bool        operator==(const Types::EnumDecl::EnumValue& a, const Types::EnumDecl::EnumValue& b);
+inline bool operator!=(const Types::EnumDecl::EnumValue& a, const Types::EnumDecl::EnumValue& b)
 {
     return !(a == b);
 }

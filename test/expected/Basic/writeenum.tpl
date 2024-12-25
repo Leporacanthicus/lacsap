@@ -1,0 +1,13 @@
+Monday
+Tuesday
+Wednesday
+Thursday
+Friday
+Saturday
+Sunday
+Green
+Blue
+Black
+Yellow
+Cyan
+Magenta

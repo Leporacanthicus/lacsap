@@ -198,6 +198,38 @@ void __write_str(File* file, const String* v, int width)
     }
 }
 
+void __write_S_enum(String* strout, int en, int width, struct EnumToString* e2s)
+{
+    if (en < 0 || en > e2s->nelem)
+    {
+	static const char* msg = "Invalid Enum Value";
+	__write_S_chars(strout, msg, strlen(msg), width);
+    }
+    else
+    {
+	int   offset = e2s->offset[en];
+	int   len = e2s->strings[offset];
+	char* str = &e2s->strings[offset + 1];
+	__write_S_chars(strout, str, len, width);
+    }
+}
+
+void __write_enum(File* file, int en, int width, struct EnumToString* e2s)
+{
+    static const char* msg = "Invalid Enum Value";
+    if (en < 0 || en > e2s->nelem)
+    {
+	__write_chars(file, msg, strlen(msg), width);
+    }
+    else
+    {
+	int   offset = e2s->offset[en];
+	int   len = e2s->strings[offset];
+	char* str = &e2s->strings[offset + 1];
+	__write_chars(file, str, len, width);
+    }
+}
+
 void __write_nl(File* file)
 {
     FILE* f = getFile(file);

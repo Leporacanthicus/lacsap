@@ -523,7 +523,8 @@ TestEntry negativeCaseList[] = { { 0, "CompErr", "Goto err", "goto.pas", "" },
                                  { 0, "CompErr", "Precision on integer in write", "writeprecision.pas", "" },
                                  { 0, "CompErr", "Non-integer index", "non-int-index.pas", "" },
                                  { 0, "CompErr", "Non-integer index v2", "non-int-index2.pas", "" },
-                                 { 0, "CompErr", "Protected variable", "prot.pas", "" } };
+                                 { 0, "CompErr", "Protected variable", "prot.pas", "" },
+                                 { 0, "CompErr", "Non-integer precision and width", "writewidth.pas", "" } };
 
 void runTestCases(const std::vector<TestCase*>& tc, TestResult& res, const std::string& options)
 {

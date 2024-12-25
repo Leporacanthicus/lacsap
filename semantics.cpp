@@ -926,9 +926,20 @@ void TypeCheckVisitor::Check<WriteAST>(WriteAST* w)
 		    Error(e, "Write argument must be simple type or array of char or string");
 		}
 	    }
-	    else if (arg.precision && !llvm::isa<Types::RealDecl>(e->Type()))
+	    else if (arg.precision)
 	    {
-		Error(e, "Unexpected precision argument when argument-type is not real");
+		if (!llvm::isa<Types::RealDecl>(e->Type()))
+		{
+		    Error(e, "Unexpected precision argument when argument-type is not real");
+		}
+		else if (!llvm::isa<Types::IntegerDecl>(arg.precision->Type()))
+		{
+		    Error(e, "Precision field should be integer.");
+		}
+	    }
+	    if (arg.width && !llvm::isa<Types::IntegerDecl>(arg.width->Type()))
+	    {
+		Error(e, "Width field should be an integer");
 	    }
 	}
     }

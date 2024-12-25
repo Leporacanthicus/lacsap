@@ -228,7 +228,6 @@ llvm::Value* MakeAddressable(ExprAST* e)
     }
 
     llvm::Value* v = CreateTempAlloca(e->Type());
-    ICE_IF(!v, "Code generation failed");
     builder.CreateStore(store, v);
     return v;
 }
@@ -3629,7 +3628,6 @@ llvm::Value* SetExprAST::Address()
     }
 
     llvm::Value* setV = CreateTempAlloca(type);
-    ICE_IF(!setV, "Expect CreateTempAlloca() to work");
 
     llvm::Value* tmp = builder.CreateBitCast(setV, Types::GetVoidPtrType());
 

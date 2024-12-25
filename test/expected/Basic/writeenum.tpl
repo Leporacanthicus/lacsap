@@ -5,6 +5,8 @@ Thursday
 Friday
 Saturday
 Sunday
+
+  Monday  Friday Saturday
 Green
 Blue
 Black

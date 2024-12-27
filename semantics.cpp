@@ -764,7 +764,7 @@ void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
     TRACE();
     // Check start + end and cast if necessary. Fail if incompatible types.
     Types::TypeDecl* vty = f->variable->Type();
-    bool             bad = !IsIntegral(vty);
+    bool             bad = !IsIntegral(vty) && f->end;
     if (bad)
     {
 	Error(f->variable, "Loop iteration variable must be integral type");
@@ -799,9 +799,20 @@ void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
 		Error(f->variable, "Expected variable to be compatible with set");
 	    }
 	}
+	else if (auto arrDecl = llvm::dyn_cast<Types::ArrayDecl>(f->start->Type()))
+	{
+	    if (arrDecl->Ranges().size() != 1)
+	    {
+		Error(f->start, "Expected signle dimension array");
+	    }
+	    if (!arrDecl->SubType()->CompatibleType(vty))
+	    {
+		Error(f->variable, "Expected loop variable to be compatible with array");
+	    }
+	}
 	else
 	{
-	    Error(f->start, "Expected to be a set");
+	    Error(f->start, "For in only available for array or set");
 	}
     }
     if (bad)

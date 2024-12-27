@@ -436,6 +436,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Exponentiation", "pow.pas", "" },
     { 0, "Basic", "Case Expressions", "caseexpr.pas", "" },
     { 0, "Basic", "for in set", "forinset.pas", "" },
+    { 0, "Basic", "for in array", "forinarr.pas", "" },
     { 0, "Basic", "New String funcs", "newstringfuncs.pas", "" },
     { 0, "Basic", "Base", "base.pas", "" },
     { 0, "Basic", "Time", "time.pas", "" },

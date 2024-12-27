@@ -690,6 +690,8 @@ class ForExprAST : public ExprAST
 {
 public:
     friend class TypeCheckVisitor;
+    friend llvm::Value* GenForInSet(ForExprAST* expr, Types::SetDecl* sd);
+    friend llvm::Value* GenForInArr(ForExprAST* expr, Types::ArrayDecl* dd);
     ForExprAST(const Location& w, VariableExprAST* v, ExprAST* s, ExprAST* e, bool down, ExprAST* b)
         : ExprAST(w, EK_ForExpr), variable(v), start(s), stepDown(down), end(e), body(b)
     {

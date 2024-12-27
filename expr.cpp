@@ -2444,27 +2444,18 @@ void ForExprAST::accept(ASTVisitor& v)
     v.visit(this);
 }
 
-llvm::Value* ForExprAST::ForInGen()
+llvm::Value* GenForInSet(ForExprAST* expr, Types::SetDecl* sd)
 {
     llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
 
-    llvm::Value* words = 0;
-    llvm::Value* setV = MakeAddressable(start);
-    int          rangeStart = 0;
-    if (auto sd = llvm::dyn_cast<Types::SetDecl>(start->Type()))
-    {
-	words = MakeIntegerConstant(sd->SetWords());
-	rangeStart = sd->GetRange()->Start();
-    }
-    else
-    {
-	ICE("Expceted to have a SetDecl here");
-    }
+    llvm::Constant* rangeStart = MakeIntegerConstant(sd->GetRange()->Start());
+    llvm::Constant* words = MakeIntegerConstant(sd->SetWords());
 
+    llvm::Value* setV = MakeAddressable(expr->start);
     llvm::Value* one = MakeIntegerConstant(1);
     llvm::Value* zero = MakeIntegerConstant(0);
     llvm::Value* shift = MakeIntegerConstant(Types::SetDecl::SetPow2Bits);
-    llvm::Value* var = variable->Address();
+    llvm::Value* var = expr->variable->Address();
     ICE_IF(!var, "Expected variable here");
 
     llvm::BasicBlock* beforeBB = llvm::BasicBlock::Create(theContext, "before", theFunction);
@@ -2515,11 +2506,11 @@ llvm::Value* ForExprAST::ForInGen()
     llvm::Value* pos = builder.CreateCall(cttz, { phi, MakeBooleanConstant(true) }, "pos");
 
     llvm::Value* sumVar = builder.CreateAdd(builder.CreateAdd(pos, builder.CreateShl(idxPhi, shift)),
-                                            MakeIntegerConstant(rangeStart));
-    llvm::Value* sumT = builder.CreateTrunc(sumVar, variable->Type()->LlvmType());
+                                            rangeStart);
+    llvm::Value* sumT = builder.CreateTrunc(sumVar, expr->variable->Type()->LlvmType());
     builder.CreateStore(sumT, var);
 
-    ICE_IF(!body->CodeGen(), "Failed to generate loop body");
+    ICE_IF(!expr->body->CodeGen(), "Failed to generate loop body");
 
     bitset = builder.CreateAnd(phi, builder.CreateNot(builder.CreateShl(one, pos)));
     isZero = builder.CreateICmpEQ(bitset, zero);
@@ -2532,8 +2523,76 @@ llvm::Value* ForExprAST::ForInGen()
     builder.CreateBr(preOuterLoopBB);
 
     builder.SetInsertPoint(afterBB);
-    BasicDebugInfo(this);
+    BasicDebugInfo(expr);
     return afterBB;
+}
+
+llvm::Value* GenForInArr(ForExprAST* expr, Types::ArrayDecl* ad)
+{
+    llvm::Function* theFunction = builder.GetInsertBlock()->getParent();
+
+    llvm::Value* rangeStart;
+    llvm::Value* rangeEnd;
+    if (auto rd = llvm::dyn_cast<Types::RangeDecl>(ad->Ranges()[0]))
+    {
+	rangeStart = MakeIntegerConstant(rd->Start());
+	rangeEnd = MakeIntegerConstant(rd->End());
+    }
+    else
+    {
+	Error(expr, "Need constant range for now");
+	return nullptr;
+    }
+
+    llvm::Value* one = MakeIntegerConstant(1);
+    llvm::Value* arrV = MakeAddressable(expr->start);
+
+    llvm::BasicBlock* beforeBB = llvm::BasicBlock::Create(theContext, "before", theFunction);
+    llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(theContext, "afterloop", theFunction);
+    llvm::BasicBlock* preLoopBB = llvm::BasicBlock::Create(theContext, "preloop", theFunction);
+    llvm::BasicBlock* loopBB = llvm::BasicBlock::Create(theContext, "loop", theFunction);
+
+    builder.CreateBr(beforeBB);
+
+    builder.SetInsertPoint(beforeBB);
+    llvm::Type*  arrTy = ad->LlvmType();
+    llvm::Type*  arrElemTy = arrTy->getArrayElementType();
+    llvm::Value* index = rangeStart;
+    llvm::Value* var = expr->variable->Address();
+    builder.CreateBr(preLoopBB);
+
+    builder.SetInsertPoint(preLoopBB);
+    llvm::PHINode* idxPhi = builder.CreatePHI(index->getType(), 2, "idxPhi");
+    idxPhi->addIncoming(index, beforeBB);
+    llvm::Value* cmp = builder.CreateICmpSLE(idxPhi, rangeEnd);
+    builder.CreateCondBr(cmp, loopBB, afterBB);
+    builder.SetInsertPoint(loopBB);
+    llvm::Value* calcIndex = builder.CreateSub(idxPhi, rangeStart);
+    llvm::Value* dataAddr = builder.CreateGEP(arrElemTy, arrV, calcIndex, "valueindex");
+    llvm::Value* val = builder.CreateLoad(arrElemTy, dataAddr);
+    builder.CreateStore(val, var);
+    ICE_IF(!expr->body->CodeGen(), "Failed to generate loop body");
+
+    index = builder.CreateAdd(idxPhi, one);
+    idxPhi->addIncoming(index, loopBB);
+    builder.CreateBr(preLoopBB);
+
+    builder.SetInsertPoint(afterBB);
+    BasicDebugInfo(expr);
+    return afterBB;
+}
+
+llvm::Value* ForExprAST::ForInGen()
+{
+    if (auto sd = llvm::dyn_cast<Types::SetDecl>(start->Type()))
+    {
+	return GenForInSet(this, sd);
+    }
+    else if (auto ad = llvm::dyn_cast<Types::ArrayDecl>(start->Type()))
+    {
+	return GenForInArr(this, ad);
+    }
+    ICE("Unexpected for-in type");
 }
 
 llvm::Value* ForExprAST::CodeGen()

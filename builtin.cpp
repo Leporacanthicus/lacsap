@@ -1300,11 +1300,14 @@ namespace Builtin
     llvm::Value* FunctionTrim::CodeGen(llvm::IRBuilder<>& builder)
     {
 	llvm::Value* str = MakeStringFromExpr(args[0], args[0]->Type());
+	llvm::Value* res = CreateTempAlloca(args[0]->Type());
 
-	llvm::Type*          strTy = Type()->LlvmType();
-	llvm::FunctionCallee f = GetFunction(strTy, { str->getType() }, "__StrTrim");
+	llvm::Type*          ty = str->getType();
+	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(), { ty, ty },
+	                                     "__StrTrim");
 
-	return builder.CreateCall(f, { str }, "trim");
+	builder.CreateCall(f, { res, str });
+	return res;
     }
 
     ErrorType FunctionTrim::Semantics()

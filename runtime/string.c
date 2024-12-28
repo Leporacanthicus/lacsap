@@ -76,23 +76,22 @@ String __StrCopy(String* str, int start, int len)
 }
 
 /* Return "trimmed" string - remove leading and trailing spaces */
-String __StrTrim(String* str)
+void __StrTrim(String* res, const String* str)
 {
-    unsigned char* s = str->str;
-    unsigned char* end = &str->str[str->len];
+    const unsigned char* s = str->str;
+    const unsigned char* end = &str->str[str->len];
     while (s < end && *s <= ' ')
     {
 	s++;
     }
-    unsigned char* e = end - 1;
+    const unsigned char* e = end - 1;
     while (e > s && *e <= ' ')
     {
 	e--;
     }
     int    len = (e - s) + 1;
-    String result = { len, "" };
-    memcpy(result.str, s, len);
-    return result;
+    res->len = len;
+    memcpy(res->str, s, len);
 }
 
 /* Return index of second string in first string */

@@ -1,5 +1,10 @@
 #ifndef CALLGRAPH_H
-#include "expr.h"
+
+#include <vector>
+
+class ExprAST;
+class FunctionAST;
+class VarDeclAST;
 
 class CallGraphVisitor
 {

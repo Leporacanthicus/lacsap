@@ -5,7 +5,6 @@
 #include "utils.h"
 
 #include <cstdint>
-#include <fstream>
 #include <string>
 
 class Token

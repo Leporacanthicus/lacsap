@@ -4,8 +4,6 @@
 #include "location.h"
 #include "source.h"
 #include "token.h"
-#include <exception>
-#include <fstream>
 #include <string>
 
 class Lexer

@@ -1,4 +1,5 @@
 #include "callgraph.h"
+#include "expr.h"
 #include "trace.h"
 #include "visitor.h"
 #include <map>

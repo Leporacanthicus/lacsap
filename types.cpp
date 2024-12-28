@@ -955,16 +955,16 @@ namespace Types
 	return count;
     }
 
-    llvm::Type* ClassDecl::VTableType(bool opaque) const
+    llvm::Type* ClassDecl::VTableType(Opacity opacity) const
     {
-	if (vtableType && (opaque || !vtableType->isOpaque()))
+	if (vtableType && (opacity == Opaque || !vtableType->isOpaque()))
 	{
 	    return vtableType;
 	}
 
 	if (baseobj)
 	{
-	    (void)baseobj->VTableType(opaque);
+	    (void)baseobj->VTableType(opacity);
 	}
 
 	std::vector<llvm::Type*> vt;
@@ -997,7 +997,7 @@ namespace Types
 		index++;
 	    }
 
-	    if (!opaque && (m->IsOverride() || m->IsVirtual()))
+	    if (opacity == FilledIn && (m->IsOverride() || m->IsVirtual()))
 	    {
 		FuncPtrDecl* fp = new FuncPtrDecl(m->Proto());
 		vt.push_back(fp->LlvmType());
@@ -1005,14 +1005,14 @@ namespace Types
 	}
 	if (!needed)
 	{
-	    return (baseobj) ? baseobj->VTableType(opaque) : 0;
+	    return (baseobj) ? baseobj->VTableType(opacity) : 0;
 	}
 
 	if (!vtableType)
 	{
 	    vtableType = llvm::StructType::create(theContext, "vtable_" + Name());
 	}
-	if (!opaque)
+	if (opacity == FilledIn)
 	{
 	    ICE_IF(vt.empty(), "Expected some functions here...");
 	    vtableType->setBody(vt);
@@ -1028,7 +1028,7 @@ namespace Types
 	if (elem >= 0)
 	{
 	    elem += b;
-	    if (VTableType(true))
+	    if (VTableType(Opaque))
 	    {
 		elem++;
 	    }
@@ -1040,13 +1040,13 @@ namespace Types
     const FieldDecl* ClassDecl::GetElement(unsigned int n, std::string& objname) const
     {
 	unsigned b = baseobj ? baseobj->FieldCount() : 0;
-	if (baseobj && n < b + (baseobj->VTableType(true) ? 1 : 0))
+	if (baseobj && n < b + (baseobj->VTableType(Opaque) ? 1 : 0))
 	{
 	    return baseobj->GetElement(n, objname);
 	}
 	ICE_IF(n > b + fields.size(), "Out of range field");
 	objname = Name();
-	return fields[n - (b + (VTableType(true) ? 1 : 0))];
+	return fields[n - (b + (VTableType(Opaque) ? 1 : 0))];
     }
 
     const FieldDecl* ClassDecl::GetElement(unsigned int n) const
@@ -1090,7 +1090,7 @@ namespace Types
 	std::vector<llvm::Type*> fv;
 
 	int vtableoffset = 0;
-	if (VTableType(true))
+	if (VTableType(Opaque))
 	{
 	    vtableoffset = 1;
 	    fv.push_back(llvm::PointerType::getUnqual(vtableType));

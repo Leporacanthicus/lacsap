@@ -18,6 +18,12 @@ namespace Types
 {
     class TypeDecl;
 
+    enum Opacity
+    {
+	Opaque,
+	FilledIn
+    };
+
     template<typename T, typename... Args>
     TypeDecl* Get(Args... args)
     {
@@ -617,7 +623,7 @@ namespace Types
 	MemberFuncDecl*  GetMembFunc(size_t index) const;
 	size_t           NumVirtFuncs() const;
 	const TypeDecl*  CompatibleType(const TypeDecl* ty) const override;
-	llvm::Type*      VTableType(bool opaque) const;
+	llvm::Type*      VTableType(Opacity opaque) const;
 	static bool      classof(const TypeDecl* e) { return e->getKind() == TK_Class; }
 	const TypeDecl*  DerivedFrom(const TypeDecl* ty) const;
 

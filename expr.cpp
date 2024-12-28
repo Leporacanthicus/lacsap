@@ -753,7 +753,7 @@ llvm::Value* BinaryExprAST::InlineSetFunc(const std::string& name)
     return 0;
 }
 
-llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet)
+llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, Types::TypeDecl* resTy)
 {
     TRACE();
 
@@ -774,7 +774,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
     llvm::Type*  pty = llvm::PointerType::getUnqual(setTy);
     llvm::Value* setWords = MakeIntegerConstant(type->SetWords());
     llvm::Type*  intTy = setWords->getType();
-    if (resTyIsSet)
+    if (llvm::isa<Types::SetDecl>(resTy))
     {
 	llvm::FunctionCallee f = GetFunction(Types::Get<Types::VoidDecl>()->LlvmType(),
 	                                     { pty, pty, pty, intTy }, "__Set" + name);
@@ -784,8 +784,7 @@ llvm::Value* BinaryExprAST::CallSetFunc(const std::string& name, bool resTyIsSet
 	return builder.CreateLoad(setTy, v, "set");
     }
 
-    llvm::FunctionCallee f = GetFunction(Types::Get<Types::BoolDecl>()->LlvmType(), { pty, pty, intTy },
-                                         "__Set" + name);
+    llvm::FunctionCallee f = GetFunction(resTy->LlvmType(), { pty, pty, intTy }, "__Set" + name);
     return builder.CreateCall(f, { lV, rV, setWords }, "calltmp");
 }
 
@@ -944,25 +943,25 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	switch (oper.GetToken())
 	{
 	case Token::Minus:
-	    return CallSetFunc("Diff", true);
+	    return CallSetFunc("Diff", lhs->Type());
 
 	case Token::Plus:
-	    return CallSetFunc("Union", true);
+	    return CallSetFunc("Union", lhs->Type());
 
 	case Token::Multiply:
-	    return CallSetFunc("Intersect", true);
+	    return CallSetFunc("Intersect", lhs->Type());
 
 	case Token::Equal:
-	    return CallSetFunc("Equal", false);
+	    return CallSetFunc("Equal", Types::Get<Types::BoolDecl>());
 
 	case Token::NotEqual:
-	    return builder.CreateNot(CallSetFunc("Equal", false), "notEqual");
+	    return builder.CreateNot(CallSetFunc("Equal", Types::Get<Types::BoolDecl>()), "notEqual");
 
 	case Token::LessOrEqual:
-	    return CallSetFunc("Contains", false);
+	    return CallSetFunc("Contains", Types::Get<Types::BoolDecl>());
 
 	case Token::SymDiff:
-	    return CallSetFunc("SymDiff", true);
+	    return CallSetFunc("SymDiff", lhs->Type());
 
 	case Token::GreaterOrEqual:
 	{
@@ -970,7 +969,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    ExprAST* tmp = rhs;
 	    rhs = lhs;
 	    lhs = tmp;
-	    llvm::Value* v = CallSetFunc("Contains", false);
+	    llvm::Value* v = CallSetFunc("Contains", Types::Get<Types::BoolDecl>());
 	    // Set it back
 	    lhs = rhs;
 	    rhs = tmp;
@@ -978,7 +977,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	}
 
 	case Token::GreaterThan:
-	    return builder.CreateNot(CallSetFunc("Contains", false));
+	    return builder.CreateNot(CallSetFunc("Contains", Types::Get<Types::BoolDecl>()));
 
 	case Token::LessThan:
 	{
@@ -986,7 +985,7 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	    ExprAST* tmp = rhs;
 	    rhs = lhs;
 	    lhs = tmp;
-	    llvm::Value* v = builder.CreateNot(CallSetFunc("Contains", false));
+	    llvm::Value* v = builder.CreateNot(CallSetFunc("Contains", Types::Get<Types::BoolDecl>()));
 	    // Set it back
 	    lhs = rhs;
 	    rhs = tmp;
@@ -3244,7 +3243,7 @@ llvm::Value* VarDeclAST::CodeGenGlobal(VarDef var)
     llvm::Constant*   init;
     llvm::Constant*   nullValue = llvm::Constant::getNullValue(ty);
     Types::ClassDecl* cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
-    if (cd && cd->VTableType(true))
+    if (cd && cd->VTableType(Types::Opaque))
     {
 	llvm::GlobalVariable*        gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
 	auto                         sty = llvm::dyn_cast<llvm::StructType>(ty);
@@ -3302,7 +3301,7 @@ llvm::Value* VarDeclAST::CodeGenLocal(VarDef var)
 {
     llvm::Value* v = CreateAlloca(func->Proto()->LlvmFunction(), var);
     auto         cd = llvm::dyn_cast<Types::ClassDecl>(var.Type());
-    if (cd && cd->VTableType(true))
+    if (cd && cd->VTableType(Types::Opaque))
     {
 	llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
 	llvm::Type*           ty = Types::GetVoidPtrType();
@@ -4139,7 +4138,7 @@ llvm::Value* VTableAST::CodeGen()
 {
     TRACE();
 
-    auto ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(false));
+    auto ty = llvm::dyn_cast_or_null<llvm::StructType>(classDecl->VTableType(Types::FilledIn));
     ICE_IF(!ty, "Huh? No vtable?");
     std::vector<llvm::Constant*> vtInit = GetInitializer();
 
@@ -4177,7 +4176,7 @@ std::vector<llvm::Constant*> VTableAST::GetInitializer()
 
 void VTableAST::Fixup()
 {
-    auto                         ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(true));
+    auto                         ty = llvm::dyn_cast<llvm::StructType>(classDecl->VTableType(Types::Opaque));
     std::vector<llvm::Constant*> vtInit = GetInitializer();
     ICE_IF(vtInit.empty(), "Should have something to initialize here");
 
@@ -4200,7 +4199,7 @@ llvm::Value* VirtFunctionAST::Address()
 {
     llvm::Value* v = MakeAddressable(self);
     llvm::Type*  ty = self->Type()->LlvmType();
-    auto         vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(false);
+    auto         vtableTy = llvm::dyn_cast<Types::ClassDecl>(self->Type())->VTableType(Types::FilledIn);
     llvm::Type*  ptrVTableTy = llvm::PointerType::getUnqual(vtableTy);
     llvm::Value* zero = MakeIntegerConstant(0);
     v = builder.CreateGEP(ty, v, { zero, zero }, "vptr");

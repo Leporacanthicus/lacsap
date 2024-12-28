@@ -404,7 +404,7 @@ public:
 private:
     llvm::Value* SetCodeGen();
     llvm::Value* InlineSetFunc(const std::string& name);
-    llvm::Value* CallSetFunc(const std::string& name, bool resTyIsSet);
+    llvm::Value* CallSetFunc(const std::string& name, Types::TypeDecl* resTy);
     llvm::Value* CallStrFunc(const std::string& name);
     llvm::Value* CallArrFunc(const std::string& name, size_t size);
 

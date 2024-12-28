@@ -48,6 +48,12 @@ public:
 	AllowForwarding
     };
 
+    enum class NamePolicy
+    {
+	Unnamed,
+	Named
+    };
+
     Parser(Source& source);
     ExprAST* Parse(ParserType type) override;
 
@@ -94,15 +100,15 @@ public:
     VariableExprAST* GetOutput(const Location& loc);
     VariableExprAST* GetInput(const Location& loc);
     VariableExprAST* GetGlobalTextByName(const Location& loc, const std::string& name);
-    ExprAST* ParseWrite();
-    ExprAST* ParseRead();
+    ExprAST*         ParseWrite();
+    ExprAST*         ParseRead();
 
     // Statements, blocks and calls
     ExprAST*      ParseStatement();
     VarDeclAST*   ParseVarDecls();
     BlockAST*     ParseBlock(Location& endLoc);
     FunctionAST*  ParseDefinition(int level);
-    PrototypeAST* ParsePrototype(bool unnamed);
+    PrototypeAST* ParsePrototype(NamePolicy nmPolicy);
     bool          ParseProgram(ParserType type);
     void          ParseLabels();
     ExprAST*      ParseUses();
@@ -1728,7 +1734,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 	else if (isClass && (CurrentToken().GetToken() == Token::Function ||
 	                     CurrentToken().GetToken() == Token::Procedure))
 	{
-	    PrototypeAST* p = ParsePrototype(false);
+	    PrototypeAST* p = ParsePrototype(NamePolicy::Named);
 	    if (!Expect(Token::Semicolon, ExpectConsume))
 	    {
 		return false;
@@ -2111,7 +2117,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
     case Token::Procedure:
     case Token::Function:
     {
-	PrototypeAST* proto = ParsePrototype(true);
+	PrototypeAST* proto = ParsePrototype(NamePolicy::Unnamed);
 	return new Types::FuncPtrDecl(proto);
     }
 
@@ -2439,7 +2445,7 @@ ExprAST* Parser::MakeSelfCall(ExprAST* self, Types::MemberFuncDecl* mf, Types::C
     ExprAST*            expr = 0;
     const PrototypeAST* proto = mf->Proto();
     // Make sure we enumerate the index of virtual functions
-    (void)cd->VTableType(true);
+    (void)cd->VTableType(Types::Opaque);
     if (mf->IsVirtual() || mf->IsOverride())
     {
 	int                 index = mf->VirtIndex();
@@ -3297,7 +3303,7 @@ VarDeclAST* Parser::ParseVarDecls()
 // member function/procedure:
 //   function classname.name{( args... )}: type;
 //   procedure classname.name{ args... }
-PrototypeAST* Parser::ParsePrototype(bool unnamed)
+PrototypeAST* Parser::ParsePrototype(Parser::NamePolicy nmPolicy)
 {
     ICE_IF(CurrentToken().GetToken() != Token::Procedure && CurrentToken().GetToken() != Token::Function,
            "Expected function or procedure token");
@@ -3310,7 +3316,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
     // Consume "function" or "procedure"
     NextToken();
     std::string funcName = "$$unnamed";
-    if (!unnamed)
+    if (nmPolicy == NamePolicy::Named)
     {
 	// Get function name.
 	funcName = GetIdentifier(ExpectConsume);
@@ -3380,7 +3386,7 @@ PrototypeAST* Parser::ParsePrototype(bool unnamed)
 	{
 	    if (CurrentToken().GetToken() == Token::Function || CurrentToken().GetToken() == Token::Procedure)
 	    {
-		if (PrototypeAST* proto = ParsePrototype(false))
+		if (PrototypeAST* proto = ParsePrototype(NamePolicy::Named))
 		{
 		    Types::TypeDecl* type = new Types::FuncPtrDecl(proto);
 		    VarDef           v(proto->Name(), type);
@@ -3565,7 +3571,7 @@ FunctionAST* Parser::ParseDefinition(int level)
 {
     TRACE();
 
-    PrototypeAST* proto = ParsePrototype(false);
+    PrototypeAST* proto = ParsePrototype(NamePolicy::Named);
     if (!proto || !Expect(Token::Semicolon, ExpectConsume))
     {
 	return 0;
@@ -3976,7 +3982,7 @@ void Parser::ExpandWithNames(const Types::FieldCollection* fields, ExprAST* v, i
     int vtableoffset = 0;
     if (const auto cd = llvm::dyn_cast<Types::ClassDecl>(fields))
     {
-	vtableoffset = !!cd->VTableType(true);
+	vtableoffset = !!cd->VTableType(Types::Opaque);
     }
     for (int i = vtableoffset; i < fields->FieldCount() + vtableoffset; i++)
     {
@@ -4489,7 +4495,7 @@ bool Parser::ParseInterface(InterfaceList& iList)
 	case Token::Procedure:
 	case Token::Function:
 	{
-	    PrototypeAST* proto = ParsePrototype(false);
+	    PrototypeAST* proto = ParsePrototype(NamePolicy::Named);
 	    if (!proto || !Expect(Token::Semicolon, ExpectConsume))
 	    {
 		return false;

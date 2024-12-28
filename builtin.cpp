@@ -896,7 +896,7 @@ namespace Builtin
 	// of the elements that are classes (that have VTables).
 	if (auto cd = llvm::dyn_cast<Types::ClassDecl>(elemTy))
 	{
-	    if (cd->VTableType(true))
+	    if (cd->VTableType(Types::Opaque))
 	    {
 		llvm::GlobalVariable* gv = theModule->getGlobalVariable("vtable_" + cd->Name(), true);
 		llvm::Value* dest = builder.CreateGEP(voidTy, retVal, MakeIntegerConstant(0), "vtable");

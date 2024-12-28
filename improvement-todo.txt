@@ -17,12 +17,8 @@ This is a list of "things to improve in general".
    * Range check for reading ranged values.
    * Range check for set assignment.
 
-- Better error messages from built-in functions.
-   * Return an enum { OK, WrongArgCount, TypeMismatch }
-
 - Implement a function pass load/store -> memcpy for large load/stores.
 
 - ConstASTVisitor?
 
 - Could do with better error recovery.
-

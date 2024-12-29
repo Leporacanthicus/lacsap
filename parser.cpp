@@ -116,6 +116,10 @@ public:
     bool          ParseInterface(InterfaceList& iList);
     void          ParseImports();
 
+    void CheckProtoMatch(const PrototypeAST* proto, const std::string& funcName,
+                         const std::vector<VarDef>& args, const Types::TypeDecl* resultType,
+                         const std::string& resultName);
+
     ExprAST* ConstDeclToExpr(const Location& loc, Types::TypeDecl* ty, const Constants::ConstDecl* c);
     ExprAST* ParseInitValue(Types::TypeDecl* ty);
 
@@ -1749,7 +1753,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 		}
 	    }
 	    if (AcceptToken(Token::Virtual))
-	    { //
+	    {
 		f |= Types::MemberFuncDecl::Virtual;
 		if (!Expect(Token::Semicolon, ExpectConsume))
 		{
@@ -3298,6 +3302,37 @@ VarDeclAST* Parser::ParseVarDecls()
     return new VarDeclAST(CurrentToken().Loc(), varList);
 }
 
+void Parser::CheckProtoMatch(const PrototypeAST* proto, const std::string& funcName,
+                             const std::vector<VarDef>& args, const Types::TypeDecl* resType,
+                             const std::string& resName)
+{
+    ICE_IF(!proto, "Expected a prototype to compare to");
+
+    size_t offset = proto->HasSelf() ? 1 : 0;
+    ;
+    if (args.size() + offset != proto->Args().size())
+    {
+	Error("Different number of arguments for " + funcName);
+	return;
+    }
+
+    for (size_t i = 0; i < args.size(); i++)
+    {
+	if (!proto->Args()[i + offset].Type()->AssignableType(args[i].Type()))
+	{
+	    Error("Argument type mismatch for " + funcName + ":" + args[i].Name());
+	}
+    }
+    if (proto->Type() != resType)
+    {
+	Error("Result type mismatch for " + funcName);
+    }
+    if (!llvm::isa<Types::VoidDecl>(proto->Type()) && proto->ResName() != resName)
+    {
+	Error("Result name mismatch for " + funcName);
+    }
+}
+
 // functon name( { [var] name1, [,name2 ...]: type [; ...] } ) : type
 // procedure name ( { [var] name1 [,name2 ...]: type [; ...] } )
 // member function/procedure:
@@ -3456,6 +3491,7 @@ PrototypeAST* Parser::ParsePrototype(Parser::NamePolicy nmPolicy)
     Types::TypeDecl* resultType;
     std::string      resultName = funcName;
     // If we have a function, expect ": type".
+    // Also ISO10206 allows alternative result name with `= name : type`
     if (isFunction)
     {
 	if (AcceptToken(Token::Equal))
@@ -3474,11 +3510,11 @@ PrototypeAST* Parser::ParsePrototype(Parser::NamePolicy nmPolicy)
 
     if (fwdProto)
     {
+	CheckProtoMatch(fwdProto, funcName, args, resultType, ShortName(resultName));
 	if (*resultType != *fwdProto->Type())
 	{
 	    return Error("Forward declared function should have same return type as definition.");
 	}
-	// TODO: Check argument types...
 	return fwdProto;
     }
 

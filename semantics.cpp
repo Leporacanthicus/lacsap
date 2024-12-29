@@ -709,7 +709,7 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
     {
 	bool bad = true;
 
-	if (const Types::TypeDecl* ty = parg[idx].Type()->CompatibleType(a->Type()))
+	if (const Types::TypeDecl* ty = parg[idx].Type()->AssignableType(a->Type()))
 	{
 	    if (parg[idx].IsRef() && !llvm::isa<AddressableAST, ClosureAST>(a))
 	    {
@@ -772,7 +772,7 @@ void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
     }
     if (f->end)
     {
-	if (const Types::TypeDecl* ty = f->start->Type()->CompatibleType(vty))
+	if (const Types::TypeDecl* ty = f->start->Type()->AssignableType(vty))
 	{
 	    f->start = Recast(f->start, ty);
 	}
@@ -780,7 +780,7 @@ void TypeCheckVisitor::Check<ForExprAST>(ForExprAST* f)
 	{
 	    bad = true;
 	}
-	if (const Types::TypeDecl* ty = f->end->Type()->CompatibleType(vty))
+	if (const Types::TypeDecl* ty = f->end->Type()->AssignableType(vty))
 	{
 	    f->end = Recast(f->end, ty);
 	}

@@ -497,6 +497,10 @@ namespace Types
 	{
 	    return ty;
 	}
+	if (ty->Type() == TK_Real)
+	{
+	    return ty;
+	}
 	return 0;
     }
 

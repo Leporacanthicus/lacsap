@@ -13,7 +13,7 @@ static uint64_t rand_seed = 8919118912341193UL;
 static const unsigned rand_mul = 1103515245U;
 static const unsigned rand_add = 12345;
 
-static unsigned urand()
+static uint64_t urand()
 {
     rand_seed = rand_mul * rand_seed + rand_add;
     return rand_seed;

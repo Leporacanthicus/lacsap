@@ -8,7 +8,6 @@ enum class ParserType
 {
     Program,
     Unit,
-    Module,
 };
 
 class ParserInterface

@@ -4434,15 +4434,16 @@ bool Parser::ParseProgram(ParserType type)
     switch (type)
     {
     case ParserType::Program:
-	t = Token::Program;
+    {
+	Token tt = CurrentToken();
+	if (tt.GetToken() == Token::Program || tt.GetToken() == Token::Module)
+	{
+	    t = tt.GetToken();
+	}
 	break;
-
+    }
     case ParserType::Unit:
 	t = Token::Unit;
-	break;
-
-    case ParserType::Module:
-	t = Token::Module;
 	break;
 
     default:
@@ -4596,7 +4597,7 @@ ExprAST* Parser::ParseUnit(ParserType type)
     // The "main" of the program - we call that "__PascalMain" so we can call it from C-code.
     std::string initName = "__PascalMain";
     // In a unit, we use the moduleName to form the "init functioin" name.
-    if (type == ParserType::Unit || type == ParserType::Module)
+    if (type == ParserType::Unit)
     {
 	initName = moduleName + ".init";
     }

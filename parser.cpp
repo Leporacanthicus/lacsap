@@ -3452,7 +3452,8 @@ PrototypeAST* Parser::ParsePrototype(Parser::NamePolicy nmPolicy)
 		    flags |= VarDef::Flags::Reference;
 		}
 
-		std::string arg = GetIdentifier(ExpectConsume);
+		std::string arg = GetIdentifier(NoExpectConsume);
+		Expect(Token::Identifier, ExpectConsume);
 		if (arg.empty())
 		{
 		    return 0;
@@ -3614,6 +3615,7 @@ FunctionAST* Parser::ParseDefinition(int level)
     PrototypeAST* proto = ParsePrototype(NamePolicy::Named);
     if (!proto || !Expect(Token::Semicolon, ExpectConsume))
     {
+	Error("Could not parse funciton or procedure prototype");
 	return 0;
     }
 

@@ -1701,7 +1701,7 @@ bool Parser::ParseFields(std::vector<Types::FieldDecl*>& fields, Types::VariantD
 {
     TRACE();
 
-    bool isClass = type == Token::Class;
+    bool isClass = (type == Token::Class) || (type == Token::Object);
     // Different from C++, public is the default access qualifier.
     Types::FieldDecl::Access access = Types::FieldDecl::Public;
     variant = 0;
@@ -1953,7 +1953,7 @@ Types::ClassDecl* Parser::ParseClassDecl(const std::string& name)
 {
     TRACE();
     const Location loc = CurrentToken().Loc();
-    AssertToken(Token::Class);
+    NextToken();
     Types::ClassDecl* base = 0;
     // Find derived class, if available.
     if (AcceptToken(Token::LeftParen))
@@ -2100,6 +2100,7 @@ Types::TypeDecl* Parser::ParseType(const std::string& name, Forwarding maybeForw
 	return ParseRecordDecl();
 
     case Token::Class:
+    case Token::Object:
 	return ParseClassDecl(name);
 
     case Token::File:

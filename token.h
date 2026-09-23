@@ -27,6 +27,7 @@ public:
 	Of,
 	Record,
 	Class,
+	Object,
 	Identifier,
 	Const,
 	File,

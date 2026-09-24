@@ -937,12 +937,31 @@ llvm::Value* BinaryExprAST::SetCodeGen()
 	{
 	    index = MakeIntegerConstant(0);
 	}
+
+	llvm::BasicBlock* originBlock = builder.GetInsertBlock();
+	llvm::Function*   theFunction = originBlock->getParent();
+
+	llvm::BasicBlock* falseBB = llvm::BasicBlock::Create(theContext, "false", theFunction);
+	llvm::BasicBlock* mergeBB = llvm::BasicBlock::Create(theContext, "merge", theFunction);
+	llvm::Value*      bfalse = MakeBooleanConstant(0);
+	llvm::Value*      cond = builder.CreateICmpUGT(index, MakeIntegerConstant(type->GetRange()->Size()));
+	builder.CreateCondBr(cond, mergeBB, falseBB);
+
+	builder.SetInsertPoint(falseBB);
 	llvm::Value* offset = builder.CreateAnd(l, MakeIntegerConstant(Types::SetDecl::SetMask));
+
 	llvm::Value* bitsetAddr = builder.CreateGEP(intTy, setV, index, "valueindex");
 
 	llvm::Value* bitset = builder.CreateLoad(intTy, bitsetAddr, "bitsetaddr");
 	llvm::Value* bit = builder.CreateLShr(bitset, offset);
-	return builder.CreateTrunc(bit, Types::Get<Types::BoolDecl>()->LlvmType());
+	llvm::Value* res = builder.CreateTrunc(bit, Types::Get<Types::BoolDecl>()->LlvmType());
+	builder.CreateBr(mergeBB);
+
+	builder.SetInsertPoint(mergeBB);
+	llvm::PHINode* phi = builder.CreatePHI(Types::Get<Types::BoolDecl>()->LlvmType(), 2, "phi");
+	phi->addIncoming(bfalse, originBlock);
+	phi->addIncoming(res, falseBB);
+	return phi;
     }
 
     if (llvm::isa<SetExprAST>(lhs) || (lhs->Type() && llvm::isa<Types::SetDecl>(lhs->Type())))

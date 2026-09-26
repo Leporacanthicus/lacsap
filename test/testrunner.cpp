@@ -474,6 +474,7 @@ TestEntry testCaseList[] = {
     { 0, "Basic", "Array Init", "arrayinit.pas", "" },
     { 0, "Basic", "Read Boolean", "readbool.pas", " < readbool.txt" },
     { 0, "Basic", "Write Enums", "writeenum.pas", "" },
+    { 0, "Basic", "Range to Real convert", "range2real.pas", "" },
 
     { 0, "File", "CopyFile", "copyfile.pas", "File/infile.dat File/outfile.dat" },
     // get from files not supported.

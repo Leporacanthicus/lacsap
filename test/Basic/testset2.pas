@@ -45,6 +45,7 @@ begin
    PrintDays(W);  
    W:=[mon,tue,wed]*[wed,thu,fri]; {// equals [wed]  }
    PrintDays(W);
-(*   W:=[mon,tue,wed]><[wed,thu,fri]; {// equals [mon,tue,thu,fri]  } 
-   PrintDays(W);  *)
+   W:=[mon,tue,wed]><[wed,thu,fri]; {// equals [mon,tue,thu,fri]  }
+   PrintDays(W);
+   PrintDays([]);
 end.

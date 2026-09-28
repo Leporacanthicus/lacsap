@@ -2,3 +2,5 @@
 [mon,tue]
 [mon,tue]
 [wed]
+[mon,tue,thu,fri]
+[]

@@ -500,6 +500,25 @@ void TypeCheckVisitor::Check<UnaryExprAST>(UnaryExprAST* u)
     u->UpdateType(ty);
 }
 
+static void UpdateSetType(Types::TypeDecl* lty, Types::TypeDecl* rty)
+{
+    auto lsty = llvm::dyn_cast<Types::SetDecl>(lty);
+    auto rsty = llvm::dyn_cast<Types::SetDecl>(rty);
+    if (lsty && rsty)
+    {
+	ICE_IF(!lsty->GetRange() || !lsty->SubType(), "Expected left type to be well defined.");
+
+	if (!rsty->GetRange())
+	{
+	    rsty->UpdateRange(GetRangeDecl(lsty));
+	}
+	if (!rsty->SubType())
+	{
+	    rsty->UpdateSubtype(lsty->SubType());
+	}
+    }
+}
+
 template<>
 void TypeCheckVisitor::Check<AssignExprAST>(AssignExprAST* a)
 {
@@ -521,21 +540,7 @@ void TypeCheckVisitor::Check<AssignExprAST>(AssignExprAST* a)
 	return;
     }
 
-    auto lsty = llvm::dyn_cast<Types::SetDecl>(lty);
-    auto rsty = llvm::dyn_cast<Types::SetDecl>(rty);
-    if (lsty && rsty)
-    {
-	ICE_IF(!lsty->GetRange() || !lsty->SubType(), "Expected left type to be well defined.");
-
-	if (!rsty->GetRange())
-	{
-	    rsty->UpdateRange(GetRangeDecl(lsty));
-	}
-	if (!rsty->SubType())
-	{
-	    rsty->UpdateSubtype(lsty->SubType());
-	}
-    }
+    UpdateSetType(lty, rty);
 
     // Note difference to binary expression: only allowed on rhs!
     if (llvm::isa<Types::PointerDecl>(lty) && llvm::isa<NilExprAST>(a->rhs))
@@ -709,6 +714,7 @@ void TypeCheckVisitor::Check<CallExprAST>(CallExprAST* c)
     {
 	bool bad = true;
 
+	UpdateSetType(parg[idx].Type(), a->Type());
 	if (const Types::TypeDecl* ty = parg[idx].Type()->AssignableType(a->Type()))
 	{
 	    if (parg[idx].IsRef() && !llvm::isa<AddressableAST, ClosureAST>(a))

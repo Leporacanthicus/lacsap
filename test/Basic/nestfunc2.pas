@@ -32,8 +32,31 @@ begin
    writeln(y);
 end;
 
+procedure c;
+
+var b: integer;
+
+   procedure inner(b : integer);
+
+      procedure inner2;
+      begin
+	 b:= 7;
+      end;
+
+   begin
+      inner2;
+      writeln(b);
+   end;
+
+begin
+   b := 2;
+   inner(b);
+   writeln(b);
+end;
+
 begin
    a;
    b;
+   c;
 end.
 

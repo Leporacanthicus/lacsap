@@ -191,7 +191,7 @@ void CallGraphClosureCollector::CollectUseData(FunctionAST* f)
     callMap[f] = collector.calls;
 }
 
-void RemoveFromUses(VarSet& uses, const VarMap& decls)
+static void RemoveFromUses(VarSet& uses, const VarMap& decls)
 {
     for (auto d : decls)
     {
@@ -199,7 +199,7 @@ void RemoveFromUses(VarSet& uses, const VarMap& decls)
     }
 }
 
-void AddToUses(VarSet& uses, VarSet& more)
+static void AddToUses(VarSet& uses, VarSet& more)
 {
     for (auto v : more)
     {
@@ -218,9 +218,6 @@ void BuildClosures(ExprAST* ast)
 	VarSet       uses = usage.second;
 	FunctionAST* func = const_cast<FunctionAST*>(usage.first);
 
-	// Remove local declarations.
-	RemoveFromUses(uses, v.declMap[func]);
-
 	// Add uses from subfunctions.
 	for (auto sub : func->SubFunctions())
 	{
@@ -236,6 +233,9 @@ void BuildClosures(ExprAST* ast)
 	    AddToUses(uses, callerUse);
 	}
 
+	// Remove local declarations.
+	RemoveFromUses(uses, v.declMap[func]);
+
 	// Now search up the stack until to see if
 	// it's local "above" us.
 	std::set<VarDef> used;
@@ -244,10 +244,10 @@ void BuildClosures(ExprAST* ast)
 	    for (const FunctionAST* f = func->Parent(); f; f = f->Parent())
 	    {
 		const VarMap& dm = v.declMap[f];
-		auto          v = dm.find(use);
-		if (v != dm.end())
+		auto          vv = dm.find(use);
+		if (vv != dm.end())
 		{
-		    used.insert(v->second);
+		    used.insert(vv->second);
 		    break;
 		}
 	    }

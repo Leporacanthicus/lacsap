@@ -2212,14 +2212,14 @@ llvm::Function* FunctionAST::CodeGen(const std::string& namePrefix)
 	di.lexicalBlocks.pop_back();
     }
 
+#if !NDEBUG
     if (!debugInfo && body && emitType != LlvmIr)
     {
 	llvm::raw_os_ostream err(std::cerr);
-#if !NDEBUG
 	// Verify doesn't work on release builds.
 	ICE_IF(verifyFunction(*theFunction, &err), "Something went wrong in code generation");
-#endif
     }
+#endif
 
     return theFunction;
 }
@@ -3411,7 +3411,10 @@ void LabelExprAST::DoDump() const
 	first = false;
     }
     std::cerr << ": ";
-    stmt->DoDump();
+    if (stmt)
+    {
+	stmt->DoDump();
+    }
 }
 
 llvm::Value* LabelExprAST::CodeGen()

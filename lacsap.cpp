@@ -37,6 +37,7 @@ Model    model = m64;
 bool     caseInsensitive = true;
 EmitType emitType;
 Standard standard = none;
+bool     dumpClosureInfo = false;
 
 // Command line option definitions.
 static llvm::cl::opt<std::string> InputFilename(llvm::cl::Positional, llvm::cl::Required,
@@ -79,6 +80,8 @@ static llvm::cl::opt<bool, true> DebugInfo("g", llvm::cl::desc("Enable debug inf
 
 static llvm::cl::opt<bool, true> CallGraphOpt("callgraph", llvm::cl::desc("Produce callgraph"),
                                               llvm::cl::location(callGraph));
+static llvm::cl::opt<bool, true> DumpClosureOpt("dumpclosureinfo", llvm::cl::desc("Dump closure info"),
+                                                llvm::cl::location(dumpClosureInfo));
 
 static llvm::cl::opt<Standard, true> StandardOpt("std", llvm::cl::desc("ISO standard"),
                                                  llvm::cl::values(clEnumVal(none, "Allow all language forms"),

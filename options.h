@@ -40,6 +40,7 @@ extern bool        callGraph;
 extern OptLevel    optimization;
 extern Model       model;
 extern bool        caseInsensitive;
+extern bool        dumpClosureInfo;
 extern EmitType    emitType;
 extern Standard    standard;
 extern std::string libpath;

@@ -152,6 +152,7 @@ public:
 	    }
 	    ICE_IF(v->Name().empty(), "Expect a name");
 	    uses.insert(v->Name());
+	    return;
 	}
 	if (auto c = llvm::dyn_cast<CallExprAST>(a))
 	{
@@ -164,6 +165,7 @@ public:
 	    }
 	}
     }
+
     CallSet calls;
     VarSet  uses;
 };
@@ -187,6 +189,26 @@ void CallGraphClosureCollector::CollectUseData(FunctionAST* f)
 	AddVarDecls({ VarDef(f->Proto()->Name(), f->Proto()->Type()) }, f);
     }
     AddVarDecls(f->Proto()->Args(), f);
+    if (dumpClosureInfo)
+    {
+	std::cerr << "Funcion: " << f->Proto()->Name() << std::endl;
+	if (collector.uses.size())
+	{
+	    std::cerr << "Uses:" << std::endl;
+	    for (auto v : collector.uses)
+	    {
+		std::cerr << "  " << v << std::endl;
+	    }
+	}
+	if (collector.calls.size())
+	{
+	    std::cerr << "Calls:" << std::endl;
+	    for (auto fn : collector.calls)
+	    {
+		std::cerr << "  " << fn->Proto()->Name() << std::endl;
+	    }
+	}
+    }
     useMap[f] = collector.uses;
     callMap[f] = collector.calls;
 }
@@ -253,9 +275,23 @@ void BuildClosures(ExprAST* ast)
 	    }
 	}
 
+	if (dumpClosureInfo && used.size())
+	{
+	    std::cerr << "Used in function '" << func->Proto()->Name() << "': " << std::endl;
+	    for (auto u : used)
+	    {
+		std::cerr << "  " << u.Name() << std::endl;
+	    }
+	}
+
 	func->SetUsedVars(used);
 	if (Types::TypeDecl* closure = func->ClosureType())
 	{
+	    if (dumpClosureInfo)
+	    {
+		std::cerr << "For " << func->Proto()->Name() << " Add closure: " << std::endl;
+		closure->dump();
+	    }
 	    func->Proto()->AddExtraArgsFirst(
 	        { VarDef(func->ClosureName(), closure, VarDef::Flags::Reference | VarDef::Flags::Closure) });
 	    UpdateCallVisitor updater(func->Proto());

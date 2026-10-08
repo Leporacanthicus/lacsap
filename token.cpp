@@ -77,117 +77,116 @@ struct TokenEntry
 {
     Token::TokenType type;
     bool             isKeyWord;
-    int              precedence;
     const char*      str;
 };
 
 static std::vector<TokenEntry> tokenTable = {
-    { Token::For, true, -1, "for" },
-    { Token::To, true, -1, "to" },
-    { Token::Downto, true, -1, "downto" },
-    { Token::Do, true, -1, "do" },
-    { Token::Function, true, -1, "function" },
-    { Token::Procedure, true, -1, "procedure" },
-    { Token::If, true, -1, "if" },
-    { Token::Then, true, -1, "then" },
-    { Token::Else, true, -1, "else" },
+    { Token::For, true, "for" },
+    { Token::To, true, "to" },
+    { Token::Downto, true, "downto" },
+    { Token::Do, true, "do" },
+    { Token::Function, true, "function" },
+    { Token::Procedure, true, "procedure" },
+    { Token::If, true, "if" },
+    { Token::Then, true, "then" },
+    { Token::Else, true, "else" },
     // clang-format off
-    { Token::While, true, -1, "while", },
-    { Token::Repeat, true, -1, "repeat", },
-    { Token::Until, true, -1, "until", },
+    { Token::While, true, "while", },
+    { Token::Repeat, true, "repeat", },
+    { Token::Until, true, "until", },
     // clang-format on
-    { Token::Begin, true, -1, "begin" },
-    { Token::End, true, -1, "end" },
-    { Token::Case, true, -1, "case" },
-    { Token::Otherwise, true, -1, "otherwise" },
-    { Token::With, true, -1, "with" },
-    { Token::Program, true, -1, "program" },
-    { Token::Unit, true, -1, "unit" },
-    { Token::Module, true, -1, "module" },
-    { Token::Write, true, -1, "write" },
-    { Token::Writeln, true, -1, "writeln" },
-    { Token::WriteStr, true, -1, "writestr" },
-    { Token::Read, true, -1, "read" },
-    { Token::Readln, true, -1, "readln" },
-    { Token::ReadStr, true, -1, "readstr" },
-    { Token::Var, true, -1, "var" },
-    { Token::Array, true, -1, "array" },
-    { Token::Of, true, -1, "of" },
-    { Token::Packed, true, -1, "packed" },
-    { Token::Record, true, -1, "record" },
-    { Token::Type, true, -1, "type" },
-    { Token::File, true, -1, "file" },
-    { Token::String, true, -1, "string" },
-    { Token::Set, true, -1, "set" },
-    { Token::Forward, true, -1, "forward" },
-    { Token::Inline, true, -1, "inline" },
-    { Token::Implementation, true, -1, "implementation" },
-    { Token::Interface, true, -1, "interface" },
-    { Token::Const, true, -1, "const" },
-    { Token::Nil, true, -1, "nil" },
-    { Token::And, true, 40, "and" },
-    { Token::And_Then, true, 40, "and_then" },
-    { Token::Or, true, 10, "or" },
-    { Token::Or_Else, true, 10, "or_else" },
-    { Token::Not, true, 60, "not" },
-    { Token::Div, true, 40, "div" },
-    { Token::Mod, true, 40, "mod" },
-    { Token::Xor, true, 10, "xor" },
-    { Token::Shr, true, 40, "shr" },
-    { Token::Shl, true, 40, "shl" },
-    { Token::SymDiff, false, 40, "><" },
-    { Token::Pow, true, 50, "pow" },
-    { Token::In, true, 5, "in" },
-    { Token::Plus, false, 10, "+" },
-    { Token::Minus, false, 10, "-" },
-    { Token::Multiply, false, 40, "*" },
-    { Token::Divide, false, 40, "/" },
-    { Token::Power, false, 50, "**" },
-    { Token::Assign, false, 2, ":=" },
-    { Token::LessThan, false, 5, "<" },
-    { Token::LessOrEqual, false, 5, "<=" },
-    { Token::GreaterOrEqual, false, 5, ">=" },
-    { Token::GreaterThan, false, 5, ">" },
-    { Token::Equal, false, 5, "=" },
-    { Token::NotEqual, false, 5, "<>" },
-    { Token::Integer, false, -1, "integer" },
-    { Token::Real, false, -1, "real" },
-    { Token::Boolean, false, -1, "boolean" },
-    { Token::Char, false, -1, "char" },
-    { Token::StringLiteral, false, -1, "string" },
-    { Token::LeftParen, false, -1, "(" },
-    { Token::RightParen, false, -1, ")" },
-    { Token::LeftSquare, false, -1, "[" },
-    { Token::RightSquare, false, -1, "]" },
-    { Token::Comma, false, -1, "," },
-    { Token::Semicolon, false, -1, ";" },
-    { Token::Colon, false, -1, ":" },
-    { Token::Period, false, -1, "." },
-    { Token::DotDot, false, -1, ".." },
-    { Token::Uparrow, false, -1, "^" },
-    { Token::Static, true, -1, "static" },
-    { Token::Virtual, true, -1, "virtual" },
-    { Token::Override, true, -1, "override" },
-    { Token::Private, true, -1, "private" },
-    { Token::Public, true, -1, "public" },
-    { Token::Protected, true, -1, "protected" },
-    { Token::Restricted, true, -1, "restricted" },
-    { Token::Constructor, true, -1, "constructor" },
-    { Token::Destructor, true, -1, "destructor" },
-    { Token::Label, true, -1, "label" },
-    { Token::Goto, true, -1, "goto" },
-    { Token::Uses, true, -1, "uses" },
-    { Token::At, false, -1, "@" },
-    { Token::Bindable, true, -1, "bindable" },
-    { Token::Default, true, -1, "default" },
-    { Token::Value, true, -1, "value" },
-    { Token::Import, true, -1, "import" },
-    { Token::LineNumber, true, -1, "__LINE__" },
-    { Token::FileName, true, -1, "__FILE__" },
-    { Token::SizeOf, true, -1, "sizeof" },
-    { Token::Identifier, false, -1, "identifier" },
-    { Token::Unknown, false, -1, "Unknown" },
-    { Token::EndOfFile, false, -1, "EOF" },
+    { Token::Begin, true, "begin" },
+    { Token::End, true, "end" },
+    { Token::Case, true, "case" },
+    { Token::Otherwise, true, "otherwise" },
+    { Token::With, true, "with" },
+    { Token::Program, true, "program" },
+    { Token::Unit, true, "unit" },
+    { Token::Module, true, "module" },
+    { Token::Write, true, "write" },
+    { Token::Writeln, true, "writeln" },
+    { Token::WriteStr, true, "writestr" },
+    { Token::Read, true, "read" },
+    { Token::Readln, true, "readln" },
+    { Token::ReadStr, true, "readstr" },
+    { Token::Var, true, "var" },
+    { Token::Array, true, "array" },
+    { Token::Of, true, "of" },
+    { Token::Packed, true, "packed" },
+    { Token::Record, true, "record" },
+    { Token::Type, true, "type" },
+    { Token::File, true, "file" },
+    { Token::String, true, "string" },
+    { Token::Set, true, "set" },
+    { Token::Forward, true, "forward" },
+    { Token::Inline, true, "inline" },
+    { Token::Implementation, true, "implementation" },
+    { Token::Interface, true, "interface" },
+    { Token::Const, true, "const" },
+    { Token::Nil, true, "nil" },
+    { Token::And, true, "and" },
+    { Token::And_Then, true, "and_then" },
+    { Token::Or, true, "or" },
+    { Token::Or_Else, true, "or_else" },
+    { Token::Not, true, "not" },
+    { Token::Div, true, "div" },
+    { Token::Mod, true, "mod" },
+    { Token::Xor, true, "xor" },
+    { Token::Shr, true, "shr" },
+    { Token::Shl, true, "shl" },
+    { Token::SymDiff, false, "><" },
+    { Token::Pow, true, "pow" },
+    { Token::In, true, "in" },
+    { Token::Plus, false, "+" },
+    { Token::Minus, false, "-" },
+    { Token::Multiply, false, "*" },
+    { Token::Divide, false, "/" },
+    { Token::Power, false, "**" },
+    { Token::Assign, false, ":=" },
+    { Token::LessThan, false, "<" },
+    { Token::LessOrEqual, false, "<=" },
+    { Token::GreaterOrEqual, false, ">=" },
+    { Token::GreaterThan, false, ">" },
+    { Token::Equal, false, "=" },
+    { Token::NotEqual, false, "<>" },
+    { Token::Integer, false, "integer" },
+    { Token::Real, false, "real" },
+    { Token::Boolean, false, "boolean" },
+    { Token::Char, false, "char" },
+    { Token::StringLiteral, false, "string" },
+    { Token::LeftParen, false, "(" },
+    { Token::RightParen, false, ")" },
+    { Token::LeftSquare, false, "[" },
+    { Token::RightSquare, false, "]" },
+    { Token::Comma, false, "," },
+    { Token::Semicolon, false, ";" },
+    { Token::Colon, false, ":" },
+    { Token::Period, false, "." },
+    { Token::DotDot, false, ".." },
+    { Token::Uparrow, false, "^" },
+    { Token::Static, true, "static" },
+    { Token::Virtual, true, "virtual" },
+    { Token::Override, true, "override" },
+    { Token::Private, true, "private" },
+    { Token::Public, true, "public" },
+    { Token::Protected, true, "protected" },
+    { Token::Restricted, true, "restricted" },
+    { Token::Constructor, true, "constructor" },
+    { Token::Destructor, true, "destructor" },
+    { Token::Label, true, "label" },
+    { Token::Goto, true, "goto" },
+    { Token::Uses, true, "uses" },
+    { Token::At, false, "@" },
+    { Token::Bindable, true, "bindable" },
+    { Token::Default, true, "default" },
+    { Token::Value, true, "value" },
+    { Token::Import, true, "import" },
+    { Token::LineNumber, true, "__LINE__" },
+    { Token::FileName, true, "__FILE__" },
+    { Token::SizeOf, true, "sizeof" },
+    { Token::Identifier, false, "identifier" },
+    { Token::Unknown, false, "Unknown" },
+    { Token::EndOfFile, false, "EOF" },
 };
 
 static const TokenEntry* FindToken(Token::TokenType type)
@@ -227,8 +226,48 @@ std::string Token::TypeStr() const
 
 int Token::Precedence() const
 {
-    const TokenEntry* t = FindToken(type);
-    return t->precedence;
+    switch (type)
+    {
+    case Token::Not:
+	return 60;
+
+    case Token::Pow:
+    case Token::Power:
+	return 50;
+
+    case Token::And:
+    case Token::And_Then:
+    case Token::SymDiff:
+    case Token::Multiply:
+    case Token::Shr:
+    case Token::Shl:
+    case Token::Div:
+    case Token::Mod:
+    case Token::Divide:
+	return 40;
+
+    case Token::Or_Else:
+    case Token::Or:
+    case Token::Xor:
+    case Token::Plus:
+    case Token::Minus:
+	return 10;
+
+    case Token::In:
+    case Token::LessThan:
+    case Token::LessOrEqual:
+    case Token::GreaterOrEqual:
+    case Token::GreaterThan:
+    case Token::Equal:
+    case Token::NotEqual:
+	return 5;
+
+    case Token::Assign:
+	return 2;
+
+    default:
+	return -1;
+    }
 }
 
 Token::TokenType Token::KeyWordToToken(const std::string& str)
@@ -245,7 +284,7 @@ void Token::Initialize()
 {
     if (standard == none)
     {
-	tokenTable.push_back({ Token::Class, true, -1, "class" });
-	tokenTable.push_back({ Token::Object, true, -1, "object" });
+	tokenTable.push_back({ Token::Class, true, "class" });
+	tokenTable.push_back({ Token::Object, true, "object" });
     }
 }

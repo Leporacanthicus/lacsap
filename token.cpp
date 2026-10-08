@@ -1,8 +1,10 @@
 #include "token.h"
+#include "options.h"
 #include "utils.h"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 Token::Token(TokenType t, const Location& w) : type(t), where(w)
 {
@@ -79,7 +81,7 @@ struct TokenEntry
     const char*      str;
 };
 
-const TokenEntry tokenTable[] = {
+static std::vector<TokenEntry> tokenTable = {
     { Token::For, true, -1, "for" },
     { Token::To, true, -1, "to" },
     { Token::Downto, true, -1, "downto" },
@@ -113,8 +115,6 @@ const TokenEntry tokenTable[] = {
     { Token::Of, true, -1, "of" },
     { Token::Packed, true, -1, "packed" },
     { Token::Record, true, -1, "record" },
-    { Token::Class, true, -1, "class" },
-    { Token::Object, true, -1, "object" },
     { Token::Type, true, -1, "type" },
     { Token::File, true, -1, "file" },
     { Token::String, true, -1, "string" },
@@ -239,4 +239,13 @@ Token::TokenType Token::KeyWordToToken(const std::string& str)
 	return t->type;
     }
     return Token::Unknown;
+}
+
+void Token::Initialize()
+{
+    if (standard == none)
+    {
+	tokenTable.push_back({ Token::Class, true, -1, "class" });
+	tokenTable.push_back({ Token::Object, true, -1, "object" });
+    }
 }

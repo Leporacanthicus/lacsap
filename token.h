@@ -185,6 +185,8 @@ public:
     int  Precedence() const;
     bool IsCompare() const { return type >= Token::FirstComparison && type <= Token::LastComparison; }
 
+    static void Initialize();
+
 private:
     TokenType type;
     // Store location where token started.

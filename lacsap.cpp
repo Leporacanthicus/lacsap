@@ -137,6 +137,7 @@ static int Compile(const std::string& fileName)
     TIME_TRACE();
     theModule = CreateModule();
     Builtin::InitBuiltins();
+    Token::Initialize();
     FileSource source(fileName);
     if (!source)
     {

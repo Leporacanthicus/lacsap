@@ -229,6 +229,29 @@ static void AddToUses(VarSet& uses, VarSet& more)
     }
 }
 
+static std::map<const FunctionAST*, bool> processedFuncsMap;
+
+void RecursiveFindUses(CallGraphClosureCollector& v, FunctionAST* func)
+{
+    if (!processedFuncsMap[func])
+    {
+	auto& uses = v.useMap[func];
+	processedFuncsMap[func] = true;
+	for (auto call : v.callMap[func])
+	{
+	    VarSet callerUse = v.useMap[call];
+	    RemoveFromUses(callerUse, v.declMap[call]);
+	    AddToUses(uses, callerUse);
+	}
+	for (auto sub : func->SubFunctions())
+	{
+	    RecursiveFindUses(v, sub);
+	    AddToUses(uses, v.useMap[sub]);
+	}
+	RemoveFromUses(uses, v.declMap[func]);
+    }
+}
+
 void BuildClosures(ExprAST* ast)
 {
     TRACE();
@@ -241,19 +264,7 @@ void BuildClosures(ExprAST* ast)
 	FunctionAST* func = const_cast<FunctionAST*>(usage.first);
 
 	// Add uses from subfunctions.
-	for (auto sub : func->SubFunctions())
-	{
-	    VarSet use = v.useMap[sub];
-	    RemoveFromUses(use, v.declMap[sub]);
-	    AddToUses(uses, use);
-	}
-
-	for (auto call : v.callMap[func])
-	{
-	    VarSet callerUse = v.useMap[call];
-	    RemoveFromUses(callerUse, v.declMap[call]);
-	    AddToUses(uses, callerUse);
-	}
+	RecursiveFindUses(v, func);
 
 	// Remove local declarations.
 	RemoveFromUses(uses, v.declMap[func]);
